@@ -1,0 +1,142 @@
+export interface TrendingProduct {
+  id: string;
+  name: string;
+  category: string;
+  price: number;
+  oldPrice?: number;
+  rating: number;
+  reviewCount: number;
+  image: string;
+  badge?: string;
+  discount?: string;
+}
+
+export const trendingProducts: TrendingProduct[] = [
+  {
+    id: "memento-mori",
+    name: "Memento Mori — Crimson Skull",
+    category: "Collectibles",
+    price: 1999,
+    rating: 4.6,
+    reviewCount: 78,
+    image: "catogeries/2.jpg",
+  },
+  {
+    id: "street-minion",
+    name: "Street Minion — Urban Drop",
+    category: "Desk Toys",
+    price: 1299,
+    oldPrice: 1599,
+    rating: 4.5,
+    reviewCount: 203,
+    image: "catogeries/3.jpg",
+    badge: "FAN FAVORITE",
+    discount: "-19%",
+  },
+  {
+    id: "kaito-blue",
+    name: "Kaito — Blue Horizon",
+    category: "Gaming",
+    price: 3799,
+    oldPrice: 4599,
+    rating: 4.7,
+    reviewCount: 127,
+    image: "catogeries/4.jpg",
+    badge: "BEST SELLER",
+    discount: "-16%",
+  },
+  {
+    id: "custom-miniature",
+    name: "Custom Personal Miniature",
+    category: "Custom",
+    price: 2999,
+    rating: 5.0,
+    reviewCount: 892,
+    image: "catogeries/1.jpg",
+    badge: "PERSONALIZED",
+  },
+  {
+    id: "phantom-knight",
+    name: "Phantom Knight — Dark Paladin",
+    category: "Gaming",
+    price: 6799,
+    oldPrice: 8499,
+    rating: 4.9,
+    reviewCount: 234,
+    image: "catogeries/4.jpg",
+    badge: "EXCLUSIVE",
+    discount: "-20%",
+  },
+  {
+    id: "sakura-ronin",
+    name: "Sakura Ronin",
+    category: "Anime",
+    price: 3499,
+    rating: 4.6,
+    reviewCount: 156,
+    image: "catogeries/3.jpg",
+  },
+  {
+    id: "cyber-warrior",
+    name: "Cyber Warrior",
+    category: "Heroes",
+    price: 4299,
+    oldPrice: 4999,
+    rating: 4.8,
+    reviewCount: 184,
+    image: "catogeries/2.jpg",
+    badge: "TRENDING",
+    discount: "-14%",
+  },
+  {
+    id: "mecha-unit",
+    name: "Mecha Unit — Alpha",
+    category: "Gaming",
+    price: 5499,
+    rating: 4.7,
+    reviewCount: 91,
+    image: "catogeries/4.jpg",
+  },
+  {
+    id: "retro-console",
+    name: "Retro Console",
+    category: "Mobile / TV",
+    price: 1899,
+    oldPrice: 2299,
+    rating: 4.5,
+    reviewCount: 112,
+    image: "catogeries/1.jpg",
+    discount: "-17%",
+  },
+  {
+    id: "guardian-prop",
+    name: "Guardian Weapon Prop",
+    category: "Weapon Props",
+    price: 3999,
+    rating: 4.8,
+    reviewCount: 67,
+    image: "catogeries/2.jpg",
+    badge: "NEW",
+  },
+  {
+    id: "mini-bot",
+    name: "Mini Bot Companion",
+    category: "Desk Toys",
+    price: 1599,
+    rating: 4.4,
+    reviewCount: 88,
+    image: "catogeries/3.jpg",
+  },
+  {
+    id: "dragon-collectible",
+    name: "Ancient Dragon",
+    category: "Collectibles",
+    price: 4799,
+    oldPrice: 5499,
+    rating: 4.9,
+    reviewCount: 143,
+    image: "catogeries/1.jpg",
+    badge: "BEST SELLER",
+    discount: "-13%",
+  },
+];

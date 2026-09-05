@@ -1,0 +1,1101 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/**
+ * ============================================================
+ * USER
+ * ============================================================
+ */
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  phone     String?
+  role      UserRole @default(CUSTOMER)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  createdProducts        Product[]               @relation("ProductCreatedBy")
+  updatedProducts        Product[]               @relation("ProductUpdatedBy")
+  addresses              Address[]
+  cart                   Cart?
+  orders                 Order[]
+  returnRequests         ReturnRequest[]
+  customRequests         CustomRequest[]
+  customRequestRevisions CustomRequestRevision[]
+  notifications          Notification[]
+}
+
+enum UserRole {
+  CUSTOMER
+  ADMIN
+}
+
+/**
+ * ============================================================
+ * ADDRESS
+ * ============================================================
+ */
+
+model Address {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  fullName   String
+  phone      String
+  line1      String
+  line2      String?
+  city       String
+  state      String
+  postalCode String
+  country    String  @default("IN")
+  isDefault  Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders Order[]
+
+  @@index([userId])
+}
+
+/**
+ * ============================================================
+ * CATEGORY
+ * ============================================================
+ */
+
+model Category {
+  id          String  @id @default(cuid())
+  name        String
+  slug        String  @unique
+  description String?
+  imageUrl    String?
+  sortOrder   Int     @default(0)
+  isActive    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  products Product[]
+
+  @@index([isActive, sortOrder])
+}
+
+/**
+ * ============================================================
+ * PRODUCT
+ * ============================================================
+ */
+
+model Product {
+  id          String  @id @default(cuid())
+  name        String
+  slug        String  @unique
+  description String?
+
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  status ProductStatus @default(DRAFT)
+
+  isFeatured   Boolean @default(false)
+  isTrending   Boolean @default(false)
+  isBestseller Boolean @default(false)
+
+  badge      String?
+  material   String?
+  scale      String?
+  dimensions String?
+  height     String?
+  base       String?
+  packaging  String?
+  weight     String?
+
+  inventory  ProductInventory?
+  prices     ProductPrice[]
+  media      ProductMedia[]
+  files      ProductFile[]
+  tags       ProductTag[]
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+
+  inventoryReservations InventoryReservation[]
+
+  customPreviewRequests CustomRequest[] @relation("CustomPreviewProduct")
+
+  /**
+   * Product-level dependency bundles.
+   */
+  productFileBundles ProductFileBundle[]
+
+  createdById String?
+  createdBy   User?   @relation("ProductCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  updatedById String?
+  updatedBy   User?   @relation("ProductUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([categoryId])
+  @@index([status])
+  @@index([isFeatured])
+  @@index([isTrending])
+  @@index([isBestseller])
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+/**
+ * ============================================================
+ * PRODUCT PRICE
+ * ============================================================
+ */
+
+model ProductPrice {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  currency       String @default("INR")
+  amountMinor    Int
+  compareAtMinor Int?
+
+  isActive Boolean   @default(true)
+  startsAt DateTime?
+  endsAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([productId, isActive])
+  @@index([currency])
+}
+
+/**
+ * ============================================================
+ * PRODUCT INVENTORY
+ * ============================================================
+ */
+
+model ProductInventory {
+  id        String @id @default(cuid())
+  productId String @unique
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  stock          Int     @default(0)
+  reserved       Int     @default(0)
+  lowStockAt     Int     @default(5)
+  trackStock     Boolean @default(true)
+  allowBackorder Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reservations InventoryReservation[]
+}
+
+/**
+ * ============================================================
+ * INVENTORY RESERVATION
+ * ============================================================
+ */
+
+model InventoryReservation {
+  id String @id @default(cuid())
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  productInventoryId String?
+  productInventory   ProductInventory? @relation(fields: [productInventoryId], references: [id], onDelete: Cascade)
+
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  quantity Int
+  status   InventoryReservationStatus @default(ACTIVE)
+
+  expiresAt  DateTime
+  consumedAt DateTime?
+  releasedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, expiresAt])
+  @@index([orderId])
+  @@index([productId])
+}
+
+enum InventoryReservationStatus {
+  ACTIVE
+  CONSUMED
+  RELEASED
+  EXPIRED
+}
+
+/**
+ * ============================================================
+ * PRODUCT MEDIA
+ * ============================================================
+ */
+
+model ProductMedia {
+  id String @id @default(cuid())
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  type    ProductMediaType
+  url     String
+  altText String?
+
+  sortOrder Int     @default(0)
+  isPrimary Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([productId, type, sortOrder])
+}
+
+enum ProductMediaType {
+  IMAGE
+  MODEL_PREVIEW
+}
+
+/**
+ * ============================================================
+ * TAG
+ * ============================================================
+ */
+
+model Tag {
+  id   String @id @default(cuid())
+  name String @unique
+  slug String @unique
+
+  createdAt DateTime @default(now())
+
+  products ProductTag[]
+}
+
+/**
+ * ============================================================
+ * PRODUCT TAG
+ * ============================================================
+ */
+
+model ProductTag {
+  productId String
+  tagId     String
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  tag Tag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([productId, tagId])
+  @@index([tagId])
+}
+
+/**
+ * ============================================================
+ * CART
+ * ============================================================
+ */
+
+model Cart {
+  id     String @id @default(cuid())
+  userId String @unique
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  items CartItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/**
+ * ============================================================
+ * CART ITEM
+ * ============================================================
+ */
+
+model CartItem {
+  id String @id @default(cuid())
+
+  cartId String
+  cart   Cart   @relation(fields: [cartId], references: [id], onDelete: Cascade)
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  quantity Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cartId, productId])
+  @@index([productId])
+}
+
+/**
+ * ============================================================
+ * ORDER
+ * ============================================================
+ */
+
+model Order {
+  id             String  @id @default(cuid())
+  orderNumber    String  @unique
+  idempotencyKey String?
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  status   OrderStatus @default(PENDING_PAYMENT)
+  currency String      @default("INR")
+
+  subtotalMinor Int
+  discountMinor Int @default(0)
+  shippingMinor Int @default(0)
+  taxMinor      Int @default(0)
+  totalMinor    Int
+
+  shippingRuleId String?
+  shippingRule   ShippingRule? @relation(fields: [shippingRuleId], references: [id], onDelete: SetNull)
+
+  promotionId String?
+  promotion   Promotion? @relation(fields: [promotionId], references: [id], onDelete: SetNull)
+
+  appliedCouponCode String?
+
+  shippingAddressId String?
+  shippingAddress   Address? @relation(fields: [shippingAddressId], references: [id], onDelete: SetNull)
+
+  items                 OrderItem[]
+  payment               Payment?
+  shipment              Shipment?
+  inventoryReservations InventoryReservation[]
+  returnRequest         ReturnRequest?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, idempotencyKey])
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  CONFIRMED
+  PROCESSING
+  READY_TO_SHIP
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+/**
+ * ============================================================
+ * ORDER ITEM
+ * ============================================================
+ */
+
+model OrderItem {
+  id String @id @default(cuid())
+
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  productName     String
+  quantity        Int
+  unitPriceMinor  Int
+  totalPriceMinor Int
+
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+/**
+ * ============================================================
+ * PAYMENT
+ * ============================================================
+ */
+
+model Payment {
+  id String @id @default(cuid())
+
+  orderId String @unique
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  provider          PaymentProvider
+  providerPaymentId String?
+  status            PaymentStatus   @default(PENDING)
+
+  amountMinor Int
+  currency    String    @default("INR")
+  paidAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([providerPaymentId])
+  @@index([status])
+}
+
+enum PaymentProvider {
+  RAZORPAY
+  STRIPE
+  COD
+}
+
+enum PaymentStatus {
+  PENDING
+  AUTHORIZED
+  CAPTURED
+  FAILED
+  REFUNDED
+}
+
+/**
+ * ============================================================
+ * SHIPMENT
+ * ============================================================
+ */
+
+model Shipment {
+  id String @id @default(cuid())
+
+  orderId String @unique
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  status ShipmentStatus @default(PENDING)
+
+  carrier        String?
+  trackingNumber String?
+  trackingUrl    String?
+
+  shippedAt   DateTime?
+  deliveredAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([trackingNumber])
+}
+
+enum ShipmentStatus {
+  PENDING
+  LABEL_CREATED
+  SHIPPED
+  IN_TRANSIT
+  DELIVERED
+  EXCEPTION
+}
+
+/**
+ * ============================================================
+ * SHIPPING RULE
+ * ============================================================
+ */
+
+model ShippingRule {
+  id String @id @default(cuid())
+
+  name String
+  type ShippingRuleType
+
+  amountMinor    Int?
+  freeAboveMinor Int?
+
+  minWeightGrams Int?
+  maxWeightGrams Int?
+
+  countryCode String?
+  stateCode   String?
+
+  estimatedMinDays Int?
+  estimatedMaxDays Int?
+
+  priority Int     @default(0)
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders Order[]
+
+  @@index([isActive, priority])
+  @@index([countryCode, stateCode])
+}
+
+enum ShippingRuleType {
+  FREE
+  FLAT_RATE
+  FREE_ABOVE
+  WEIGHT_BASED
+}
+
+/**
+ * ============================================================
+ * TAX RULE
+ * ============================================================
+ */
+
+model TaxRule {
+  id String @id @default(cuid())
+
+  name        String
+  countryCode String
+  stateCode   String?
+
+  rateBps         Int
+  applyToShipping Boolean @default(false)
+
+  priority Int     @default(0)
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, priority])
+  @@index([countryCode, stateCode])
+}
+
+/**
+ * ============================================================
+ * PROMOTION
+ * ============================================================
+ */
+
+model Promotion {
+  id String @id @default(cuid())
+
+  name        String
+  description String?
+
+  code String?       @unique
+  type PromotionType
+
+  value            Int
+  minSubtotalMinor Int?
+  maxDiscountMinor Int?
+
+  startsAt DateTime?
+  endsAt   DateTime?
+
+  usageLimit Int?
+  usageCount Int  @default(0)
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders Order[]
+
+  @@index([code])
+  @@index([isActive, startsAt, endsAt])
+}
+
+enum PromotionType {
+  PERCENTAGE
+  FIXED
+}
+
+/**
+ * ============================================================
+ * RETURN REQUEST
+ * ============================================================
+ */
+
+model ReturnRequest {
+  id String @id @default(cuid())
+
+  orderId String @unique
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  reason String
+  note   String?
+
+  status ReturnRequestStatus @default(REQUESTED)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+}
+
+enum ReturnRequestStatus {
+  REQUESTED
+  APPROVED
+  REJECTED
+  RECEIVED
+  REFUNDED
+}
+
+/**
+ * ============================================================
+ * PRODUCT FILE
+ * ============================================================
+ */
+
+model ProductFile {
+  id String @id @default(cuid())
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  originalName String
+  storageKey   String
+  storageUrl   String?
+
+  format   ProductFileFormat
+  fileType ProductFileType
+  mimeType String?
+  fileSize BigInt
+
+  processingStatus ProcessingStatus @default(PENDING)
+  processingError  String?
+
+  imageWidth      Int?
+  imageHeight     Int?
+  imageChannels   Int?
+  imageHasAlpha   Boolean?
+  imageColorSpace String?
+
+  convertedFromId String?
+  convertedFrom   ProductFile? @relation("ConvertedFiles", fields: [convertedFromId], references: [id])
+
+  convertedFiles ProductFile[] @relation("ConvertedFiles")
+
+  processingJobs ProductFileProcessingJob[]
+
+  generatedByJob ProductFileProcessingJob? @relation("ProcessingJobOutput")
+
+  customPreview CustomRequestPreview?
+
+  /**
+   * Set only when this ProductFile is the root/entry file
+   * of a dependency bundle.
+   */
+  bundleRoot ProductFileBundle? @relation("ProductFileBundleRoot")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([productId])
+  @@index([format])
+  @@index([processingStatus])
+  @@index([convertedFromId])
+}
+
+/**
+ * ============================================================
+ * PRODUCT FILE BUNDLE
+ * ============================================================
+ * Represents one root 3D file together with all dependency
+ * assets required by that file.
+ * Example:
+ * scene.gltf
+ * scene.bin
+ * textures/
+ * body.jpg
+ * normal.png
+ * materials/
+ * model.mtl
+ * The root file remains a normal ProductFile.
+ * Dependency files are stored as ProductFileBundleAsset
+ * records and are not treated as independent ProductFiles.
+ */
+
+model ProductFileBundle {
+  id String @id @default(cuid())
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  /**
+   * Main/root file that starts processing.
+   * Examples:
+   * scene.gltf
+   * model.obj
+   * model.fbx
+   */
+  rootFileId String      @unique
+  rootFile   ProductFile @relation("ProductFileBundleRoot", fields: [rootFileId], references: [id], onDelete: Cascade)
+
+  assets ProductFileBundleAsset[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([productId])
+  @@index([productId, createdAt])
+}
+
+/**
+ * ============================================================
+ * PRODUCT FILE BUNDLE ASSET
+ * ============================================================
+ * Stores dependency files required by the root 3D asset.
+ * These may be files that are not represented by
+ * ProductFileFormat, such as:
+ * .bin
+ * .mtl
+ * texture files
+ * Examples:
+ * scene.bin
+ * model.mtl
+ * textures/albedo.png
+ * textures/normal.jpg
+ */
+
+model ProductFileBundleAsset {
+  id String @id @default(cuid())
+
+  bundleId String
+  bundle   ProductFileBundle @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+
+  /**
+   * Path exactly as referenced by the root asset.
+   * Examples:
+   * scene.bin
+   * textures/albedo.png
+   * materials/model.mtl
+   */
+  relativePath String
+
+  /**
+   * Actual storage location.
+   */
+  storageKey String
+
+  /**
+   * Original uploaded filename.
+   */
+  originalName String
+
+  mimeType String?
+  fileSize BigInt
+
+  createdAt DateTime @default(now())
+
+  @@unique([bundleId, relativePath])
+  @@index([bundleId])
+}
+
+/**
+ * ============================================================
+ * PRODUCT FILE PROCESSING JOB
+ * ============================================================
+ */
+
+model ProductFileProcessingJob {
+  id String @id @default(cuid())
+
+  productFileId String
+  productFile   ProductFile @relation(fields: [productFileId], references: [id], onDelete: Cascade)
+
+  status ProcessingJobStatus @default(QUEUED)
+
+  attempts    Int @default(0)
+  maxAttempts Int @default(3)
+
+  errorMessage String?
+
+  outputFileId String?      @unique
+  outputFile   ProductFile? @relation("ProcessingJobOutput", fields: [outputFileId], references: [id], onDelete: SetNull)
+
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([productFileId])
+  @@index([status])
+}
+
+/**
+ * ============================================================
+ * PRODUCT FILE TYPE
+ * ============================================================
+ */
+
+enum ProductFileType {
+  MODEL
+  IMAGE
+  DOCUMENT
+}
+
+/**
+ * ============================================================
+ * PRODUCT FILE FORMAT
+ * ============================================================
+ */
+
+enum ProductFileFormat {
+  ABC
+  USD
+  USDA
+  USDC
+  OBJ
+  PLY
+  STL
+  BVH
+  FBX
+  GLB
+  GLTF
+
+  PNG
+  JPG
+  JPEG
+  WEBP
+  SVG
+
+  PDF
+}
+
+/**
+ * ============================================================
+ * PROCESSING STATUS
+ * ============================================================
+ */
+
+enum ProcessingStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+/**
+ * ============================================================
+ * PROCESSING JOB STATUS
+ * ============================================================
+ */
+
+enum ProcessingJobStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+/**
+ * ============================================================
+ * CUSTOM REQUEST
+ * ============================================================
+ */
+
+model CustomRequest {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title             String
+  requirements      String
+  dimensions        String?
+  preferredMaterial String?
+  preferredScale    String?
+  notes             String?
+
+  referenceFileCount Int @default(0)
+
+  status        CustomRequestStatus @default(SUBMITTED)
+  revisionCount Int                 @default(0)
+
+  previewProductId String?
+  previewProduct   Product? @relation("CustomPreviewProduct", fields: [previewProductId], references: [id], onDelete: SetNull)
+
+  media     CustomRequestMedia[]
+  preview   CustomRequestPreview?
+  quote     CustomRequestQuote?
+  revisions CustomRequestRevision[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+}
+
+enum CustomRequestStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  IN_PRODUCTION
+  PREVIEW_READY
+  CUSTOMER_REVIEW
+  REVISION_REQUESTED
+  APPROVED
+  ORDERABLE
+  CANCELLED
+}
+
+/**
+ * ============================================================
+ * CUSTOM REQUEST MEDIA
+ * ============================================================
+ */
+
+model CustomRequestMedia {
+  id String @id @default(cuid())
+
+  customRequestId String
+  customRequest   CustomRequest @relation(fields: [customRequestId], references: [id], onDelete: Cascade)
+
+  storageKey   String
+  storageUrl   String?
+  originalName String
+  mimeType     String?
+  fileSize     BigInt
+
+  createdAt DateTime @default(now())
+
+  @@index([customRequestId])
+}
+
+/**
+ * ============================================================
+ * CUSTOM REQUEST PREVIEW
+ * ============================================================
+ */
+
+model CustomRequestPreview {
+  id String @id @default(cuid())
+
+  customRequestId String        @unique
+  customRequest   CustomRequest @relation(fields: [customRequestId], references: [id], onDelete: Cascade)
+
+  productFileId String?      @unique
+  productFile   ProductFile? @relation(fields: [productFileId], references: [id], onDelete: SetNull)
+
+  url    String
+  status CustomPreviewStatus @default(PROCESSING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum CustomPreviewStatus {
+  PROCESSING
+  READY
+  REPLACED
+}
+
+/**
+ * ============================================================
+ * CUSTOM REQUEST REVISION
+ * ============================================================
+ */
+
+model CustomRequestRevision {
+  id String @id @default(cuid())
+
+  customRequestId String
+  customRequest   CustomRequest @relation(fields: [customRequestId], references: [id], onDelete: Cascade)
+
+  requestedById String
+  requestedBy   User   @relation(fields: [requestedById], references: [id], onDelete: Cascade)
+
+  note String
+
+  createdAt DateTime @default(now())
+
+  @@index([customRequestId, createdAt])
+}
+
+/**
+ * ============================================================
+ * CUSTOM REQUEST QUOTE
+ * ============================================================
+ */
+
+model CustomRequestQuote {
+  id String @id @default(cuid())
+
+  customRequestId String        @unique
+  customRequest   CustomRequest @relation(fields: [customRequestId], references: [id], onDelete: Cascade)
+
+  currency    String  @default("INR")
+  amountMinor Int
+  notes       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/**
+ * ============================================================
+ * NOTIFICATION
+ * ============================================================
+ */
+
+model Notification {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type    NotificationType
+  title   String
+  message String
+
+  entityType String?
+  entityId   String?
+
+  readAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
+}
+
+enum NotificationType {
+  ORDER_CREATED
+  ORDER_CONFIRMED
+  ORDER_PROCESSING
+  ORDER_SHIPPED
+  ORDER_DELIVERED
+  ORDER_CANCELLED
+  ORDER_REFUNDED
+
+  CUSTOM_REQUEST_SUBMITTED
+  CUSTOM_PREVIEW_READY
+  CUSTOM_REVISION_REQUESTED
+  CUSTOM_APPROVED
+  CUSTOM_ORDERABLE
+}
