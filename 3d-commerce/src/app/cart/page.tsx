@@ -19,7 +19,7 @@ export default function CartPage() {
       <Navbar />
 
       <main className="min-h-screen overflow-hidden">
-        <section className="relative pb-20 pt-4 sm:pb-24 sm:pt-6 lg:pb-28 lg:pt-8">
+        <section className="relative pb-20 pt-24 sm:pb-24 sm:pt-26 lg:pb-28 lg:pt-28">
           <div
             aria-hidden="true"
             className="pointer-events-none absolute left-1/2 top-0 -z-10 h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-primary/[0.05] blur-[130px]"
@@ -28,14 +28,7 @@ export default function CartPage() {
           <Container>
             <div className="mb-8 flex items-end justify-between gap-6 sm:mb-10">
               <div>
-                <div className="flex items-center gap-3">
-                  <span className="h-px w-7 bg-primary" />
-                  <p className="text-[9px] font-medium uppercase tracking-[0.24em] text-primary">
-                    Your collection
-                  </p>
-                </div>
-
-                <h1 className="mt-4 font-serif text-4xl tracking-[-0.05em] text-foreground sm:text-5xl lg:text-6xl">
+                <h1 className="font-serif text-4xl tracking-[-0.05em] text-foreground sm:text-5xl lg:text-6xl">
                   Shopping Cart
                 </h1>
 
