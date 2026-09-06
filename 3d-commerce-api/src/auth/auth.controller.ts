@@ -19,7 +19,6 @@ export class AuthController {
     return this.authService.customerLogin(dto.email, dto.password);
   }
 
-  @UseGuards(AuthGuard)
   @Post('customer/logout')
   logoutCustomer(@Headers('authorization') authorization?: string) {
     const token = authorization?.startsWith('Bearer ')
