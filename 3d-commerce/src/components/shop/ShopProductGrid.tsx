@@ -50,9 +50,8 @@ export function ShopProductGrid({
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [page, setPage] = useState(1);
 
-  // Re-sync whenever the route's active category changes (handles the
-  // case where Next.js reuses this component across /shop/[slug]
-  // navigations instead of remounting it)
+  // Re-sync whenever the route's active category changes. This keeps the
+  // category filter locked to the selected navbar/shop category.
   useEffect(() => {
     setFilters({
       ...INITIAL_FILTERS,
@@ -75,11 +74,13 @@ export function ShopProductGrid({
         product.name.toLowerCase().includes(query) ||
         product.category.toLowerCase().includes(query);
 
+      // When a category route is active, only products from that category
+      // are allowed through. On the general /shop page the user can select
+      // one or more categories through the normal filters.
       const matchesCategory =
         filters.categories.length === 0 || filters.categories.includes(product.category);
 
       const matchesPrice = product.price >= filters.minPrice && product.price <= filters.maxPrice;
-
       const matchesRating = product.rating >= filters.minRating;
 
       return matchesSearch && matchesCategory && matchesPrice && matchesRating;
@@ -104,7 +105,6 @@ export function ShopProductGrid({
     });
   }, [filters, search, sort, sourceProducts]);
 
-  // Whenever the result set changes shape, jump back to page 1
   useEffect(() => {
     setPage(1);
   }, [filters, search, sort]);
@@ -136,6 +136,9 @@ export function ShopProductGrid({
   };
 
   const handleCategoryChange = (category: string) => {
+    // Category pages are intentionally locked to their route category.
+    if (activeCategory) return;
+
     setFilters((current) => ({
       ...current,
       categories: current.categories.includes(category)
