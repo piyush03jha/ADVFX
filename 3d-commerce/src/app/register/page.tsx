@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { FormEvent, useState } from "react";
 import {
   IconArrowRight,
   IconBrandGoogle,
@@ -16,11 +17,51 @@ import {
 } from "@tabler/icons-react";
 
 import { Navbar } from "@/components/layout/SiteNavbar";
+import { registerUser } from "@/lib/auth-client";
+import { useAuth } from "@/context/AuthContext";
 
 export default function RegisterPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { refreshSession } = useAuth();
+  const returnTo = getSafeReturnPath(searchParams.get("returnTo"));
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    if (!acceptTerms) {
+      setError("Please accept the Terms of Service and Privacy Policy.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      await registerUser(name, email, password);
+      await refreshSession();
+      router.replace(returnTo);
+      router.refresh();
+    } catch (submissionError) {
+      setError(submissionError instanceof Error ? submissionError.message : "Unable to create your account.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-background text-foreground">
@@ -63,11 +104,7 @@ export default function RegisterPage() {
                 </div>
               </div>
               <div className="mt-5 grid grid-cols-3 gap-2">
-                {[
-                  "Custom builds",
-                  "3D collections",
-                  "Order tracking",
-                ].map((item) => (
+                {["Custom builds", "3D collections", "Order tracking"].map((item) => (
                   <div key={item} className="rounded-2xl border border-white/[0.07] bg-white/[0.02] px-3 py-3 text-center text-[9px] uppercase tracking-[0.12em] text-muted">
                     {item}
                   </div>
@@ -84,9 +121,9 @@ export default function RegisterPage() {
                 <p className="mt-3 max-w-md text-sm leading-6 text-muted">A few details now. Everything else stays simple.</p>
               </div>
 
-              <button type="button" className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-white/[0.1] bg-white/[0.025] text-sm font-medium text-foreground transition-all hover:border-primary/20 hover:bg-white/[0.05]">
+              <button type="button" disabled className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-white/[0.1] bg-white/[0.025] text-sm font-medium text-foreground opacity-70">
                 <IconBrandGoogle size={17} />
-                Continue with Google
+                Continue with Google <span className="text-[9px] uppercase tracking-[0.1em] text-muted">Soon</span>
               </button>
 
               <div className="my-6 flex items-center gap-3">
@@ -95,12 +132,12 @@ export default function RegisterPage() {
                 <div className="h-px flex-1 bg-white/[0.08]" />
               </div>
 
-              <form className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <label className="block">
                   <span className="mb-2 block text-[9px] font-medium uppercase tracking-[0.15em] text-muted">Full name</span>
                   <div className="relative">
                     <IconUser size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
-                    <input type="text" required placeholder="Your full name" className="h-12 w-full rounded-xl border border-white/[0.1] bg-white/[0.025] pl-10 pr-4 text-sm text-foreground outline-none transition-all placeholder:text-muted/50 focus:border-primary/40 focus:bg-white/[0.04] focus:shadow-[0_0_0_4px_hsl(var(--primary)/0.05)]" />
+                    <input value={name} onChange={(event) => setName(event.target.value)} type="text" required autoComplete="name" placeholder="Your full name" className="h-12 w-full rounded-xl border border-white/[0.1] bg-white/[0.025] pl-10 pr-4 text-sm text-foreground outline-none transition-all placeholder:text-muted/50 focus:border-primary/40 focus:bg-white/[0.04] focus:shadow-[0_0_0_4px_hsl(var(--primary)/0.05)]" />
                   </div>
                 </label>
 
@@ -108,7 +145,7 @@ export default function RegisterPage() {
                   <span className="mb-2 block text-[9px] font-medium uppercase tracking-[0.15em] text-muted">Email address</span>
                   <div className="relative">
                     <IconMail size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
-                    <input type="email" required placeholder="you@example.com" className="h-12 w-full rounded-xl border border-white/[0.1] bg-white/[0.025] pl-10 pr-4 text-sm text-foreground outline-none transition-all placeholder:text-muted/50 focus:border-primary/40 focus:bg-white/[0.04] focus:shadow-[0_0_0_4px_hsl(var(--primary)/0.05)]" />
+                    <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" required autoComplete="email" placeholder="you@example.com" className="h-12 w-full rounded-xl border border-white/[0.1] bg-white/[0.025] pl-10 pr-4 text-sm text-foreground outline-none transition-all placeholder:text-muted/50 focus:border-primary/40 focus:bg-white/[0.04] focus:shadow-[0_0_0_4px_hsl(var(--primary)/0.05)]" />
                   </div>
                 </label>
 
@@ -117,7 +154,7 @@ export default function RegisterPage() {
                     <span className="mb-2 block text-[9px] font-medium uppercase tracking-[0.15em] text-muted">Password</span>
                     <div className="relative">
                       <IconLock size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
-                      <input type={showPassword ? "text" : "password"} required minLength={8} placeholder="8+ characters" className="h-12 w-full rounded-xl border border-white/[0.1] bg-white/[0.025] pl-10 pr-11 text-sm text-foreground outline-none transition-all placeholder:text-muted/50 focus:border-primary/40 focus:bg-white/[0.04] focus:shadow-[0_0_0_4px_hsl(var(--primary)/0.05)]" />
+                      <input value={password} onChange={(event) => setPassword(event.target.value)} type={showPassword ? "text" : "password"} required minLength={8} autoComplete="new-password" placeholder="8+ characters" className="h-12 w-full rounded-xl border border-white/[0.1] bg-white/[0.025] pl-10 pr-11 text-sm text-foreground outline-none transition-all placeholder:text-muted/50 focus:border-primary/40 focus:bg-white/[0.04] focus:shadow-[0_0_0_4px_hsl(var(--primary)/0.05)]" />
                       <button type="button" aria-label={showPassword ? "Hide password" : "Show password"} onClick={() => setShowPassword((value) => !value)} className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-muted transition-colors hover:bg-white/[0.05] hover:text-foreground">
                         {showPassword ? <IconEyeOff size={16} /> : <IconEye size={16} />}
                       </button>
@@ -128,7 +165,7 @@ export default function RegisterPage() {
                     <span className="mb-2 block text-[9px] font-medium uppercase tracking-[0.15em] text-muted">Confirm password</span>
                     <div className="relative">
                       <IconLock size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
-                      <input type={showConfirmPassword ? "text" : "password"} required minLength={8} placeholder="Repeat password" className="h-12 w-full rounded-xl border border-white/[0.1] bg-white/[0.025] pl-10 pr-11 text-sm text-foreground outline-none transition-all placeholder:text-muted/50 focus:border-primary/40 focus:bg-white/[0.04] focus:shadow-[0_0_0_4px_hsl(var(--primary)/0.05)]" />
+                      <input value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} type={showConfirmPassword ? "text" : "password"} required minLength={8} autoComplete="new-password" placeholder="Repeat password" className="h-12 w-full rounded-xl border border-white/[0.1] bg-white/[0.025] pl-10 pr-11 text-sm text-foreground outline-none transition-all placeholder:text-muted/50 focus:border-primary/40 focus:bg-white/[0.04] focus:shadow-[0_0_0_4px_hsl(var(--primary)/0.05)]" />
                       <button type="button" aria-label={showConfirmPassword ? "Hide confirmation password" : "Show confirmation password"} onClick={() => setShowConfirmPassword((value) => !value)} className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-muted transition-colors hover:bg-white/[0.05] hover:text-foreground">
                         {showConfirmPassword ? <IconEyeOff size={16} /> : <IconEye size={16} />}
                       </button>
@@ -143,20 +180,24 @@ export default function RegisterPage() {
                   </span>
                 </label>
 
-                <button type="submit" disabled={!acceptTerms} className="mt-2 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 text-[10px] font-semibold uppercase tracking-[0.16em] text-primary-foreground shadow-[0_16px_42px_hsl(var(--primary)/0.18)] transition-all hover:-translate-y-0.5 hover:shadow-[0_20px_52px_hsl(var(--primary)/0.25)] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0">
-                  Create account
-                  <IconArrowRight size={15} />
+                {error && (
+                  <div role="alert" className="rounded-xl border border-red-400/15 bg-red-400/[0.06] px-3.5 py-3 text-xs leading-5 text-red-200">{error}</div>
+                )}
+
+                <button type="submit" disabled={isSubmitting || !acceptTerms} className="mt-2 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 text-[10px] font-semibold uppercase tracking-[0.16em] text-primary-foreground shadow-[0_16px_42px_hsl(var(--primary)/0.18)] transition-all hover:-translate-y-0.5 hover:shadow-[0_20px_52px_hsl(var(--primary)/0.25)] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0">
+                  {isSubmitting ? "Creating account…" : "Create account"}
+                  {!isSubmitting && <IconArrowRight size={15} />}
                 </button>
               </form>
 
               <div className="mt-7 flex items-center justify-center gap-2 text-xs text-muted">
                 <IconCheck size={15} className="text-primary" />
-                Email verification keeps your account secure.
+                Your session starts securely after registration.
               </div>
 
               <p className="mt-5 text-center text-xs text-muted">
                 Already have an account?{" "}
-                <Link href="/login" className="font-medium text-primary transition-colors hover:text-foreground">Sign in</Link>
+                <Link href={`/login?returnTo=${encodeURIComponent(returnTo)}`} className="font-medium text-primary transition-colors hover:text-foreground">Sign in</Link>
               </p>
             </div>
           </div>
@@ -164,4 +205,9 @@ export default function RegisterPage() {
       </section>
     </main>
   );
+}
+
+function getSafeReturnPath(value: string | null) {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) return "/account";
+  return value;
 }
