@@ -12,31 +12,11 @@ import {
 } from "@tabler/icons-react";
 
 const links = [
-  {
-    label: "Overview",
-    href: "/account",
-    icon: IconHome,
-  },
-  {
-    label: "Orders",
-    href: "/account/orders",
-    icon: IconPackage,
-  },
-  {
-    label: "Addresses",
-    href: "/account/addresses",
-    icon: IconMapPin,
-  },
-  {
-    label: "Payments",
-    href: "/account/payments",
-    icon: IconCreditCard,
-  },
-  {
-    label: "Settings",
-    href: "/account/settings",
-    icon: IconSettings,
-  },
+  { label: "Overview", href: "/account", icon: IconHome },
+  { label: "Orders", href: "/account/orders", icon: IconPackage },
+  { label: "Addresses", href: "/account/addresses", icon: IconMapPin },
+  { label: "Payments", href: "/account/payments", icon: IconCreditCard },
+  { label: "Settings", href: "/account/settings", icon: IconSettings },
 ];
 
 export function AccountNav() {
@@ -45,35 +25,42 @@ export function AccountNav() {
   return (
     <>
       <nav className="hidden lg:block">
-        <div className="sticky top-24 rounded-2xl border border-white/[0.08] bg-white/[0.02] p-2 shadow-[0_20px_60px_rgba(0,0,0,0.16)]">
-          <p className="px-3 pb-2 pt-2 text-[9px] font-medium uppercase tracking-[0.2em] text-muted">
-            Account
-          </p>
+        <div className="sticky top-24 overflow-hidden rounded-2xl border border-white/[0.08] bg-black/20 p-1.5 backdrop-blur-md shadow-[0_20px_60px_rgba(0,0,0,0.18)]">
+          <div className="px-3 pb-2 pt-2.5">
+            <p className="text-[9px] font-medium uppercase tracking-[0.2em] text-muted">
+              Your account
+            </p>
+          </div>
 
           <div className="space-y-1">
             {links.map((link) => {
               const Icon = link.icon;
               const active =
                 pathname === link.href ||
-                (link.href !== "/account" &&
-                  pathname.startsWith(`${link.href}/`));
+                (link.href !== "/account" && pathname.startsWith(`${link.href}/`));
 
               return (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`group flex items-center justify-between rounded-xl px-3 py-2.5 text-xs transition-all ${
+                  className={`group flex items-center gap-3 rounded-xl px-3 py-3 text-xs transition-all ${
                     active
-                      ? "bg-primary/10 text-primary shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)]"
+                      ? "bg-primary/10 text-primary shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]"
                       : "text-muted hover:bg-white/[0.04] hover:text-foreground"
                   }`}
                 >
-                  <span className="flex items-center gap-3">
-                    <Icon size={16} stroke={1.7} />
-                    {link.label}
-                  </span>
                   <span
-                    className={`h-1 w-1 rounded-full transition-opacity ${
+                    className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-colors ${
+                      active
+                        ? "border-primary/20 bg-primary/10"
+                        : "border-white/[0.07] bg-white/[0.02] group-hover:border-white/[0.12]"
+                    }`}
+                  >
+                    <Icon size={16} stroke={1.7} />
+                  </span>
+                  <span className="flex-1">{link.label}</span>
+                  <span
+                    className={`h-1.5 w-1.5 rounded-full transition-opacity ${
                       active ? "bg-primary opacity-100" : "opacity-0"
                     }`}
                   />
@@ -90,17 +77,16 @@ export function AccountNav() {
             const Icon = link.icon;
             const active =
               pathname === link.href ||
-              (link.href !== "/account" &&
-                pathname.startsWith(`${link.href}/`));
+              (link.href !== "/account" && pathname.startsWith(`${link.href}/`));
 
             return (
               <Link
                 key={link.href}
                 href={link.href}
-                className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-2 text-[10px] uppercase tracking-[0.08em] transition-colors ${
+                className={`flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2.5 text-[10px] uppercase tracking-[0.08em] transition-all ${
                   active
-                    ? "border-primary/40 bg-primary/10 text-primary"
-                    : "border-border text-muted"
+                    ? "border-primary/35 bg-primary/10 text-primary"
+                    : "border-white/[0.08] bg-white/[0.02] text-muted"
                 }`}
               >
                 <Icon size={13} />
