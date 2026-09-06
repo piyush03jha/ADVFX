@@ -20,16 +20,12 @@ export default function CheckoutPage() {
     <>
       <Navbar />
       <main className="min-h-screen overflow-hidden">
-        <section className="relative pb-20 pt-4 sm:pb-24 sm:pt-6 lg:pb-28 lg:pt-8">
-          <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-0 -z-10 h-[460px] w-[460px] -translate-x-1/2 rounded-full bg-primary/[0.05] blur-[140px]" />
+        <section className="relative pb-20 pt-28 sm:pb-24 sm:pt-32 lg:pb-28 lg:pt-36">
+          <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-10 -z-10 h-[460px] w-[460px] -translate-x-1/2 rounded-full bg-primary/[0.07] blur-[140px]" />
           <Container>
             <div className="mb-8 flex items-end justify-between gap-6 sm:mb-10">
               <div>
-                <div className="flex items-center gap-3">
-                  <span className="h-px w-7 bg-primary" />
-                  <p className="text-[9px] font-medium uppercase tracking-[0.24em] text-primary">Secure checkout</p>
-                </div>
-                <h1 className="mt-4 font-serif text-4xl tracking-[-0.05em] text-foreground sm:text-5xl lg:text-6xl">Complete your order</h1>
+                <h1 className="font-serif text-4xl tracking-[-0.05em] text-foreground sm:text-5xl lg:text-6xl">Complete your order</h1>
                 <p className="mt-3 max-w-xl text-sm leading-6 text-muted">Enter your delivery details and review your order before payment.</p>
               </div>
               <div className="hidden items-center gap-2 text-[10px] uppercase tracking-[0.12em] text-muted sm:flex">
@@ -39,7 +35,7 @@ export default function CheckoutPage() {
             </div>
 
             {!isLoaded ? (
-              <div className="flex min-h-[420px] items-center justify-center rounded-2xl border border-white/[0.07] bg-white/[0.015]">
+              <div className="flex min-h-[420px] items-center justify-center rounded-2xl border border-white/[0.08] bg-[linear-gradient(135deg,hsl(var(--foreground)/0.05),hsl(var(--background)/0.02)_60%,hsl(var(--primary)/0.06))] shadow-[0_20px_65px_rgba(0,0,0,0.14)]">
                 <div className="text-center">
                   <div className="mx-auto h-7 w-7 animate-spin rounded-full border border-white/10 border-t-primary" />
                   <p className="mt-3 text-[9px] uppercase tracking-[0.18em] text-muted">Loading checkout</p>
@@ -62,15 +58,13 @@ export default function CheckoutPage() {
 
 function EmptyCheckout() {
   return (
-    <div className="mx-auto max-w-2xl rounded-2xl border border-white/[0.08] bg-white/[0.015] px-6 py-14 text-center sm:px-10">
-      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-primary/20 bg-primary/[0.06] text-primary">
+    <div className="mx-auto max-w-2xl rounded-3xl border border-white/[0.1] bg-[linear-gradient(135deg,hsl(var(--foreground)/0.065),hsl(var(--background)/0.02)_58%,hsl(var(--primary)/0.07))] px-6 py-14 text-center shadow-[0_22px_70px_rgba(0,0,0,0.16)] sm:px-10">
+      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-primary/20 bg-primary/[0.07] text-primary">
         <IconShoppingBag size={22} />
       </div>
       <h2 className="mt-5 font-serif text-3xl tracking-[-0.04em] text-foreground">Your cart is empty</h2>
       <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted">Add a model to your cart before continuing to checkout.</p>
-      <Button href="/shop" size="lg" className="mt-7">
-        Explore models
-      </Button>
+      <Button href="/shop" size="lg" className="mt-7">Explore models</Button>
     </div>
   );
 }
