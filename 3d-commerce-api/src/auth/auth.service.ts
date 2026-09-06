@@ -10,13 +10,11 @@ import {
   scrypt as scryptCallback,
   timingSafeEqual,
 } from 'node:crypto';
-import { promisify } from 'node:util';
 import { PrismaService } from '../prisma/prisma.service';
 import type { UserRole } from '@prisma/client';
 import type { AuthenticatedUser } from './auth.types';
 import { AuthEmailService } from './email.service';
 
-const scrypt = promisify(scryptCallback);
 const CUSTOMER_SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 const ADMIN_SESSION_TTL_MS = 1000 * 60 * 60 * 12;
 const EMAIL_VERIFICATION_TTL_MS = 1000 * 60 * 60 * 24;
@@ -375,9 +373,23 @@ export class AuthService {
   }
 }
 
+function scryptAsync(
+  password: string,
+  salt: Buffer,
+  keylen: number,
+  options: { N: number; r: number; p: number },
+): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    scryptCallback(password, salt, keylen, options, (error, derivedKey) => {
+      if (error) reject(error);
+      else resolve(derivedKey);
+    });
+  });
+}
+
 async function hashPassword(password: string) {
   const salt = randomBytes(16);
-  const derivedKey = (await scrypt(password, salt, 64, { N: 16_384, r: 8, p: 1 })) as Buffer;
+  const derivedKey = await scryptAsync(password, salt, 64, { N: 16_384, r: 8, p: 1 });
   return `scrypt$16384$8$1$${salt.toString('hex')}$${derivedKey.toString('hex')}`;
 }
 
@@ -385,7 +397,11 @@ async function verifyPassword(password: string, encoded: string) {
   const [algorithm, n, r, p, saltHex, hashHex] = encoded.split('$');
   if (algorithm !== 'scrypt' || n !== '16384' || r !== '8' || p !== '1' || !saltHex || !hashHex) return false;
   try {
-    const derivedKey = (await scrypt(password, Buffer.from(saltHex, 'hex'), 64, { N: 16_384, r: 8, p: 1 })) as Buffer;
+    const derivedKey = await scryptAsync(password, Buffer.from(saltHex, 'hex'), 64, {
+      N: 16_384,
+      r: 8,
+      p: 1,
+    });
     const expected = Buffer.from(hashHex, 'hex');
     return expected.length === derivedKey.length && timingSafeEqual(expected, derivedKey);
   } catch {
