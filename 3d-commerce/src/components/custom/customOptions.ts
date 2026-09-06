@@ -26,10 +26,18 @@ export const sizeOptions = [
   { value: "30", label: "30 cm", multiplier: 2.15 },
 ];
 
+export const categoryBasePrices = {
+  person: 0,
+  pet: 2999,
+  object: 2799,
+  vehicle: 3299,
+  character: 2999,
+  other: 2499,
+} as const;
+
 export const processSteps = [
   { title: "We review", description: "Your references and selected build." },
   { title: "We prepare", description: "The 3D model for production." },
-  { title: "You approve", description: "Review the final design before making." },
   { title: "We make it", description: "Production, finishing and delivery." },
 ];
 
@@ -45,4 +53,18 @@ export function calculatePrice({
   size: { multiplier: number };
 }) {
   return Math.round((body.basePrice + head.addPrice + frame.addPrice) * size.multiplier);
+}
+
+export function calculateCategoryPrice({
+  category,
+  head,
+  size,
+}: {
+  category: keyof typeof categoryBasePrices;
+  head: { addPrice: number };
+  size: { multiplier: number };
+}) {
+  const basePrice = categoryBasePrices[category];
+  const headAdd = category === "pet" || category === "character" ? head.addPrice : 0;
+  return Math.round((basePrice + headAdd) * size.multiplier);
 }
