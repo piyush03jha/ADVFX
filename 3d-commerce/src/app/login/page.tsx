@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { FormEvent, useState } from "react";
 import {
   IconArrowRight,
   IconBrandGoogle,
@@ -14,10 +15,37 @@ import {
 } from "@tabler/icons-react";
 
 import { Navbar } from "@/components/layout/SiteNavbar";
+import { loginUser } from "@/lib/auth-client";
+import { useAuth } from "@/context/AuthContext";
 
 export default function LoginPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { refreshSession } = useAuth();
+  const returnTo = getSafeReturnPath(searchParams.get("returnTo"));
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(true);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    setIsSubmitting(true);
+
+    try {
+      await loginUser(email, password);
+      await refreshSession();
+      router.replace(returnTo);
+      router.refresh();
+    } catch (submissionError) {
+      setError(submissionError instanceof Error ? submissionError.message : "Unable to sign in.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-background text-foreground">
@@ -73,9 +101,9 @@ export default function LoginPage() {
                 <p className="mt-3 text-sm leading-6 text-muted">Access your account to continue your order.</p>
               </div>
 
-              <button type="button" className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-white/[0.1] bg-white/[0.025] text-sm font-medium text-foreground transition-all hover:border-primary/20 hover:bg-white/[0.05]">
+              <button type="button" disabled className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-white/[0.1] bg-white/[0.025] text-sm font-medium text-foreground opacity-70">
                 <IconBrandGoogle size={17} />
-                Continue with Google
+                Continue with Google <span className="text-[9px] uppercase tracking-[0.1em] text-muted">Soon</span>
               </button>
 
               <div className="my-6 flex items-center gap-3">
@@ -84,12 +112,12 @@ export default function LoginPage() {
                 <div className="h-px flex-1 bg-white/[0.08]" />
               </div>
 
-              <form className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <label className="block">
                   <span className="mb-2 block text-[9px] font-medium uppercase tracking-[0.15em] text-muted">Email address</span>
                   <div className="relative">
                     <IconMail size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
-                    <input type="email" required placeholder="you@example.com" className="h-12 w-full rounded-xl border border-white/[0.1] bg-white/[0.025] pl-10 pr-4 text-sm text-foreground outline-none transition-all placeholder:text-muted/50 focus:border-primary/40 focus:bg-white/[0.04] focus:shadow-[0_0_0_4px_hsl(var(--primary)/0.05)]" />
+                    <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" required autoComplete="email" placeholder="you@example.com" className="h-12 w-full rounded-xl border border-white/[0.1] bg-white/[0.025] pl-10 pr-4 text-sm text-foreground outline-none transition-all placeholder:text-muted/50 focus:border-primary/40 focus:bg-white/[0.04] focus:shadow-[0_0_0_4px_hsl(var(--primary)/0.05)]" />
                   </div>
                 </label>
 
@@ -100,7 +128,7 @@ export default function LoginPage() {
                   </div>
                   <div className="relative">
                     <IconLock size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
-                    <input type={showPassword ? "text" : "password"} required placeholder="Enter your password" className="h-12 w-full rounded-xl border border-white/[0.1] bg-white/[0.025] pl-10 pr-11 text-sm text-foreground outline-none transition-all placeholder:text-muted/50 focus:border-primary/40 focus:bg-white/[0.04] focus:shadow-[0_0_0_4px_hsl(var(--primary)/0.05)]" />
+                    <input value={password} onChange={(event) => setPassword(event.target.value)} type={showPassword ? "text" : "password"} required autoComplete={remember ? "current-password" : "off"} placeholder="Enter your password" className="h-12 w-full rounded-xl border border-white/[0.1] bg-white/[0.025] pl-10 pr-11 text-sm text-foreground outline-none transition-all placeholder:text-muted/50 focus:border-primary/40 focus:bg-white/[0.04] focus:shadow-[0_0_0_4px_hsl(var(--primary)/0.05)]" />
                     <button type="button" aria-label={showPassword ? "Hide password" : "Show password"} onClick={() => setShowPassword((value) => !value)} className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-muted transition-colors hover:bg-white/[0.05] hover:text-foreground">
                       {showPassword ? <IconEyeOff size={16} /> : <IconEye size={16} />}
                     </button>
@@ -112,15 +140,19 @@ export default function LoginPage() {
                   Keep me signed in on this device
                 </label>
 
-                <button type="submit" className="mt-2 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 text-[10px] font-semibold uppercase tracking-[0.16em] text-primary-foreground shadow-[0_16px_42px_hsl(var(--primary)/0.18)] transition-all hover:-translate-y-0.5 hover:shadow-[0_20px_52px_hsl(var(--primary)/0.25)]">
-                  Sign in
-                  <IconArrowRight size={15} />
+                {error && (
+                  <div role="alert" className="rounded-xl border border-red-400/15 bg-red-400/[0.06] px-3.5 py-3 text-xs leading-5 text-red-200">{error}</div>
+                )}
+
+                <button type="submit" disabled={isSubmitting} className="mt-2 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 text-[10px] font-semibold uppercase tracking-[0.16em] text-primary-foreground shadow-[0_16px_42px_hsl(var(--primary)/0.18)] transition-all hover:-translate-y-0.5 hover:shadow-[0_20px_52px_hsl(var(--primary)/0.25)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0">
+                  {isSubmitting ? "Signing in…" : "Sign in"}
+                  {!isSubmitting && <IconArrowRight size={15} />}
                 </button>
               </form>
 
               <p className="mt-7 text-center text-xs text-muted">
                 New to the studio?{" "}
-                <Link href="/register" className="font-medium text-primary transition-colors hover:text-foreground">Create an account</Link>
+                <Link href={`/register?returnTo=${encodeURIComponent(returnTo)}`} className="font-medium text-primary transition-colors hover:text-foreground">Create an account</Link>
               </p>
 
               <p className="mt-6 text-center text-[9px] leading-5 text-muted/70">
@@ -132,4 +164,9 @@ export default function LoginPage() {
       </section>
     </main>
   );
+}
+
+function getSafeReturnPath(value: string | null) {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) return "/account";
+  return value;
 }
