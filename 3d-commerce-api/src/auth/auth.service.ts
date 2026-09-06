@@ -21,6 +21,9 @@ const CUSTOMER_SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 const ADMIN_SESSION_TTL_MS = 1000 * 60 * 60 * 12;
 const EMAIL_VERIFICATION_TTL_MS = 1000 * 60 * 60 * 24;
 const PASSWORD_RESET_TTL_MS = 1000 * 60 * 30;
+const VERIFICATION_RESEND_COOLDOWN_MS = 1000 * 60;
+const GENERIC_VERIFICATION_MESSAGE =
+  'If the account exists and is not verified, a verification email has been sent.';
 
 @Injectable()
 export class AuthService {
@@ -59,7 +62,12 @@ export class AuthService {
     });
 
     const verificationToken = await this.createEmailVerificationToken(user.id);
-    await this.emailService.sendVerificationEmail(user.email, verificationToken);
+    try {
+      await this.emailService.sendVerificationEmail(user.email, verificationToken);
+    } catch (error) {
+      await this.revokeVerificationToken(verificationToken);
+      throw error;
+    }
 
     return {
       user: this.serializeUser(user),
@@ -146,6 +154,51 @@ export class AuthService {
     return { message: 'Email verified successfully.' };
   }
 
+  async resendCustomerVerification(email: string) {
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await this.prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      select: { id: true, email: true, isActive: true, role: true },
+    });
+
+    if (!user || !user.isActive || user.role !== ('CUSTOMER' as UserRole)) {
+      return { message: GENERIC_VERIFICATION_MESSAGE };
+    }
+
+    const verification = await this.prisma.$queryRaw<Array<{ emailVerifiedAt: Date | null }>>`
+      SELECT "emailVerifiedAt" FROM "User" WHERE "id" = ${user.id} LIMIT 1
+    `;
+    if (verification[0]?.emailVerifiedAt) {
+      return { message: GENERIC_VERIFICATION_MESSAGE };
+    }
+
+    const recentTokens = await this.prisma.$queryRaw<Array<{ createdAt: Date }>>`
+      SELECT "createdAt" FROM "AuthVerificationToken"
+      WHERE "userId" = ${user.id} AND "usedAt" IS NULL
+      ORDER BY "createdAt" DESC
+      LIMIT 1
+    `;
+    if (
+      recentTokens[0] &&
+      Date.now() - new Date(recentTokens[0].createdAt).getTime() < VERIFICATION_RESEND_COOLDOWN_MS
+    ) {
+      return { message: GENERIC_VERIFICATION_MESSAGE };
+    }
+
+    const token = await this.createEmailVerificationToken(user.id);
+    try {
+      await this.emailService.sendVerificationEmail(user.email, token);
+    } catch (error) {
+      await this.revokeVerificationToken(token);
+      throw error;
+    }
+
+    return {
+      message: GENERIC_VERIFICATION_MESSAGE,
+      ...this.developmentToken('emailVerificationToken', token),
+    };
+  }
+
   async forgotCustomerPassword(email: string) {
     const normalizedEmail = email.trim().toLowerCase();
     const user = await this.prisma.user.findUnique({
@@ -158,7 +211,12 @@ export class AuthService {
     }
 
     const token = await this.createPasswordResetToken(user.id);
-    await this.emailService.sendPasswordResetEmail(user.email, token);
+    try {
+      await this.emailService.sendPasswordResetEmail(user.email, token);
+    } catch (error) {
+      await this.revokePasswordResetToken(token);
+      throw error;
+    }
 
     return {
       message: 'If the account exists, password reset instructions have been sent.',
@@ -266,6 +324,13 @@ export class AuthService {
     return token;
   }
 
+  private async revokeVerificationToken(token: string) {
+    await this.prisma.$executeRaw`
+      UPDATE "AuthVerificationToken" SET "usedAt" = CURRENT_TIMESTAMP
+      WHERE "tokenHash" = ${hashSessionToken(token)} AND "usedAt" IS NULL
+    `;
+  }
+
   private async createPasswordResetToken(userId: string) {
     const token = randomBytes(32).toString('base64url');
     await this.prisma.$executeRaw`
@@ -277,6 +342,13 @@ export class AuthService {
       VALUES (${randomUUID()}, ${userId}, ${hashSessionToken(token)}, ${new Date(Date.now() + PASSWORD_RESET_TTL_MS)}, CURRENT_TIMESTAMP)
     `;
     return token;
+  }
+
+  private async revokePasswordResetToken(token: string) {
+    await this.prisma.$executeRaw`
+      UPDATE "AuthPasswordResetToken" SET "usedAt" = CURRENT_TIMESTAMP
+      WHERE "tokenHash" = ${hashSessionToken(token)} AND "usedAt" IS NULL
+    `;
   }
 
   private async revokeCustomerSession(tokenHash: string) {
