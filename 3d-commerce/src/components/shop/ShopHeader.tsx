@@ -21,7 +21,7 @@ export function ShopHeader({ productCount, onOpenFilters }: ShopHeaderProps) {
         className="pointer-events-none absolute left-[8%] top-0 -z-10 h-[240px] w-[420px] rounded-full bg-primary/[0.04] blur-[120px]"
       />
 
-      <Container className="pb-7 pt-24 sm:pb-8 sm:pt-26 lg:pb-9 lg:pt-28">
+      <Container className="pb-3 pt-24 sm:pb-4 sm:pt-26 lg:pb-5 lg:pt-28">
         <motion.div
           initial={shouldReduceMotion ? false : { opacity: 0, y: 14 }}
           animate={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
