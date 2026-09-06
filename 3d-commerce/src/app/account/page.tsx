@@ -5,13 +5,13 @@ import { Navbar } from "@/components/layout/SiteNavbar";
 export default function AccountPage() {
   return (
     <>
-    <Navbar />
-    <AccountShell
-      title="Welcome back."
-      description="Manage your orders, delivery details, wishlist and account preferences."
-    >
-      <AccountOverview />
-    </AccountShell>
+      <Navbar />
+      <AccountShell
+        title="Welcome back."
+        description="Manage your orders, delivery details and account preferences."
+      >
+        <AccountOverview />
+      </AccountShell>
     </>
   );
 }
