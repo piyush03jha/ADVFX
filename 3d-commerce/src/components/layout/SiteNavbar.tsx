@@ -44,7 +44,7 @@ export function Navbar() {
             <IconHeart size={18} stroke={1.7} />
           </NavIconLink>
 
-          <NavIconLink href="/account" label="My account">
+          <NavIconLink href="/login" label="Sign in">
             <IconUserCircle size={19} stroke={1.7} />
           </NavIconLink>
 
@@ -56,7 +56,7 @@ export function Navbar() {
         <MobileNavHeader>
           <NavbarLogo />
           <div className="flex items-center gap-1">
-            <NavIconLink href="/account" label="My account">
+            <NavIconLink href="/login" label="Sign in">
               <IconUserCircle size={19} stroke={1.7} />
             </NavIconLink>
             <CartLink itemCount={itemCount} isLoaded={isLoaded} />
@@ -89,9 +89,9 @@ export function Navbar() {
               <IconHeart size={17} stroke={1.7} />
               <span className="hidden sm:inline">Wishlist</span>
             </MobileActionLink>
-            <MobileActionLink href="/account" onClick={() => setIsMobileMenuOpen(false)}>
+            <MobileActionLink href="/login" onClick={() => setIsMobileMenuOpen(false)}>
               <IconUserCircle size={17} stroke={1.7} />
-              <span className="hidden sm:inline">Account</span>
+              <span className="hidden sm:inline">Sign in</span>
             </MobileActionLink>
           </div>
         </MobileNavMenu>
