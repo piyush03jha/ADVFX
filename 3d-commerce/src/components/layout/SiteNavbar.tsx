@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useState } from "react";
 import {
   IconHeart,
-  IconSearch,
   IconShoppingCart,
   IconUserCircle,
 } from "@tabler/icons-react";
@@ -41,10 +40,6 @@ export function Navbar() {
         <NavItems items={navItems} />
 
         <div className="relative z-50 flex shrink-0 items-center gap-0.5 pointer-events-auto">
-          <NavIconLink href="/search" label="Search">
-            <IconSearch size={18} stroke={1.7} />
-          </NavIconLink>
-
           <NavIconLink href="/wishlist" label="Wishlist">
             <IconHeart size={18} stroke={1.7} />
           </NavIconLink>
@@ -89,11 +84,7 @@ export function Navbar() {
             ))}
           </div>
 
-          <div className="mt-6 grid grid-cols-3 gap-3">
-            <MobileActionLink href="/search" onClick={() => setIsMobileMenuOpen(false)}>
-              <IconSearch size={17} stroke={1.7} />
-              <span className="hidden sm:inline">Search</span>
-            </MobileActionLink>
+          <div className="mt-6 grid grid-cols-2 gap-3">
             <MobileActionLink href="/wishlist" onClick={() => setIsMobileMenuOpen(false)}>
               <IconHeart size={17} stroke={1.7} />
               <span className="hidden sm:inline">Wishlist</span>
