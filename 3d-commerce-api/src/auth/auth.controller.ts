@@ -1,4 +1,4 @@
-import { Body, Controller, Headers, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Post, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { AuthGuard } from './guards/auth.guard';
@@ -17,6 +17,15 @@ export class AuthController {
   @Post('login')
   loginCustomer(@Body() dto: CustomerLoginDto) {
     return this.authService.customerLogin(dto.email, dto.password);
+  }
+
+  @Get('session')
+  session(@Headers('authorization') authorization?: string) {
+    const token = authorization?.startsWith('Bearer ')
+      ? authorization.slice('Bearer '.length).trim()
+      : '';
+
+    return this.authService.authenticateCustomer(token);
   }
 
   @Post('customer/logout')
