@@ -169,7 +169,7 @@ export function ShopProductGrid({
         onOpenFilters={() => setMobileFiltersOpen(true)}
       />
 
-      <section className="relative pb-20 pt-5 sm:pb-24 sm:pt-7 lg:pb-28 lg:pt-9">
+      <section className="relative pb-20 pt-1 sm:pb-24 sm:pt-2 lg:pb-28 lg:pt-3">
         <Container>
           <div ref={navRef} className="-mx-1 mb-7 overflow-hidden scroll-mt-24 sm:mb-8">
             <ShopNavigation
