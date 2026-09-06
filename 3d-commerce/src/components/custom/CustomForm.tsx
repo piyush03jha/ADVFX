@@ -69,10 +69,10 @@ export function CustomForm({ body, onBodyChange, head, onHeadChange, onSubmit }:
       </div>
 
       <div className="grid overflow-hidden rounded-[24px] border border-border bg-surface/55 shadow-[0_30px_100px_rgba(0,0,0,0.24)] backdrop-blur-xl lg:grid-cols-[minmax(0,1.08fr)_minmax(440px,0.92fr)]">
-        <div className="relative min-h-[520px] bg-[#0b0b0c] p-3 sm:min-h-[650px] sm:p-4 lg:min-h-[760px]">
-          <div className="relative h-full min-h-[500px] overflow-hidden rounded-[18px] border border-white/10 bg-[#151516] sm:min-h-[615px] lg:min-h-[728px]">
-            <img src={gallery[activeImage].image} alt="Custom 3D product example" className="absolute inset-0 h-full w-full object-cover transition duration-500" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-black/10" />
+        <div className="relative flex min-h-0 flex-col bg-[#0b0b0c] p-3 sm:p-4 lg:h-[calc(100svh-120px)] lg:max-h-[820px] lg:min-h-[620px]">
+          <div className="relative min-h-0 flex-1 overflow-hidden rounded-[18px] border border-white/10 bg-[#151516] lg:min-h-0">
+            <img src={gallery[activeImage].image} alt="Custom 3D product example" className="absolute inset-0 h-full w-full object-contain transition duration-500" />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-black/10" />
             <div className="absolute left-4 top-4 rounded-full border border-white/15 bg-black/35 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-white/80 backdrop-blur-md sm:left-5 sm:top-5">Custom 3D Studio</div>
             <button type="button" onClick={previousImage} aria-label="Previous product example" className="absolute left-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl border border-white/15 bg-black/35 text-white backdrop-blur-md transition hover:bg-black/60 sm:left-5"><span className="text-xl">‹</span></button>
             <button type="button" onClick={nextImage} aria-label="Next product example" className="absolute right-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl border border-white/15 bg-black/35 text-white backdrop-blur-md transition hover:bg-black/60 sm:right-5"><span className="text-xl">›</span></button>
@@ -86,7 +86,7 @@ export function CustomForm({ body, onBodyChange, head, onHeadChange, onSubmit }:
               </div>
             </div>
           </div>
-          <div className="mt-3 grid grid-cols-4 gap-2 sm:mt-4 sm:gap-3">
+          <div className="mt-3 grid shrink-0 grid-cols-4 gap-2 sm:mt-4 sm:gap-3">
             {gallery.map((item, index) => (
               <button key={item.label} type="button" onClick={() => setActiveImage(index)} className={`relative aspect-[4/3] overflow-hidden rounded-xl border transition ${activeImage === index ? "border-primary ring-1 ring-primary/30" : "border-white/10 opacity-65 hover:opacity-100"}`}>
                 <img src={item.image} alt="" className="h-full w-full object-cover" />
@@ -96,7 +96,7 @@ export function CustomForm({ body, onBodyChange, head, onHeadChange, onSubmit }:
           </div>
         </div>
 
-        <div className="flex flex-col bg-background/80 p-5 sm:p-7 lg:p-9">
+        <div className="flex flex-col bg-background/80 p-5 sm:p-7 lg:max-h-[calc(100svh-120px)] lg:overflow-y-auto lg:p-9">
           <div className="border-b border-border pb-5">
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">Made from your photos</p>
             <h1 className="mt-2 text-3xl font-semibold tracking-[-0.045em] sm:text-4xl">Custom Bobble Heads & 3D Figures</h1>
