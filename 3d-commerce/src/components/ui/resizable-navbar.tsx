@@ -9,7 +9,7 @@ import {
   useScroll,
   useMotionValueEvent,
 } from "motion/react";
-import React, { useRef, useState } from "react";
+import React, { useState } from "react";
 
 /* =========================================================
    TYPES
@@ -61,13 +61,9 @@ export const Navbar = ({
   children,
   className,
 }: NavbarProps) => {
-  const ref = useRef<HTMLDivElement>(null);
-
-  const { scrollY } = useScroll({
-    target: ref,
-    offset: ["start start", "end start"],
-  });
-
+  // The navbar is fixed to the viewport so there is never a layout
+  // strip, margin, or sticky offset rendered above it.
+  const { scrollY } = useScroll();
   const [visible, setVisible] = useState(false);
 
   useMotionValueEvent(scrollY, "change", (latest) => {
@@ -76,13 +72,12 @@ export const Navbar = ({
 
   return (
     <motion.div
-      ref={ref}
       className={cn(
         `
-        sticky
+        fixed
         inset-x-0
         top-0
-        z-40
+        z-[100]
         w-full
         px-2
         sm:px-3
@@ -125,14 +120,6 @@ export const NavBody = ({
           ? "0 12px 40px rgba(0,0,0,0.35)"
           : "none",
 
-        /*
-         * Desktop navbar:
-         * - Initial: almost full width
-         * - Scrolled: slightly narrower
-         *
-         * No max-width constraint so the navbar
-         * actually responds to the viewport width.
-         */
         width: visible
           ? "calc(75% - 48px)"
           : "calc(80% - 32px)",
@@ -175,6 +162,7 @@ export const NavBody = ({
     </motion.div>
   );
 };
+
 /* =========================================================
    DESKTOP NAV ITEMS
 ========================================================= */
@@ -213,16 +201,7 @@ export const NavItems = ({
           href={item.link}
           onMouseEnter={() => setHovered(idx)}
           onClick={onItemClick}
-          className="
-            relative
-            rounded-full
-            px-3.5
-            py-2
-            text-muted
-            transition-colors
-            duration-300
-            hover:text-foreground
-          "
+          className="relative rounded-full px-3.5 py-2 text-muted transition-colors duration-300 hover:text-foreground"
         >
           {hovered === idx && (
             <motion.div
@@ -232,14 +211,7 @@ export const NavItems = ({
                 stiffness: 350,
                 damping: 28,
               }}
-              className="
-                absolute
-                inset-0
-                rounded-full
-                border
-                border-border
-                bg-surface-elevated
-              "
+              className="absolute inset-0 rounded-full border border-border bg-surface-elevated"
             />
           )}
 
@@ -419,22 +391,7 @@ export const MobileNavToggle = ({
       }
       aria-expanded={isOpen}
       onClick={onClick}
-      className="
-        flex
-        h-9
-        w-9
-        shrink-0
-        items-center
-        justify-center
-        rounded-full
-        text-muted
-        transition-all
-        duration-300
-        hover:bg-surface-elevated
-        hover:text-foreground
-        focus-visible:ring-2
-        focus-visible:ring-primary
-      "
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted transition-all duration-300 hover:bg-surface-elevated hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary"
     >
       {isOpen ? (
         <IconX size={20} stroke={1.7} />
@@ -453,39 +410,9 @@ export const NavbarLogo = () => {
   return (
     <Link
       href="/"
-      className="
-        relative
-        z-20
-        flex
-        shrink-0
-        items-center
-        gap-2
-        px-2
-        py-1
-        text-sm
-        font-semibold
-        tracking-[0.15em]
-        text-foreground
-        transition-opacity
-        hover:opacity-80
-      "
+      className="relative z-20 flex shrink-0 items-center gap-2 px-2 py-1 text-sm font-semibold tracking-[0.15em] text-foreground transition-opacity hover:opacity-80"
     >
-      <span
-        className="
-          flex
-          h-7
-          w-7
-          shrink-0
-          items-center
-          justify-center
-          rounded-lg
-          bg-[image:var(--gradient-primary)]
-          text-xs
-          font-bold
-          text-white
-          shadow-[0_0_18px_var(--glow-primary)]
-        "
-      >
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[image:var(--gradient-primary)] text-xs font-bold text-white shadow-[0_0_18px_var(--glow-primary)]">
         3D
       </span>
 
