@@ -67,7 +67,7 @@ export const Navbar = ({ children, className }: NavbarProps) => {
     <motion.div
       ref={ref}
       className={cn(
-        "sticky inset-x-0 top-0 z-40 w-full px-0 sm:px-0 lg:px-0",
+        "fixed inset-x-0 top-0 z-40 w-full px-0 sm:px-0 lg:px-0",
         className,
       )}
     >
@@ -90,7 +90,7 @@ export const NavBody = ({ children, className, visible }: NavBodyProps) => {
         backdropFilter: visible ? "blur(20px)" : "blur(0px)",
         boxShadow: visible ? "0 12px 40px rgba(0,0,0,0.35)" : "none",
         width: visible ? "calc(75% - 48px)" : "calc(80% - 32px)",
-        y: visible ? 6 : 0,
+        y: 0,
       }}
       transition={{
         type: "spring",
@@ -153,7 +153,7 @@ export const MobileNav = ({ children, className, visible }: MobileNavProps) => {
         backdropFilter: visible ? "blur(20px)" : "blur(0px)",
         boxShadow: visible ? "0 12px 40px rgba(0,0,0,0.35)" : "none",
         width: visible ? "96%" : "100%",
-        y: visible ? 6 : 0,
+        y: 0,
       }}
       transition={{
         type: "spring",
@@ -193,7 +193,7 @@ export const MobileNavToggle = ({ isOpen, onClick }: { isOpen: boolean; onClick:
   );
 };
 
-export const MobileNavMenu = ({ children, className, isOpen, onClose }: MobileNavMenuProps) => {
+export const MobileNavMenu = ({ children, className, isOpen }: MobileNavMenuProps) => {
   return (
     <AnimatePresence>
       {isOpen && (
