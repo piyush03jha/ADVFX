@@ -29,14 +29,7 @@ export function ShopHeader({ productCount, onOpenFilters }: ShopHeaderProps) {
         >
           <div className="flex items-end justify-between gap-8">
             <div className="min-w-0">
-              <div className="flex items-center gap-3">
-                <span className="h-px w-7 bg-primary" />
-                <p className="text-[9px] font-medium uppercase tracking-[0.24em] text-primary">
-                  The Collection
-                </p>
-              </div>
-
-              <h1 className="mt-3 font-serif text-4xl font-normal tracking-[-0.055em] text-foreground sm:text-5xl lg:text-6xl">
+              <h1 className="font-serif text-4xl font-normal tracking-[-0.055em] text-foreground sm:text-5xl lg:text-6xl">
                 Explore Models
               </h1>
 
@@ -44,8 +37,6 @@ export function ShopHeader({ productCount, onOpenFilters }: ShopHeaderProps) {
                 Premium 3D assets, digital collectibles, gaming models, and custom-ready pieces.
               </p>
             </div>
-
-            {/* Desktop count */}
 
             <div className="hidden shrink-0 items-end text-right lg:flex">
               <div>
