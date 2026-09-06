@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
-import { AUTH_COOKIE_NAME, createPasswordHash, createSessionToken } from "@/lib/auth";
-import { createUser, findUserByEmail } from "@/lib/auth-store";
+import { AUTH_COOKIE_NAME } from "@/lib/auth";
+import { getBackendApiUrl } from "@/lib/backend-api";
 
 export async function POST(request: Request) {
   try {
@@ -17,14 +17,39 @@ export async function POST(request: Request) {
       );
     }
 
-    if (findUserByEmail(email)) {
-      return NextResponse.json({ error: "An account with this email already exists." }, { status: 409 });
+    const backendResponse = await fetch(getBackendApiUrl("auth/register"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, email, password }),
+      cache: "no-store",
+    });
+
+    const data = (await backendResponse.json()) as {
+      token?: string;
+      user?: { id: string; name: string | null; email: string; role?: string };
+      message?: string | string[];
+    };
+
+    if (!backendResponse.ok || !data.token || !data.user) {
+      const message = Array.isArray(data.message) ? data.message[0] : data.message;
+      return NextResponse.json(
+        { error: message ?? "Unable to create your account." },
+        { status: backendResponse.status || 502 },
+      );
     }
 
-    const user = createUser({ name, email, passwordHash: createPasswordHash(password) });
-    const response = NextResponse.json({ user }, { status: 201 });
+    const response = NextResponse.json(
+      {
+        user: {
+          id: data.user.id,
+          name: data.user.name ?? name,
+          email: data.user.email,
+        },
+      },
+      { status: 201 },
+    );
 
-    response.cookies.set(AUTH_COOKIE_NAME, createSessionToken(user), {
+    response.cookies.set(AUTH_COOKIE_NAME, data.token, {
       httpOnly: true,
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
@@ -34,6 +59,9 @@ export async function POST(request: Request) {
 
     return response;
   } catch {
-    return NextResponse.json({ error: "Unable to create your account." }, { status: 500 });
+    return NextResponse.json(
+      { error: "Authentication service is unavailable. Please try again." },
+      { status: 503 },
+    );
   }
 }
