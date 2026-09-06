@@ -45,7 +45,7 @@ function PreviewObject() {
           emissiveIntensity={0.16}
         />
       </mesh>
-      <mesh position={[0, -1.2, 0]} rotation={[0, 0, 0]}>
+      <mesh position={[0, -1.2, 0]}>
         <cylinderGeometry args={[0.7, 0.58, 0.12, 48]} />
         <meshStandardMaterial metalness={0.55} roughness={0.3} color="#343434" />
       </mesh>
