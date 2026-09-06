@@ -58,7 +58,7 @@ export default function CartPage() {
             </div>
 
             {!isLoaded ? (
-              <div className="flex min-h-[420px] items-center justify-center rounded-2xl border border-white/[0.07] bg-white/[0.015]">
+              <div className="flex min-h-[420px] items-center justify-center rounded-2xl border border-white/[0.08] bg-[linear-gradient(135deg,hsl(var(--foreground)/0.055),hsl(var(--background)/0.02)_55%,hsl(var(--primary)/0.07))] shadow-[0_18px_55px_rgba(0,0,0,0.12)]">
                 <div className="text-center">
                   <div className="mx-auto h-7 w-7 animate-spin rounded-full border border-white/10 border-t-primary" />
                   <p className="mt-3 text-[9px] uppercase tracking-[0.18em] text-muted">
@@ -70,7 +70,7 @@ export default function CartPage() {
               <EmptyCart />
             ) : (
               <div className="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-12">
-                <section className="min-w-0 rounded-2xl border border-white/[0.08] bg-white/[0.015] px-4 sm:px-6">
+                <section className="min-w-0 rounded-2xl border border-white/[0.1] bg-[linear-gradient(135deg,hsl(var(--foreground)/0.055),hsl(var(--background)/0.018)_58%,hsl(var(--primary)/0.075))] px-4 shadow-[0_20px_60px_rgba(0,0,0,0.14)] sm:px-6">
                   <div className="flex items-center justify-between border-b border-white/[0.07] py-4">
                     <p className="text-[9px] font-medium uppercase tracking-[0.18em] text-muted">
                       Selected items
