@@ -50,8 +50,6 @@ export function ShopProductGrid({
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [page, setPage] = useState(1);
 
-  // Re-sync whenever the route's active category changes. This keeps the
-  // category filter locked to the selected navbar/shop category.
   useEffect(() => {
     setFilters({
       ...INITIAL_FILTERS,
@@ -74,9 +72,6 @@ export function ShopProductGrid({
         product.name.toLowerCase().includes(query) ||
         product.category.toLowerCase().includes(query);
 
-      // When a category route is active, only products from that category
-      // are allowed through. On the general /shop page the user can select
-      // one or more categories through the normal filters.
       const matchesCategory =
         filters.categories.length === 0 || filters.categories.includes(product.category);
 
@@ -136,7 +131,8 @@ export function ShopProductGrid({
   };
 
   const handleCategoryChange = (category: string) => {
-    // Category pages are intentionally locked to their route category.
+    // A category page is intentionally locked to that route's category.
+    // On the general /shop page, category filters remain interactive.
     if (activeCategory) return;
 
     setFilters((current) => ({
@@ -145,6 +141,17 @@ export function ShopProductGrid({
         ? current.categories.filter((item) => item !== category)
         : [...current.categories, category],
     }));
+  };
+
+  const handleFilterChange = (next: ShopFilterState) => {
+    setFilters(
+      activeCategory
+        ? {
+            ...next,
+            categories: [activeCategory],
+          }
+        : next,
+    );
   };
 
   const hasActiveFilters =
@@ -204,7 +211,7 @@ export function ShopProductGrid({
               <ShopFilters
                 categories={categories}
                 filters={filters}
-                onChange={setFilters}
+                onChange={handleFilterChange}
                 onClear={clearFilters}
               />
             </div>
@@ -282,7 +289,7 @@ export function ShopProductGrid({
         onClose={() => setMobileFiltersOpen(false)}
         categories={categories}
         filters={filters}
-        onChange={setFilters}
+        onChange={handleFilterChange}
         onClear={clearFilters}
       />
     </>
