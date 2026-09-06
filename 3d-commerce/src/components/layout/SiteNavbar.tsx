@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
   IconHeart,
@@ -20,6 +21,7 @@ import {
 } from "@/components/ui/resizable-navbar";
 
 import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
 
 const navItems = [
   { name: "Shop", link: "/shop" },
@@ -32,6 +34,18 @@ const navItems = [
 export function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { itemCount, isLoaded } = useCart();
+  const { user, isLoading, logout } = useAuth();
+  const router = useRouter();
+
+  async function handleLogout() {
+    await logout();
+    setIsMobileMenuOpen(false);
+    router.push("/");
+    router.refresh();
+  }
+
+  const accountHref = user ? "/account" : "/login";
+  const accountLabel = user ? "My account" : "Sign in";
 
   return (
     <NavbarRoot>
@@ -44,8 +58,9 @@ export function Navbar() {
             <IconHeart size={18} stroke={1.7} />
           </NavIconLink>
 
-          <NavIconLink href="/login" label="Sign in">
+          <NavIconLink href={accountHref} label={accountLabel}>
             <IconUserCircle size={19} stroke={1.7} />
+            <span className={`absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-primary shadow-[0_0_10px_hsl(var(--primary)/0.55)] transition-opacity ${isLoading || !user ? "opacity-0" : "opacity-100"}`} />
           </NavIconLink>
 
           <CartLink itemCount={itemCount} isLoaded={isLoaded} />
@@ -56,7 +71,7 @@ export function Navbar() {
         <MobileNavHeader>
           <NavbarLogo />
           <div className="flex items-center gap-1">
-            <NavIconLink href="/login" label="Sign in">
+            <NavIconLink href={accountHref} label={accountLabel}>
               <IconUserCircle size={19} stroke={1.7} />
             </NavIconLink>
             <CartLink itemCount={itemCount} isLoaded={isLoaded} />
@@ -89,10 +104,21 @@ export function Navbar() {
               <IconHeart size={17} stroke={1.7} />
               <span className="hidden sm:inline">Wishlist</span>
             </MobileActionLink>
-            <MobileActionLink href="/login" onClick={() => setIsMobileMenuOpen(false)}>
-              <IconUserCircle size={17} stroke={1.7} />
-              <span className="hidden sm:inline">Sign in</span>
-            </MobileActionLink>
+            {user ? (
+              <button
+                type="button"
+                onClick={() => void handleLogout()}
+                className="flex h-11 items-center justify-center gap-2 rounded-full border border-border bg-surface text-sm text-muted transition-all duration-300 hover:border-primary hover:bg-surface-elevated hover:text-foreground"
+              >
+                <IconUserCircle size={17} stroke={1.7} />
+                <span>Sign out</span>
+              </button>
+            ) : (
+              <MobileActionLink href="/login" onClick={() => setIsMobileMenuOpen(false)}>
+                <IconUserCircle size={17} stroke={1.7} />
+                <span>Sign in</span>
+              </MobileActionLink>
+            )}
           </div>
         </MobileNavMenu>
       </MobileNav>
