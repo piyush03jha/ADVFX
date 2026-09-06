@@ -131,8 +131,6 @@ export function ShopProductGrid({
   };
 
   const handleCategoryChange = (category: string) => {
-    // A category page is intentionally locked to that route's category.
-    // On the general /shop page, category filters remain interactive.
     if (activeCategory) return;
 
     setFilters((current) => ({
@@ -171,7 +169,7 @@ export function ShopProductGrid({
         onOpenFilters={() => setMobileFiltersOpen(true)}
       />
 
-      <section className="relative pb-20 sm:pb-24 lg:pb-28">
+      <section className="relative pb-20 pt-5 sm:pb-24 sm:pt-7 lg:pb-28 lg:pt-9">
         <Container>
           <div ref={navRef} className="-mx-1 mb-7 overflow-hidden scroll-mt-24 sm:mb-8">
             <ShopNavigation
