@@ -76,7 +76,7 @@ export const Navbar = ({
         `
         fixed
         inset-x-0
-        top-0
+        top-4
         z-[100]
         w-full
         px-2
