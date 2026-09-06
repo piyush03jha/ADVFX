@@ -4,13 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import {
-  IconHeart,
+  IconCreditCard,
   IconHome,
   IconMapPin,
   IconPackage,
   IconSettings,
-  IconCreditCard,
-  IconChevronDown,
 } from "@tabler/icons-react";
 
 const links = [
@@ -23,11 +21,6 @@ const links = [
     label: "Orders",
     href: "/account/orders",
     icon: IconPackage,
-  },
-  {
-    label: "Wishlist",
-    href: "/account/wishlist",
-    icon: IconHeart,
   },
   {
     label: "Addresses",
@@ -51,90 +44,64 @@ export function AccountNav() {
 
   return (
     <>
-      {/* Desktop */}
       <nav className="hidden lg:block">
-        <div className="space-y-1">
-          {links.map((link) => {
-            const Icon = link.icon;
+        <div className="sticky top-24 rounded-2xl border border-white/[0.08] bg-white/[0.02] p-2 shadow-[0_20px_60px_rgba(0,0,0,0.16)]">
+          <p className="px-3 pb-2 pt-2 text-[9px] font-medium uppercase tracking-[0.2em] text-muted">
+            Account
+          </p>
 
-            const active =
-              pathname === link.href ||
-              (link.href !== "/account" &&
-                pathname.startsWith(
-                  `${link.href}/`,
-                ));
+          <div className="space-y-1">
+            {links.map((link) => {
+              const Icon = link.icon;
+              const active =
+                pathname === link.href ||
+                (link.href !== "/account" &&
+                  pathname.startsWith(`${link.href}/`));
 
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`
-                  flex
-                  items-center
-                  gap-3
-                  rounded-xl
-                  px-3
-                  py-2.5
-                  text-xs
-                  transition-colors
-                  ${
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`group flex items-center justify-between rounded-xl px-3 py-2.5 text-xs transition-all ${
                     active
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted hover:bg-surface-elevated hover:text-foreground"
-                  }
-                `}
-              >
-                <Icon size={16} stroke={1.7} />
-                {link.label}
-              </Link>
-            );
-          })}
+                      ? "bg-primary/10 text-primary shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)]"
+                      : "text-muted hover:bg-white/[0.04] hover:text-foreground"
+                  }`}
+                >
+                  <span className="flex items-center gap-3">
+                    <Icon size={16} stroke={1.7} />
+                    {link.label}
+                  </span>
+                  <span
+                    className={`h-1 w-1 rounded-full transition-opacity ${
+                      active ? "bg-primary opacity-100" : "opacity-0"
+                    }`}
+                  />
+                </Link>
+              );
+            })}
+          </div>
         </div>
       </nav>
 
-      {/* Mobile */}
       <div className="lg:hidden">
-        <div
-          className="
-            flex
-            gap-2
-            overflow-x-auto
-            pb-1
-            scrollbar-none
-          "
-        >
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
           {links.map((link) => {
             const Icon = link.icon;
-
             const active =
               pathname === link.href ||
               (link.href !== "/account" &&
-                pathname.startsWith(
-                  `${link.href}/`,
-                ));
+                pathname.startsWith(`${link.href}/`));
 
             return (
               <Link
                 key={link.href}
                 href={link.href}
-                className={`
-                  flex
-                  shrink-0
-                  items-center
-                  gap-1.5
-                  rounded-full
-                  border
-                  px-3
-                  py-2
-                  text-[10px]
-                  uppercase
-                  tracking-[0.08em]
-                  ${
-                    active
-                      ? "border-primary/40 bg-primary/10 text-primary"
-                      : "border-border text-muted"
-                  }
-                `}
+                className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-2 text-[10px] uppercase tracking-[0.08em] transition-colors ${
+                  active
+                    ? "border-primary/40 bg-primary/10 text-primary"
+                    : "border-border text-muted"
+                }`}
               >
                 <Icon size={13} />
                 {link.label}
