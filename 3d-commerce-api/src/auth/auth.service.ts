@@ -1,7 +1,6 @@
 import {
   ConflictException,
   Injectable,
-  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import {
@@ -120,9 +119,7 @@ export class AuthService {
     `;
 
     const session = sessions[0];
-    if (!session) {
-      throw new UnauthorizedException('Invalid or expired session');
-    }
+    if (!session) throw new UnauthorizedException('Invalid or expired session');
 
     const user = await this.prisma.user.findUnique({
       where: { id: session.userId },
@@ -170,8 +167,7 @@ export class AuthService {
       await tx.$executeRaw`
         UPDATE "AuthVerificationToken"
         SET "usedAt" = CURRENT_TIMESTAMP
-        WHERE "userId" = ${record.userId}
-          AND "usedAt" IS NULL
+        WHERE "userId" = ${record.userId} AND "usedAt" IS NULL
       `;
     });
 
@@ -185,7 +181,6 @@ export class AuthService {
       select: { id: true, isActive: true },
     });
 
-    // Deliberately return the same response for unknown/inactive accounts.
     if (!user || !user.isActive) {
       return { message: 'If the account exists, password reset instructions have been sent.' };
     }
@@ -227,8 +222,7 @@ export class AuthService {
       await tx.$executeRaw`
         UPDATE "CustomerAuthSession"
         SET "revokedAt" = CURRENT_TIMESTAMP
-        WHERE "userId" = ${record.userId}
-          AND "revokedAt" IS NULL
+        WHERE "userId" = ${record.userId} AND "revokedAt" IS NULL
       `;
     });
 
