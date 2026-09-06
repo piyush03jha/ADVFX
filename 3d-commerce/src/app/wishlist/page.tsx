@@ -22,7 +22,7 @@ export default function WishlistPage() {
     return (
       <>
         <Navbar />
-        <main className="mx-auto w-full max-w-[1440px] px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
+        <main className="mx-auto w-full max-w-[1440px] px-4 pb-8 pt-24 sm:px-6 sm:pb-12 sm:pt-26 lg:px-8 lg:pb-12 lg:pt-28">
           <div className="h-24 animate-pulse rounded-2xl bg-surface" />
         </main>
       </>
@@ -33,11 +33,10 @@ export default function WishlistPage() {
     <>
       <Navbar />
       <main className="min-h-screen bg-background">
-        <div className="mx-auto w-full max-w-[1440px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-12">
+        <div className="mx-auto w-full max-w-[1440px] px-4 pb-6 pt-24 sm:px-6 sm:pb-8 sm:pt-26 lg:px-8 lg:pb-12 lg:pt-28">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-[9px] font-medium uppercase tracking-[0.22em] text-primary">Saved for later</p>
-              <h1 className="mt-1 text-2xl font-medium tracking-tight text-foreground sm:text-3xl lg:text-4xl">Wishlist</h1>
+              <h1 className="text-2xl font-medium tracking-tight text-foreground sm:text-3xl lg:text-4xl">Wishlist</h1>
               <p className="mt-1 text-xs text-muted sm:text-sm">
                 {items.length} {items.length === 1 ? "product" : "products"} saved
               </p>
