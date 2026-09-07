@@ -18,12 +18,10 @@ import {
 
 import { Navbar } from "@/components/layout/SiteNavbar";
 import { registerUser } from "@/lib/auth-client";
-import { useAuth } from "@/context/AuthContext";
 
 export default function RegisterPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { refreshSession } = useAuth();
   const returnTo = getSafeReturnPath(searchParams.get("returnTo"));
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -53,8 +51,7 @@ export default function RegisterPage() {
 
     try {
       await registerUser(name, email, password);
-      await refreshSession();
-      router.replace(returnTo);
+      router.replace(`/verify-email?email=${encodeURIComponent(email.trim().toLowerCase())}`);
       router.refresh();
     } catch (submissionError) {
       setError(submissionError instanceof Error ? submissionError.message : "Unable to create your account.");
@@ -192,7 +189,7 @@ export default function RegisterPage() {
 
               <div className="mt-7 flex items-center justify-center gap-2 text-xs text-muted">
                 <IconCheck size={15} className="text-primary" />
-                Your session starts securely after registration.
+                Verify your email before signing in.
               </div>
 
               <p className="mt-5 text-center text-xs text-muted">
