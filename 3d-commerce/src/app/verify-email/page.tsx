@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import {
   IconArrowRight,
   IconCheck,
@@ -9,12 +10,65 @@ import {
   IconRefresh,
   IconShieldCheck,
   IconSparkles,
+  IconX,
 } from "@tabler/icons-react";
 
 import { Navbar } from "@/components/layout/SiteNavbar";
+import { resendVerificationEmail, verifyEmail } from "@/lib/auth-client";
 
 export default function VerifyEmailPage() {
+  const searchParams = useSearchParams();
+  const token = useMemo(() => searchParams.get("token")?.trim() ?? "", [searchParams]);
+  const email = useMemo(() => searchParams.get("email")?.trim().toLowerCase() ?? "", [searchParams]);
+  const [status, setStatus] = useState<"idle" | "verifying" | "success" | "error">("idle");
+  const [message, setMessage] = useState("");
   const [resent, setResent] = useState(false);
+  const [resendError, setResendError] = useState("");
+  const [isResending, setIsResending] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function verify() {
+      if (!token) return;
+      setStatus("verifying");
+
+      try {
+        const result = await verifyEmail(token);
+        if (cancelled) return;
+        setMessage(result);
+        setStatus("success");
+      } catch (error) {
+        if (cancelled) return;
+        setMessage(error instanceof Error ? error.message : "This verification link is invalid or expired.");
+        setStatus("error");
+      }
+    }
+
+    void verify();
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
+  async function handleResend() {
+    if (!email || isResending) return;
+    setIsResending(true);
+    setResendError("");
+
+    try {
+      await resendVerificationEmail(email);
+      setResent(true);
+    } catch (error) {
+      setResendError(error instanceof Error ? error.message : "Unable to resend the verification email.");
+    } finally {
+      setIsResending(false);
+    }
+  }
+
+  const isVerifying = status === "verifying";
+  const verified = status === "success";
+  const failed = status === "error";
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-background text-foreground">
@@ -39,18 +93,52 @@ export default function VerifyEmailPage() {
 
           <div className="p-7 sm:p-10 lg:p-12">
             <div className="mx-auto max-w-md text-center">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/20 bg-primary/[0.08] text-primary shadow-[0_0_40px_hsl(var(--primary)/0.1)]"><IconMailCheck size={27} stroke={1.6} /></div>
-              <p className="mt-7 text-[9px] font-medium uppercase tracking-[0.2em] text-primary">Email verification</p>
-              <h2 className="mt-2 font-serif text-4xl tracking-[-0.05em] sm:text-5xl">Check your inbox</h2>
-              <p className="mx-auto mt-4 max-w-md text-sm leading-6 text-muted">We&apos;ve sent a verification link to <span className="font-medium text-foreground">you@example.com</span>. Open it to activate your account.</p>
-
-              <div className="mt-8 rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5 text-left">
-                <div className="flex items-start gap-3"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/[0.06] text-primary"><IconCheck size={15} /></span><div><p className="text-sm font-medium">What happens next?</p><p className="mt-1 text-xs leading-5 text-muted">Verify your email, then continue to your account and start ordering.</p></div></div>
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/20 bg-primary/[0.08] text-primary shadow-[0_0_40px_hsl(var(--primary)/0.1)]">
+                {failed ? <IconX size={27} stroke={1.6} /> : <IconMailCheck size={27} stroke={1.6} />}
               </div>
+              <p className="mt-7 text-[9px] font-medium uppercase tracking-[0.2em] text-primary">Email verification</p>
+              <h2 className="mt-2 font-serif text-4xl tracking-[-0.05em] sm:text-5xl">
+                {verified ? "Email verified" : failed ? "Verification failed" : isVerifying ? "Verifying your email" : "Check your inbox"}
+              </h2>
 
-              <button type="button" onClick={() => setResent(true)} className="mt-6 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.025] text-[10px] font-semibold uppercase tracking-[0.14em] transition-all hover:border-primary/20 hover:bg-white/[0.045]"><IconRefresh size={15} /> {resent ? "Verification email resent" : "Resend verification email"}</button>
-              <Link href="/login" className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary text-[10px] font-semibold uppercase tracking-[0.14em] text-primary-foreground shadow-[0_16px_42px_hsl(var(--primary)/0.18)] transition-all hover:-translate-y-0.5">Continue to sign in <IconArrowRight size={15} /></Link>
-              <p className="mt-6 text-[9px] leading-5 text-muted/70">The verification action is presentation-ready and can be connected to the real auth verification endpoint.</p>
+              {verified || failed || isVerifying || !token ? (
+                <p className="mx-auto mt-4 max-w-md text-sm leading-6 text-muted">
+                  {verified
+                    ? message
+                    : failed
+                      ? message
+                      : isVerifying
+                        ? "Please wait while we securely activate your account."
+                        : email
+                          ? <>We&apos;ve sent a verification link to <span className="font-medium text-foreground">{email}</span>. Open it to activate your account.</>
+                          : "Open the verification link from your email to activate your account."}
+                </p>
+              ) : null}
+
+              {!failed && !isVerifying && !verified && (
+                <div className="mt-8 rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5 text-left">
+                  <div className="flex items-start gap-3"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/[0.06] text-primary"><IconCheck size={15} /></span><div><p className="text-sm font-medium">What happens next?</p><p className="mt-1 text-xs leading-5 text-muted">Verify your email, then continue to your account and start ordering.</p></div></div>
+                </div>
+              )}
+
+              {!verified && email && (
+                <>
+                  <button
+                    type="button"
+                    disabled={isResending}
+                    onClick={() => void handleResend()}
+                    className="mt-6 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.025] text-[10px] font-semibold uppercase tracking-[0.14em] transition-all hover:border-primary/20 hover:bg-white/[0.045] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <IconRefresh size={15} />
+                    {isResending ? "Sending…" : resent ? "Verification email resent" : "Resend verification email"}
+                  </button>
+                  {resendError && <p role="alert" className="mt-3 text-xs leading-5 text-red-200">{resendError}</p>}
+                </>
+              )}
+
+              <Link href="/login" className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary text-[10px] font-semibold uppercase tracking-[0.14em] text-primary-foreground shadow-[0_16px_42px_hsl(var(--primary)/0.18)] transition-all hover:-translate-y-0.5">
+                {verified ? "Continue to sign in" : "Back to sign in"} <IconArrowRight size={15} />
+              </Link>
             </div>
           </div>
         </div>
