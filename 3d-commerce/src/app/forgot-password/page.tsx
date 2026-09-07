@@ -12,9 +12,30 @@ import {
 } from "@tabler/icons-react";
 
 import { Navbar } from "@/components/layout/SiteNavbar";
+import { requestPasswordReset } from "@/lib/auth-client";
 
 export default function ForgotPasswordPage() {
   const [sent, setSent] = useState(false);
+  const [email, setEmail] = useState("");
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [developmentToken, setDevelopmentToken] = useState("");
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    setIsSubmitting(true);
+
+    try {
+      const result = await requestPasswordReset(email);
+      setDevelopmentToken(result.developmentToken ?? "");
+      setSent(true);
+    } catch (submissionError) {
+      setError(submissionError instanceof Error ? submissionError.message : "Unable to request a password reset.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-background text-foreground">
@@ -29,10 +50,7 @@ export default function ForgotPasswordPage() {
           <div className="relative hidden min-h-[560px] overflow-hidden border-r border-white/[0.08] p-10 lg:flex lg:flex-col lg:justify-between">
             <div aria-hidden="true" className="absolute right-[-20%] top-[-20%] h-72 w-72 rounded-full bg-primary/[0.08] blur-3xl" />
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/[0.06] px-3 py-1.5 text-[9px] uppercase tracking-[0.18em] text-primary">
-                <IconSparkles size={13} />
-                Account recovery
-              </div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/[0.06] px-3 py-1.5 text-[9px] uppercase tracking-[0.18em] text-primary"><IconSparkles size={13} /> Account recovery</div>
               <h1 className="mt-8 font-serif text-5xl leading-[1] tracking-[-0.055em] xl:text-6xl">A secure way<br />back in.</h1>
               <p className="mt-6 max-w-sm text-sm leading-7 text-muted">We will send a private recovery link to the email connected to your account.</p>
             </div>
@@ -54,22 +72,30 @@ export default function ForgotPasswordPage() {
               </div>
 
               {!sent ? (
-                <form className="mt-8 space-y-5" onSubmit={(event) => { event.preventDefault(); setSent(true); }}>
+                <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
                   <label className="block">
                     <span className="mb-2 block text-[9px] font-medium uppercase tracking-[0.15em] text-muted">Email address</span>
                     <div className="relative">
                       <IconMail size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
-                      <input type="email" required placeholder="you@example.com" className="h-12 w-full rounded-xl border border-white/[0.1] bg-white/[0.025] pl-10 pr-4 text-sm text-foreground outline-none transition-all placeholder:text-muted/50 focus:border-primary/40 focus:bg-white/[0.04] focus:shadow-[0_0_0_4px_hsl(var(--primary)/0.05)]" />
+                      <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" required autoComplete="email" placeholder="you@example.com" className="h-12 w-full rounded-xl border border-white/[0.1] bg-white/[0.025] pl-10 pr-4 text-sm text-foreground outline-none transition-all placeholder:text-muted/50 focus:border-primary/40 focus:bg-white/[0.04] focus:shadow-[0_0_0_4px_hsl(var(--primary)/0.05)]" />
                     </div>
                   </label>
-                  <button type="submit" className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-[10px] font-semibold uppercase tracking-[0.16em] text-primary-foreground shadow-[0_16px_42px_hsl(var(--primary)/0.18)] transition-all hover:-translate-y-0.5">Send reset link <IconArrowRight size={15} /></button>
+                  {error && <div role="alert" className="rounded-xl border border-red-400/15 bg-red-400/[0.06] px-3.5 py-3 text-xs leading-5 text-red-200">{error}</div>}
+                  <button type="submit" disabled={isSubmitting} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-[10px] font-semibold uppercase tracking-[0.16em] text-primary-foreground shadow-[0_16px_42px_hsl(var(--primary)/0.18)] transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50">{isSubmitting ? "Sending…" : "Send reset link"} {!isSubmitting && <IconArrowRight size={15} />}</button>
                 </form>
               ) : (
                 <div className="mt-8 rounded-2xl border border-primary/15 bg-primary/[0.05] p-5">
                   <div className="flex items-start gap-3">
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/[0.08] text-primary"><IconCheck size={17} /></span>
-                    <div><p className="text-sm font-medium">Check your inbox</p><p className="mt-1 text-xs leading-5 text-muted">A password reset link has been requested. This screen is ready to connect to the real recovery API.</p></div>
+                    <div><p className="text-sm font-medium">Check your inbox</p><p className="mt-1 text-xs leading-5 text-muted">If the account exists, password reset instructions have been sent.</p></div>
                   </div>
+                  {developmentToken && (
+                    <div className="mt-5 rounded-xl border border-yellow-300/15 bg-yellow-200/[0.04] p-3 text-left">
+                      <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-yellow-100">Development only</p>
+                      <p className="mt-1 break-all font-mono text-[10px] leading-5 text-yellow-50/80">{developmentToken}</p>
+                      <Link href={`/reset-password?token=${encodeURIComponent(developmentToken)}`} className="mt-3 inline-flex text-[10px] font-semibold uppercase tracking-[0.12em] text-primary hover:text-foreground">Open reset page <IconArrowRight size={13} className="ml-1" /></Link>
+                    </div>
+                  )}
                 </div>
               )}
 
