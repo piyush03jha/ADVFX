@@ -6,7 +6,6 @@ import {
   Param,
   Patch,
   Post,
-  Query,
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '../auth/guards/auth.guard';
@@ -23,8 +22,8 @@ export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
   @Get()
-  findAll(@Query('includeArchived') includeArchived?: string) {
-    return this.productsService.findAll(includeArchived === 'true');
+  findAll() {
+    return this.productsService.findAll();
   }
 
   @Get('slug/:slug')
