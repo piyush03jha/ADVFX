@@ -15,6 +15,8 @@ interface RateLimitState {
 }
 
 const rateLimitState = new Map<string, RateLimitState>();
+const RATE_LIMIT_PRODUCTION_WARNING =
+  "API_RATE_LIMIT_PER_MINUTE currently uses process-local memory; production deployments should run a single instance or provide shared edge/API rate limiting until a distributed limiter is introduced.";
 
 async function bootstrap() {
   const env = validateEnvironment();
@@ -42,6 +44,10 @@ async function bootstrap() {
 
   if (!Number.isFinite(rateLimitPerMinute) || rateLimitPerMinute <= 0) {
     throw new Error("API_RATE_LIMIT_PER_MINUTE must be a positive number");
+  }
+
+  if (env.nodeEnv === "production") {
+    app.getHttpAdapter().getInstance().log.warn(RATE_LIMIT_PRODUCTION_WARNING);
   }
 
   await app.register(multipart, {
