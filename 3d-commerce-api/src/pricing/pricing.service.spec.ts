@@ -107,8 +107,6 @@ describe('PricingService', () => {
       type: 'FREE',
       amountMinor: 0,
       freeAboveMinor: null,
-      minWeightGrams: null,
-      maxWeightGrams: null,
       countryCode: null,
       stateCode: null,
     });
@@ -116,7 +114,7 @@ describe('PricingService', () => {
       id: 'promo-1',
       code: 'CAP',
       type: 'PERCENTAGE',
-      value: 50,
+      value: 10,
       minSubtotalMinor: 0,
       maxDiscountMinor: 1000,
       usageLimit: null,
