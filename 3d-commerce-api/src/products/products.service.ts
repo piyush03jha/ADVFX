@@ -34,9 +34,9 @@ export class ProductsService {
     });
   }
 
-  async findAll(includeArchived = false) {
+  async findAll() {
     return this.prisma.product.findMany({
-      where: includeArchived ? undefined : { status: 'ACTIVE' },
+      where: { status: 'ACTIVE' },
       include: this.publicProductInclude(),
       orderBy: { createdAt: 'desc' },
     });
