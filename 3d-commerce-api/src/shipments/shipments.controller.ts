@@ -1,10 +1,17 @@
-import { Body, Get, Param, Patch, UseGuards } from '@nestjs/common';
-import { Controller } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  UseGuards,
+} from '@nestjs/common';
+import { AuthGuard } from '../auth/guards/auth.guard';
 import { AdminGuard } from '../auth/guards/admin.guard';
 import { ShipmentsService } from './shipments.service';
 import { UpdateShipmentDto } from './dto/update-shipment.dto';
 
-@UseGuards(AdminGuard)
+@UseGuards(AuthGuard, AdminGuard)
 @Controller('shipments')
 export class ShipmentsController {
   constructor(private readonly shipmentsService: ShipmentsService) {}
