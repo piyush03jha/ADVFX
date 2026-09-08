@@ -22,6 +22,14 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  /** Authentication state. */
+  emailVerifiedAt DateTime?
+  customerCredential CustomerCredential?
+  customerAuthSessions CustomerAuthSession[]
+  adminAuthSessions AdminAuthSession[]
+  authVerificationTokens AuthVerificationToken[]
+  authPasswordResetTokens AuthPasswordResetToken[]
+
   createdProducts        Product[]               @relation("ProductCreatedBy")
   updatedProducts        Product[]               @relation("ProductUpdatedBy")
   addresses              Address[]
@@ -36,6 +44,95 @@ model User {
 enum UserRole {
   CUSTOMER
   ADMIN
+}
+
+/**
+ * ============================================================
+ * CUSTOMER CREDENTIAL
+ * ============================================================
+ */
+
+model CustomerCredential {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
+}
+
+/**
+ * ============================================================
+ * CUSTOMER AUTH SESSION
+ * ============================================================
+ */
+
+model CustomerAuthSession {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, expiresAt])
+}
+
+/**
+ * ============================================================
+ * ADMIN AUTH SESSION
+ * ============================================================
+ */
+
+model AdminAuthSession {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, expiresAt])
+}
+
+/**
+ * ============================================================
+ * EMAIL VERIFICATION TOKEN
+ * ============================================================
+ */
+
+model AuthVerificationToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, createdAt])
+}
+
+/**
+ * ============================================================
+ * PASSWORD RESET TOKEN
+ * ============================================================
+ */
+
+model AuthPasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, createdAt])
 }
 
 /**
@@ -769,16 +866,6 @@ model ProductFileBundle {
  * PRODUCT FILE BUNDLE ASSET
  * ============================================================
  * Stores dependency files required by the root 3D asset.
- * These may be files that are not represented by
- * ProductFileFormat, such as:
- * .bin
- * .mtl
- * texture files
- * Examples:
- * scene.bin
- * model.mtl
- * textures/albedo.png
- * textures/normal.jpg
  */
 
 model ProductFileBundleAsset {
@@ -787,23 +874,8 @@ model ProductFileBundleAsset {
   bundleId String
   bundle   ProductFileBundle @relation(fields: [bundleId], references: [id], onDelete: Cascade)
 
-  /**
-   * Path exactly as referenced by the root asset.
-   * Examples:
-   * scene.bin
-   * textures/albedo.png
-   * materials/model.mtl
-   */
   relativePath String
-
-  /**
-   * Actual storage location.
-   */
   storageKey String
-
-  /**
-   * Original uploaded filename.
-   */
   originalName String
 
   mimeType String?
