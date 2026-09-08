@@ -36,16 +36,16 @@ export class ProductsService {
 
   async findAll(includeArchived = false) {
     return this.prisma.product.findMany({
-      where: includeArchived ? undefined : { status: { not: 'ARCHIVED' } },
-      include: this.productInclude(),
+      where: includeArchived ? undefined : { status: 'ACTIVE' },
+      include: this.publicProductInclude(),
       orderBy: { createdAt: 'desc' },
     });
   }
 
   async findOne(id: string) {
-    const product = await this.prisma.product.findUnique({
-      where: { id },
-      include: this.productInclude(),
+    const product = await this.prisma.product.findFirst({
+      where: { id, status: 'ACTIVE' },
+      include: this.publicProductInclude(),
     });
 
     if (!product) throw new NotFoundException(`Product "${id}" not found`);
@@ -53,9 +53,9 @@ export class ProductsService {
   }
 
   async findBySlug(slug: string) {
-    const product = await this.prisma.product.findUnique({
-      where: { slug },
-      include: this.productInclude(),
+    const product = await this.prisma.product.findFirst({
+      where: { slug, status: 'ACTIVE' },
+      include: this.publicProductInclude(),
     });
 
     if (!product) throw new NotFoundException(`Product "${slug}" not found`);
@@ -63,7 +63,7 @@ export class ProductsService {
   }
 
   async update(id: string, dto: UpdateProductDto) {
-    await this.findOne(id);
+    await this.ensureProductExists(id);
 
     if (dto.slug) await this.ensureSlugAvailable(dto.slug, id);
 
@@ -95,7 +95,7 @@ export class ProductsService {
   }
 
   async remove(id: string) {
-    await this.findOne(id);
+    await this.ensureProductExists(id);
     await this.prisma.product.update({
       where: { id },
       data: { status: 'ARCHIVED' },
@@ -208,6 +208,18 @@ export class ProductsService {
     if (existingProduct && existingProduct.id !== productId) {
       throw new ConflictException(`A product with slug "${slug}" already exists`);
     }
+  }
+
+  private publicProductInclude(): Prisma.ProductInclude {
+    return {
+      category: true,
+      prices: {
+        where: { isActive: true },
+        orderBy: { createdAt: 'desc' },
+      },
+      media: { orderBy: { sortOrder: 'asc' } },
+      tags: { include: { tag: true } },
+    };
   }
 
   private productInclude(): Prisma.ProductInclude {
