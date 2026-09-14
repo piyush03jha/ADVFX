@@ -27,14 +27,18 @@ const ENTER_START_X = 3.8;
 const EXIT_END_X = -3.8;
 const ROTATION_RADIANS = Math.PI * 2;
 const DRAG_ROTATION_SPEED = 0.012;
+const DRAG_TILT_SPEED = 0.008;
 const AUTO_ROTATION_SPEED = ROTATION_RADIANS / ROTATION_DURATION;
+const MAX_TILT = THREE.MathUtils.degToRad(78);
 
 type ModelMode = "enter" | "exit";
 
 interface InteractionState {
   active: boolean;
   lastX: number;
+  lastY: number;
   rotationY: number;
+  rotationX: number;
 }
 
 interface HeroModelProps {
@@ -110,7 +114,11 @@ function HeroModel({
     }
 
     if (rotationRef.current) {
-      rotationRef.current.rotation.set(0, 0, 0);
+      rotationRef.current.rotation.set(
+        interactionRef.current.rotationX,
+        interactionRef.current.rotationY,
+        0,
+      );
     }
 
     preparedModel.materials.forEach((material) => {
@@ -127,7 +135,7 @@ function HeroModel({
 
       return () => window.cancelAnimationFrame(frame);
     }
-  }, [mode, onLoaded, preparedModel]);
+  }, [mode, onLoaded, preparedModel, interactionRef]);
 
   useFrame((_, delta) => {
     const group = groupRef.current;
@@ -155,9 +163,17 @@ function HeroModel({
       if (elapsed > ENTER_DURATION) {
         if (interactionRef.current.active) {
           rotation.rotation.y = interactionRef.current.rotationY;
+          rotation.rotation.x = interactionRef.current.rotationX;
         } else if (!isInteractionPaused) {
           rotation.rotation.y += AUTO_ROTATION_SPEED * delta;
+          rotation.rotation.x = THREE.MathUtils.damp(
+            rotation.rotation.x,
+            0,
+            5,
+            delta,
+          );
           interactionRef.current.rotationY = rotation.rotation.y;
+          interactionRef.current.rotationX = rotation.rotation.x;
         }
       }
 
@@ -199,24 +215,35 @@ function LoadingState() {
 interface ProductViewerProps {
   products: HeroProduct[];
   activeIndex: number;
+  onHoldChange?: (held: boolean) => void;
 }
 
-export function ProductViewer({ products, activeIndex }: ProductViewerProps) {
+export function ProductViewer({
+  products,
+  activeIndex,
+  onHoldChange,
+}: ProductViewerProps) {
   const currentIndexRef = useRef(activeIndex);
   const interactionRef = useRef<InteractionState>({
     active: false,
     lastX: 0,
+    lastY: 0,
     rotationY: 0,
+    rotationX: 0,
   });
 
   const [previousIndex, setPreviousIndex] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isInteracting, setIsInteracting] = useState(false);
 
-  const stopInteraction = useCallback(() => {
-    interactionRef.current.active = false;
-    setIsInteracting(false);
-  }, []);
+  const setInteraction = useCallback(
+    (held: boolean) => {
+      interactionRef.current.active = held;
+      setIsInteracting(held);
+      onHoldChange?.(held);
+    },
+    [onHoldChange],
+  );
 
   useEffect(() => {
     if (activeIndex === currentIndexRef.current) return;
@@ -225,14 +252,14 @@ export function ProductViewer({ products, activeIndex }: ProductViewerProps) {
     currentIndexRef.current = activeIndex;
     setPreviousIndex(oldIndex);
     setIsLoading(true);
-    stopInteraction();
+    setInteraction(false);
 
     const timeout = window.setTimeout(() => {
       setPreviousIndex(null);
     }, EXIT_DURATION * 1000);
 
     return () => window.clearTimeout(timeout);
-  }, [activeIndex, stopInteraction]);
+  }, [activeIndex, setInteraction]);
 
   const handleLoaded = useMemo(() => () => setIsLoading(false), []);
 
@@ -240,10 +267,12 @@ export function ProductViewer({ products, activeIndex }: ProductViewerProps) {
     (event: React.PointerEvent<HTMLDivElement>) => {
       interactionRef.current.active = true;
       interactionRef.current.lastX = event.clientX;
+      interactionRef.current.lastY = event.clientY;
       setIsInteracting(true);
+      onHoldChange?.(true);
       event.currentTarget.setPointerCapture(event.pointerId);
     },
-    [],
+    [onHoldChange],
   );
 
   const handlePointerMove = useCallback(
@@ -251,25 +280,33 @@ export function ProductViewer({ products, activeIndex }: ProductViewerProps) {
       if (!interactionRef.current.active) return;
 
       const deltaX = event.clientX - interactionRef.current.lastX;
+      const deltaY = event.clientY - interactionRef.current.lastY;
+
       interactionRef.current.lastX = event.clientX;
+      interactionRef.current.lastY = event.clientY;
       interactionRef.current.rotationY += deltaX * DRAG_ROTATION_SPEED;
+      interactionRef.current.rotationX = THREE.MathUtils.clamp(
+        interactionRef.current.rotationX - deltaY * DRAG_TILT_SPEED,
+        -MAX_TILT,
+        MAX_TILT,
+      );
     },
     [],
   );
 
   const handlePointerUp = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
-      stopInteraction();
+      setInteraction(false);
       if (event.currentTarget.hasPointerCapture(event.pointerId)) {
         event.currentTarget.releasePointerCapture(event.pointerId);
       }
     },
-    [stopInteraction],
+    [setInteraction],
   );
 
   const handlePointerCancel = useCallback(() => {
-    stopInteraction();
-  }, [stopInteraction]);
+    setInteraction(false);
+  }, [setInteraction]);
 
   if (!products.length) return null;
 
