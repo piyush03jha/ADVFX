@@ -81,8 +81,10 @@ export function ShopByCategory() {
 }
 
 function CategoryCard({ category, index }: { category: (typeof shopCategories)[number]; index: number }) {
+  const href = category.id === "custom-miniatures" ? "/custom" : `/shop?category=${encodeURIComponent(category.name)}`;
+
   return (
-    <Link href="/custom" className="group block">
+    <Link href={href} className="group block">
       <Card interactive className="relative aspect-[1/1.28] rounded-2xl sm:aspect-[1/1.38] lg:aspect-[1/1.32]">
         <img
           src={category.image}
