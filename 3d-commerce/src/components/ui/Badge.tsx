@@ -12,10 +12,7 @@ type BadgeProps = {
   className?: string;
 };
 
-const variants: Record<
-  BadgeVariant,
-  string
-> = {
+const variants: Record<BadgeVariant, string> = {
   default: `
     border-border
     bg-surface-elevated/70
