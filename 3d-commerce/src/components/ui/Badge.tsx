@@ -14,9 +14,9 @@ type BadgeProps = {
 
 const variants: Record<BadgeVariant, string> = {
   default: `
-    border-border
-    bg-surface-elevated/70
-    text-muted
+    border-tag-border
+    bg-tag-background
+    text-tag-foreground
   `,
 
   primary: `
@@ -56,6 +56,8 @@ export function Badge({
         font-medium
         uppercase
         tracking-[0.12em]
+        transition-colors
+        duration-300
         ${variants[variant]}
         ${className}
       `}
