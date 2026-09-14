@@ -83,15 +83,15 @@ export function ShopProductCard({ product }: ShopProductCardProps) {
           size="sm"
           variant="default"
           onClick={handleToggleWishlist}
-          className={`!border-red-500 !text-white !shadow-none ${
+          className={`absolute right-3 top-3 z-10 !border-red-500 !text-red-500 !shadow-none backdrop-blur-md transition-colors ${
             inWishlist
-              ? "!bg-red-500 hover:!bg-red-600"
-              : "!bg-black/55 hover:!bg-red-500/20 hover:!text-red-100"
-          } absolute right-3 top-3 z-10 backdrop-blur-md transition-colors`}
+              ? "!bg-red-500 !text-white hover:!bg-red-600"
+              : "!bg-white/90 hover:!bg-red-500 hover:!text-white dark:!bg-black/70 dark:hover:!bg-red-500"
+          }`}
         >
           <IconHeart
             size={14}
-            stroke={1.6}
+            stroke={1.8}
             fill={inWishlist ? "currentColor" : "none"}
           />
         </IconButton>
@@ -121,9 +121,21 @@ export function ShopProductCard({ product }: ShopProductCardProps) {
       </div>
 
       <div className="p-4 sm:p-5">
-        <p className="text-[9px] font-medium uppercase tracking-[0.16em] text-muted">
-          {product.category}
-        </p>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-[9px] font-medium uppercase tracking-[0.16em] text-muted">
+            {product.category}
+          </p>
+
+          <div className="flex shrink-0 items-center gap-2">
+            <Price value={product.price} size="sm" />
+
+            {product.oldPrice && (
+              <span className="text-[10px] text-muted line-through">
+                ₹{product.oldPrice.toLocaleString("en-IN")}
+              </span>
+            )}
+          </div>
+        </div>
 
         <Link href={`/product/${product.id}`} className="block">
           <h3 className="mt-1.5 min-h-[2.5rem] text-sm font-medium leading-5 tracking-[-0.015em] text-foreground transition-colors hover:text-primary-hover">
@@ -138,33 +150,21 @@ export function ShopProductCard({ product }: ShopProductCardProps) {
           className="mt-2.5"
         />
 
-        <div className="mt-3 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Price value={product.price} size="sm" />
-
-            {product.oldPrice && (
-              <span className="text-[10px] text-muted line-through">
-                ₹{product.oldPrice.toLocaleString("en-IN")}
-              </span>
-            )}
-          </div>
-        </div>
-
         <Button
           type="button"
           variant="primary"
-          size="sm"
+          size="lg"
           onClick={handleAddToCart}
-          className="mt-3 w-full"
+          className="mt-4 min-h-12 w-full text-sm font-semibold"
         >
           {added ? (
             <>
-              <IconCheck size={14} />
+              <IconCheck size={16} />
               Added to Cart
             </>
           ) : (
             <>
-              <IconShoppingCart size={14} />
+              <IconShoppingCart size={16} />
               Add to Cart
             </>
           )}
