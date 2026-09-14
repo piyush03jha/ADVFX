@@ -18,6 +18,7 @@ import {
   MobileNavToggle,
   MobileNavMenu,
 } from "@/components/ui/resizable-navbar";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 import { useCart } from "@/context/CartContext";
 
@@ -48,6 +49,7 @@ export function Navbar() {
             <IconUserCircle size={19} stroke={1.7} />
           </NavIconLink>
 
+          <ThemeToggle />
           <CartLink itemCount={itemCount} isLoaded={isLoaded} />
         </div>
       </NavBody>
@@ -56,6 +58,7 @@ export function Navbar() {
         <MobileNavHeader>
           <NavbarLogo />
           <div className="flex items-center gap-1">
+            <ThemeToggle />
             <NavIconLink href="/account" label="My account">
               <IconUserCircle size={19} stroke={1.7} />
             </NavIconLink>
