@@ -94,16 +94,19 @@ export function CustomBuild() {
               className="relative min-h-[360px] overflow-hidden sm:min-h-[500px] lg:min-h-[650px]"
             >
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,rgba(139,92,246,0.22),transparent_48%)]" />
-              <div className="absolute left-[8%] top-[9%] h-[65%] w-[48%] overflow-hidden rounded-2xl border border-white/15 bg-black shadow-2xl sm:left-[12%] sm:top-[12%] sm:h-[58%] sm:w-[43%]">
+
+              <div className="absolute left-[8%] top-[9%] w-[48%] aspect-square overflow-hidden rounded-2xl border border-white/15 bg-black shadow-2xl sm:left-[12%] sm:top-[12%] sm:w-[43%]">
                 <img src="/catogeries/1.jpg" alt="Bobblehead reference photo placeholder" loading="lazy" className="h-full w-full object-cover transition-transform duration-700 hover:scale-105" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-white/10" />
                 <span className="absolute bottom-4 left-4 text-[10px] font-medium uppercase tracking-[0.18em] text-white/80">Your reference</span>
               </div>
-              <div className="absolute bottom-[8%] right-[5%] h-[65%] w-[52%] overflow-hidden rounded-2xl border border-white/15 bg-black shadow-2xl sm:bottom-[12%] sm:right-[9%] sm:h-[58%] sm:w-[45%]">
+
+              <div className="absolute bottom-[8%] right-[5%] w-[52%] aspect-[860/1147] overflow-hidden rounded-2xl border border-white/15 bg-black shadow-2xl sm:bottom-[12%] sm:right-[9%] sm:w-[45%]">
                 <img src="/catogeries/2.jpg" alt="Finished custom bobblehead placeholder" loading="lazy" className="h-full w-full object-cover transition-transform duration-700 hover:scale-105" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-white/10" />
                 <span className="absolute bottom-4 left-4 text-[10px] font-medium uppercase tracking-[0.18em] text-white/80">Your bobblehead</span>
               </div>
+
               <div className="absolute bottom-6 left-6 rounded-xl border border-white/15 bg-black/65 px-4 py-3 text-white backdrop-blur-md sm:bottom-10 sm:left-10">
                 <p className="text-[9px] uppercase tracking-[0.2em] text-white/60">Made personal</p>
                 <p className="mt-1 text-sm font-medium">A collectible with character</p>
