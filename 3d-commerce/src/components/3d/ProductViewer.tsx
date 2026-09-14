@@ -29,23 +29,16 @@ import type { HeroProduct } from "@/config/hero-products";
 
 const ENTER_DURATION = 0.85;
 const EXIT_DURATION = 0.65;
-
-const TOTAL_CYCLE =
-  HERO_MODEL_ROTATION_MS / 1000;
-
-/*
- * The model spends the first 0.85s entering.
- * The remaining time is used for the full 360° turn.
- */
+const TOTAL_CYCLE = HERO_MODEL_ROTATION_MS / 1000;
 const ROTATION_DURATION = Math.max(
   TOTAL_CYCLE - ENTER_DURATION,
   3,
 );
 
 const MODEL_SIZE = 3.15;
-
 const ENTER_START_X = 3.8;
 const EXIT_END_X = -3.8;
+const ROTATION_RADIANS = Math.PI * 2;
 
 /* =========================================================
    TYPES
@@ -56,6 +49,7 @@ type ModelMode = "enter" | "exit";
 interface HeroModelProps {
   path: string;
   mode: ModelMode;
+  onLoaded?: () => void;
 }
 
 /* =========================================================
@@ -65,19 +59,14 @@ interface HeroModelProps {
 function HeroModel({
   path,
   mode,
+  onLoaded,
 }: HeroModelProps) {
-  const { scene } = useLoader(
-    GLTFLoader,
-    path,
-  );
+  const { scene } = useLoader(GLTFLoader, path);
 
-  const groupRef =
-    useRef<THREE.Group>(null);
-
-  const rotationRef =
-    useRef<THREE.Group>(null);
-
+  const groupRef = useRef<THREE.Group>(null);
+  const rotationRef = useRef<THREE.Group>(null);
   const elapsedRef = useRef(0);
+  const loadedRef = useRef(false);
 
   const preparedModel = useMemo(() => {
     const model = scene.clone(true);
@@ -86,76 +75,43 @@ function HeroModel({
        Normalize model
     ----------------------------------------- */
 
-    const box =
-      new THREE.Box3().setFromObject(model);
-
-    const center =
-      box.getCenter(
-        new THREE.Vector3(),
-      );
-
-    const size =
-      box.getSize(
-        new THREE.Vector3(),
-      );
-
+    const box = new THREE.Box3().setFromObject(model);
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
     const maxDimension =
-      Math.max(
-        size.x,
-        size.y,
-        size.z,
-      ) || 1;
+      Math.max(size.x, size.y, size.z) || 1;
 
     model.position.sub(center);
-
-    model.scale.setScalar(
-      MODEL_SIZE / maxDimension,
-    );
+    model.scale.setScalar(MODEL_SIZE / maxDimension);
 
     /* -----------------------------------------
        Materials
     ----------------------------------------- */
 
-    const materials: THREE.Material[] =
-      [];
+    const materials: THREE.Material[] = [];
 
     model.traverse((object) => {
-      if (
-        !(object instanceof THREE.Mesh)
-      ) {
+      if (!(object instanceof THREE.Mesh)) {
         return;
       }
 
       object.castShadow = false;
       object.receiveShadow = false;
+      object.frustumCulled = true;
 
-      if (
-        Array.isArray(object.material)
-      ) {
-        object.material =
-          object.material.map(
-            (material) => {
-              const cloned =
-                material.clone();
-
-              cloned.transparent = true;
-
-              materials.push(cloned);
-
-              return cloned;
-            },
-          );
-
+      if (Array.isArray(object.material)) {
+        object.material = object.material.map((material) => {
+          const cloned = material.clone();
+          cloned.transparent = true;
+          materials.push(cloned);
+          return cloned;
+        });
         return;
       }
 
-      const cloned =
-        object.material.clone();
-
+      const cloned = object.material.clone();
       cloned.transparent = true;
-
       object.material = cloned;
-
       materials.push(cloned);
     });
 
@@ -166,213 +122,145 @@ function HeroModel({
   }, [scene]);
 
   /* =====================================================
-     RESET
+     RESET / LOAD STATE
   ====================================================== */
 
   useEffect(() => {
     elapsedRef.current = 0;
+    loadedRef.current = false;
 
     if (groupRef.current) {
       groupRef.current.position.set(
-        mode === "enter"
-          ? ENTER_START_X
-          : 0,
+        mode === "enter" ? ENTER_START_X : 0,
         -0.75,
         0,
       );
-
       groupRef.current.scale.setScalar(
-        mode === "enter"
-          ? 0.92
-          : 1,
+        mode === "enter" ? 0.92 : 1,
       );
     }
 
     if (rotationRef.current) {
-      rotationRef.current.rotation.set(
-        0,
-        0,
-        0,
-      );
+      rotationRef.current.rotation.set(0, 0, 0);
     }
 
-    preparedModel.materials.forEach(
-      (material) => {
-        material.opacity =
-          mode === "enter"
-            ? 0
-            : 1;
-      },
-    );
-  }, [path, mode, preparedModel]);
+    preparedModel.materials.forEach((material) => {
+      material.opacity = mode === "enter" ? 0 : 1;
+    });
+
+    if (mode === "enter") {
+      const frame = window.requestAnimationFrame(() => {
+        if (!loadedRef.current) {
+          loadedRef.current = true;
+          onLoaded?.();
+        }
+      });
+
+      return () => {
+        window.cancelAnimationFrame(frame);
+      };
+    }
+  }, [mode, onLoaded, preparedModel]);
 
   /* =====================================================
      ANIMATION
   ====================================================== */
 
   useFrame((_, delta) => {
-    if (
-      !groupRef.current ||
-      !rotationRef.current
-    ) {
+    const group = groupRef.current;
+    const rotation = rotationRef.current;
+
+    if (!group || !rotation) {
       return;
     }
 
     elapsedRef.current += delta;
-
-    const elapsed =
-      elapsedRef.current;
-
-    /* ===================================================
-       ENTER
-    ================================================= */
+    const elapsed = elapsedRef.current;
 
     if (mode === "enter") {
-      const enterProgress =
-        Math.min(
-          elapsed / ENTER_DURATION,
-          1,
-        );
-
-      const eased =
-        THREE.MathUtils.smootherstep(
-          enterProgress,
-          0,
-          1,
-        );
-
-      /*
-       * RIGHT → CENTER
-       */
-
-      groupRef.current.position.x =
-        THREE.MathUtils.lerp(
-          ENTER_START_X,
-          0,
-          eased,
-        );
-
-      groupRef.current.scale.setScalar(
-        THREE.MathUtils.lerp(
-          0.92,
-          1,
-          eased,
-        ),
+      const enterProgress = Math.min(
+        elapsed / ENTER_DURATION,
+        1,
       );
 
-      /*
-       * Fade in.
-       */
-
-      const opacity =
-        THREE.MathUtils.lerp(
-          0,
-          1,
-          eased,
-        );
-
-      preparedModel.materials.forEach(
-        (material) => {
-          material.opacity = opacity;
-        },
+      const eased = THREE.MathUtils.smootherstep(
+        enterProgress,
+        0,
+        1,
       );
 
-      /*
-       * After entering, rotate exactly
-       * one full turn over the remaining
-       * hero cycle.
-       */
+      group.position.x = THREE.MathUtils.lerp(
+        ENTER_START_X,
+        0,
+        eased,
+      );
 
-      if (
-        elapsed > ENTER_DURATION
-      ) {
-        const rotationElapsed =
-          elapsed -
-          ENTER_DURATION;
+      group.scale.setScalar(
+        THREE.MathUtils.lerp(0.92, 1, eased),
+      );
 
-        const rotationProgress =
-          Math.min(
-            rotationElapsed /
-              ROTATION_DURATION,
-            1,
-          );
+      const opacity = eased;
 
-        const rotationEase =
-          THREE.MathUtils.smootherstep(
-            rotationProgress,
-            0,
-            1,
-          );
+      preparedModel.materials.forEach((material) => {
+        material.opacity = opacity;
+      });
 
-        rotationRef.current.rotation.y =
-          rotationEase *
-          Math.PI *
-          2;
+      if (elapsed > ENTER_DURATION) {
+        const rotationElapsed = elapsed - ENTER_DURATION;
+        const rotationProgress = Math.min(
+          rotationElapsed / ROTATION_DURATION,
+          1,
+        );
+
+        const rotationEase = THREE.MathUtils.smootherstep(
+          rotationProgress,
+          0,
+          1,
+        );
+
+        rotation.rotation.y =
+          rotationEase * ROTATION_RADIANS;
       }
 
       return;
     }
 
-    /* ===================================================
-       EXIT
-    ================================================= */
-
-    const exitProgress =
-      Math.min(
-        elapsed / EXIT_DURATION,
-        1,
-      );
-
-    const exitEase =
-      THREE.MathUtils.smootherstep(
-        exitProgress,
-        0,
-        1,
-      );
-
-    /*
-     * CENTER → LEFT
-     */
-
-    groupRef.current.position.x =
-      THREE.MathUtils.lerp(
-        0,
-        EXIT_END_X,
-        exitEase,
-      );
-
-    groupRef.current.scale.setScalar(
-      THREE.MathUtils.lerp(
-        1,
-        0.86,
-        exitEase,
-      ),
+    const exitProgress = Math.min(
+      elapsed / EXIT_DURATION,
+      1,
     );
 
-    /*
-     * Fade out.
-     */
-
-    const opacity =
-      THREE.MathUtils.lerp(
-        1,
-        0,
-        exitEase,
-      );
-
-    preparedModel.materials.forEach(
-      (material) => {
-        material.opacity = opacity;
-      },
+    const exitEase = THREE.MathUtils.smootherstep(
+      exitProgress,
+      0,
+      1,
     );
+
+    group.position.x = THREE.MathUtils.lerp(
+      0,
+      EXIT_END_X,
+      exitEase,
+    );
+
+    group.scale.setScalar(
+      THREE.MathUtils.lerp(1, 0.86, exitEase),
+    );
+
+    const opacity = THREE.MathUtils.lerp(
+      1,
+      0,
+      exitEase,
+    );
+
+    preparedModel.materials.forEach((material) => {
+      material.opacity = opacity;
+    });
   });
 
   return (
     <group ref={groupRef}>
       <group ref={rotationRef}>
-        <primitive
-          object={preparedModel.model}
-        />
+        <primitive object={preparedModel.model} />
       </group>
     </group>
   );
@@ -380,23 +268,17 @@ function HeroModel({
 
 /* =========================================================
    LOADING
+   HTML/CSS only — intentionally outside WebGL.
 ========================================================= */
 
-function LoadingModel() {
+function LoadingState() {
   return (
-    <mesh position={[0, -0.75, 0]}>
-      <icosahedronGeometry
-        args={[0.22, 2]}
-      />
-
-      <meshStandardMaterial
-        color="#8b5cf6"
-        emissive="#6d28d9"
-        emissiveIntensity={1.2}
-        transparent
-        opacity={0.5}
-      />
-    </mesh>
+    <div
+      aria-hidden="true"
+      className="absolute inset-0 z-20 flex items-center justify-center"
+    >
+      <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-primary/70" />
+    </div>
   );
 }
 
@@ -413,51 +295,46 @@ export function ProductViewer({
   products,
   activeIndex,
 }: ProductViewerProps) {
-  const previousIndexRef =
-    useRef<number | null>(null);
+  const currentIndexRef = useRef(activeIndex);
 
-  const currentIndexRef =
-    useRef(activeIndex);
-
-  const [previousIndex, setPreviousIndex] =
-    useState<number | null>(null);
+  const [previousIndex, setPreviousIndex] = useState<number | null>(
+    null,
+  );
+  const [isLoading, setIsLoading] = useState(true);
 
   /* -----------------------------------------
      Detect product change
   ----------------------------------------- */
 
   useEffect(() => {
-    if (
-      activeIndex ===
-      currentIndexRef.current
-    ) {
+    if (activeIndex === currentIndexRef.current) {
       return;
     }
 
-    setPreviousIndex(
-      currentIndexRef.current,
-    );
+    const oldIndex = currentIndexRef.current;
+    currentIndexRef.current = activeIndex;
+    setPreviousIndex(oldIndex);
+    setIsLoading(true);
 
-    currentIndexRef.current =
-      activeIndex;
-
-    const timeout =
-      window.setTimeout(() => {
-        setPreviousIndex(null);
-      }, EXIT_DURATION * 1000);
+    const timeout = window.setTimeout(() => {
+      setPreviousIndex(null);
+    }, EXIT_DURATION * 1000);
 
     return () => {
       window.clearTimeout(timeout);
     };
   }, [activeIndex]);
 
+  const handleLoaded = useMemo(
+    () => () => setIsLoading(false),
+    [],
+  );
+
   if (!products.length) {
     return null;
   }
 
-  const activeProduct =
-    products[activeIndex];
-
+  const activeProduct = products[activeIndex];
   const previousProduct =
     previousIndex !== null
       ? products[previousIndex]
@@ -506,6 +383,12 @@ export function ProductViewer({
       />
 
       {/* =================================================
+          LOADING OVERLAY
+      ================================================== */}
+
+      {isLoading && <LoadingState />}
+
+      {/* =================================================
           CANVAS
       ================================================== */}
 
@@ -516,47 +399,42 @@ export function ProductViewer({
           position: [0, 0.05, 9.8],
           fov: 34,
         }}
-        dpr={[1, 1.2]}
+        dpr={[1, 1.1]}
         gl={{
           alpha: true,
           antialias: false,
-          powerPreference:
-            "high-performance",
+          powerPreference: "high-performance",
+        }}
+        onCreated={({ gl }) => {
+          gl.outputColorSpace = THREE.SRGBColorSpace;
+          gl.toneMapping = THREE.ACESFilmicToneMapping;
+          gl.toneMappingExposure = 1.05;
         }}
       >
-        {/* Lighting */}
+        {/* Lightweight lighting */}
 
-        <ambientLight intensity={1.6} />
+        <ambientLight intensity={1.75} />
 
         <directionalLight
           position={[5, 7, 5]}
-          intensity={2.3}
+          intensity={2.1}
         />
 
         <directionalLight
-          position={[-4, 3, -3]}
-          intensity={0.8}
+          position={[-3, 2, -2]}
+          intensity={0.55}
         />
 
         <pointLight
           position={[-2, 1, 3]}
-          intensity={1.5}
-          distance={10}
+          intensity={0.8}
+          distance={8}
           color="#8b5cf6"
-        />
-
-        <spotLight
-          position={[2, 6, 4]}
-          intensity={8}
-          angle={0.45}
-          penumbra={0.9}
-          distance={20}
-          color="#c4b5fd"
         />
 
         <Environment
           preset="studio"
-          environmentIntensity={0.55}
+          environmentIntensity={0.45}
         />
 
         {/* Old product → LEFT */}
@@ -573,11 +451,12 @@ export function ProductViewer({
 
         {/* New product ← RIGHT */}
 
-        <Suspense fallback={<LoadingModel />}>
+        <Suspense fallback={null}>
           <HeroModel
             key={`active-${activeProduct.id}`}
             path={activeProduct.model}
             mode="enter"
+            onLoaded={handleLoaded}
           />
         </Suspense>
       </Canvas>
