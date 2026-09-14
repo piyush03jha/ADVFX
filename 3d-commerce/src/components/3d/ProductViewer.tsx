@@ -143,7 +143,7 @@ function HeroModel({
 
     if (!group || !rotation) return;
 
-    if (mode === "enter") {
+    if (mode === "enter" && !isInteractionPaused) {
       elapsedRef.current += delta;
     }
 
@@ -161,10 +161,10 @@ function HeroModel({
       });
 
       if (elapsed > ENTER_DURATION) {
-        if (interactionRef.current.active) {
+        if (interactionRef.current.active || isInteractionPaused) {
           rotation.rotation.y = interactionRef.current.rotationY;
           rotation.rotation.x = interactionRef.current.rotationX;
-        } else if (!isInteractionPaused) {
+        } else {
           rotation.rotation.y += AUTO_ROTATION_SPEED * delta;
           rotation.rotation.x = THREE.MathUtils.damp(
             rotation.rotation.x,
@@ -177,6 +177,10 @@ function HeroModel({
         }
       }
 
+      return;
+    }
+
+    if (isInteractionPaused) {
       return;
     }
 
@@ -250,6 +254,8 @@ export function ProductViewer({
 
     const oldIndex = currentIndexRef.current;
     currentIndexRef.current = activeIndex;
+    interactionRef.current.rotationX = 0;
+    interactionRef.current.rotationY = 0;
     setPreviousIndex(oldIndex);
     setIsLoading(true);
     setInteraction(false);
@@ -369,6 +375,7 @@ export function ProductViewer({
               path={previousProduct.model}
               mode="exit"
               interactionRef={interactionRef}
+              isInteractionPaused={isInteracting}
             />
           </Suspense>
         )}
