@@ -157,7 +157,12 @@ function HeroModel({
           rotation.rotation.x = interactionRef.current.rotationX;
         } else {
           rotation.rotation.y += AUTO_ROTATION_SPEED * delta;
-          rotation.rotation.x = THREE.MathUtils.damp(rotation.rotation.x, 0, 5, delta);
+          rotation.rotation.x = THREE.MathUtils.damp(
+            rotation.rotation.x,
+            0,
+            5,
+            delta,
+          );
           interactionRef.current.rotationY = rotation.rotation.y;
           interactionRef.current.rotationX = rotation.rotation.x;
         }
@@ -166,6 +171,9 @@ function HeroModel({
       return;
     }
 
+    // Exit animation is intentionally independent from the interaction pause.
+    // The pause belongs to the currently active product; once this product is
+    // replaced, the outgoing product must always move left and fade out.
     const elapsed = elapsedRef.current;
     const exitProgress = Math.min(elapsed / EXIT_DURATION, 1);
     const exitEase = THREE.MathUtils.smootherstep(exitProgress, 0, 1);
@@ -305,8 +313,14 @@ export function ProductViewer({ products, activeIndex, onHoldChange }: ProductVi
       onPointerCancel={handlePointerCancel}
       onPointerLeave={handlePointerCancel}
     >
-      <div aria-hidden="true" className="pointer-events-none absolute left-[58%] top-1/2 z-0 h-[72%] w-[72%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(139,92,246,0.28)_0%,rgba(109,40,217,0.14)_34%,rgba(109,40,217,0.05)_58%,transparent_74%)] blur-[46px]" />
-      <div aria-hidden="true" className="pointer-events-none absolute left-[60%] top-[58%] z-0 h-[34%] w-[34%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/10 blur-[70px]" />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute left-[58%] top-1/2 z-0 h-[72%] w-[72%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(139,92,246,0.28)_0%,rgba(109,40,217,0.14)_34%,rgba(109,40,217,0.05)_58%,transparent_74%)] blur-[46px]"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute left-[60%] top-[58%] z-0 h-[34%] w-[34%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/10 blur-[70px]"
+      />
       {isLoading && <LoadingState />}
 
       <Canvas
@@ -334,7 +348,6 @@ export function ProductViewer({ products, activeIndex, onHoldChange }: ProductVi
               path={previousProduct.model}
               mode="exit"
               interactionRef={interactionRef}
-              isInteractionPaused={isInteracting}
             />
           </Suspense>
         )}
