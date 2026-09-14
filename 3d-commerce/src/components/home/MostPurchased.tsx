@@ -74,7 +74,7 @@ export function MostPurchased() {
   );
 }
 
-function ProductCard({ product }: { product: (typeof mostPurchasedProducts)[number] }) {
+export function ProductCard({ product }: { product: (typeof mostPurchasedProducts)[number] }) {
   const { addItem } = useCart();
   const { isInWishlist, toggleWishlist } = useWishlist();
   const [added, setAdded] = useState(false);
@@ -103,17 +103,7 @@ function ProductCard({ product }: { product: (typeof mostPurchasedProducts)[numb
           <Badge variant="default" className="px-2 py-0.5 text-[8px]">{product.category}</Badge>
         </div>
 
-        <IconButton
-          label={liked ? `Remove ${product.name} from wishlist` : `Add ${product.name} to wishlist`}
-          size="sm"
-          variant="default"
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            toggleWishlist(wishlistProduct);
-          }}
-          className={`absolute right-2.5 top-2.5 z-10 h-7 w-7 shrink-0 !border-red-500 !text-red-500 !shadow-none sm:right-3 sm:top-3 sm:h-8 sm:w-8 ${liked ? "!bg-red-500 !text-white hover:!bg-red-600" : "!bg-white/95 hover:!bg-red-50 dark:!bg-white/90 dark:hover:!bg-red-950/80"} backdrop-blur-md transition-colors`}
-        >
+        <IconButton label={liked ? `Remove ${product.name} from wishlist` : `Add ${product.name} to wishlist`} size="sm" variant="default" onClick={(event) => { event.preventDefault(); event.stopPropagation(); toggleWishlist(wishlistProduct); }} className={`absolute right-2.5 top-2.5 z-10 h-7 w-7 shrink-0 !border-red-500 !text-red-500 !shadow-none sm:right-3 sm:top-3 sm:h-8 sm:w-8 ${liked ? "!bg-red-500 !text-white hover:!bg-red-600" : "!bg-white/95 hover:!bg-red-50 dark:!bg-white/90 dark:hover:!bg-red-950/80"} backdrop-blur-md transition-colors`}>
           <IconHeart size={13} stroke={1.7} fill={liked ? "currentColor" : "none"} />
         </IconButton>
       </div>
@@ -123,10 +113,7 @@ function ProductCard({ product }: { product: (typeof mostPurchasedProducts)[numb
           <Link href={`/product/${product.id}`} className="min-w-0 flex-1">
             <h3 className="line-clamp-2 text-xs font-medium leading-4 tracking-[-0.01em] text-foreground transition-colors duration-300 hover:text-primary-hover sm:text-sm sm:leading-5">{product.name}</h3>
           </Link>
-
-          <div className="shrink-0 pt-0.5 text-right">
-            <Price value={product.price} size="sm" />
-          </div>
+          <div className="shrink-0 pt-0.5 text-right"><Price value={product.price} size="sm" /></div>
         </div>
 
         <Rating value={product.rating} reviewCount={product.reviewCount} size={11} showValue className="mt-2" />
