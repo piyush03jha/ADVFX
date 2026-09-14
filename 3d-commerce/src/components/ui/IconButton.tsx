@@ -19,27 +19,22 @@ const sizes = {
 
 const variants = {
   default: `
-    border
-    border-border
-    bg-surface-elevated/80
+    border border-border
+    bg-surface-elevated
     text-foreground
-    hover:border-primary/50
-    hover:bg-primary/10
+    hover:border-primary/45
+    hover:bg-surface
     hover:text-primary-hover
   `,
-
   primary: `
-    border
-    border-primary/20
-    bg-primary/15
+    border border-primary/20
+    bg-primary/12
     text-primary-hover
-    hover:bg-primary/25
+    hover:bg-primary/20
     hover:border-primary/40
   `,
-
   ghost: `
-    border
-    border-transparent
+    border border-transparent
     bg-transparent
     text-muted
     hover:bg-surface
@@ -62,16 +57,13 @@ export function IconButton({
       type={type}
       aria-label={label}
       className={`
-        inline-flex
-        shrink-0
-        items-center
-        justify-center
-        rounded-full
-        transition-all
+        inline-flex shrink-0 items-center justify-center rounded-full
+        transition-[color,background-color,border-color,box-shadow,transform]
         duration-300
-        focus-visible:outline-none
-        focus-visible:ring-2
-        focus-visible:ring-primary
+        focus-visible:outline-none focus-visible:ring-2
+        focus-visible:ring-primary focus-visible:ring-offset-2
+        focus-visible:ring-offset-background
+        disabled:pointer-events-none disabled:opacity-50
         ${sizes[size]}
         ${variants[variant]}
         ${className}
