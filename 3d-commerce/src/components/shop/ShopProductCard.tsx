@@ -83,11 +83,11 @@ export function ShopProductCard({ product }: ShopProductCardProps) {
           size="sm"
           variant="default"
           onClick={handleToggleWishlist}
-          className={`absolute right-3 top-3 backdrop-blur-md transition-colors ${
+          className={`!border-red-500 !text-white !shadow-none ${
             inWishlist
-              ? "border-red-500 bg-red-500 text-white hover:bg-red-600"
-              : "border-red-400/60 bg-black/35 text-red-300 hover:border-red-400 hover:bg-red-500/20 hover:text-red-200"
-          }`}
+              ? "!bg-red-500 hover:!bg-red-600"
+              : "!bg-black/55 hover:!bg-red-500/20 hover:!text-red-100"
+          } absolute right-3 top-3 z-10 backdrop-blur-md transition-colors`}
         >
           <IconHeart
             size={14}
