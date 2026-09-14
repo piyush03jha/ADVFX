@@ -146,10 +146,11 @@ export function ShopProductCard({
             right-3
             top-3
             backdrop-blur-md
+            transition-colors
             ${
               inWishlist
-                ? "border-primary/40 bg-primary/15 text-primary"
-                : "border-white/10 bg-black/35 text-white/80"
+                ? "border-red-500 bg-red-500 text-white hover:bg-red-600"
+                : "border-red-400/60 bg-black/35 text-red-300 hover:border-red-400 hover:bg-red-500/20 hover:text-red-200"
             }
           `}
         >
@@ -223,7 +224,7 @@ export function ShopProductCard({
 
       {/* =================================================
           INFORMATION
-      ================================================== */}
+      ================================================== */
 
       <div className="p-4 sm:p-5">
         <p
