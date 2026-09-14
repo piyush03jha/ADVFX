@@ -44,8 +44,8 @@ export function MostPurchased() {
             <h2 className="text-2xl font-semibold tracking-[-0.045em] text-foreground sm:text-4xl lg:text-5xl">Most Purchased</h2>
           </div>
 
-          <Button href="/models" variant="ghost" size="sm" className="group hidden sm:inline-flex">
-            View All
+          <Button href="/shop" variant="ghost" size="sm" className="group hidden sm:inline-flex">
+            Explore All Models
             <IconArrowUpRight size={16} stroke={1.8} className="transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
           </Button>
         </motion.div>
@@ -64,8 +64,8 @@ export function MostPurchased() {
         </div>
 
         <div className="mt-6 flex justify-center sm:hidden">
-          <Button href="/models" variant="outline" size="sm" className="group">
-            View All
+          <Button href="/shop" variant="outline" size="sm" className="group">
+            Explore All Models
             <IconArrowUpRight size={15} stroke={1.8} className="transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
           </Button>
         </div>
@@ -112,11 +112,7 @@ function ProductCard({ product }: { product: (typeof mostPurchasedProducts)[numb
             event.stopPropagation();
             toggleWishlist(wishlistProduct);
           }}
-          className={`absolute right-2.5 top-2.5 z-10 h-7 w-7 shrink-0 !border-red-500 !text-red-500 !shadow-none sm:right-3 sm:top-3 sm:h-8 sm:w-8 ${
-            liked
-              ? "!bg-red-500 !text-white hover:!bg-red-600"
-              : "!bg-white/95 hover:!bg-red-50 dark:!bg-white/90 dark:hover:!bg-red-950/80"
-          } backdrop-blur-md transition-colors`}
+          className={`absolute right-2.5 top-2.5 z-10 h-7 w-7 shrink-0 !border-red-500 !text-red-500 !shadow-none sm:right-3 sm:top-3 sm:h-8 sm:w-8 ${liked ? "!bg-red-500 !text-white hover:!bg-red-600" : "!bg-white/95 hover:!bg-red-50 dark:!bg-white/90 dark:hover:!bg-red-950/80"} backdrop-blur-md transition-colors`}
         >
           <IconHeart size={13} stroke={1.7} fill={liked ? "currentColor" : "none"} />
         </IconButton>
@@ -135,14 +131,7 @@ function ProductCard({ product }: { product: (typeof mostPurchasedProducts)[numb
 
         <Rating value={product.rating} reviewCount={product.reviewCount} size={11} showValue className="mt-2" />
 
-        <Button
-          type="button"
-          variant="primary"
-          size="sm"
-          ariaLabel={`Add ${product.name} to cart`}
-          onClick={handleAddToCart}
-          className="mt-3 !h-11 !min-h-11 w-full !rounded-xl !px-4 shadow-[0_0_18px_rgba(139,92,246,0.18)] sm:!h-12 sm:!min-h-12"
-        >
+        <Button type="button" variant="primary" size="sm" ariaLabel={`Add ${product.name} to cart`} onClick={handleAddToCart} className="mt-3 !h-11 !min-h-11 w-full !rounded-xl !px-4 shadow-[0_0_18px_rgba(139,92,246,0.18)] sm:!h-12 sm:!min-h-12">
           {added ? <IconCheck size={15} stroke={2} /> : <IconShoppingCart size={15} stroke={1.8} />}
           <span>{added ? "Added to Cart" : "Add to Cart"}</span>
         </Button>
