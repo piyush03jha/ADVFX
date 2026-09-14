@@ -70,7 +70,7 @@ export function Navbar() {
           <div className="relative hidden lg:block">
             <form
               onSubmit={handleSearchSubmit}
-              className="flex w-[190px] items-center rounded-full border border-border bg-surface/80 px-3 transition-all duration-300 focus-within:border-primary/50 focus-within:bg-surface-elevated"
+              className="flex w-[190px] items-center rounded-full border border-border bg-surface/80 px-3 transition-colors duration-200 focus-within:border-border focus-within:bg-surface"
               role="search"
             >
               <IconSearch size={16} stroke={1.8} className="shrink-0 text-muted" />
@@ -80,7 +80,7 @@ export function Navbar() {
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="Search products"
                 aria-label="Search products"
-                className="h-8 w-full bg-transparent px-2 text-xs text-foreground outline-none placeholder:text-muted"
+                className="h-8 w-full bg-transparent px-2 text-xs text-foreground outline-none placeholder:text-muted focus:outline-none focus:ring-0"
               />
             </form>
 
@@ -144,7 +144,7 @@ export function Navbar() {
           <div className="relative">
             <form
               onSubmit={handleSearchSubmit}
-              className="flex items-center rounded-xl border border-border bg-surface px-4"
+              className="flex items-center rounded-xl border border-border bg-surface px-4 transition-colors duration-200 focus-within:border-border"
               role="search"
             >
               <IconSearch size={17} stroke={1.8} className="shrink-0 text-muted" />
@@ -154,7 +154,7 @@ export function Navbar() {
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="Search products"
                 aria-label="Search products"
-                className="h-11 w-full bg-transparent px-3 text-sm text-foreground outline-none placeholder:text-muted"
+                className="h-11 w-full bg-transparent px-3 text-sm text-foreground outline-none placeholder:text-muted focus:outline-none focus:ring-0"
               />
             </form>
 
