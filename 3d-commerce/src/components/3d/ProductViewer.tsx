@@ -18,16 +18,16 @@ import { HERO_MODEL_ROTATION_MS } from "@/config/hero-motion";
 import type { HeroProduct } from "@/config/hero-products";
 
 const ENTER_DURATION = 0.85;
-const EXIT_DURATION = 0.65;
+const EXIT_DURATION = 0.7;
 const TOTAL_CYCLE = HERO_MODEL_ROTATION_MS / 1000;
-const ROTATION_DURATION = Math.max(TOTAL_CYCLE - ENTER_DURATION, 3);
+const ROTATION_DURATION = Math.max(TOTAL_CYCLE - ENTER_DURATION, 4);
 
 const MODEL_SIZE = 3.15;
 const ENTER_START_X = 3.8;
 const EXIT_END_X = -3.8;
 const ROTATION_RADIANS = Math.PI * 2;
-const DRAG_ROTATION_SPEED = 0.012;
-const DRAG_TILT_SPEED = 0.008;
+const DRAG_ROTATION_SPEED = 0.009;
+const DRAG_TILT_SPEED = 0.006;
 const AUTO_ROTATION_SPEED = ROTATION_RADIANS / ROTATION_DURATION;
 const MAX_TILT = THREE.MathUtils.degToRad(78);
 
@@ -60,7 +60,6 @@ function HeroModel({
   const groupRef = useRef<THREE.Group>(null);
   const rotationRef = useRef<THREE.Group>(null);
   const elapsedRef = useRef(0);
-  const loadedRef = useRef(false);
 
   const preparedModel = useMemo(() => {
     const model = scene.clone(true);
@@ -102,7 +101,6 @@ function HeroModel({
 
   useEffect(() => {
     elapsedRef.current = 0;
-    loadedRef.current = false;
 
     if (groupRef.current) {
       groupRef.current.position.set(
@@ -127,12 +125,8 @@ function HeroModel({
 
     if (mode === "enter") {
       const frame = window.requestAnimationFrame(() => {
-        if (!loadedRef.current) {
-          loadedRef.current = true;
-          onLoaded?.();
-        }
+        onLoaded?.();
       });
-
       return () => window.cancelAnimationFrame(frame);
     }
   }, [mode, onLoaded, preparedModel, interactionRef]);
@@ -143,13 +137,10 @@ function HeroModel({
 
     if (!group || !rotation) return;
 
-    if (mode === "enter" && !isInteractionPaused) {
-      elapsedRef.current += delta;
-    }
-
-    const elapsed = elapsedRef.current;
-
     if (mode === "enter") {
+      if (!isInteractionPaused) elapsedRef.current += delta;
+
+      const elapsed = elapsedRef.current;
       const enterProgress = Math.min(elapsed / ENTER_DURATION, 1);
       const eased = THREE.MathUtils.smootherstep(enterProgress, 0, 1);
 
@@ -166,12 +157,7 @@ function HeroModel({
           rotation.rotation.x = interactionRef.current.rotationX;
         } else {
           rotation.rotation.y += AUTO_ROTATION_SPEED * delta;
-          rotation.rotation.x = THREE.MathUtils.damp(
-            rotation.rotation.x,
-            0,
-            5,
-            delta,
-          );
+          rotation.rotation.x = THREE.MathUtils.damp(rotation.rotation.x, 0, 5, delta);
           interactionRef.current.rotationY = rotation.rotation.y;
           interactionRef.current.rotationX = rotation.rotation.x;
         }
@@ -180,10 +166,7 @@ function HeroModel({
       return;
     }
 
-    if (isInteractionPaused) {
-      return;
-    }
-
+    const elapsed = elapsedRef.current;
     const exitProgress = Math.min(elapsed / EXIT_DURATION, 1);
     const exitEase = THREE.MathUtils.smootherstep(exitProgress, 0, 1);
 
@@ -222,11 +205,7 @@ interface ProductViewerProps {
   onHoldChange?: (held: boolean) => void;
 }
 
-export function ProductViewer({
-  products,
-  activeIndex,
-  onHoldChange,
-}: ProductViewerProps) {
+export function ProductViewer({ products, activeIndex, onHoldChange }: ProductViewerProps) {
   const currentIndexRef = useRef(activeIndex);
   const interactionRef = useRef<InteractionState>({
     active: false,
@@ -281,24 +260,21 @@ export function ProductViewer({
     [onHoldChange],
   );
 
-  const handlePointerMove = useCallback(
-    (event: React.PointerEvent<HTMLDivElement>) => {
-      if (!interactionRef.current.active) return;
+  const handlePointerMove = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (!interactionRef.current.active) return;
 
-      const deltaX = event.clientX - interactionRef.current.lastX;
-      const deltaY = event.clientY - interactionRef.current.lastY;
+    const deltaX = event.clientX - interactionRef.current.lastX;
+    const deltaY = event.clientY - interactionRef.current.lastY;
 
-      interactionRef.current.lastX = event.clientX;
-      interactionRef.current.lastY = event.clientY;
-      interactionRef.current.rotationY += deltaX * DRAG_ROTATION_SPEED;
-      interactionRef.current.rotationX = THREE.MathUtils.clamp(
-        interactionRef.current.rotationX - deltaY * DRAG_TILT_SPEED,
-        -MAX_TILT,
-        MAX_TILT,
-      );
-    },
-    [],
-  );
+    interactionRef.current.lastX = event.clientX;
+    interactionRef.current.lastY = event.clientY;
+    interactionRef.current.rotationY += deltaX * DRAG_ROTATION_SPEED;
+    interactionRef.current.rotationX = THREE.MathUtils.clamp(
+      interactionRef.current.rotationX - deltaY * DRAG_TILT_SPEED,
+      -MAX_TILT,
+      MAX_TILT,
+    );
+  }, []);
 
   const handlePointerUp = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
@@ -329,16 +305,8 @@ export function ProductViewer({
       onPointerCancel={handlePointerCancel}
       onPointerLeave={handlePointerCancel}
     >
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute left-[58%] top-1/2 z-0 h-[72%] w-[72%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(139,92,246,0.28)_0%,rgba(109,40,217,0.14)_34%,rgba(109,40,217,0.05)_58%,transparent_74%)] blur-[46px]"
-      />
-
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute left-[60%] top-[58%] z-0 h-[34%] w-[34%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/10 blur-[70px]"
-      />
-
+      <div aria-hidden="true" className="pointer-events-none absolute left-[58%] top-1/2 z-0 h-[72%] w-[72%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(139,92,246,0.28)_0%,rgba(109,40,217,0.14)_34%,rgba(109,40,217,0.05)_58%,transparent_74%)] blur-[46px]" />
+      <div aria-hidden="true" className="pointer-events-none absolute left-[60%] top-[58%] z-0 h-[34%] w-[34%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/10 blur-[70px]" />
       {isLoading && <LoadingState />}
 
       <Canvas
@@ -346,11 +314,7 @@ export function ProductViewer({
         frameloop="always"
         camera={{ position: [0, 0.05, 9.8], fov: 34 }}
         dpr={[1, 1.1]}
-        gl={{
-          alpha: true,
-          antialias: false,
-          powerPreference: "high-performance",
-        }}
+        gl={{ alpha: true, antialias: false, powerPreference: "high-performance" }}
         onCreated={({ gl }) => {
           gl.outputColorSpace = THREE.SRGBColorSpace;
           gl.toneMapping = THREE.ACESFilmicToneMapping;
@@ -360,12 +324,7 @@ export function ProductViewer({
         <ambientLight intensity={1.75} />
         <directionalLight position={[5, 7, 5]} intensity={2.1} />
         <directionalLight position={[-3, 2, -2]} intensity={0.55} />
-        <pointLight
-          position={[-2, 1, 3]}
-          intensity={0.8}
-          distance={8}
-          color="#8b5cf6"
-        />
+        <pointLight position={[-2, 1, 3]} intensity={0.8} distance={8} color="#8b5cf6" />
         <Environment preset="studio" environmentIntensity={0.45} />
 
         {previousProduct && (
