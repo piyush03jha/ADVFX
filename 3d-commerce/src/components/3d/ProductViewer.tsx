@@ -127,6 +127,7 @@ function HeroModel({
       const frame = window.requestAnimationFrame(() => {
         onLoaded?.();
       });
+
       return () => window.cancelAnimationFrame(frame);
     }
   }, [mode, onLoaded, preparedModel, interactionRef]);
@@ -163,6 +164,7 @@ function HeroModel({
             5,
             delta,
           );
+
           interactionRef.current.rotationY = rotation.rotation.y;
           interactionRef.current.rotationX = rotation.rotation.x;
         }
@@ -171,9 +173,10 @@ function HeroModel({
       return;
     }
 
-    // Exit animation is intentionally independent from the interaction pause.
-    // The pause belongs to the currently active product; once this product is
-    // replaced, the outgoing product must always move left and fade out.
+    // Exit animation is independent from the interaction pause.
+    // The outgoing model always moves left and fades out.
+    elapsedRef.current += delta;
+
     const elapsed = elapsedRef.current;
     const exitProgress = Math.min(elapsed / EXIT_DURATION, 1);
     const exitEase = THREE.MathUtils.smootherstep(exitProgress, 0, 1);
@@ -182,6 +185,7 @@ function HeroModel({
     group.scale.setScalar(THREE.MathUtils.lerp(1, 0.86, exitEase));
 
     const opacity = THREE.MathUtils.lerp(1, 0, exitEase);
+
     preparedModel.materials.forEach((material) => {
       material.opacity = opacity;
     });
@@ -213,8 +217,13 @@ interface ProductViewerProps {
   onHoldChange?: (held: boolean) => void;
 }
 
-export function ProductViewer({ products, activeIndex, onHoldChange }: ProductViewerProps) {
+export function ProductViewer({
+  products,
+  activeIndex,
+  onHoldChange,
+}: ProductViewerProps) {
   const currentIndexRef = useRef(activeIndex);
+
   const interactionRef = useRef<InteractionState>({
     active: false,
     lastX: 0,
@@ -240,9 +249,11 @@ export function ProductViewer({ products, activeIndex, onHoldChange }: ProductVi
     if (activeIndex === currentIndexRef.current) return;
 
     const oldIndex = currentIndexRef.current;
+
     currentIndexRef.current = activeIndex;
     interactionRef.current.rotationX = 0;
     interactionRef.current.rotationY = 0;
+
     setPreviousIndex(oldIndex);
     setIsLoading(true);
     setInteraction(false);
@@ -261,32 +272,40 @@ export function ProductViewer({ products, activeIndex, onHoldChange }: ProductVi
       interactionRef.current.active = true;
       interactionRef.current.lastX = event.clientX;
       interactionRef.current.lastY = event.clientY;
+
       setIsInteracting(true);
       onHoldChange?.(true);
+
       event.currentTarget.setPointerCapture(event.pointerId);
     },
     [onHoldChange],
   );
 
-  const handlePointerMove = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    if (!interactionRef.current.active) return;
+  const handlePointerMove = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (!interactionRef.current.active) return;
 
-    const deltaX = event.clientX - interactionRef.current.lastX;
-    const deltaY = event.clientY - interactionRef.current.lastY;
+      const deltaX = event.clientX - interactionRef.current.lastX;
+      const deltaY = event.clientY - interactionRef.current.lastY;
 
-    interactionRef.current.lastX = event.clientX;
-    interactionRef.current.lastY = event.clientY;
-    interactionRef.current.rotationY += deltaX * DRAG_ROTATION_SPEED;
-    interactionRef.current.rotationX = THREE.MathUtils.clamp(
-      interactionRef.current.rotationX - deltaY * DRAG_TILT_SPEED,
-      -MAX_TILT,
-      MAX_TILT,
-    );
-  }, []);
+      interactionRef.current.lastX = event.clientX;
+      interactionRef.current.lastY = event.clientY;
+
+      interactionRef.current.rotationY += deltaX * DRAG_ROTATION_SPEED;
+
+      interactionRef.current.rotationX = THREE.MathUtils.clamp(
+        interactionRef.current.rotationX - deltaY * DRAG_TILT_SPEED,
+        -MAX_TILT,
+        MAX_TILT,
+      );
+    },
+    [],
+  );
 
   const handlePointerUp = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
       setInteraction(false);
+
       if (event.currentTarget.hasPointerCapture(event.pointerId)) {
         event.currentTarget.releasePointerCapture(event.pointerId);
       }
@@ -301,11 +320,14 @@ export function ProductViewer({ products, activeIndex, onHoldChange }: ProductVi
   if (!products.length) return null;
 
   const activeProduct = products[activeIndex];
-  const previousProduct = previousIndex !== null ? products[previousIndex] : null;
+  const previousProduct =
+    previousIndex !== null ? products[previousIndex] : null;
 
   return (
     <div
-      className={`relative h-full w-full ${isInteracting ? "cursor-grabbing" : "cursor-grab"}`}
+      className={`relative h-full w-full ${
+        isInteracting ? "cursor-grabbing" : "cursor-grab"
+      }`}
       style={{ touchAction: "none" }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
@@ -317,10 +339,12 @@ export function ProductViewer({ products, activeIndex, onHoldChange }: ProductVi
         aria-hidden="true"
         className="pointer-events-none absolute left-[58%] top-1/2 z-0 h-[72%] w-[72%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(139,92,246,0.28)_0%,rgba(109,40,217,0.14)_34%,rgba(109,40,217,0.05)_58%,transparent_74%)] blur-[46px]"
       />
+
       <div
         aria-hidden="true"
         className="pointer-events-none absolute left-[60%] top-[58%] z-0 h-[34%] w-[34%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/10 blur-[70px]"
       />
+
       {isLoading && <LoadingState />}
 
       <Canvas
@@ -328,7 +352,11 @@ export function ProductViewer({ products, activeIndex, onHoldChange }: ProductVi
         frameloop="always"
         camera={{ position: [0, 0.05, 9.8], fov: 34 }}
         dpr={[1, 1.1]}
-        gl={{ alpha: true, antialias: false, powerPreference: "high-performance" }}
+        gl={{
+          alpha: true,
+          antialias: false,
+          powerPreference: "high-performance",
+        }}
         onCreated={({ gl }) => {
           gl.outputColorSpace = THREE.SRGBColorSpace;
           gl.toneMapping = THREE.ACESFilmicToneMapping;
@@ -338,7 +366,13 @@ export function ProductViewer({ products, activeIndex, onHoldChange }: ProductVi
         <ambientLight intensity={1.75} />
         <directionalLight position={[5, 7, 5]} intensity={2.1} />
         <directionalLight position={[-3, 2, -2]} intensity={0.55} />
-        <pointLight position={[-2, 1, 3]} intensity={0.8} distance={8} color="#8b5cf6" />
+        <pointLight
+          position={[-2, 1, 3]}
+          intensity={0.8}
+          distance={8}
+          color="#8b5cf6"
+        />
+
         <Environment preset="studio" environmentIntensity={0.45} />
 
         {previousProduct && (

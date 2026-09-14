@@ -95,7 +95,7 @@ export function CustomBuild() {
             >
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,rgba(139,92,246,0.22),transparent_48%)]" />
               <div className="absolute left-[8%] top-[9%] w-[48%] aspect-square overflow-hidden rounded-2xl border border-white/15 bg-black shadow-2xl sm:left-[12%] sm:top-[12%] sm:w-[43%]">
-                <img src="/catogeries/dog.webp" alt="Bobblehead reference photo placeholder" loading="lazy" className="h-full w-full object-cover transition-transform duration-700 hover:scale-105" />
+                <img src="/catogeries/couple.webp" alt="Bobblehead reference photo placeholder" loading="lazy" className="h-full w-full object-cover transition-transform duration-700 hover:scale-105" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-white/10" />
                 <span className="absolute bottom-4 left-4 text-[10px] font-medium uppercase tracking-[0.18em] text-white/80">Your reference</span>
               </div>
