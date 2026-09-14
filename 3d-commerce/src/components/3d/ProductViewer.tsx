@@ -2,22 +2,16 @@
 
 import {
   Suspense,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
 
-import {
-  Canvas,
-  useFrame,
-  useLoader,
-} from "@react-three/fiber";
-
+import { Canvas, useFrame, useLoader } from "@react-three/fiber";
 import { Environment } from "@react-three/drei";
-
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-
 import * as THREE from "three";
 
 import { HERO_MODEL_ROTATION_MS } from "@/config/hero-motion";
@@ -30,15 +24,14 @@ import type { HeroProduct } from "@/config/hero-products";
 const ENTER_DURATION = 0.85;
 const EXIT_DURATION = 0.65;
 const TOTAL_CYCLE = HERO_MODEL_ROTATION_MS / 1000;
-const ROTATION_DURATION = Math.max(
-  TOTAL_CYCLE - ENTER_DURATION,
-  3,
-);
+const ROTATION_DURATION = Math.max(TOTAL_CYCLE - ENTER_DURATION, 3);
 
 const MODEL_SIZE = 3.15;
 const ENTER_START_X = 3.8;
 const EXIT_END_X = -3.8;
 const ROTATION_RADIANS = Math.PI * 2;
+const DRAG_ROTATION_SPEED = 0.012;
+const AUTO_ROTATION_SPEED = ROTATION_RADIANS / ROTATION_DURATION;
 
 /* =========================================================
    TYPES
@@ -49,7 +42,14 @@ type ModelMode = "enter" | "exit";
 interface HeroModelProps {
   path: string;
   mode: ModelMode;
+  isInteractionPaused?: boolean;
+  interactionRef?: React.MutableRefObject<InteractionState>;
   onLoaded?: () => void;
+}
+
+interface InteractionState {
+  active: boolean;
+  lastX: number;
 }
 
 /* =========================================================
@@ -59,6 +59,8 @@ interface HeroModelProps {
 function HeroModel({
   path,
   mode,
+  isInteractionPaused = false,
+  interactionRef,
   onLoaded,
 }: HeroModelProps) {
   const { scene } = useLoader(GLTFLoader, path);
@@ -71,22 +73,13 @@ function HeroModel({
   const preparedModel = useMemo(() => {
     const model = scene.clone(true);
 
-    /* -----------------------------------------
-       Normalize model
-    ----------------------------------------- */
-
     const box = new THREE.Box3().setFromObject(model);
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
-    const maxDimension =
-      Math.max(size.x, size.y, size.z) || 1;
+    const maxDimension = Math.max(size.x, size.y, size.z) || 1;
 
     model.position.sub(center);
     model.scale.setScalar(MODEL_SIZE / maxDimension);
-
-    /* -----------------------------------------
-       Materials
-    ----------------------------------------- */
 
     const materials: THREE.Material[] = [];
 
@@ -115,15 +108,8 @@ function HeroModel({
       materials.push(cloned);
     });
 
-    return {
-      model,
-      materials,
-    };
+    return { model, materials };
   }, [scene]);
-
-  /* =====================================================
-     RESET / LOAD STATE
-  ====================================================== */
 
   useEffect(() => {
     elapsedRef.current = 0;
@@ -135,9 +121,7 @@ function HeroModel({
         -0.75,
         0,
       );
-      groupRef.current.scale.setScalar(
-        mode === "enter" ? 0.92 : 1,
-      );
+      groupRef.current.scale.setScalar(mode === "enter" ? 0.92 : 1);
     }
 
     if (rotationRef.current) {
@@ -156,15 +140,9 @@ function HeroModel({
         }
       });
 
-      return () => {
-        window.cancelAnimationFrame(frame);
-      };
+      return () => window.cancelAnimationFrame(frame);
     }
   }, [mode, onLoaded, preparedModel]);
-
-  /* =====================================================
-     ANIMATION
-  ====================================================== */
 
   useFrame((_, delta) => {
     const group = groupRef.current;
@@ -174,84 +152,39 @@ function HeroModel({
       return;
     }
 
-    elapsedRef.current += delta;
+    if (mode === "enter") {
+      elapsedRef.current += delta;
+    }
+
     const elapsed = elapsedRef.current;
 
     if (mode === "enter") {
-      const enterProgress = Math.min(
-        elapsed / ENTER_DURATION,
-        1,
-      );
+      const enterProgress = Math.min(elapsed / ENTER_DURATION, 1);
+      const eased = THREE.MathUtils.smootherstep(enterProgress, 0, 1);
 
-      const eased = THREE.MathUtils.smootherstep(
-        enterProgress,
-        0,
-        1,
-      );
-
-      group.position.x = THREE.MathUtils.lerp(
-        ENTER_START_X,
-        0,
-        eased,
-      );
-
-      group.scale.setScalar(
-        THREE.MathUtils.lerp(0.92, 1, eased),
-      );
-
-      const opacity = eased;
+      group.position.x = THREE.MathUtils.lerp(ENTER_START_X, 0, eased);
+      group.scale.setScalar(THREE.MathUtils.lerp(0.92, 1, eased));
 
       preparedModel.materials.forEach((material) => {
-        material.opacity = opacity;
+        material.opacity = eased;
       });
 
       if (elapsed > ENTER_DURATION) {
-        const rotationElapsed = elapsed - ENTER_DURATION;
-        const rotationProgress = Math.min(
-          rotationElapsed / ROTATION_DURATION,
-          1,
-        );
-
-        const rotationEase = THREE.MathUtils.smootherstep(
-          rotationProgress,
-          0,
-          1,
-        );
-
-        rotation.rotation.y =
-          rotationEase * ROTATION_RADIANS;
+        if (!interactionRef?.current.active && !isInteractionPaused) {
+          rotation.rotation.y += AUTO_ROTATION_SPEED * delta;
+        }
       }
 
       return;
     }
 
-    const exitProgress = Math.min(
-      elapsed / EXIT_DURATION,
-      1,
-    );
+    const exitProgress = Math.min(elapsed / EXIT_DURATION, 1);
+    const exitEase = THREE.MathUtils.smootherstep(exitProgress, 0, 1);
 
-    const exitEase = THREE.MathUtils.smootherstep(
-      exitProgress,
-      0,
-      1,
-    );
+    group.position.x = THREE.MathUtils.lerp(0, EXIT_END_X, exitEase);
+    group.scale.setScalar(THREE.MathUtils.lerp(1, 0.86, exitEase));
 
-    group.position.x = THREE.MathUtils.lerp(
-      0,
-      EXIT_END_X,
-      exitEase,
-    );
-
-    group.scale.setScalar(
-      THREE.MathUtils.lerp(1, 0.86, exitEase),
-    );
-
-    const opacity = THREE.MathUtils.lerp(
-      1,
-      0,
-      exitEase,
-    );
-
+    const opacity = THREE.MathUtils.lerp(1, 0, exitEase);
     preparedModel.materials.forEach((material) => {
       material.opacity = opacity;
     });
@@ -291,20 +224,18 @@ interface ProductViewerProps {
   activeIndex: number;
 }
 
-export function ProductViewer({
-  products,
-  activeIndex,
-}: ProductViewerProps) {
+export function ProductViewer({ products, activeIndex }: ProductViewerProps) {
   const currentIndexRef = useRef(activeIndex);
+  const interactionRef = useRef<InteractionState>({ active: false, lastX: 0 });
 
-  const [previousIndex, setPreviousIndex] = useState<number | null>(
-    null,
-  );
+  const [previousIndex, setPreviousIndex] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isInteracting, setIsInteracting] = useState(false);
 
-  /* -----------------------------------------
-     Detect product change
-  ----------------------------------------- */
+  const setInteraction = useCallback((active: boolean) => {
+    interactionRef.current.active = active;
+    setIsInteracting(active);
+  }, []);
 
   useEffect(() => {
     if (activeIndex === currentIndexRef.current) {
@@ -320,85 +251,93 @@ export function ProductViewer({
       setPreviousIndex(null);
     }, EXIT_DURATION * 1000);
 
-    return () => {
-      window.clearTimeout(timeout);
-    };
+    return () => window.clearTimeout(timeout);
   }, [activeIndex]);
 
-  const handleLoaded = useMemo(
-    () => () => setIsLoading(false),
+  const handleLoaded = useMemo(() => () => setIsLoading(false), []);
+
+  const handlePointerDown = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      interactionRef.current.active = true;
+      interactionRef.current.lastX = event.clientX;
+      setInteraction(true);
+      event.currentTarget.setPointerCapture(event.pointerId);
+    },
+    [setInteraction],
+  );
+
+  const handlePointerMove = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (!interactionRef.current.active) {
+        return;
+      }
+
+      const deltaX = event.clientX - interactionRef.current.lastX;
+      interactionRef.current.lastX = event.clientX;
+
+      const activeRotation = document.querySelector<HTMLElement>(
+        '[data-hero-model-rotation="active"]',
+      );
+
+      if (activeRotation) {
+        const currentRotation = Number.parseFloat(
+          activeRotation.dataset.rotation ?? "0",
+        );
+        activeRotation.dataset.rotation = `${currentRotation + deltaX * DRAG_ROTATION_SPEED}`;
+      }
+    },
     [],
   );
+
+  const handlePointerUp = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      interactionRef.current.active = false;
+      setInteraction(false);
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    },
+    [setInteraction],
+  );
+
+  const handlePointerCancel = useCallback(() => {
+    interactionRef.current.active = false;
+    setInteraction(false);
+  }, [setInteraction]);
 
   if (!products.length) {
     return null;
   }
 
   const activeProduct = products[activeIndex];
-  const previousProduct =
-    previousIndex !== null
-      ? products[previousIndex]
-      : null;
+  const previousProduct = previousIndex !== null ? products[previousIndex] : null;
 
   return (
-    <div className="relative h-full w-full">
-      {/* =================================================
-          PURPLE MODEL ATMOSPHERE
-      ================================================== */}
-
+    <div
+      className={`relative h-full w-full ${
+        isInteracting ? "cursor-grabbing" : "cursor-grab"
+      }`}
+      style={{ touchAction: "none" }}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
+      onPointerLeave={handlePointerCancel}
+    >
       <div
         aria-hidden="true"
-        className="
-          pointer-events-none
-          absolute
-          left-[58%]
-          top-1/2
-          z-0
-          h-[72%]
-          w-[72%]
-          -translate-x-1/2
-          -translate-y-1/2
-          rounded-full
-          bg-[radial-gradient(circle,rgba(139,92,246,0.28)_0%,rgba(109,40,217,0.14)_34%,rgba(109,40,217,0.05)_58%,transparent_74%)]
-          blur-[46px]
-        "
+        className="pointer-events-none absolute left-[58%] top-1/2 z-0 h-[72%] w-[72%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(139,92,246,0.28)_0%,rgba(109,40,217,0.14)_34%,rgba(109,40,217,0.05)_58%,transparent_74%)] blur-[46px]"
       />
 
       <div
         aria-hidden="true"
-        className="
-          pointer-events-none
-          absolute
-          left-[60%]
-          top-[58%]
-          z-0
-          h-[34%]
-          w-[34%]
-          -translate-x-1/2
-          -translate-y-1/2
-          rounded-full
-          bg-primary/10
-          blur-[70px]
-        "
+        className="pointer-events-none absolute left-[60%] top-[58%] z-0 h-[34%] w-[34%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/10 blur-[70px]"
       />
-
-      {/* =================================================
-          LOADING OVERLAY
-      ================================================== */}
 
       {isLoading && <LoadingState />}
-
-      {/* =================================================
-          CANVAS
-      ================================================== */}
 
       <Canvas
         className="relative z-10"
         frameloop="always"
-        camera={{
-          position: [0, 0.05, 9.8],
-          fov: 34,
-        }}
+        camera={{ position: [0, 0.05, 9.8], fov: 34 }}
         dpr={[1, 1.1]}
         gl={{
           alpha: true,
@@ -411,19 +350,11 @@ export function ProductViewer({
           gl.toneMappingExposure = 1.05;
         }}
       >
-        {/* Lightweight lighting */}
-
         <ambientLight intensity={1.75} />
 
-        <directionalLight
-          position={[5, 7, 5]}
-          intensity={2.1}
-        />
+        <directionalLight position={[5, 7, 5]} intensity={2.1} />
 
-        <directionalLight
-          position={[-3, 2, -2]}
-          intensity={0.55}
-        />
+        <directionalLight position={[-3, 2, -2]} intensity={0.55} />
 
         <pointLight
           position={[-2, 1, 3]}
@@ -432,12 +363,7 @@ export function ProductViewer({
           color="#8b5cf6"
         />
 
-        <Environment
-          preset="studio"
-          environmentIntensity={0.45}
-        />
-
-        {/* Old product → LEFT */}
+        <Environment preset="studio" environmentIntensity={0.45} />
 
         {previousProduct && (
           <Suspense fallback={null}>
@@ -445,21 +371,30 @@ export function ProductViewer({
               key={`previous-${previousProduct.id}`}
               path={previousProduct.model}
               mode="exit"
+              interactionRef={interactionRef}
             />
           </Suspense>
         )}
-
-        {/* New product ← RIGHT */}
 
         <Suspense fallback={null}>
           <HeroModel
             key={`active-${activeProduct.id}`}
             path={activeProduct.model}
             mode="enter"
+            interactionRef={interactionRef}
+            isInteractionPaused={isInteracting}
             onLoaded={handleLoaded}
           />
         </Suspense>
       </Canvas>
+
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute bottom-4 left-1/2 z-20 -translate-x-1/2 rounded-full border border-foreground/10 bg-background/55 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.16em] text-muted backdrop-blur-md transition-opacity"
+        style={{ opacity: isInteracting ? 0 : 0.72 }}
+      >
+        Hold & drag to explore
+      </div>
     </div>
   );
 }
