@@ -19,7 +19,7 @@ import { HeroProductStage } from "./HeroProductStage";
 
 export function Hero() {
   const [activeIndex, setActiveIndex] = useState(0);
-  const [isModelHeld, setIsModelHeld] = useState(false);
+  const isModelHeldRef = useRef(false);
   const rotationStartedAtRef = useRef(Date.now());
   const remainingTimeRef = useRef(HERO_MODEL_ROTATION_MS);
   const timeoutRef = useRef<number | null>(null);
@@ -33,6 +33,8 @@ export function Hero() {
 
   const scheduleNextProduct = useCallback(
     (delay: number = HERO_MODEL_ROTATION_MS) => {
+      if (isModelHeldRef.current) return;
+
       clearRotationTimer();
       rotationStartedAtRef.current = Date.now();
 
@@ -41,9 +43,9 @@ export function Hero() {
         remainingTimeRef.current = HERO_MODEL_ROTATION_MS;
 
         startTransition(() => {
-          setActiveIndex(
-            (current) => (current + 1) % heroProducts.length,
-          );
+          setActiveIndex((current) => {
+            return (current + 1) % heroProducts.length;
+          });
         });
       }, Math.max(0, delay));
     },
@@ -51,9 +53,7 @@ export function Hero() {
   );
 
   useEffect(() => {
-    if (heroProducts.length <= 1) {
-      return;
-    }
+    if (heroProducts.length <= 1) return;
 
     scheduleNextProduct(remainingTimeRef.current);
 
@@ -62,50 +62,39 @@ export function Hero() {
 
   const handleModelHoldChange = useCallback(
     (held: boolean) => {
-      if (heroProducts.length <= 1) {
-        return;
-      }
+      isModelHeldRef.current = held;
 
       if (held) {
-        if (!isModelHeld) {
-          const elapsed =
-            Date.now() - rotationStartedAtRef.current;
-          remainingTimeRef.current = Math.max(
-            HERO_MODEL_ROTATION_MS - elapsed,
-            0,
-          );
-          clearRotationTimer();
-        }
-
-        setIsModelHeld(true);
+        const elapsed = Date.now() - rotationStartedAtRef.current;
+        remainingTimeRef.current = Math.max(
+          HERO_MODEL_ROTATION_MS - elapsed,
+          0,
+        );
+        clearRotationTimer();
         return;
       }
 
-      if (isModelHeld) {
-        setIsModelHeld(false);
-        scheduleNextProduct(remainingTimeRef.current);
-      }
+      scheduleNextProduct(remainingTimeRef.current);
     },
-    [clearRotationTimer, isModelHeld, scheduleNextProduct],
+    [clearRotationTimer, scheduleNextProduct],
   );
 
   const handleProductChange = useCallback(
     (index: number) => {
       setActiveIndex(index);
       remainingTimeRef.current = HERO_MODEL_ROTATION_MS;
-      if (!isModelHeld) {
+
+      if (!isModelHeldRef.current) {
         scheduleNextProduct();
       }
     },
-    [isModelHeld, scheduleNextProduct],
+    [scheduleNextProduct],
   );
 
   const activeProduct = heroProducts[activeIndex];
 
   return (
-    <section
-      className="relative isolate overflow-hidden min-h-[720px] pb-10 lg:min-h-[calc(100svh-5rem)] lg:pb-0"
-    >
+    <section className="relative isolate overflow-hidden min-h-[720px] pb-10 lg:min-h-[calc(100svh-5rem)] lg:pb-0">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_55%_25%,rgba(139,92,246,0.13),transparent_35%),linear-gradient(180deg,rgba(255,255,255,0.025),transparent_48%)] lg:bg-[radial-gradient(circle_at_60%_40%,rgba(139,92,246,0.14),transparent_40%),linear-gradient(180deg,rgba(255,255,255,0.025),transparent_48%)]"
@@ -117,9 +106,7 @@ export function Hero() {
       />
 
       <Container className="relative min-h-[720px] py-0 lg:min-h-[calc(100svh-5rem)] lg:py-8 xl:py-10">
-        <div
-          className="absolute z-10 left-1/2 top-[3.5rem] h-[300px] w-[390px] -translate-x-1/2 sm:top-[4rem] sm:h-[340px] sm:w-[460px] lg:right-[-8%] lg:left-auto lg:top-1/2 lg:h-[min(82vw,780px)] lg:w-[min(72vw,820px)] lg:-translate-x-0 lg:-translate-y-1/2 xl:right-[-5%] xl:h-[min(88vh,820px)] xl:w-[min(64vw,900px)]"
-        >
+        <div className="absolute z-10 left-1/2 top-[3.5rem] h-[300px] w-[390px] -translate-x-1/2 sm:top-[4rem] sm:h-[340px] sm:w-[460px] lg:right-[-8%] lg:left-auto lg:top-1/2 lg:h-[min(82vw,780px)] lg:w-[min(72vw,820px)] lg:-translate-x-0 lg:-translate-y-1/2 xl:right-[-5%] xl:h-[min(88vh,820px)] xl:w-[min(64vw,900px)]">
           <HeroProductStage
             products={heroProducts}
             activeIndex={activeIndex}
