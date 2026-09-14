@@ -22,13 +22,6 @@ export const shopCategories: ShopCategory[] = [
     image: "catogeries/2.jpg",
   },
   {
-    id: "mobile-tv",
-    name: "Mobile / TV",
-    slug: "mobile-tv",
-    itemCount: 74,
-    image: "catogeries/3.jpg",
-  },
-  {
     id: "gaming",
     name: "Gaming",
     slug: "gaming",
@@ -41,13 +34,6 @@ export const shopCategories: ShopCategory[] = [
     slug: "heroes",
     itemCount: 86,
     image: "catogeries/1.jpg",
-  },
-  {
-    id: "collectibles",
-    name: "Collectibles",
-    slug: "collectibles",
-    itemCount: 119,
-    image: "catogeries/2.jpg",
   },
   {
     id: "desk-toys",
