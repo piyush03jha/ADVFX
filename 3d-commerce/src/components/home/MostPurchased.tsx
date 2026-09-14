@@ -112,10 +112,10 @@ function ProductCard({ product }: { product: (typeof mostPurchasedProducts)[numb
             event.stopPropagation();
             toggleWishlist(wishlistProduct);
           }}
-          className={`absolute right-2.5 top-2.5 z-10 h-7 w-7 shrink-0 !border-red-500 !text-white !shadow-none sm:right-3 sm:top-3 sm:h-8 sm:w-8 ${
+          className={`absolute right-2.5 top-2.5 z-10 h-7 w-7 shrink-0 !border-red-500 !text-red-500 !shadow-none sm:right-3 sm:top-3 sm:h-8 sm:w-8 ${
             liked
-              ? "!bg-red-500 hover:!bg-red-600"
-              : "!bg-black/55 hover:!bg-red-500/20 hover:!text-red-100"
+              ? "!bg-red-500 !text-white hover:!bg-red-600"
+              : "!bg-white/95 hover:!bg-red-50 dark:!bg-white/90 dark:hover:!bg-red-950/80"
           } backdrop-blur-md transition-colors`}
         >
           <IconHeart size={13} stroke={1.7} fill={liked ? "currentColor" : "none"} />
@@ -123,31 +123,29 @@ function ProductCard({ product }: { product: (typeof mostPurchasedProducts)[numb
       </div>
 
       <div className="flex flex-col px-3 pb-3 pt-3 sm:px-4 sm:pb-4 sm:pt-4">
-        <div className="flex items-start justify-between gap-2">
-          <Link href={`/product/${product.id}`} className="min-w-0">
+        <div className="flex items-start justify-between gap-3">
+          <Link href={`/product/${product.id}`} className="min-w-0 flex-1">
             <h3 className="line-clamp-2 text-xs font-medium leading-4 tracking-[-0.01em] text-foreground transition-colors duration-300 hover:text-primary-hover sm:text-sm sm:leading-5">{product.name}</h3>
           </Link>
+
+          <div className="shrink-0 pt-0.5 text-right">
+            <Price value={product.price} size="sm" />
+          </div>
         </div>
 
         <Rating value={product.rating} reviewCount={product.reviewCount} size={11} showValue className="mt-2" />
 
-        <div className="mt-2.5 flex items-center justify-between gap-3 sm:mt-3">
-          <Button
-            type="button"
-            variant="primary"
-            size="sm"
-            ariaLabel={`Add ${product.name} to cart`}
-            onClick={handleAddToCart}
-            className="!h-10 !min-h-10 flex-1 !rounded-xl !px-4 shadow-[0_0_18px_rgba(139,92,246,0.18)] sm:!h-11 sm:!min-h-11"
-          >
-            {added ? <IconCheck size={15} stroke={2} /> : <IconShoppingCart size={15} stroke={1.8} />}
-            <span>{added ? "Added to Cart" : "Add to Cart"}</span>
-          </Button>
-
-          <div className="shrink-0 text-right">
-            <Price value={product.price} size="sm" />
-          </div>
-        </div>
+        <Button
+          type="button"
+          variant="primary"
+          size="sm"
+          ariaLabel={`Add ${product.name} to cart`}
+          onClick={handleAddToCart}
+          className="mt-3 !h-11 !min-h-11 w-full !rounded-xl !px-4 shadow-[0_0_18px_rgba(139,92,246,0.18)] sm:!h-12 sm:!min-h-12"
+        >
+          {added ? <IconCheck size={15} stroke={2} /> : <IconShoppingCart size={15} stroke={1.8} />}
+          <span>{added ? "Added to Cart" : "Add to Cart"}</span>
+        </Button>
       </div>
     </Card>
   );
