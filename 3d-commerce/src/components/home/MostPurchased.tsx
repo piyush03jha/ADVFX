@@ -90,34 +90,63 @@ function ProductCard({ product }: { product: (typeof mostPurchasedProducts)[numb
 
   return (
     <Card interactive className="group h-full rounded-xl">
-      <Link href={`/product/${product.id}`} aria-label={`View ${product.name}`} className="block">
-        <div className="relative aspect-[1/0.82] overflow-hidden bg-surface-elevated/40 sm:aspect-[4/4.1]">
-          <img src={product.image} alt={product.name} loading="lazy" className="h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.045]" />
-          <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
-          <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,rgba(139,92,246,0.18),transparent_58%)] opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
-          <div className="absolute left-2.5 top-2.5 sm:left-3 sm:top-3"><Badge variant="default" className="px-2 py-0.5 text-[8px]">{product.category}</Badge></div>
+      <div className="relative overflow-hidden">
+        <Link href={`/product/${product.id}`} aria-label={`View ${product.name}`} className="block">
+          <div className="relative aspect-[1/0.82] overflow-hidden bg-surface-elevated/40 sm:aspect-[4/4.1]">
+            <img src={product.image} alt={product.name} loading="lazy" className="h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.045]" />
+            <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
+            <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,rgba(139,92,246,0.18),transparent_58%)] opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+          </div>
+        </Link>
+
+        <div className="absolute left-2.5 top-2.5 sm:left-3 sm:top-3">
+          <Badge variant="default" className="px-2 py-0.5 text-[8px]">{product.category}</Badge>
         </div>
-      </Link>
+
+        <IconButton
+          label={liked ? `Remove ${product.name} from wishlist` : `Add ${product.name} to wishlist`}
+          size="sm"
+          variant="default"
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            toggleWishlist(wishlistProduct);
+          }}
+          className={`absolute right-2.5 top-2.5 z-10 h-7 w-7 shrink-0 !border-red-500 !text-white !shadow-none sm:right-3 sm:top-3 sm:h-8 sm:w-8 ${
+            liked
+              ? "!bg-red-500 hover:!bg-red-600"
+              : "!bg-black/55 hover:!bg-red-500/20 hover:!text-red-100"
+          } backdrop-blur-md transition-colors`}
+        >
+          <IconHeart size={13} stroke={1.7} fill={liked ? "currentColor" : "none"} />
+        </IconButton>
+      </div>
 
       <div className="flex flex-col px-3 pb-3 pt-3 sm:px-4 sm:pb-4 sm:pt-4">
         <div className="flex items-start justify-between gap-2">
           <Link href={`/product/${product.id}`} className="min-w-0">
             <h3 className="line-clamp-2 text-xs font-medium leading-4 tracking-[-0.01em] text-foreground transition-colors duration-300 hover:text-primary-hover sm:text-sm sm:leading-5">{product.name}</h3>
           </Link>
-
-          <IconButton label={liked ? `Remove ${product.name} from wishlist` : `Add ${product.name} to wishlist`} size="sm" variant="default" onClick={(event) => { event.preventDefault(); event.stopPropagation(); toggleWishlist(wishlistProduct); }} className={`h-7 w-7 shrink-0 sm:h-8 sm:w-8 ${liked ? "border-primary/50 bg-primary/10 text-primary" : ""}`}>
-            <IconHeart size={13} stroke={1.7} fill={liked ? "currentColor" : "none"} />
-          </IconButton>
         </div>
 
         <Rating value={product.rating} reviewCount={product.reviewCount} size={11} showValue className="mt-2" />
 
-        <div className="mt-2.5 flex items-center justify-between gap-2 sm:mt-3">
-          <Price value={product.price} size="sm" />
-          <Button type="button" variant="primary" size="sm" ariaLabel={`Add ${product.name} to cart`} onClick={handleAddToCart} className="!h-8 !min-h-8 !w-8 !rounded-full !p-0 shadow-[0_0_18px_rgba(139,92,246,0.18)] sm:!w-auto sm:!px-3">
-            {added ? <IconCheck size={13} stroke={2} /> : <IconShoppingCart size={13} stroke={1.8} />}
-            <span className="hidden sm:inline">{added ? "Added" : "Add"}</span>
+        <div className="mt-2.5 flex items-center justify-between gap-3 sm:mt-3">
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            ariaLabel={`Add ${product.name} to cart`}
+            onClick={handleAddToCart}
+            className="!h-10 !min-h-10 flex-1 !rounded-xl !px-4 shadow-[0_0_18px_rgba(139,92,246,0.18)] sm:!h-11 sm:!min-h-11"
+          >
+            {added ? <IconCheck size={15} stroke={2} /> : <IconShoppingCart size={15} stroke={1.8} />}
+            <span>{added ? "Added to Cart" : "Add to Cart"}</span>
           </Button>
+
+          <div className="shrink-0 text-right">
+            <Price value={product.price} size="sm" />
+          </div>
         </div>
       </div>
     </Card>
