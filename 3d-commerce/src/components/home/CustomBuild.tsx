@@ -39,12 +39,12 @@ export function CustomBuild() {
               </div>
 
               <h2 className="mt-5 max-w-xl text-[2.8rem] font-semibold leading-[0.94] tracking-[-0.065em] text-foreground sm:text-5xl lg:text-[4.25rem]">
-                Not just a model.
-                <span className="mt-2 block text-muted">Your own masterpiece.</span>
+                Turn someone special
+                <span className="mt-2 block text-muted">into a bobblehead.</span>
               </h2>
 
               <p className="mt-6 max-w-lg text-sm leading-6 text-muted sm:text-base sm:leading-7">
-                Turn a memory, character, sketch, or wild idea into a premium physical collectible. Send us your references and requirements—we handle the modeling, refinement, and production journey.
+                Create a personalized bobblehead from a photo of your favorite person, pet, or character. Share your reference image, preferred pose, outfit, and dimensions—we will sculpt the details into a memorable physical collectible made just for you.
               </p>
 
               <div className="mt-7 space-y-3">
@@ -58,13 +58,10 @@ export function CustomBuild() {
                 ))}
               </div>
 
-              <div className="mt-8 flex flex-col gap-3 min-[420px]:flex-row">
+              <div className="mt-8 flex">
                 <Button href="/custom" variant="primary" size="lg" className="w-full min-[420px]:w-auto">
                   Start your custom order
                   <IconArrowUpRight size={17} stroke={1.8} />
-                </Button>
-                <Button href="/custom/examples" variant="outline" size="lg" className="w-full min-[420px]:w-auto">
-                  Explore examples
                 </Button>
               </div>
 
@@ -98,18 +95,18 @@ export function CustomBuild() {
             >
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,rgba(139,92,246,0.22),transparent_48%)]" />
               <div className="absolute left-[8%] top-[9%] h-[65%] w-[48%] overflow-hidden rounded-2xl border border-white/15 bg-black shadow-2xl sm:left-[12%] sm:top-[12%] sm:h-[58%] sm:w-[43%]">
-                <img src="/catogeries/1.jpg" alt="Custom 3D collectible example" loading="lazy" className="h-full w-full object-cover transition-transform duration-700 hover:scale-105" />
+                <img src="/catogeries/1.jpg" alt="Bobblehead reference photo placeholder" loading="lazy" className="h-full w-full object-cover transition-transform duration-700 hover:scale-105" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-white/10" />
-                <span className="absolute bottom-4 left-4 text-[10px] font-medium uppercase tracking-[0.18em] text-white/80">From reference</span>
+                <span className="absolute bottom-4 left-4 text-[10px] font-medium uppercase tracking-[0.18em] text-white/80">Your reference</span>
               </div>
               <div className="absolute bottom-[8%] right-[5%] h-[65%] w-[52%] overflow-hidden rounded-2xl border border-white/15 bg-black shadow-2xl sm:bottom-[12%] sm:right-[9%] sm:h-[58%] sm:w-[45%]">
-                <img src="/catogeries/2.jpg" alt="Custom 3D product example" loading="lazy" className="h-full w-full object-cover transition-transform duration-700 hover:scale-105" />
+                <img src="/catogeries/2.jpg" alt="Finished custom bobblehead placeholder" loading="lazy" className="h-full w-full object-cover transition-transform duration-700 hover:scale-105" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-white/10" />
-                <span className="absolute bottom-4 left-4 text-[10px] font-medium uppercase tracking-[0.18em] text-white/80">Into reality</span>
+                <span className="absolute bottom-4 left-4 text-[10px] font-medium uppercase tracking-[0.18em] text-white/80">Your bobblehead</span>
               </div>
               <div className="absolute bottom-6 left-6 rounded-xl border border-white/15 bg-black/65 px-4 py-3 text-white backdrop-blur-md sm:bottom-10 sm:left-10">
-                <p className="text-[9px] uppercase tracking-[0.2em] text-white/60">Built around you</p>
-                <p className="mt-1 text-sm font-medium">One-of-one creations</p>
+                <p className="text-[9px] uppercase tracking-[0.2em] text-white/60">Made personal</p>
+                <p className="mt-1 text-sm font-medium">A collectible with character</p>
               </div>
             </motion.div>
           </div>
