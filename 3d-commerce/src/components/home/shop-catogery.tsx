@@ -83,7 +83,7 @@ export function ShopByCategory() {
 function CategoryCard({ category, index }: { category: (typeof shopCategories)[number]; index: number }) {
   return (
     <Link href="/custom" className="group block">
-      <Card interactive className="relative aspect-[1/1.1] rounded-2xl sm:aspect-[1/1.2] lg:aspect-[1.15/1]">
+      <Card interactive className="relative aspect-[1/1.28] rounded-2xl sm:aspect-[1/1.38] lg:aspect-[1/1.32]">
         <img
           src={category.image}
           alt={category.name}
