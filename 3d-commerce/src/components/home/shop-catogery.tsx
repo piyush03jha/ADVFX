@@ -54,7 +54,7 @@ export function ShopByCategory() {
         ))}
       </div>
 
-      <div className="hidden grid-cols-4 gap-4 lg:grid">
+      <div className="hidden grid-cols-6 gap-3 lg:grid">
         {shopCategories.map((category, index) => (
           <motion.div
             key={category.id}
@@ -82,7 +82,7 @@ export function ShopByCategory() {
 
 function CategoryCard({ category, index }: { category: (typeof shopCategories)[number]; index: number }) {
   return (
-    <Link href={`/shop/${category.slug}`} className="group block">
+    <Link href="/custom" className="group block">
       <Card interactive className="relative aspect-[1/1.1] rounded-2xl sm:aspect-[1/1.2] lg:aspect-[1.15/1]">
         <img
           src={category.image}
@@ -109,7 +109,7 @@ function CategoryCard({ category, index }: { category: (typeof shopCategories)[n
         <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 lg:p-5">
           <Badge
             variant="default"
-            className="!border-white/20 !bg-black/90 !px-2 !py-0.5 !text-[8px] !text-white shadow-md backdrop-blur-md sm:!px-2.5 sm:!py-1 sm:!text-[10px]"
+            className="!border-stone-200 !bg-[#f5f3ef] !px-2 !py-0.5 !text-[8px] !text-stone-900 shadow-md backdrop-blur-md dark:!border-white/20 dark:!bg-black/90 dark:!text-white sm:!px-2.5 sm:!py-1 sm:!text-[10px]"
           >
             {category.itemCount} models
           </Badge>
