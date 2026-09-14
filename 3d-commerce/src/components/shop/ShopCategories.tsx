@@ -94,14 +94,14 @@ function CategoryCard({ image, label, description, active, onClick }: {
       <div className="relative flex h-full min-h-[150px] flex-col justify-end p-4">
         <div className="flex items-end justify-between gap-3">
           <div className="min-w-0">
-            <h3 className="text-sm font-semibold leading-5 text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
+            <h3 className="inline-block max-w-full rounded-md bg-black/75 px-2 py-1 text-sm font-semibold leading-5 text-white shadow-sm backdrop-blur-[2px]">
               {label}
             </h3>
-            <p className="mt-1 text-[10px] font-medium leading-4 text-white/90 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
+            <p className="mt-1 inline-block max-w-full rounded-md bg-black/65 px-2 py-1 text-[10px] font-medium leading-4 text-white shadow-sm backdrop-blur-[2px]">
               {description}
             </p>
           </div>
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/35 bg-white/15 text-white shadow-sm backdrop-blur-md transition-all duration-300 group-hover:border-primary/70 group-hover:bg-primary group-hover:text-white group-hover:-translate-y-0.5">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/35 bg-white/15 text-white shadow-sm backdrop-blur-md transition-all duration-300 group-hover:-translate-y-0.5 group-hover:border-primary/70 group-hover:bg-primary group-hover:text-white">
             <IconArrowUpRight size={15} stroke={2} />
           </span>
         </div>
