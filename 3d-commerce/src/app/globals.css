@@ -8,21 +8,37 @@
 
 /* =========================================================
    LIGHT MODE TOKENS
+
+   Recolored to match dark mode's neutral, cinematic character
+   instead of the previous warm cream/beige palette — same
+   purple brand accent, same elevation logic, just inverted.
+
+   Two eye-strain choices worth knowing about:
+   1. --background is a soft off-white (#f7f7f8), not pure
+      #ffffff. A full-page pure-white background is what
+      actually causes glare/strain over time — --surface can
+      stay closer to white since it's used in smaller card-
+      sized areas, not as the page canvas.
+   2. --foreground is a soft near-black (#18181b), not pure
+      #000000. Contrast against the background is still very
+      high (~15:1, well past WCAG AAA) — softening off pure
+      black removes the harsh "photonegative" starkness
+      without giving up any real legibility.
    ========================================================= */
 
 :root {
-  --background: #faf9f7;
-  --surface: #fffdf9;
-  --surface-elevated: #f7f1e8;
-  --surface-hover: #efe5d7;
+  --background: #f7f7f8;
+  --surface: #ffffff;
+  --surface-elevated: #f1f1f3;
+  --surface-hover: #e8e8eb;
 
-  --foreground: #171513;
-  --muted: #57514a;
-  --muted-foreground: #78716a;
+  --foreground: #18181b;
+  --muted: #52525b;
+  --muted-foreground: #71717a;
 
-  --border: #e7dfd5;
-  --border-subtle: rgba(23, 21, 19, 0.08);
-  --border-strong: rgba(23, 21, 19, 0.16);
+  --border: #e4e4e7;
+  --border-subtle: rgba(24, 24, 27, 0.08);
+  --border-strong: rgba(24, 24, 27, 0.16);
 
   --primary: #8b5cf6;
   --primary-hover: #7c3aed;
@@ -41,29 +57,32 @@
 
   --gradient-surface: linear-gradient(
     180deg,
-    rgba(255, 253, 249, 0.96),
-    rgba(247, 241, 232, 0.62)
+    rgba(255, 255, 255, 0.96),
+    rgba(241, 241, 243, 0.62)
   );
 
   --gradient-border: linear-gradient(
     135deg,
     rgba(139, 92, 246, 0.55),
-    rgba(87, 81, 74, 0.08),
+    rgba(24, 24, 27, 0.08),
     rgba(139, 92, 246, 0.18)
   );
 
   --glow-primary: rgba(139, 92, 246, 0.18);
 
   --shadow-card:
-    inset 0 1px 0 rgba(255, 255, 255, 0.92),
-    0 4px 20px rgba(74, 56, 40, 0.06);
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 4px 20px rgba(24, 24, 27, 0.06);
 
   --shadow-card-hover:
-    inset 0 1px 0 rgba(255, 255, 255, 0.96),
-    0 12px 35px rgba(74, 56, 40, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 12px 35px rgba(24, 24, 27, 0.09),
     0 0 30px rgba(139, 92, 246, 0.08);
 
-  /* Product-tag surface */
+  /* Product-tag surface — kept as a deliberate warm "paper tag"
+     accent, pairing with dark mode's equally warm tag tokens
+     below rather than going fully neutral like the rest of the
+     palette. */
   --tag-background: #f2eadf;
   --tag-border: #e4d8c8;
   --tag-foreground: #51483f;
