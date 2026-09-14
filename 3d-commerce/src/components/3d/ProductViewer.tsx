@@ -17,10 +17,6 @@ import * as THREE from "three";
 import { HERO_MODEL_ROTATION_MS } from "@/config/hero-motion";
 import type { HeroProduct } from "@/config/hero-products";
 
-/* =========================================================
-   CONFIG
-========================================================= */
-
 const ENTER_DURATION = 0.85;
 const EXIT_DURATION = 0.65;
 const TOTAL_CYCLE = HERO_MODEL_ROTATION_MS / 1000;
@@ -33,38 +29,30 @@ const ROTATION_RADIANS = Math.PI * 2;
 const DRAG_ROTATION_SPEED = 0.012;
 const AUTO_ROTATION_SPEED = ROTATION_RADIANS / ROTATION_DURATION;
 
-/* =========================================================
-   TYPES
-========================================================= */
-
 type ModelMode = "enter" | "exit";
-
-interface HeroModelProps {
-  path: string;
-  mode: ModelMode;
-  isInteractionPaused?: boolean;
-  interactionRef?: React.MutableRefObject<InteractionState>;
-  onLoaded?: () => void;
-}
 
 interface InteractionState {
   active: boolean;
   lastX: number;
+  rotationY: number;
 }
 
-/* =========================================================
-   MODEL
-========================================================= */
+interface HeroModelProps {
+  path: string;
+  mode: ModelMode;
+  interactionRef: React.MutableRefObject<InteractionState>;
+  isInteractionPaused?: boolean;
+  onLoaded?: () => void;
+}
 
 function HeroModel({
   path,
   mode,
-  isInteractionPaused = false,
   interactionRef,
+  isInteractionPaused = false,
   onLoaded,
 }: HeroModelProps) {
   const { scene } = useLoader(GLTFLoader, path);
-
   const groupRef = useRef<THREE.Group>(null);
   const rotationRef = useRef<THREE.Group>(null);
   const elapsedRef = useRef(0);
@@ -72,7 +60,6 @@ function HeroModel({
 
   const preparedModel = useMemo(() => {
     const model = scene.clone(true);
-
     const box = new THREE.Box3().setFromObject(model);
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
@@ -84,9 +71,7 @@ function HeroModel({
     const materials: THREE.Material[] = [];
 
     model.traverse((object) => {
-      if (!(object instanceof THREE.Mesh)) {
-        return;
-      }
+      if (!(object instanceof THREE.Mesh)) return;
 
       object.castShadow = false;
       object.receiveShadow = false;
@@ -148,9 +133,7 @@ function HeroModel({
     const group = groupRef.current;
     const rotation = rotationRef.current;
 
-    if (!group || !rotation) {
-      return;
-    }
+    if (!group || !rotation) return;
 
     if (mode === "enter") {
       elapsedRef.current += delta;
@@ -170,8 +153,11 @@ function HeroModel({
       });
 
       if (elapsed > ENTER_DURATION) {
-        if (!interactionRef?.current.active && !isInteractionPaused) {
+        if (interactionRef.current.active) {
+          rotation.rotation.y = interactionRef.current.rotationY;
+        } else if (!isInteractionPaused) {
           rotation.rotation.y += AUTO_ROTATION_SPEED * delta;
+          interactionRef.current.rotationY = rotation.rotation.y;
         }
       }
 
@@ -199,11 +185,6 @@ function HeroModel({
   );
 }
 
-/* =========================================================
-   LOADING
-   HTML/CSS only — intentionally outside WebGL.
-========================================================= */
-
 function LoadingState() {
   return (
     <div
@@ -215,10 +196,6 @@ function LoadingState() {
   );
 }
 
-/* =========================================================
-   VIEWER
-========================================================= */
-
 interface ProductViewerProps {
   products: HeroProduct[];
   activeIndex: number;
@@ -226,33 +203,36 @@ interface ProductViewerProps {
 
 export function ProductViewer({ products, activeIndex }: ProductViewerProps) {
   const currentIndexRef = useRef(activeIndex);
-  const interactionRef = useRef<InteractionState>({ active: false, lastX: 0 });
+  const interactionRef = useRef<InteractionState>({
+    active: false,
+    lastX: 0,
+    rotationY: 0,
+  });
 
   const [previousIndex, setPreviousIndex] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isInteracting, setIsInteracting] = useState(false);
 
-  const setInteraction = useCallback((active: boolean) => {
-    interactionRef.current.active = active;
-    setIsInteracting(active);
+  const stopInteraction = useCallback(() => {
+    interactionRef.current.active = false;
+    setIsInteracting(false);
   }, []);
 
   useEffect(() => {
-    if (activeIndex === currentIndexRef.current) {
-      return;
-    }
+    if (activeIndex === currentIndexRef.current) return;
 
     const oldIndex = currentIndexRef.current;
     currentIndexRef.current = activeIndex;
     setPreviousIndex(oldIndex);
     setIsLoading(true);
+    stopInteraction();
 
     const timeout = window.setTimeout(() => {
       setPreviousIndex(null);
     }, EXIT_DURATION * 1000);
 
     return () => window.clearTimeout(timeout);
-  }, [activeIndex]);
+  }, [activeIndex, stopInteraction]);
 
   const handleLoaded = useMemo(() => () => setIsLoading(false), []);
 
@@ -260,61 +240,45 @@ export function ProductViewer({ products, activeIndex }: ProductViewerProps) {
     (event: React.PointerEvent<HTMLDivElement>) => {
       interactionRef.current.active = true;
       interactionRef.current.lastX = event.clientX;
-      setInteraction(true);
+      setIsInteracting(true);
       event.currentTarget.setPointerCapture(event.pointerId);
     },
-    [setInteraction],
+    [],
   );
 
   const handlePointerMove = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
-      if (!interactionRef.current.active) {
-        return;
-      }
+      if (!interactionRef.current.active) return;
 
       const deltaX = event.clientX - interactionRef.current.lastX;
       interactionRef.current.lastX = event.clientX;
-
-      const activeRotation = document.querySelector<HTMLElement>(
-        '[data-hero-model-rotation="active"]',
-      );
-
-      if (activeRotation) {
-        const currentRotation = Number.parseFloat(
-          activeRotation.dataset.rotation ?? "0",
-        );
-        activeRotation.dataset.rotation = `${currentRotation + deltaX * DRAG_ROTATION_SPEED}`;
-      }
+      interactionRef.current.rotationY += deltaX * DRAG_ROTATION_SPEED;
     },
     [],
   );
 
   const handlePointerUp = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
-      interactionRef.current.active = false;
-      setInteraction(false);
-      event.currentTarget.releasePointerCapture(event.pointerId);
+      stopInteraction();
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
     },
-    [setInteraction],
+    [stopInteraction],
   );
 
   const handlePointerCancel = useCallback(() => {
-    interactionRef.current.active = false;
-    setInteraction(false);
-  }, [setInteraction]);
+    stopInteraction();
+  }, [stopInteraction]);
 
-  if (!products.length) {
-    return null;
-  }
+  if (!products.length) return null;
 
   const activeProduct = products[activeIndex];
   const previousProduct = previousIndex !== null ? products[previousIndex] : null;
 
   return (
     <div
-      className={`relative h-full w-full ${
-        isInteracting ? "cursor-grabbing" : "cursor-grab"
-      }`}
+      className={`relative h-full w-full ${isInteracting ? "cursor-grabbing" : "cursor-grab"}`}
       style={{ touchAction: "none" }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
@@ -351,18 +315,14 @@ export function ProductViewer({ products, activeIndex }: ProductViewerProps) {
         }}
       >
         <ambientLight intensity={1.75} />
-
         <directionalLight position={[5, 7, 5]} intensity={2.1} />
-
         <directionalLight position={[-3, 2, -2]} intensity={0.55} />
-
         <pointLight
           position={[-2, 1, 3]}
           intensity={0.8}
           distance={8}
           color="#8b5cf6"
         />
-
         <Environment preset="studio" environmentIntensity={0.45} />
 
         {previousProduct && (
