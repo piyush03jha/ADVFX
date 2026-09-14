@@ -3,12 +3,7 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { IconMenu2, IconX } from "@tabler/icons-react";
-import {
-  motion,
-  AnimatePresence,
-  useScroll,
-  useMotionValueEvent,
-} from "motion/react";
+import { motion, AnimatePresence, useScroll, useMotionValueEvent } from "motion/react";
 import React, { useState } from "react";
 
 interface NavbarProps { children: React.ReactNode; className?: string }
@@ -39,9 +34,7 @@ export const NavBody = ({ children, className, visible }: NavBodyProps) => (
   <motion.div
     animate={{
       backdropFilter: visible ? "blur(20px)" : "blur(0px)",
-      boxShadow: visible
-        ? "0 12px 40px color-mix(in srgb, var(--foreground) 16%, transparent)"
-        : "none",
+      boxShadow: visible ? "0 12px 40px color-mix(in srgb, var(--foreground) 16%, transparent)" : "none",
       width: visible ? "calc(75% - 48px)" : "calc(80% - 32px)",
       y: 0,
     }}
@@ -90,9 +83,7 @@ export const MobileNav = ({ children, className, visible }: MobileNavProps) => (
   <motion.div
     animate={{
       backdropFilter: visible ? "blur(20px)" : "blur(0px)",
-      boxShadow: visible
-        ? "0 12px 40px color-mix(in srgb, var(--foreground) 16%, transparent)"
-        : "none",
+      boxShadow: visible ? "0 12px 40px color-mix(in srgb, var(--foreground) 16%, transparent)" : "none",
       width: visible ? "96%" : "100%",
       y: 0,
     }}
@@ -113,7 +104,7 @@ export const MobileNavHeader = ({ children, className }: MobileNavHeaderProps) =
   </div>
 );
 
-export const MobileNavMenu = ({ children, className, isOpen, onClose }: MobileNavMenuProps) => (
+export const MobileNavMenu = ({ children, className, isOpen }: MobileNavMenuProps) => (
   <AnimatePresence>
     {isOpen && (
       <motion.div
@@ -145,42 +136,27 @@ export const MobileNavToggle = ({ isOpen, onClick }: { isOpen: boolean; onClick:
 );
 
 export const NavbarLogo = () => (
-  <Link
-    href="/"
-    className="relative z-20 flex shrink-0 items-center gap-2 px-2 py-1 text-sm font-semibold tracking-[0.15em] text-foreground transition-opacity hover:opacity-80"
-  >
-    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[image:var(--gradient-primary)] text-xs font-bold text-white shadow-[0_0_18px_var(--glow-primary)]">
-      3D
-    </span>
-    <span className="whitespace-nowrap">
-      BRAND<span className="text-primary">.</span>
-    </span>
+  <Link href="/" className="relative z-20 flex shrink-0 items-center gap-2 px-2 py-1 text-sm font-semibold tracking-[0.15em] text-foreground transition-opacity hover:opacity-80">
+    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[image:var(--gradient-primary)] text-xs font-bold text-white shadow-[0_0_18px_var(--glow-primary)]">3D</span>
+    <span className="whitespace-nowrap">BRAND<span className="text-primary">.</span></span>
   </Link>
 );
 
 export const NavbarButton = ({ href, children, className, variant = "primary", type = "button", target, rel, onClick }: NavbarButtonProps) => {
-  const baseStyles = `relative inline-flex items-center justify-center rounded-full px-5 py-2.5 text-sm font-medium transition-all duration-300 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary`;
+  const baseStyles = "relative inline-flex items-center justify-center rounded-full px-5 py-2.5 text-sm font-medium transition-all duration-300 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary";
   const variantStyles = {
-    primary: `bg-[image:var(--gradient-primary)] text-white shadow-[0_8px_30px_rgba(139,92,246,0.25)] hover:shadow-[0_10px_40px_rgba(139,92,246,0.4)]`,
-    secondary: `border border-border bg-surface text-foreground hover:border-primary hover:bg-surface-elevated`,
-    dark: `border border-border bg-background text-foreground hover:border-primary hover:bg-surface`,
-    gradient: `bg-[image:var(--gradient-primary)] text-white shadow-[0_8px_30px_rgba(139,92,246,0.25)] hover:shadow-[0_10px_40px_rgba(139,92,246,0.4)]`,
+    primary: "bg-[image:var(--gradient-primary)] text-white shadow-[0_8px_30px_rgba(139,92,246,0.25)] hover:shadow-[0_10px_40px_rgba(139,92,246,0.4)]",
+    secondary: "border border-border bg-surface text-foreground hover:border-primary hover:bg-surface-elevated",
+    dark: "border border-border bg-background text-foreground hover:border-primary hover:bg-surface",
+    gradient: "bg-[image:var(--gradient-primary)] text-white shadow-[0_8px_30px_rgba(139,92,246,0.25)] hover:shadow-[0_10px_40px_rgba(139,92,246,0.4)]",
   };
   const classes = cn(baseStyles, variantStyles[variant], className);
 
   if (href) {
-    return (
-      <Link href={href} className={classes} target={target} rel={rel} onClick={onClick as React.MouseEventHandler<HTMLAnchorElement> | undefined}>
-        {children}
-      </Link>
-    );
+    return <Link href={href} className={classes} target={target} rel={rel} onClick={onClick as React.MouseEventHandler<HTMLAnchorElement> | undefined}>{children}</Link>;
   }
 
-  return (
-    <button type={type} className={classes} onClick={onClick as React.MouseEventHandler<HTMLButtonElement> | undefined}>
-      {children}
-    </button>
-  );
+  return <button type={type} className={classes} onClick={onClick as React.MouseEventHandler<HTMLButtonElement> | undefined}>{children}</button>;
 };
 
 interface NavbarButtonProps {
