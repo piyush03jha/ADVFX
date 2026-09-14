@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   IconHeart,
   IconSearch,
@@ -20,8 +20,8 @@ import {
   MobileNavMenu,
 } from "@/components/ui/resizable-navbar";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
-
 import { useCart } from "@/context/CartContext";
+import { heroProducts } from "@/config/hero-products";
 
 const navItems = [
   { name: "Home", link: "/" },
@@ -36,6 +36,20 @@ export function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const { itemCount, isLoaded } = useCart();
+
+  const suggestions = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+
+    if (query.length < 3) return [];
+
+    return heroProducts
+      .filter((product) =>
+        [product.name, product.category, product.description].some((value) =>
+          value.toLowerCase().includes(query),
+        ),
+      )
+      .slice(0, 5);
+  }, [searchQuery]);
 
   const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -53,21 +67,43 @@ export function Navbar() {
         <NavItems items={navItems} />
 
         <div className="ml-auto flex min-w-0 items-center gap-1 pointer-events-auto">
-          <form
-            onSubmit={handleSearchSubmit}
-            className="hidden w-[170px] items-center rounded-full border border-border bg-surface/80 px-3 transition-all duration-300 focus-within:border-primary/50 focus-within:bg-surface-elevated lg:flex"
-            role="search"
-          >
-            <IconSearch size={16} stroke={1.8} className="shrink-0 text-muted" />
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search"
-              aria-label="Search products"
-              className="h-8 w-full bg-transparent px-2 text-xs text-foreground outline-none placeholder:text-muted"
-            />
-          </form>
+          <div className="relative hidden lg:block">
+            <form
+              onSubmit={handleSearchSubmit}
+              className="flex w-[190px] items-center rounded-full border border-border bg-surface/80 px-3 transition-all duration-300 focus-within:border-primary/50 focus-within:bg-surface-elevated"
+              role="search"
+            >
+              <IconSearch size={16} stroke={1.8} className="shrink-0 text-muted" />
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search products"
+                aria-label="Search products"
+                className="h-8 w-full bg-transparent px-2 text-xs text-foreground outline-none placeholder:text-muted"
+              />
+            </form>
+
+            {searchQuery.trim().length >= 3 && (
+              <div className="absolute left-0 right-0 top-11 z-[100] overflow-hidden rounded-2xl border border-border bg-surface-elevated shadow-xl">
+                {suggestions.length > 0 ? (
+                  suggestions.map((product) => (
+                    <Link
+                      key={product.id}
+                      href={`/shop?search=${encodeURIComponent(product.name)}`}
+                      onClick={() => setSearchQuery("")}
+                      className="block border-b border-border/60 px-4 py-3 last:border-0 hover:bg-surface"
+                    >
+                      <p className="text-sm font-medium text-foreground">{product.name}</p>
+                      <p className="mt-0.5 text-xs text-muted">{product.category}</p>
+                    </Link>
+                  ))
+                ) : (
+                  <p className="px-4 py-3 text-sm text-muted">No related products found.</p>
+                )}
+              </div>
+            )}
+          </div>
 
           <NavIconLink href="/wishlist" label="Wishlist">
             <IconHeart size={18} stroke={1.7} />
@@ -105,21 +141,42 @@ export function Navbar() {
           isOpen={isMobileMenuOpen}
           onClose={() => setIsMobileMenuOpen(false)}
         >
-          <form
-            onSubmit={handleSearchSubmit}
-            className="flex items-center rounded-xl border border-border bg-surface px-4"
-            role="search"
-          >
-            <IconSearch size={17} stroke={1.8} className="shrink-0 text-muted" />
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search products"
-              aria-label="Search products"
-              className="h-11 w-full bg-transparent px-3 text-sm text-foreground outline-none placeholder:text-muted"
-            />
-          </form>
+          <div className="relative">
+            <form
+              onSubmit={handleSearchSubmit}
+              className="flex items-center rounded-xl border border-border bg-surface px-4"
+              role="search"
+            >
+              <IconSearch size={17} stroke={1.8} className="shrink-0 text-muted" />
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search products"
+                aria-label="Search products"
+                className="h-11 w-full bg-transparent px-3 text-sm text-foreground outline-none placeholder:text-muted"
+              />
+            </form>
+
+            {searchQuery.trim().length >= 3 && suggestions.length > 0 && (
+              <div className="mt-2 overflow-hidden rounded-2xl border border-border bg-surface-elevated">
+                {suggestions.map((product) => (
+                  <Link
+                    key={product.id}
+                    href={`/shop?search=${encodeURIComponent(product.name)}`}
+                    onClick={() => {
+                      setSearchQuery("");
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="block border-b border-border/60 px-4 py-3 last:border-0"
+                  >
+                    <p className="text-sm font-medium text-foreground">{product.name}</p>
+                    <p className="mt-0.5 text-xs text-muted">{product.category}</p>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
 
           <div className="mt-3 flex flex-col gap-2">
             {navItems.map((item) => (
