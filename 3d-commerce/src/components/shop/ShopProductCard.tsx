@@ -3,12 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-import {
-  IconEye,
-  IconShoppingCart,
-  IconCheck,
-  IconBolt,
-} from "@tabler/icons-react";
+import { IconEye } from "@tabler/icons-react";
 
 import { useState } from "react";
 
@@ -94,11 +89,7 @@ export function ShopProductCard({ product }: ShopProductCardProps) {
 
         {product.discount && (
           <div className="absolute bottom-3 left-3">
-            <Badge
-              variant="media"
-            >
-              {product.discount}
-            </Badge>
+            <Badge variant="media">{product.discount}</Badge>
           </div>
         )}
       </div>
@@ -141,28 +132,17 @@ export function ShopProductCard({ product }: ShopProductCardProps) {
             onClick={handleAddToCart}
             className="min-h-12 w-full text-xs font-semibold sm:text-sm"
           >
-            {added ? (
-              <>
-                <IconCheck size={16} />
-                Added
-              </>
-            ) : (
-              <>
-                <IconShoppingCart size={16} />
-                Add to Cart
-              </>
-            )}
+            {added ? "Added" : "Add to Cart"}
           </Button>
 
           <Button
             type="button"
-            variant="outline"
+            variant="primary"
             size="lg"
             onClick={handleBuyNow}
             disabled={buying}
             className="min-h-12 w-full text-xs font-semibold sm:text-sm"
           >
-            <IconBolt size={16} />
             {buying ? "Opening…" : "Buy Now"}
           </Button>
         </div>
