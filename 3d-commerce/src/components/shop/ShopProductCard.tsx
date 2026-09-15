@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import {
   IconEye,
   IconShoppingCart,
   IconCheck,
+  IconBolt,
 } from "@tabler/icons-react";
 
 import { useState } from "react";
@@ -25,8 +27,10 @@ interface ShopProductCardProps {
 }
 
 export function ShopProductCard({ product }: ShopProductCardProps) {
+  const router = useRouter();
   const { addItem } = useCart();
   const [added, setAdded] = useState(false);
+  const [buying, setBuying] = useState(false);
 
   const handleAddToCart = () => {
     addItem(product, "medium", 1);
@@ -35,6 +39,12 @@ export function ShopProductCard({ product }: ShopProductCardProps) {
     window.setTimeout(() => {
       setAdded(false);
     }, 1600);
+  };
+
+  const handleBuyNow = () => {
+    setBuying(true);
+    addItem(product, "medium", 1);
+    router.push("/checkout");
   };
 
   return (
@@ -124,25 +134,39 @@ export function ShopProductCard({ product }: ShopProductCardProps) {
           className="mt-2.5"
         />
 
-        <Button
-          type="button"
-          variant="primary"
-          size="lg"
-          onClick={handleAddToCart}
-          className="mt-4 min-h-12 w-full text-sm font-semibold"
-        >
-          {added ? (
-            <>
-              <IconCheck size={16} />
-              Added to Cart
-            </>
-          ) : (
-            <>
-              <IconShoppingCart size={16} />
-              Add to Cart
-            </>
-          )}
-        </Button>
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <Button
+            type="button"
+            variant="primary"
+            size="lg"
+            onClick={handleAddToCart}
+            className="min-h-12 w-full text-xs font-semibold sm:text-sm"
+          >
+            {added ? (
+              <>
+                <IconCheck size={16} />
+                Added
+              </>
+            ) : (
+              <>
+                <IconShoppingCart size={16} />
+                Add to Cart
+              </>
+            )}
+          </Button>
+
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            onClick={handleBuyNow}
+            disabled={buying}
+            className="min-h-12 w-full text-xs font-semibold sm:text-sm"
+          >
+            <IconBolt size={16} />
+            {buying ? "Opening…" : "Buy Now"}
+          </Button>
+        </div>
       </div>
     </Card>
   );
