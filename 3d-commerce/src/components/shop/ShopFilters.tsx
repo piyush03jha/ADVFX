@@ -11,6 +11,8 @@ export interface ShopFilterState {
 }
 
 interface ShopFiltersProps {
+  /** Retained for compatibility with existing callers; category filtering is handled by ShopProductGrid. */
+  categories?: string[];
   filters: ShopFilterState;
   onChange: (filters: ShopFilterState) => void;
   onClear: () => void;
@@ -33,117 +35,31 @@ const RATING_OPTIONS = [
 export function ShopFilters({ filters, onChange, onClear, compact = false }: ShopFiltersProps) {
   const [open, setOpen] = useState<string | null>(null);
 
-  const hasActiveFilters =
-    filters.categories.length > 0 ||
-    filters.minPrice !== 0 ||
-    filters.maxPrice !== Infinity ||
-    filters.minRating !== 0;
+  const hasActiveFilters = filters.categories.length > 0 || filters.minPrice !== 0 || filters.maxPrice !== Infinity || filters.minRating !== 0;
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <FilterDropdown
-        label={filters.minPrice !== 0 || filters.maxPrice !== Infinity ? "Price · Active" : "Price"}
-        open={open === "price"}
-        onToggle={() => setOpen(open === "price" ? null : "price")}
-        compact={compact}
-      >
+      <FilterDropdown label={filters.minPrice !== 0 || filters.maxPrice !== Infinity ? "Price · Active" : "Price"} open={open === "price"} onToggle={() => setOpen(open === "price" ? null : "price")} compact={compact}>
         <div className="w-56 p-2">
           {PRICE_OPTIONS.map((option) => {
             const selected = filters.minPrice === option.min && filters.maxPrice === option.max;
-            return (
-              <button
-                key={option.label}
-                type="button"
-                onClick={() => {
-                  onChange({ ...filters, minPrice: option.min, maxPrice: option.max });
-                  setOpen(null);
-                }}
-                className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-xs text-muted transition-colors hover:bg-surface-elevated hover:text-foreground"
-              >
-                <span>{option.label}</span>
-                {selected && <IconCheck size={14} className="text-primary" />}
-              </button>
-            );
+            return <button key={option.label} type="button" onClick={() => { onChange({ ...filters, minPrice: option.min, maxPrice: option.max }); setOpen(null); }} className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-xs text-muted transition-colors hover:bg-surface-elevated hover:text-foreground"><span>{option.label}</span>{selected && <IconCheck size={14} className="text-primary" />}</button>;
           })}
         </div>
       </FilterDropdown>
-
-      <FilterDropdown
-        label={filters.minRating > 0 ? `Rating · ${filters.minRating}+` : "Rating"}
-        open={open === "rating"}
-        onToggle={() => setOpen(open === "rating" ? null : "rating")}
-        compact={compact}
-      >
+      <FilterDropdown label={filters.minRating > 0 ? `Rating · ${filters.minRating}+` : "Rating"} open={open === "rating"} onToggle={() => setOpen(open === "rating" ? null : "rating")} compact={compact}>
         <div className="w-44 p-2">
           {RATING_OPTIONS.map((option) => {
             const selected = filters.minRating === option.value;
-            return (
-              <button
-                key={option.label}
-                type="button"
-                onClick={() => {
-                  onChange({ ...filters, minRating: selected ? 0 : option.value });
-                  setOpen(null);
-                }}
-                className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-xs text-muted transition-colors hover:bg-surface-elevated hover:text-foreground"
-              >
-                <span>{option.label}</span>
-                {selected && <IconCheck size={14} className="text-primary" />}
-              </button>
-            );
+            return <button key={option.label} type="button" onClick={() => { onChange({ ...filters, minRating: selected ? 0 : option.value }); setOpen(null); }} className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-xs text-muted transition-colors hover:bg-surface-elevated hover:text-foreground"><span>{option.label}</span>{selected && <IconCheck size={14} className="text-primary" />}</button>;
           })}
         </div>
       </FilterDropdown>
-
-      {hasActiveFilters && (
-        <button
-          type="button"
-          onClick={() => {
-            onClear();
-            setOpen(null);
-          }}
-          className="hidden"
-        >
-          <IconX size={13} />
-          Clear Filters
-        </button>
-      )}
+      {hasActiveFilters && <button type="button" onClick={() => { onClear(); setOpen(null); }} className="hidden"><IconX size={13} />Clear Filters</button>}
     </div>
   );
 }
 
-function FilterDropdown({
-  label,
-  open,
-  onToggle,
-  children,
-  compact,
-}: {
-  label: string;
-  open: boolean;
-  onToggle: () => void;
-  children: ReactNode;
-  compact: boolean;
-}) {
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={open}
-        className={`flex items-center gap-2 rounded-full border border-border bg-surface text-muted transition-colors hover:border-primary/30 hover:text-foreground ${
-          compact ? "h-10 px-3 text-[10px]" : "h-10 px-3.5 text-[10px]"
-        } uppercase font-medium tracking-[0.1em]`}
-      >
-        {label}
-        <IconChevronDown size={13} className={`transition-transform ${open ? "rotate-180" : ""}`} />
-      </button>
-
-      {open && (
-        <div className="absolute left-0 top-[calc(100%+8px)] z-50 overflow-hidden rounded-xl border border-border bg-background/95 shadow-[0_20px_60px_rgba(0,0,0,0.45)] backdrop-blur-xl">
-          {children}
-        </div>
-      )}
-    </div>
-  );
+function FilterDropdown({ label, open, onToggle, children, compact }: { label: string; open: boolean; onToggle: () => void; children: ReactNode; compact: boolean }) {
+  return <div className="relative"><button type="button" onClick={onToggle} aria-expanded={open} className={`flex items-center gap-2 rounded-full border border-border bg-surface text-muted transition-colors hover:border-primary/30 hover:text-foreground ${compact ? "h-10 px-3 text-[10px]" : "h-10 px-3.5 text-[10px]"} uppercase font-medium tracking-[0.1em]`}>{label}<IconChevronDown size={13} className={`transition-transform ${open ? "rotate-180" : ""}`} /></button>{open && <div className="absolute left-0 top-[calc(100%+8px)] z-50 overflow-hidden rounded-xl border border-border bg-background/95 shadow-[0_20px_60px_rgba(0,0,0,0.45)] backdrop-blur-xl">{children}</div>}</div>;
 }
