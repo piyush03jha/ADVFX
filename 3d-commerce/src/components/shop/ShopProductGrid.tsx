@@ -211,9 +211,9 @@ export function ShopProductGrid({
     <>
       <ShopHeader />
 
-      <section className="relative pb-20 pt-2 sm:pb-24 sm:pt-3 lg:pb-28 lg:pt-4">
+      <section className="relative pb-20 pt-0 sm:pb-24 lg:pb-28">
         <Container>
-          <div className="border-t border-border/50 pt-5">
+          <div className="pt-1 sm:pt-2 lg:pt-3">
             <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-center">
               <div className="w-full min-w-0 xl:flex-[2]">
                 <ShopSearch value={search} onChange={setSearch} />
@@ -221,6 +221,7 @@ export function ShopProductGrid({
 
               <div className="flex flex-wrap items-center justify-center gap-2 xl:shrink-0">
                 <ShopFilters
+                  categories={categories.map((category) => category.id)}
                   filters={filters}
                   onChange={handleFilterChange}
                   onClear={clearFilters}
