@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import { Pagination } from "@/components/ui/Pagination";
 import { trendingProducts } from "@/config/trending-products";
+import { shopCategories, getShopCategoryForQuery } from "@/config/shop-categories";
 
 import { MobileFilters } from "./MobileFilters";
 import { ShopFilters, type ShopFilterState } from "./ShopFilters";
@@ -58,22 +59,58 @@ export function ShopProductGrid({
     setSearch("");
   }, [activeCategory]);
 
-  const categories = useMemo(
-    () => Array.from(new Set(sourceProducts.map((product) => product.category))),
-    [sourceProducts],
-  );
+  const categories = useMemo(() => {
+    const available = new Set(sourceProducts.map((product) => product.category));
+
+    return shopCategories.filter((category) => {
+      if (category.id === "gaming") return available.has("Gaming");
+      if (category.id === "anime") return available.has("Anime");
+      if (category.id === "desk-toys") return available.has("Desk Toys");
+      if (category.id === "custom") return available.has("Custom");
+      if (category.id === "heroes") return available.has("Heroes");
+      if (category.id === "props") return available.has("Weapon Props");
+      return false;
+    });
+  }, [sourceProducts]);
+
+  const categoryIdToProductCategory: Record<string, string> = {
+    gaming: "Gaming",
+    anime: "Anime",
+    "desk-toys": "Desk Toys",
+    custom: "Custom",
+    heroes: "Heroes",
+    props: "Weapon Props",
+  };
 
   const filteredProducts = useMemo(() => {
     const query = search.trim().toLowerCase();
+    const fallbackCategory = getShopCategoryForQuery(query);
+    const fallbackProductCategory = fallbackCategory
+      ? categoryIdToProductCategory[fallbackCategory.id]
+      : null;
+
+    const directMatchExists =
+      query.length > 0 &&
+      sourceProducts.some((product) =>
+        [product.name, product.category].some((value) =>
+          value.toLowerCase().includes(query),
+        ),
+      );
 
     const result = sourceProducts.filter((product) => {
       const matchesSearch =
         query.length === 0 ||
         product.name.toLowerCase().includes(query) ||
-        product.category.toLowerCase().includes(query);
+        product.category.toLowerCase().includes(query) ||
+        (!directMatchExists && fallbackProductCategory === product.category);
+
+      const selectedProductCategories = filters.categories
+        .map((id) => categoryIdToProductCategory[id])
+        .filter(Boolean);
 
       const matchesCategory =
-        filters.categories.length === 0 || filters.categories.includes(product.category);
+        selectedProductCategories.length === 0 ||
+        selectedProductCategories.includes(product.category);
 
       const matchesPrice = product.price >= filters.minPrice && product.price <= filters.maxPrice;
       const matchesRating = product.rating >= filters.minRating;
@@ -130,26 +167,19 @@ export function ShopProductGrid({
     setSearch("");
   };
 
-  const handleCategoryChange = (category: string) => {
+  const handleCategoryChange = (categoryId: string) => {
     if (activeCategory) return;
 
     setFilters((current) => ({
       ...current,
-      categories: current.categories.includes(category)
-        ? current.categories.filter((item) => item !== category)
-        : [...current.categories, category],
+      categories: current.categories.includes(categoryId)
+        ? current.categories.filter((item) => item !== categoryId)
+        : [...current.categories, categoryId],
     }));
   };
 
   const handleFilterChange = (next: ShopFilterState) => {
-    setFilters(
-      activeCategory
-        ? {
-            ...next,
-            categories: [activeCategory],
-          }
-        : next,
-    );
+    setFilters(next);
   };
 
   const hasActiveFilters =
@@ -171,7 +201,7 @@ export function ShopProductGrid({
 
       <section className="relative pb-20 pt-1 sm:pb-24 sm:pt-2 lg:pb-28 lg:pt-3">
         <Container>
-          <div ref={navRef} className="-mx-1 mb-7 overflow-hidden scroll-mt-24 sm:mb-8">
+          <div ref={navRef} className="-mx-1 mb-7 scroll-mt-24 sm:mb-8">
             <ShopNavigation
               categories={categories}
               selectedCategories={filters.categories}
@@ -185,29 +215,41 @@ export function ShopProductGrid({
             <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
               <ShopSearch value={search} onChange={setSearch} />
 
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="hidden items-center gap-3 sm:flex">
-                  <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-foreground">
-                    {filteredProducts.length} models
-                  </span>
-                  <span className="h-1 w-1 rounded-full bg-muted/60" />
-                </div>
-
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                 <ShopSort value={sort} onChange={setSort} />
+
+                <ShopFilters
+                  categories={categories.map((category) => category.id)}
+                  filters={filters}
+                  onChange={handleFilterChange}
+                  onClear={clearFilters}
+                />
 
                 <button
                   type="button"
                   onClick={clearAll}
-                  className="hidden h-11 items-center rounded-lg border border-primary/50 px-5 text-xs font-medium text-primary transition-colors hover:bg-primary/[0.07] sm:flex"
+                  className="h-10 rounded-full border border-primary/45 px-4 text-[10px] font-medium uppercase tracking-[0.1em] text-primary transition-colors hover:bg-primary/[0.07]"
                 >
                   Clear Filters
                 </button>
               </div>
             </div>
 
-            <div className="mt-4">
+            <div className="mt-4 flex items-center justify-between">
+              <p className="text-[10px] uppercase tracking-[0.14em] text-muted">
+                {filteredProducts.length} models available
+              </p>
+
+              <div className="hidden text-right text-[10px] uppercase tracking-[0.14em] text-muted sm:block">
+                {filters.minRating > 0 && `Rating ${filters.minRating}+`}
+                {filters.minRating > 0 && (filters.minPrice !== 0 || filters.maxPrice !== Infinity) ? " · " : ""}
+                {(filters.minPrice !== 0 || filters.maxPrice !== Infinity) && "Price filtered"}
+              </div>
+            </div>
+
+            <div className="mt-4 xl:hidden">
               <ShopFilters
-                categories={categories}
+                categories={categories.map((category) => category.id)}
                 filters={filters}
                 onChange={handleFilterChange}
                 onClear={clearFilters}
@@ -285,7 +327,7 @@ export function ShopProductGrid({
       <MobileFilters
         open={mobileFiltersOpen}
         onClose={() => setMobileFiltersOpen(false)}
-        categories={categories}
+        categories={categories.map((category) => category.id)}
         filters={filters}
         onChange={handleFilterChange}
         onClear={clearFilters}
