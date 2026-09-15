@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * The shop page begins with category navigation and the search/filter toolbar.
- * The legacy heading and model-count block are intentionally removed.
+ * Reserves vertical space for the fixed navbar so the shop category
+ * navigation begins clearly below it instead of being overlapped.
  */
 export function ShopHeader() {
-  return null;
+  return <div aria-hidden="true" className="h-28 sm:h-32 lg:h-36" />;
 }
