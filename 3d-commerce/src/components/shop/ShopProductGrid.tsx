@@ -32,6 +32,7 @@ const categoryIdToProductCategory: Record<string, string> = {
   custom: "Custom",
   heroes: "Heroes",
   props: "Weapon Props",
+  display: "Display",
 };
 
 interface ShopProductGridProps {
@@ -82,6 +83,25 @@ export function ShopProductGrid({
     [categories],
   );
 
+  const effectiveCategoryIds = useMemo(() => {
+    if (!activeCategory) return [];
+
+    const normalized = activeCategory.toLowerCase().replace(/[_\s/]+/g, "-");
+    const aliases: Record<string, string> = {
+      gaming: "gaming",
+      anime: "anime",
+      "desk-toys": "desk-toys",
+      "desk-toys-and-figures": "desk-toys",
+      custom: "custom",
+      heroes: "heroes",
+      "weapon-props": "props",
+      props: "props",
+      display: "display",
+    };
+
+    return aliases[normalized] ? [aliases[normalized]] : [activeCategory];
+  }, [activeCategory]);
+
   const filteredProducts = useMemo(() => {
     const query = search.trim().toLowerCase();
     const fallbackCategory = getShopCategoryForQuery(query);
@@ -97,17 +117,17 @@ export function ShopProductGrid({
         ),
       );
 
+    const selectedCategoryIds = activeCategory ? effectiveCategoryIds : filters.categories;
+    const selectedProductCategories = selectedCategoryIds
+      .map((id) => categoryIdToProductCategory[id])
+      .filter(Boolean);
+
     const result = sourceProducts.filter((product) => {
       const matchesSearch =
         query.length === 0 ||
         product.name.toLowerCase().includes(query) ||
         product.category.toLowerCase().includes(query) ||
         (!directMatchExists && fallbackProductCategory === product.category);
-
-      const selectedProductCategories = filters.categories
-        .filter((id) => categoryIds.has(id))
-        .map((id) => categoryIdToProductCategory[id])
-        .filter(Boolean);
 
       const matchesCategory =
         selectedProductCategories.length === 0 ||
@@ -136,7 +156,7 @@ export function ShopProductGrid({
           return 0;
       }
     });
-  }, [categoryIds, filters, search, sort, sourceProducts]);
+  }, [activeCategory, effectiveCategoryIds, filters, search, sort, sourceProducts]);
 
   useEffect(() => {
     setPage(1);
@@ -169,7 +189,7 @@ export function ShopProductGrid({
   };
 
   const handleCategoryChange = (categoryId: string) => {
-    if (activeCategory) return;
+    if (activeCategory || !categoryIds.has(categoryId)) return;
 
     setFilters((current) => ({
       ...current,
