@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import type { Product } from "@/config/products";
+import { Badge } from "@/components/ui/Badge";
 
 import { ProductReviews } from "./ProductReviews";
 import { ProductSpecs } from "./ProductSpecs";
@@ -46,8 +47,8 @@ export function ProductDetailsTabs({
         overflow-hidden
         rounded-[28px]
         border
-        border-white/[0.08]
-        bg-white/[0.018]
+        border-border
+        bg-surface
       "
     >
       {/* ==================================================
@@ -61,7 +62,7 @@ export function ProductDetailsTabs({
           flex
           overflow-x-auto
           border-b
-          border-white/[0.07]
+          border-border
           px-4
           sm:px-6
         "
@@ -198,21 +199,9 @@ function Description({
 
             <div className="mt-3 flex flex-wrap gap-2">
               {product.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="
-                    rounded-full
-                    border
-                    border-white/[0.08]
-                    bg-white/[0.02]
-                    px-3
-                    py-1.5
-                    text-[10px]
-                    text-muted
-                  "
-                >
+                <Badge key={tag} className="px-3 py-1.5 normal-case tracking-normal">
                   {tag}
-                </span>
+                </Badge>
               ))}
             </div>
           </div>

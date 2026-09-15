@@ -1,7 +1,7 @@
 "use client";
 
 import { ChangeEvent, DragEvent, ReactNode, useRef, useState } from "react";
-import { IconCloudUpload, IconFile3d, IconPhoto, IconX } from "@tabler/icons-react";
+import { IconFile3d, IconPhoto, IconX } from "@tabler/icons-react";
 
 const IMAGE_TYPES = ["image/jpeg", "image/png"];
 const MODEL_EXTENSION = /\.(glb|gltf|obj|stl|fbx)$/i;
@@ -51,7 +51,7 @@ export function CustomUploadZone({
         onDragOver={(event) => { event.preventDefault(); setDragActive(true); }}
         onDragLeave={() => setDragActive(false)}
         onDrop={handleDrop}
-        className={`rounded-[24px] border border-dashed p-3 transition ${dragActive ? "border-primary/70 bg-primary/[0.05]" : "border-white/15 bg-background/25"}`}
+        className={`rounded-[24px] border border-dashed p-3 transition ${dragActive ? "border-primary/70 bg-primary/[0.05]" : "border-border bg-background/25"}`}
       >
         <div className="grid grid-cols-2 gap-3">
           <UploadTrigger title="Upload photos" text="Front · back · left · right" icon={<IconPhoto size={21} />} onClick={() => photoInputRef.current?.click()} />
@@ -81,7 +81,7 @@ export function CustomUploadZone({
 
 function UploadTrigger({ title, text, icon, onClick }: { title: string; text: string; icon: ReactNode; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="group flex min-h-[132px] flex-col justify-between rounded-2xl border border-white/10 bg-background/45 p-4 text-left transition duration-300 hover:border-primary/55 hover:bg-primary/[0.035] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 sm:min-h-[150px] sm:p-5">
+    <button type="button" onClick={onClick} className="group flex min-h-[132px] flex-col justify-between rounded-2xl border border-border bg-surface p-4 text-left transition duration-300 hover:border-primary/55 hover:bg-primary/[0.035] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 sm:min-h-[150px] sm:p-5">
       <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-surface text-primary transition group-hover:scale-105">{icon}</div>
       <div>
         <p className="text-sm font-medium">{title}</p>

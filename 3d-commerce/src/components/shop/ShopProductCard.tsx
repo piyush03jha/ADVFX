@@ -71,7 +71,7 @@ export function ShopProductCard({ product }: ShopProductCardProps) {
 
         {product.badge && (
           <div className="absolute left-3 top-3">
-            <Badge variant="primary">{product.badge}</Badge>
+            <Badge variant="mediaPrimary">{product.badge}</Badge>
           </div>
         )}
 
@@ -95,8 +95,7 @@ export function ShopProductCard({ product }: ShopProductCardProps) {
         {product.discount && (
           <div className="absolute bottom-3 left-3">
             <Badge
-              variant="default"
-              className="border-white/10 bg-black/45 text-white backdrop-blur-md"
+              variant="media"
             >
               {product.discount}
             </Badge>

@@ -18,8 +18,8 @@ export function ProductInfo({
       className="
         rounded-[28px]
         border
-        border-white/[0.08]
-        bg-white/[0.025]
+        border-border
+        bg-surface
         p-5
         shadow-[0_20px_80px_rgba(0,0,0,0.22)]
         sm:p-7
@@ -37,22 +37,9 @@ export function ProductInfo({
           </Badge>
         )}
 
-        <span
-          className="
-            rounded-full
-            border
-            border-white/[0.08]
-            px-2.5
-            py-1
-            text-[9px]
-            font-medium
-            uppercase
-            tracking-[0.15em]
-            text-muted
-          "
-        >
+        <Badge>
           {product.category}
-        </span>
+        </Badge>
       </div>
 
       {/* ==================================================
@@ -148,22 +135,9 @@ export function ProductInfo({
         )}
 
         {product.discount && (
-          <span
-            className="
-              mb-1
-              rounded-md
-              bg-primary/10
-              px-2
-              py-1
-              text-[9px]
-              font-semibold
-              uppercase
-              tracking-[0.12em]
-              text-primary
-            "
-          >
+          <Badge variant="primary" className="mb-1 rounded-md px-2 py-1 font-semibold">
             {product.discount}
-          </span>
+          </Badge>
         )}
       </div>
 

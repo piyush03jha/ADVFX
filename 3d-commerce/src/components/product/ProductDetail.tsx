@@ -133,7 +133,7 @@ export function ProductDetail({
               grid-cols-3
               overflow-hidden
               border-y
-              border-white/[0.07]
+              border-border
               sm:mt-7
             "
           >
@@ -226,7 +226,7 @@ function Benefit({
         justify-center
         gap-1
         border-r
-        border-white/[0.07]
+        border-border
         px-1
         py-3
         last:border-r-0

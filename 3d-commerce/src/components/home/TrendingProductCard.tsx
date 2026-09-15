@@ -10,6 +10,7 @@ import {
 } from "@tabler/icons-react";
 
 import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
 import { Rating } from "@/components/ui/Rating";
 import { Price } from "@/components/ui/Price";
 import { WishlistButton } from "@/components/ui/WishlistButton";
@@ -50,15 +51,11 @@ export function TrendingProductCard({ product }: TrendingProductCardProps) {
           />
 
           {product.badge && (
-            <div className="absolute left-2 top-2 border border-primary/30 bg-black/45 px-1.5 py-0.5 text-[7px] font-medium uppercase tracking-[0.1em] text-primary-hover backdrop-blur-md sm:left-3 sm:top-3 sm:px-2 sm:py-1 sm:text-[9px]">
-              {product.badge}
-            </div>
+            <Badge variant="mediaPrimary" className="absolute left-2 top-2 rounded-none px-1.5 py-0.5 text-[7px] tracking-[0.1em] sm:left-3 sm:top-3 sm:px-2 sm:py-1 sm:text-[9px]">{product.badge}</Badge>
           )}
 
           {product.discount && (
-            <div className="absolute left-2 top-8 border border-white/10 bg-black/40 px-1.5 py-0.5 text-[7px] font-medium text-white/70 backdrop-blur-md sm:left-3 sm:top-10 sm:px-2 sm:py-1 sm:text-[9px]">
-              {product.discount}
-            </div>
+            <Badge variant="media" className="absolute left-2 top-8 rounded-none px-1.5 py-0.5 text-[7px] normal-case tracking-normal sm:left-3 sm:top-10 sm:px-2 sm:py-1 sm:text-[9px]">{product.discount}</Badge>
           )}
 
           <WishlistButton

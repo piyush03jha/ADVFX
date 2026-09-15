@@ -3,6 +3,8 @@ import type { ReactNode } from "react";
 type BadgeVariant =
   | "default"
   | "primary"
+  | "media"
+  | "mediaPrimary"
   | "success"
   | "warning";
 
@@ -23,6 +25,22 @@ const variants: Record<BadgeVariant, string> = {
     border-primary/20
     bg-primary/10
     text-primary-hover
+  `,
+
+  /* These sit on photography, so their contrast must not depend on
+     the page theme behind the image. */
+  media: `
+    border-white/15
+    bg-black/45
+    text-white
+    backdrop-blur-md
+  `,
+
+  mediaPrimary: `
+    border-primary/35
+    bg-black/45
+    text-primary-hover
+    backdrop-blur-md
   `,
 
   success: `
