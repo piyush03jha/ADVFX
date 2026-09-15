@@ -226,8 +226,6 @@ export function ShopProductGrid({
               <ShopSearch value={search} onChange={setSearch} />
 
               <div className="flex flex-wrap items-center justify-center gap-2">
-                <ShopSort value={sort} onChange={setSort} />
-
                 <ShopFilters
                   categories={categories.map((category) => category.id)}
                   filters={filters}
