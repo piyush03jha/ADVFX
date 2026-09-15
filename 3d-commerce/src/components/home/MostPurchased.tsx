@@ -10,7 +10,6 @@ import { useState } from "react";
 import {
   IconArrowUpRight,
   IconCheck,
-  IconHeart,
   IconShoppingCart,
 } from "@tabler/icons-react";
 
@@ -18,11 +17,10 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Container } from "@/components/ui/Container";
-import { IconButton } from "@/components/ui/IconButton";
 import { Price } from "@/components/ui/Price";
 import { Rating } from "@/components/ui/Rating";
+import { WishlistButton } from "@/components/ui/WishlistButton";
 import { useCart } from "@/context/CartContext";
-import { useWishlist, type WishlistProduct } from "@/context/WishlistContext";
 
 import { mostPurchasedProducts } from "@/config/most-purchased-products";
 
@@ -76,11 +74,7 @@ export function MostPurchased() {
 
 export function ProductCard({ product }: { product: (typeof mostPurchasedProducts)[number] }) {
   const { addItem } = useCart();
-  const { isInWishlist, toggleWishlist } = useWishlist();
   const [added, setAdded] = useState(false);
-
-  const liked = isInWishlist(product.id);
-  const wishlistProduct: WishlistProduct = product;
 
   const handleAddToCart = () => {
     addItem(product, "medium", 1);
@@ -103,9 +97,10 @@ export function ProductCard({ product }: { product: (typeof mostPurchasedProduct
           <Badge variant="default" className="px-2 py-0.5 text-[8px]">{product.category}</Badge>
         </div>
 
-        <IconButton label={liked ? `Remove ${product.name} from wishlist` : `Add ${product.name} to wishlist`} size="sm" variant="default" onClick={(event) => { event.preventDefault(); event.stopPropagation(); toggleWishlist(wishlistProduct); }} className={`absolute right-2.5 top-2.5 z-10 h-7 w-7 shrink-0 !border-red-500 !text-red-500 !shadow-none sm:right-3 sm:top-3 sm:h-8 sm:w-8 ${liked ? "!bg-red-500 !text-white hover:!bg-red-600" : "!bg-white/95 hover:!bg-red-50 dark:!bg-white/90 dark:hover:!bg-red-950/80"} backdrop-blur-md transition-colors`}>
-          <IconHeart size={13} stroke={1.7} fill={liked ? "currentColor" : "none"} />
-        </IconButton>
+        <WishlistButton
+          product={product}
+          className="absolute right-2.5 top-2.5 z-10 h-7 w-7 sm:right-3 sm:top-3 sm:h-8 sm:w-8"
+        />
       </div>
 
       <div className="flex flex-col px-3 pb-3 pt-3 sm:px-4 sm:pb-4 sm:pt-4">

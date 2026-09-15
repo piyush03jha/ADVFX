@@ -4,7 +4,6 @@ import Link from "next/link";
 
 import {
   IconEye,
-  IconHeart,
   IconShoppingCart,
   IconCheck,
 } from "@tabler/icons-react";
@@ -14,11 +13,10 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { IconButton } from "@/components/ui/IconButton";
 import { Price } from "@/components/ui/Price";
 import { Rating } from "@/components/ui/Rating";
+import { WishlistButton } from "@/components/ui/WishlistButton";
 import { useCart } from "@/context/CartContext";
-import { useWishlist } from "@/context/WishlistContext";
 
 import type { TrendingProduct } from "@/config/trending-products";
 
@@ -28,10 +26,7 @@ interface ShopProductCardProps {
 
 export function ShopProductCard({ product }: ShopProductCardProps) {
   const { addItem } = useCart();
-  const { isInWishlist, toggleWishlist } = useWishlist();
   const [added, setAdded] = useState(false);
-
-  const inWishlist = isInWishlist(product.id);
 
   const handleAddToCart = () => {
     addItem(product, "medium", 1);
@@ -40,10 +35,6 @@ export function ShopProductCard({ product }: ShopProductCardProps) {
     window.setTimeout(() => {
       setAdded(false);
     }, 1600);
-  };
-
-  const handleToggleWishlist = () => {
-    toggleWishlist(product);
   };
 
   return (
@@ -74,27 +65,10 @@ export function ShopProductCard({ product }: ShopProductCardProps) {
           </div>
         )}
 
-        <IconButton
-          label={
-            inWishlist
-              ? `Remove ${product.name} from wishlist`
-              : `Add ${product.name} to wishlist`
-          }
-          size="sm"
-          variant="default"
-          onClick={handleToggleWishlist}
-          className={`absolute right-3 top-3 z-10 !border-red-500 !text-red-500 !shadow-none !bg-white backdrop-blur-md transition-colors dark:!bg-white ${
-            inWishlist
-              ? "!bg-red-500 !text-white hover:!bg-red-600"
-              : "hover:!bg-red-500 hover:!text-white"
-          }`}
-        >
-          <IconHeart
-            size={14}
-            stroke={1.8}
-            fill={inWishlist ? "currentColor" : "none"}
-          />
-        </IconButton>
+        <WishlistButton
+          product={product}
+          className="absolute right-3 top-3 z-10"
+        />
 
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/10 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
           <Button

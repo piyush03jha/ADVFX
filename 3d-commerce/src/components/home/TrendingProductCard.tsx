@@ -6,18 +6,14 @@ import { useState } from "react";
 import {
   IconCheck,
   IconEye,
-  IconHeart,
   IconShoppingCart,
 } from "@tabler/icons-react";
 
 import { Button } from "@/components/ui/Button";
 import { Rating } from "@/components/ui/Rating";
 import { Price } from "@/components/ui/Price";
+import { WishlistButton } from "@/components/ui/WishlistButton";
 import { useCart } from "@/context/CartContext";
-import {
-  useWishlist,
-  type WishlistProduct,
-} from "@/context/WishlistContext";
 import type { TrendingProduct } from "@/config/trending-products";
 
 interface TrendingProductCardProps {
@@ -26,18 +22,8 @@ interface TrendingProductCardProps {
 
 export function TrendingProductCard({ product }: TrendingProductCardProps) {
   const { addItem } = useCart();
-  const { isInWishlist, toggleWishlist } = useWishlist();
 
   const [added, setAdded] = useState(false);
-
-  const liked = isInWishlist(product.id);
-  const wishlistProduct: WishlistProduct = product;
-
-  const handleWishlistClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    toggleWishlist(wishlistProduct);
-  };
 
   const handleAddToCart = () => {
     addItem(product, "medium", 1);
@@ -75,27 +61,10 @@ export function TrendingProductCard({ product }: TrendingProductCardProps) {
             </div>
           )}
 
-          <Button
-            type="button"
-            variant="ghost"
-            ariaLabel={
-              liked
-                ? `Remove ${product.name} from wishlist`
-                : `Add ${product.name} to wishlist`
-            }
-            onClick={handleWishlistClick}
-            className={`absolute right-2 top-2 !h-7 !min-h-7 !w-7 !rounded-full !border !bg-white !p-0 !text-red-500 backdrop-blur-md transition-colors sm:right-2.5 sm:top-2.5 sm:!h-8 sm:!min-h-8 sm:!w-8 ${
-              liked
-                ? "!border-red-500 !bg-red-500 !text-white hover:!bg-red-600"
-                : "!border-red-300 hover:!border-red-500 hover:!bg-red-50"
-            }`}
-          >
-            <IconHeart
-              size={13}
-              stroke={1.7}
-              fill={liked ? "currentColor" : "none"}
-            />
-          </Button>
+          <WishlistButton
+            product={product}
+            className="absolute right-2 top-2 z-10 h-7 w-7 sm:right-2.5 sm:top-2.5 sm:h-8 sm:w-8"
+          />
 
           <div className="pointer-events-none absolute inset-0 hidden items-center justify-center bg-black/25 opacity-0 backdrop-blur-[1px] transition-opacity duration-300 group-hover:opacity-100 sm:flex">
             <Button
