@@ -5,6 +5,7 @@ import "./globals.css";
 
 import { Footer } from "@/components/layout/Footer";
 import { WhatsAppBot } from "@/components/layout/WhatsAppBot";
+import { AuthPrompt } from "@/components/layout/AuthPrompt";
 import { CartProvider } from "@/context/CartContext";
 import { WishlistProvider } from "@/context/WishlistContext";
 import { AddressProvider } from "@/context/AddressContext";
@@ -51,6 +52,7 @@ export default function RootLayout({
           </AddressProvider>
         </ThemeProvider>
 
+        <AuthPrompt />
         <WhatsAppBot />
         <Footer />
       </body>
