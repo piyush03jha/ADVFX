@@ -38,9 +38,11 @@ export function ShopFilters({ categories, filters, onChange, onClear, compact = 
     gaming: "Gaming",
     anime: "Anime",
     "desk-toys": "Desk Toys",
+    "kids-toys": "Kids & Toys",
     custom: "Custom",
     heroes: "Heroes",
     props: "Props",
+    display: "Display",
   };
 
   const hasActiveFilters =
