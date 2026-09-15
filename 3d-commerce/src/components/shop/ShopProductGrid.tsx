@@ -8,6 +8,10 @@ import { Button } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import { Pagination } from "@/components/ui/Pagination";
 import { trendingProducts } from "@/config/trending-products";
+import {
+  shopCategories,
+  getDiscoveryFallbackCategory,
+} from "@/config/shop-categories";
 
 import { MobileFilters } from "./MobileFilters";
 import { ShopFilters, type ShopFilterState } from "./ShopFilters";
@@ -22,6 +26,17 @@ const INITIAL_FILTERS: ShopFilterState = {
   minPrice: 0,
   maxPrice: Infinity,
   minRating: 0,
+};
+
+const categoryIdToProductCategory: Record<string, string> = {
+  gaming: "Gaming",
+  anime: "Anime",
+  "desk-toys": "Desk Toys",
+  "kids-toys": "Desk Toys",
+  custom: "Custom",
+  heroes: "Heroes",
+  props: "Weapon Props",
+  display: "Display",
 };
 
 interface ShopProductGridProps {
@@ -58,22 +73,70 @@ export function ShopProductGrid({
     setSearch("");
   }, [activeCategory]);
 
-  const categories = useMemo(
-    () => Array.from(new Set(sourceProducts.map((product) => product.category))),
-    [sourceProducts],
+  const categories = useMemo(() => {
+    const available = new Set(sourceProducts.map((product) => product.category));
+    return shopCategories.filter((category) => {
+      const productCategory = categoryIdToProductCategory[category.id];
+      return productCategory ? available.has(productCategory) : false;
+    });
+  }, [sourceProducts]);
+
+  const categoryIds = useMemo(
+    () => new Set(categories.map((category) => category.id)),
+    [categories],
   );
+
+  const effectiveCategoryIds = useMemo(() => {
+    if (!activeCategory) return [];
+
+    const normalized = activeCategory.toLowerCase().replace(/[_\s/]+/g, "-");
+    const aliases: Record<string, string> = {
+      gaming: "gaming",
+      anime: "anime",
+      "desk-toys": "desk-toys",
+      "desk-toys-and-figures": "desk-toys",
+      "kids-toys": "kids-toys",
+      kids: "kids-toys",
+      custom: "custom",
+      heroes: "heroes",
+      "weapon-props": "props",
+      props: "props",
+      display: "display",
+    };
+
+    return aliases[normalized] ? [aliases[normalized]] : [activeCategory];
+  }, [activeCategory]);
 
   const filteredProducts = useMemo(() => {
     const query = search.trim().toLowerCase();
+    const fallbackCategory = getDiscoveryFallbackCategory(query);
+    const fallbackProductCategory = fallbackCategory
+      ? categoryIdToProductCategory[fallbackCategory.id]
+      : null;
+
+    const directMatchExists =
+      query.length > 0 &&
+      sourceProducts.some((product) =>
+        [product.name, product.category].some((value) =>
+          value.toLowerCase().includes(query),
+        ),
+      );
+
+    const selectedCategoryIds = activeCategory ? effectiveCategoryIds : filters.categories;
+    const selectedProductCategories = selectedCategoryIds
+      .map((id) => categoryIdToProductCategory[id])
+      .filter(Boolean);
 
     const result = sourceProducts.filter((product) => {
       const matchesSearch =
         query.length === 0 ||
         product.name.toLowerCase().includes(query) ||
-        product.category.toLowerCase().includes(query);
+        product.category.toLowerCase().includes(query) ||
+        (!directMatchExists && fallbackProductCategory === product.category);
 
       const matchesCategory =
-        filters.categories.length === 0 || filters.categories.includes(product.category);
+        selectedProductCategories.length === 0 ||
+        selectedProductCategories.includes(product.category);
 
       const matchesPrice = product.price >= filters.minPrice && product.price <= filters.maxPrice;
       const matchesRating = product.rating >= filters.minRating;
@@ -98,7 +161,7 @@ export function ShopProductGrid({
           return 0;
       }
     });
-  }, [filters, search, sort, sourceProducts]);
+  }, [activeCategory, effectiveCategoryIds, filters, search, sort, sourceProducts]);
 
   useEffect(() => {
     setPage(1);
@@ -130,48 +193,28 @@ export function ShopProductGrid({
     setSearch("");
   };
 
-  const handleCategoryChange = (category: string) => {
-    if (activeCategory) return;
+  const handleCategoryChange = (categoryId: string) => {
+    if (activeCategory || !categoryIds.has(categoryId)) return;
 
     setFilters((current) => ({
       ...current,
-      categories: current.categories.includes(category)
-        ? current.categories.filter((item) => item !== category)
-        : [...current.categories, category],
+      categories: current.categories.includes(categoryId)
+        ? current.categories.filter((item) => item !== categoryId)
+        : [...current.categories, categoryId],
     }));
   };
 
   const handleFilterChange = (next: ShopFilterState) => {
-    setFilters(
-      activeCategory
-        ? {
-            ...next,
-            categories: [activeCategory],
-          }
-        : next,
-    );
+    setFilters(next);
   };
-
-  const hasActiveFilters =
-    search.trim().length > 0 ||
-    filters.categories.length > 0 ||
-    filters.minPrice !== 0 ||
-    filters.maxPrice !== Infinity ||
-    filters.minRating !== 0;
-
-  const rangeStart = filteredProducts.length === 0 ? 0 : (page - 1) * pageSize + 1;
-  const rangeEnd = Math.min(page * pageSize, filteredProducts.length);
 
   return (
     <>
-      <ShopHeader
-        productCount={filteredProducts.length}
-        onOpenFilters={() => setMobileFiltersOpen(true)}
-      />
+      <ShopHeader />
 
-      <section className="relative pb-20 pt-1 sm:pb-24 sm:pt-2 lg:pb-28 lg:pt-3">
+      <section className="relative pb-20 pt-2 sm:pb-24 sm:pt-3 lg:pb-28 lg:pt-4">
         <Container>
-          <div ref={navRef} className="-mx-1 mb-7 overflow-hidden scroll-mt-24 sm:mb-8">
+          <div ref={navRef} className="-mx-1 mb-7 scroll-mt-24 sm:mb-8">
             <ShopNavigation
               categories={categories}
               selectedCategories={filters.categories}
@@ -182,63 +225,38 @@ export function ShopProductGrid({
           </div>
 
           <div className="border-t border-border/50 pt-5">
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-center">
               <ShopSearch value={search} onChange={setSearch} />
 
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="hidden items-center gap-3 sm:flex">
-                  <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-foreground">
-                    {filteredProducts.length} models
-                  </span>
-                  <span className="h-1 w-1 rounded-full bg-muted/60" />
-                </div>
-
-                <ShopSort value={sort} onChange={setSort} />
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <ShopFilters
+                  categories={categories.map((category) => category.id)}
+                  filters={filters}
+                  onChange={handleFilterChange}
+                  onClear={clearFilters}
+                  compact
+                />
 
                 <button
                   type="button"
                   onClick={clearAll}
-                  className="hidden h-11 items-center rounded-lg border border-primary/50 px-5 text-xs font-medium text-primary transition-colors hover:bg-primary/[0.07] sm:flex"
+                  className="h-10 rounded-full border border-primary/45 px-4 text-[10px] font-medium uppercase tracking-[0.1em] text-primary transition-colors hover:bg-primary/[0.07]"
                 >
                   Clear Filters
                 </button>
               </div>
             </div>
 
-            <div className="mt-4">
-              <ShopFilters
-                categories={categories}
-                filters={filters}
-                onChange={handleFilterChange}
-                onClear={clearFilters}
-              />
-            </div>
-
-            <div className="mt-3 flex items-center justify-between gap-3 lg:hidden">
-              <p className="text-xs text-muted">
-                Showing <span className="text-foreground">{filteredProducts.length}</span> models
-              </p>
-
-              <div className="flex items-center gap-2">
-                {hasActiveFilters && (
-                  <button
-                    type="button"
-                    onClick={clearAll}
-                    className="text-[10px] uppercase tracking-[0.12em] text-primary"
-                  >
-                    Clear
-                  </button>
-                )}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setMobileFiltersOpen(true)}
-                  className="rounded-full"
-                >
-                  Filters
-                </Button>
-              </div>
+            <div className="mt-3 flex justify-end lg:hidden">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setMobileFiltersOpen(true)}
+                className="rounded-full"
+              >
+                Filters
+              </Button>
             </div>
           </div>
 
@@ -268,8 +286,7 @@ export function ShopProductGrid({
 
                 <div className="mt-6 flex items-center justify-center sm:mt-8">
                   <p className="text-[11px] uppercase tracking-[0.14em] text-muted">
-                    Showing <span className="text-foreground">{rangeStart}–{rangeEnd}</span> of{" "}
-                    <span className="text-foreground">{filteredProducts.length}</span> models
+                    Showing <span className="text-foreground">{paginatedProducts.length}</span> models
                   </p>
                 </div>
 
@@ -285,7 +302,7 @@ export function ShopProductGrid({
       <MobileFilters
         open={mobileFiltersOpen}
         onClose={() => setMobileFiltersOpen(false)}
-        categories={categories}
+        categories={categories.map((category) => category.id)}
         filters={filters}
         onChange={handleFilterChange}
         onClear={clearFilters}
@@ -300,9 +317,9 @@ function EmptyProducts({ onClear }: { onClear: () => void }) {
       <div className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-surface-elevated text-muted">
         <IconPackageOff size={20} stroke={1.5} />
       </div>
-      <h3 className="mt-5 text-base font-medium text-foreground">No models found</h3>
+      <h3 className="mt-5 text-base font-medium text-foreground">No matching models</h3>
       <p className="mt-2 max-w-sm text-xs leading-5 text-muted">
-        Try changing your search or filters, or explore the complete collection.
+        Try another product name, category, or filter combination.
       </p>
       <Button type="button" variant="outline" size="sm" onClick={onClear} className="mt-5">
         Clear Search &amp; Filters

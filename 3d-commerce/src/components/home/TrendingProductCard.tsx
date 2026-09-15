@@ -8,10 +8,11 @@ import {
   IconEye,
   IconHeart,
   IconShoppingCart,
-  IconStar,
 } from "@tabler/icons-react";
 
 import { Button } from "@/components/ui/Button";
+import { Rating } from "@/components/ui/Rating";
+import { Price } from "@/components/ui/Price";
 import { useCart } from "@/context/CartContext";
 import {
   useWishlist,
@@ -19,72 +20,11 @@ import {
 } from "@/context/WishlistContext";
 import type { TrendingProduct } from "@/config/trending-products";
 
-function RatingStars({ rating }: { rating: number }) {
-  const safeRating = Math.max(0, Math.min(5, rating));
-
-  return (
-    <div
-      className="flex items-center"
-      aria-label={`${safeRating} out of 5 stars`}
-    >
-      <div className="flex">
-        {Array.from({ length: 5 }).map((_, index) => {
-          const fill = Math.max(0, Math.min(1, safeRating - index));
-
-          return (
-            <span
-              key={index}
-              className="relative h-3 w-3 sm:h-3.5 sm:w-3.5"
-            >
-              <IconStar
-                size={11}
-                stroke={1.5}
-                className="absolute text-muted/30 sm:hidden"
-              />
-
-              <IconStar
-                size={13}
-                stroke={1.5}
-                className="absolute hidden text-muted/30 sm:block"
-              />
-
-              {fill > 0 && (
-                <span
-                  className="absolute inset-y-0 left-0 overflow-hidden"
-                  style={{ width: `${fill * 100}%` }}
-                >
-                  <IconStar
-                    size={11}
-                    stroke={1.5}
-                    className="fill-current text-warning sm:hidden"
-                  />
-
-                  <IconStar
-                    size={13}
-                    stroke={1.5}
-                    className="hidden fill-current text-warning sm:block"
-                  />
-                </span>
-              )}
-            </span>
-          );
-        })}
-      </div>
-
-      <span className="ml-1 text-[9px] font-medium text-muted sm:ml-1.5 sm:text-[11px]">
-        {safeRating.toFixed(1)}
-      </span>
-    </div>
-  );
-}
-
 interface TrendingProductCardProps {
   product: TrendingProduct;
 }
 
-export function TrendingProductCard({
-  product,
-}: TrendingProductCardProps) {
+export function TrendingProductCard({ product }: TrendingProductCardProps) {
   const { addItem } = useCart();
   const { isInWishlist, toggleWishlist } = useWishlist();
 
@@ -93,28 +33,23 @@ export function TrendingProductCard({
   const liked = isInWishlist(product.id);
   const wishlistProduct: WishlistProduct = product;
 
-  const handleWishlistClick = () => {
+  const handleWishlistClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
     toggleWishlist(wishlistProduct);
   };
 
   const handleAddToCart = () => {
     addItem(product, "medium", 1);
-
     setAdded(true);
-
-    window.setTimeout(() => {
-      setAdded(false);
-    }, 1600);
+    window.setTimeout(() => setAdded(false), 1600);
   };
 
   return (
     <article className="group min-w-0">
       <div className="card-premium overflow-hidden rounded-xl">
         <div className="relative aspect-[0.84/1] overflow-hidden bg-[#0c0c0c]">
-          <Link
-            href={`/product/${product.id}`}
-            className="block h-full"
-          >
+          <Link href={`/product/${product.id}`} className="block h-full">
             <img
               src={product.image}
               alt={product.name}
@@ -149,10 +84,10 @@ export function TrendingProductCard({
                 : `Add ${product.name} to wishlist`
             }
             onClick={handleWishlistClick}
-            className={`absolute right-2 top-2 !h-7 !min-h-7 !w-7 !rounded-full !border !p-0 backdrop-blur-md sm:right-2.5 sm:top-2.5 sm:!h-8 sm:!min-h-8 sm:!w-8 ${
+            className={`absolute right-2 top-2 !h-7 !min-h-7 !w-7 !rounded-full !border !bg-white !p-0 !text-red-500 backdrop-blur-md transition-colors sm:right-2.5 sm:top-2.5 sm:!h-8 sm:!min-h-8 sm:!w-8 ${
               liked
-                ? "!border-primary/50 !bg-primary/15 !text-primary"
-                : "!border-white/10 !bg-black/35 !text-white/80 hover:!border-primary/50 hover:!bg-primary/15 hover:!text-primary-hover"
+                ? "!border-red-500 !bg-red-500 !text-white hover:!bg-red-600"
+                : "!border-red-300 hover:!border-red-500 hover:!bg-red-50"
             }`}
           >
             <IconHeart
@@ -179,37 +114,22 @@ export function TrendingProductCard({
             {product.category}
           </p>
 
-          <Link
-            href={`/product/${product.id}`}
-            className="block"
-          >
+          <Link href={`/product/${product.id}`} className="block">
             <h3 className="mt-1 line-clamp-2 min-h-[2.25rem] text-[11px] font-medium leading-4 tracking-[-0.015em] text-foreground transition-colors hover:text-primary-hover sm:mt-1.5 sm:min-h-[2.5rem] sm:text-sm sm:leading-5">
               {product.name}
             </h3>
           </Link>
 
-          <div className="mt-1.5 sm:mt-2">
-            <div className="flex items-center">
-              <RatingStars rating={product.rating} />
-
-              <span className="ml-1 text-[8px] text-muted sm:text-[10px]">
-                ({product.reviewCount})
-              </span>
-            </div>
-          </div>
+          <Rating
+            value={product.rating}
+            reviewCount={product.reviewCount}
+            size={11}
+            showValue
+            className="mt-2"
+          />
 
           <div className="mt-2 flex items-center justify-between gap-2 sm:mt-2.5">
-            <div className="flex min-w-0 items-baseline gap-1.5 sm:gap-2">
-              <span className="text-xs font-semibold tracking-[-0.02em] text-foreground sm:text-sm">
-                ₹{product.price.toLocaleString("en-IN")}
-              </span>
-
-              {product.oldPrice && (
-                <span className="text-[8px] text-muted-foreground line-through sm:text-[10px]">
-                  ₹{product.oldPrice.toLocaleString("en-IN")}
-                </span>
-              )}
-            </div>
+            <Price value={product.price} size="sm" />
 
             <Button
               type="button"

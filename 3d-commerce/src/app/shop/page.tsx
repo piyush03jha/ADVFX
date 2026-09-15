@@ -9,12 +9,18 @@ export const metadata: Metadata = {
     "Explore premium physical 3D products, collectibles, gaming products, characters and custom-ready models.",
 };
 
-export default function ShopPage() {
+interface ShopPageProps {
+  searchParams: Promise<{ category?: string }>;
+}
+
+export default async function ShopPage({ searchParams }: ShopPageProps) {
+  const params = await searchParams;
+
   return (
     <>
       <Navbar />
       <main className="min-h-screen bg-background">
-        <ShopProductGrid />
+        <ShopProductGrid activeCategory={params.category} />
       </main>
     </>
   );

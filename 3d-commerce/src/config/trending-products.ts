@@ -15,7 +15,7 @@ export const trendingProducts: TrendingProduct[] = [
   {
     id: "memento-mori",
     name: "Memento Mori — Crimson Skull",
-    category: "Collectibles",
+    category: "Display",
     price: 1999,
     rating: 4.6,
     reviewCount: 78,
@@ -100,7 +100,7 @@ export const trendingProducts: TrendingProduct[] = [
   {
     id: "retro-console",
     name: "Retro Console",
-    category: "Mobile / TV",
+    category: "Gaming",
     price: 1899,
     oldPrice: 2299,
     rating: 4.5,
@@ -130,7 +130,7 @@ export const trendingProducts: TrendingProduct[] = [
   {
     id: "dragon-collectible",
     name: "Ancient Dragon",
-    category: "Collectibles",
+    category: "Display",
     price: 4799,
     oldPrice: 5499,
     rating: 4.9,

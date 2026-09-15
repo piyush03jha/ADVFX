@@ -1,1 +1,1 @@
-export const HERO_MODEL_ROTATION_MS = 6000;
+export const HERO_MODEL_ROTATION_MS = 8000;

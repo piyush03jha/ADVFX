@@ -1,544 +1,113 @@
 "use client";
 
 import { motion, useReducedMotion } from "motion/react";
-import {
-  IconArrowUpRight,
-  IconBox,
-  IconCamera,
-  IconSparkles,
-} from "@tabler/icons-react";
+import { IconArrowUpRight, IconBox, IconCamera, IconCheck, IconSparkles } from "@tabler/icons-react";
 
 import { Container } from "@/components/ui/Container";
 import { Button } from "@/components/ui/Button";
 
 const steps = [
-  {
-    icon: IconCamera,
-    title: "Upload Photos",
-    description: "Share clear reference photos",
-  },
-  {
-    icon: IconSparkles,
-    title: "We Build",
-    description: "We create your 3D model",
-  },
-  {
-    icon: IconBox,
-    title: "You Receive",
-    description: "Get your finished model",
-  },
+  { icon: IconCamera, title: "Share your idea", description: "Photos, sketches or references" },
+  { icon: IconSparkles, title: "We craft it", description: "Designed by our 3D team" },
+  { icon: IconBox, title: "Made real", description: "A physical piece, made for you" },
 ];
 
+const benefits = ["Personalized dimensions", "Production-ready 3D modeling", "Guidance from concept to delivery"];
+
 export function CustomBuild() {
-  const shouldReduceMotion = useReducedMotion();
+  const reduceMotion = useReducedMotion();
 
   return (
-    <section
-      className="
-        relative
-        overflow-hidden
-        py-10
-        sm:py-16
-        lg:py-28
-      "
-    >
-      {/* =================================================
-          BACKGROUND
-      ================================================== */}
-
-      <div
-        aria-hidden="true"
-        className="
-          pointer-events-none
-          absolute
-          inset-0
-          -z-10
-          bg-[radial-gradient(circle_at_75%_45%,rgba(139,92,246,0.12),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.018),transparent_45%)]
-        "
-      />
+    <section className="relative overflow-hidden py-12 sm:py-20 lg:py-28">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_18%_40%,rgba(139,92,246,0.14),transparent_34%),radial-gradient(circle_at_85%_55%,rgba(59,130,246,0.10),transparent_30%)]" />
 
       <Container>
-        <div
-          className="
-            relative
-            overflow-hidden
-            rounded-2xl
-            border
-            border-border/70
-            bg-surface
+        <div className="relative overflow-hidden rounded-[2rem] border border-border bg-surface-elevated shadow-[0_24px_90px_rgba(0,0,0,0.12)]">
+          <div aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(115deg,transparent_0%,rgba(139,92,246,0.07)_48%,transparent_100%)]" />
 
-            sm:rounded-3xl
-          "
-        >
-          {/* =================================================
-              INNER PURPLE GLOW
-          ================================================== */}
-
-          <div
-            aria-hidden="true"
-            className="
-              pointer-events-none
-              absolute
-              right-[-120px]
-              top-[-100px]
-              -z-0
-              h-[360px]
-              w-[360px]
-              rounded-full
-              bg-primary/10
-              blur-[110px]
-
-              sm:right-[-80px]
-              sm:top-[-80px]
-              sm:h-[500px]
-              sm:w-[500px]
-              sm:blur-[120px]
-            "
-          />
-
-          <div
-            className="
-              relative
-              grid
-              lg:grid-cols-[0.9fr_1.1fr]
-            "
-          >
-            {/* =================================================
-                CONTENT
-            ================================================== */}
-
+          <div className="relative grid lg:grid-cols-[0.92fr_1.08fr]">
             <motion.div
-              initial={
-                shouldReduceMotion
-                  ? false
-                  : {
-                      opacity: 0,
-                      x: -30,
-                    }
-              }
-              whileInView={
-                shouldReduceMotion
-                  ? undefined
-                  : {
-                      opacity: 1,
-                      x: 0,
-                    }
-              }
-              viewport={{
-                once: true,
-                amount: 0.2,
-              }}
-              transition={{
-                duration: 0.75,
-                ease: [0.22, 1, 0.36, 1],
-              }}
-              className="
-                relative
-                z-10
-                flex
-                flex-col
-                justify-center
-
-                px-5
-                py-9
-
-                sm:px-10
-                sm:py-14
-
-                lg:px-12
-                lg:py-16
-
-                xl:px-16
-              "
+              initial={reduceMotion ? false : { opacity: 0, y: 24 }}
+              whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.2 }}
+              transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+              className="flex flex-col justify-center px-6 py-10 sm:px-10 sm:py-14 lg:px-14 lg:py-16 xl:px-16"
             >
-              {/* Eyebrow */}
+              <div className="flex items-center gap-3 text-[10px] font-semibold uppercase tracking-[0.25em] text-primary sm:text-xs">
+                <span className="h-px w-8 bg-primary" />
+                Your idea. Our craft.
+              </div>
 
-              <p
-                className="
-                  text-[9px]
-                  font-medium
-                  uppercase
-                  tracking-[0.24em]
-                  text-primary
-
-                  sm:text-[10px]
-                "
-              >
-                Custom 3D
-              </p>
-
-              {/* Heading */}
-
-              <h2
-                className="
-                  mt-4
-                  max-w-xl
-                  text-[2.25rem]
-                  font-semibold
-                  leading-[0.96]
-                  tracking-[-0.05em]
-                  text-foreground
-
-                  sm:mt-5
-                  sm:text-5xl
-
-                  lg:text-[3.6rem]
-                "
-              >
-                Build something
-                <br />
-
-                <span className="text-muted">
-                  uniquely yours.
-                </span>
+              <h2 className="mt-5 max-w-xl text-[2.8rem] font-semibold leading-[0.94] tracking-[-0.065em] text-foreground sm:text-5xl lg:text-[4.25rem]">
+                Turn someone special
+                <span className="mt-2 block text-muted">into a bobblehead.</span>
               </h2>
 
-              {/* Description */}
-
-              <p
-                className="
-                  mt-5
-                  max-w-lg
-                  text-[13px]
-                  leading-6
-                  text-muted
-
-                  sm:mt-6
-                  sm:text-base
-                  sm:leading-7
-                "
-              >
-                Have something that doesn't exist
-                in our library? Send us photos,
-                dimensions, and requirements.
-                We'll turn your idea into a
-                production-ready 3D model.
+              <p className="mt-6 max-w-lg text-sm leading-6 text-muted sm:text-base sm:leading-7">
+                Create a personalized bobblehead from a photo of your favorite person, pet, or character. Share your reference image, preferred pose, outfit, and dimensions—we will sculpt the details into a memorable physical collectible made just for you.
               </p>
 
-              {/* =================================================
-                  BUTTONS
-              ================================================== */}
+              <div className="mt-7 space-y-3">
+                {benefits.map((benefit) => (
+                  <div key={benefit} className="flex items-center gap-3 text-sm text-foreground">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/12 text-primary">
+                      <IconCheck size={12} stroke={2.5} />
+                    </span>
+                    {benefit}
+                  </div>
+                ))}
+              </div>
 
-              <div
-                className="
-                  mt-7
-                  flex
-                  flex-col
-                  gap-3
-
-                  min-[400px]:flex-row
-
-                  sm:mt-8
-                "
-              >
-                <Button
-                  href="/custom"
-                  variant="primary"
-                  size="md"
-                  className="
-                    w-full
-                    min-[400px]:w-auto
-                  "
-                >
-                  Start a Custom Order
-
-                  <IconArrowUpRight
-                    size={16}
-                    stroke={1.8}
-                  />
-                </Button>
-
-                <Button
-                  href="/custom/examples"
-                  variant="outline"
-                  size="md"
-                  className="
-                    w-full
-                    min-[400px]:w-auto
-                  "
-                >
-                  See Examples
+              <div className="mt-8 flex">
+                <Button href="/custom" variant="primary" size="lg" className="w-full min-[420px]:w-auto">
+                  Start your custom order
+                  <IconArrowUpRight size={17} stroke={1.8} />
                 </Button>
               </div>
 
-              {/* =================================================
-                  PROCESS STEPS
-              ================================================== */}
-
-              <div
-                className="
-                  mt-8
-                  grid
-                  grid-cols-3
-                  gap-2
-
-                  sm:mt-10
-                  sm:gap-5
-
-                  lg:mt-12
-                "
-              >
+              <div className="mt-10 grid grid-cols-3 gap-3 border-t border-border/70 pt-6 sm:mt-12 sm:gap-6">
                 {steps.map((step, index) => {
                   const Icon = step.icon;
-
                   return (
                     <motion.div
                       key={step.title}
-                      initial={
-                        shouldReduceMotion
-                          ? false
-                          : {
-                              opacity: 0,
-                              y: 15,
-                            }
-                      }
-                      whileInView={
-                        shouldReduceMotion
-                          ? undefined
-                          : {
-                              opacity: 1,
-                              y: 0,
-                            }
-                      }
-                      viewport={{
-                        once: true,
-                        amount: 0.2,
-                      }}
-                      transition={{
-                        duration: 0.5,
-                        delay: shouldReduceMotion
-                          ? 0
-                          : 0.15 + index * 0.08,
-                      }}
-                      className="
-                        min-w-0
-                      "
+                      initial={reduceMotion ? false : { opacity: 0, y: 12 }}
+                      whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.45, delay: reduceMotion ? 0 : index * 0.08 }}
+                      className="min-w-0"
                     >
-                      {/* Icon */}
-
-                      <div
-                        className="
-                          flex
-                          h-8
-                          w-8
-                          items-center
-                          justify-center
-                          rounded-lg
-                          border
-                          border-border
-                          bg-background/60
-                          text-primary
-
-                          sm:h-9
-                          sm:w-9
-                        "
-                      >
-                        <Icon
-                          size={14}
-                          stroke={1.6}
-                        />
-                      </div>
-
-                      {/* Text */}
-
-                      <p
-                        className="
-                          mt-2
-                          truncate
-                          text-[10px]
-                          font-medium
-                          text-foreground
-
-                          sm:text-xs
-                        "
-                      >
-                        {step.title}
-                      </p>
-
-                      <p
-                        className="
-                          mt-0.5
-                          hidden
-                          text-[10px]
-                          leading-4
-                          text-muted
-
-                          sm:block
-                        "
-                      >
-                        {step.description}
-                      </p>
+                      <Icon size={19} stroke={1.5} className="text-primary" />
+                      <p className="mt-2 text-[11px] font-semibold text-foreground sm:text-xs">{step.title}</p>
+                      <p className="mt-1 hidden text-[11px] leading-4 text-muted sm:block">{step.description}</p>
                     </motion.div>
                   );
                 })}
               </div>
             </motion.div>
 
-            {/* =================================================
-                VISUAL AREA
-            ================================================== */}
-
             <motion.div
-              initial={
-                shouldReduceMotion
-                  ? false
-                  : {
-                      opacity: 0,
-                      x: 30,
-                    }
-              }
-              whileInView={
-                shouldReduceMotion
-                  ? undefined
-                  : {
-                      opacity: 1,
-                      x: 0,
-                    }
-              }
-              viewport={{
-                once: true,
-                amount: 0.15,
-              }}
-              transition={{
-                duration: 0.8,
-                ease: [0.22, 1, 0.36, 1],
-              }}
-              className="
-                relative
-                h-[300px]
-                overflow-hidden
-
-                sm:h-[420px]
-
-                lg:min-h-[560px]
-                lg:h-auto
-              "
+              initial={reduceMotion ? false : { opacity: 0, x: 28 }}
+              whileInView={reduceMotion ? undefined : { opacity: 1, x: 0 }}
+              viewport={{ once: true, amount: 0.15 }}
+              transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+              className="relative min-h-[360px] overflow-hidden sm:min-h-[500px] lg:min-h-[650px]"
             >
-              {/* =================================================
-                  IMAGE 1
-              ================================================== */}
-
-              <div
-                className="
-                  absolute
-                  left-[5%]
-                  top-[10%]
-                  h-[70%]
-                  w-[50%]
-                  overflow-hidden
-                  rounded-xl
-                  border
-                  border-white/10
-                  bg-surface-elevated
-                  shadow-2xl
-
-                  sm:left-[10%]
-                  sm:top-[12%]
-                  sm:h-[58%]
-                  sm:w-[40%]
-                "
-              >
-                <img
-                  src="/catogeries/1.jpg"
-                  alt="Custom 3D model example"
-                  loading="lazy"
-                  className="
-                    h-full
-                    w-full
-                    object-cover
-                    transition-transform
-                    duration-700
-                    hover:scale-105
-                  "
-                />
-
-                <div
-                  aria-hidden="true"
-                  className="
-                    absolute
-                    inset-0
-                    bg-gradient-to-t
-                    from-black/45
-                    via-transparent
-                    to-white/5
-                  "
-                />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,rgba(139,92,246,0.22),transparent_48%)]" />
+              <div className="absolute left-[8%] top-[9%] w-[48%] aspect-square overflow-hidden rounded-2xl border border-white/15 bg-black shadow-2xl sm:left-[12%] sm:top-[12%] sm:w-[43%]">
+                <img src="/catogeries/couple.webp" alt="Bobblehead reference photo placeholder" loading="lazy" className="h-full w-full object-cover transition-transform duration-700 hover:scale-105" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-white/10" />
+                <span className="absolute bottom-4 left-4 text-[10px] font-medium uppercase tracking-[0.18em] text-white/80">Your reference</span>
               </div>
-
-              {/* =================================================
-                  IMAGE 2
-              ================================================== */}
-
-              <div
-                className="
-                  absolute
-                  right-[4%]
-                  top-[20%]
-                  h-[70%]
-                  w-[52%]
-                  overflow-hidden
-                  rounded-xl
-                  border
-                  border-white/10
-                  bg-surface-elevated
-                  shadow-2xl
-
-                  sm:right-[8%]
-                  sm:top-[25%]
-                  sm:h-[58%]
-                  sm:w-[42%]
-                "
-              >
-                <img
-                  src="/catogeries/2.jpg"
-                  alt="Custom 3D model example"
-                  loading="lazy"
-                  className="
-                    h-full
-                    w-full
-                    object-cover
-                    transition-transform
-                    duration-700
-                    hover:scale-105
-                  "
-                />
-
-                <div
-                  aria-hidden="true"
-                  className="
-                    absolute
-                    inset-0
-                    bg-gradient-to-t
-                    from-black/45
-                    via-transparent
-                    to-white/5
-                  "
-                />
+              <div className="absolute bottom-[8%] right-[5%] w-[52%] aspect-[860/1147] overflow-hidden rounded-2xl border border-white/15 bg-black shadow-2xl sm:bottom-[12%] sm:right-[9%] sm:w-[45%]">
+                <img src="/catogeries/bobble_head.webp" alt="Finished custom bobblehead placeholder" loading="lazy" className="h-full w-full object-cover transition-transform duration-700 hover:scale-105" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-white/10" />
+                <span className="absolute bottom-4 left-4 text-[10px] font-medium uppercase tracking-[0.18em] text-white/80">Your bobblehead</span>
               </div>
-
-              {/* =================================================
-                  PURPLE GLOW
-              ================================================== */}
-
-              <div
-                aria-hidden="true"
-                className="
-                  pointer-events-none
-                  absolute
-                  bottom-[5%]
-                  left-[30%]
-                  h-28
-                  w-28
-                  rounded-full
-                  bg-primary/20
-                  blur-[70px]
-
-                  sm:bottom-[8%]
-                  sm:h-32
-                  sm:w-32
-                  sm:blur-[80px]
-                "
-              />
+              <div className="absolute bottom-6 left-6 rounded-xl border border-white/15 bg-black/65 px-4 py-3 text-white backdrop-blur-md sm:bottom-10 sm:left-10">
+                <p className="text-[9px] uppercase tracking-[0.2em] text-white/60">Made personal</p>
+                <p className="mt-1 text-sm font-medium">A collectible with character</p>
+              </div>
             </motion.div>
           </div>
         </div>
