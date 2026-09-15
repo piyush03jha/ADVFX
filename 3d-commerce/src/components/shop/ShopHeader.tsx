@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * Reserves vertical space for the fixed navbar so the shop category
- * navigation begins clearly below it instead of being overlapped.
+ * Reserves only the necessary vertical space for the fixed navbar
+ * so the shop controls sit closer to the navigation without overlap.
  */
 export function ShopHeader() {
-  return <div aria-hidden="true" className="h-28 sm:h-32 lg:h-36" />;
+  return <div aria-hidden="true" className="h-16 sm:h-20 lg:h-24" />;
 }
