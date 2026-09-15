@@ -15,6 +15,7 @@ interface ShopFiltersProps {
   filters: ShopFilterState;
   onChange: (filters: ShopFilterState) => void;
   onClear: () => void;
+  compact?: boolean;
 }
 
 const PRICE_OPTIONS = [
@@ -30,7 +31,7 @@ const RATING_OPTIONS = [
   { label: "3.0+", value: 3 },
 ];
 
-export function ShopFilters({ categories, filters, onChange, onClear }: ShopFiltersProps) {
+export function ShopFilters({ categories, filters, onChange, onClear, compact = false }: ShopFiltersProps) {
   const [open, setOpen] = useState<string | null>(null);
 
   const categoryLabels: Record<string, string> = {
@@ -54,6 +55,7 @@ export function ShopFilters({ categories, filters, onChange, onClear }: ShopFilt
         label={filters.categories.length ? `Category · ${filters.categories.length}` : "Category"}
         open={open === "category"}
         onToggle={() => setOpen(open === "category" ? null : "category")}
+        compact={compact}
       >
         <div className="w-56 p-2">
           {categories.map((category) => {
@@ -84,6 +86,7 @@ export function ShopFilters({ categories, filters, onChange, onClear }: ShopFilt
         label={filters.minPrice !== 0 || filters.maxPrice !== Infinity ? "Price · Active" : "Price"}
         open={open === "price"}
         onToggle={() => setOpen(open === "price" ? null : "price")}
+        compact={compact}
       >
         <div className="w-56 p-2">
           {PRICE_OPTIONS.map((option) => {
@@ -110,6 +113,7 @@ export function ShopFilters({ categories, filters, onChange, onClear }: ShopFilt
         label={filters.minRating > 0 ? `Rating · ${filters.minRating}+` : "Rating"}
         open={open === "rating"}
         onToggle={() => setOpen(open === "rating" ? null : "rating")}
+        compact={compact}
       >
         <div className="w-44 p-2">
           {RATING_OPTIONS.map((option) => {
@@ -154,11 +158,13 @@ function FilterDropdown({
   open,
   onToggle,
   children,
+  compact,
 }: {
   label: string;
   open: boolean;
   onToggle: () => void;
   children: ReactNode;
+  compact: boolean;
 }) {
   return (
     <div className="relative">
@@ -166,11 +172,9 @@ function FilterDropdown({
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        className={`flex h-10 items-center gap-2 rounded-full border px-3.5 text-[10px] font-medium uppercase tracking-[0.1em] transition-colors ${
-          open
-            ? "border-primary/50 bg-primary/[0.06] text-foreground"
-            : "border-border bg-surface text-muted hover:border-primary/30 hover:text-foreground"
-        }`}
+        className={`flex items-center gap-2 rounded-full border border-border bg-surface text-muted transition-colors hover:border-primary/30 hover:text-foreground ${
+          compact ? "h-9 px-3 text-[10px]" : "h-10 px-3.5 text-[10px]"
+        } uppercase font-medium tracking-[0.1em]`}
       >
         {label}
         <IconChevronDown size={13} className={`transition-transform ${open ? "rotate-180" : ""}`} />
