@@ -25,6 +25,15 @@ const INITIAL_FILTERS: ShopFilterState = {
   minRating: 0,
 };
 
+const categoryIdToProductCategory: Record<string, string> = {
+  gaming: "Gaming",
+  anime: "Anime",
+  "desk-toys": "Desk Toys",
+  custom: "Custom",
+  heroes: "Heroes",
+  props: "Weapon Props",
+};
+
 interface ShopProductGridProps {
   products?: typeof trendingProducts;
   columns?: 3 | 4;
@@ -63,24 +72,15 @@ export function ShopProductGrid({
     const available = new Set(sourceProducts.map((product) => product.category));
 
     return shopCategories.filter((category) => {
-      if (category.id === "gaming") return available.has("Gaming");
-      if (category.id === "anime") return available.has("Anime");
-      if (category.id === "desk-toys") return available.has("Desk Toys");
-      if (category.id === "custom") return available.has("Custom");
-      if (category.id === "heroes") return available.has("Heroes");
-      if (category.id === "props") return available.has("Weapon Props");
-      return false;
+      const productCategory = categoryIdToProductCategory[category.id];
+      return productCategory ? available.has(productCategory) : false;
     });
   }, [sourceProducts]);
 
-  const categoryIdToProductCategory: Record<string, string> = {
-    gaming: "Gaming",
-    anime: "Anime",
-    "desk-toys": "Desk Toys",
-    custom: "Custom",
-    heroes: "Heroes",
-    props: "Weapon Props",
-  };
+  const categoryIds = useMemo(
+    () => new Set(categories.map((category) => category.id)),
+    [categories],
+  );
 
   const filteredProducts = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -105,6 +105,7 @@ export function ShopProductGrid({
         (!directMatchExists && fallbackProductCategory === product.category);
 
       const selectedProductCategories = filters.categories
+        .filter((id) => categoryIds.has(id))
         .map((id) => categoryIdToProductCategory[id])
         .filter(Boolean);
 
@@ -135,7 +136,7 @@ export function ShopProductGrid({
           return 0;
       }
     });
-  }, [filters, search, sort, sourceProducts]);
+  }, [categoryIds, filters, search, sort, sourceProducts]);
 
   useEffect(() => {
     setPage(1);
@@ -212,18 +213,21 @@ export function ShopProductGrid({
           </div>
 
           <div className="border-t border-border/50 pt-5">
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-              <ShopSearch value={search} onChange={setSearch} />
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+              <div className="flex-1 lg:flex lg:justify-center">
+                <ShopSearch value={search} onChange={setSearch} />
+              </div>
 
-              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                <ShopSort value={sort} onChange={setSort} />
-
+              <div className="flex flex-wrap items-center justify-center gap-2 lg:justify-end">
                 <ShopFilters
                   categories={categories.map((category) => category.id)}
                   filters={filters}
                   onChange={handleFilterChange}
                   onClear={clearFilters}
+                  compact
                 />
+
+                <ShopSort value={sort} onChange={setSort} />
 
                 <button
                   type="button"
@@ -247,30 +251,11 @@ export function ShopProductGrid({
               </div>
             </div>
 
-            <div className="mt-4 xl:hidden">
-              <ShopFilters
-                categories={categories.map((category) => category.id)}
-                filters={filters}
-                onChange={handleFilterChange}
-                onClear={clearFilters}
-              />
-            </div>
-
-            <div className="mt-3 flex items-center justify-between gap-3 lg:hidden">
-              <p className="text-xs text-muted">
-                Showing <span className="text-foreground">{filteredProducts.length}</span> models
-              </p>
-
-              <div className="flex items-center gap-2">
-                {hasActiveFilters && (
-                  <button
-                    type="button"
-                    onClick={clearAll}
-                    className="text-[10px] uppercase tracking-[0.12em] text-primary"
-                  >
-                    Clear
-                  </button>
-                )}
+            <div className="mt-3 lg:hidden">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs text-muted">
+                  Showing <span className="text-foreground">{filteredProducts.length}</span> models
+                </p>
                 <Button
                   type="button"
                   variant="outline"
