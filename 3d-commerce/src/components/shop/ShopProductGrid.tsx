@@ -19,7 +19,6 @@ import { ShopHeader } from "./ShopHeader";
 import { ShopNavigation } from "./ShopNavigation";
 import { ShopProductCard } from "./ShopProductCard";
 import { ShopSearch } from "./ShopSearch";
-import { ShopSort, type ShopSortValue } from "./ShopSort";
 
 const INITIAL_FILTERS: ShopFilterState = {
   categories: [],
@@ -61,7 +60,7 @@ export function ShopProductGrid({
     categories: activeCategory ? [activeCategory] : [],
   }));
   const [search, setSearch] = useState("");
-  const [sort, setSort] = useState<ShopSortValue>("featured");
+  const [sort, setSort] = useState<"featured" | "newest" | "popular" | "rating" | "price-low" | "price-high">("featured");
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [page, setPage] = useState(1);
 
@@ -216,13 +215,12 @@ export function ShopProductGrid({
         <Container>
           <div className="border-t border-border/50 pt-5">
             <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-center">
-              <div className="w-full xl:flex-1 xl:max-w-none">
+              <div className="w-full min-w-0 xl:flex-[2]">
                 <ShopSearch value={search} onChange={setSearch} />
               </div>
 
               <div className="flex flex-wrap items-center justify-center gap-2 xl:shrink-0">
                 <ShopFilters
-                  categories={categories.map((category) => category.id)}
                   filters={filters}
                   onChange={handleFilterChange}
                   onClear={clearFilters}
