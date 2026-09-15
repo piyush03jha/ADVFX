@@ -50,11 +50,11 @@ export const shopCategories: ShopCategory[] = [
     matchTerms: ["prop", "props", "weapon", "sword", "armor", "display"],
   },
   {
-    id: "display",
-    name: "Figures",
-    description: "Statement figures made to stand out on a shelf.",
-    image: "/catogeries/1.jpg",
-    matchTerms: ["figure", "figures", "statue", "shelf", "showpiece", "decor", "collectible", "collection"],
+    id: "kids-toys",
+    name: "Kids & Toys",
+    description: "Fun, playful models for curious young creators.",
+    image: "/catogeries/3.jpg",
+    matchTerms: ["kids", "kid", "child", "children", "toy", "toys", "play", "playful", "fun"],
   },
 ];
 
@@ -79,6 +79,7 @@ export function getDiscoveryFallbackCategory(query: string) {
 
   return (
     getShopCategoryForQuery(normalized) ??
+    shopCategories.find((category) => category.id === "kids-toys") ??
     shopCategories.find((category) => category.id === "desk-toys") ??
     null
   );
