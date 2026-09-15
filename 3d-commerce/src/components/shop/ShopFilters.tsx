@@ -143,7 +143,7 @@ export function ShopFilters({ categories, filters, onChange, onClear, compact = 
             onClear();
             setOpen(null);
           }}
-          className="flex h-10 items-center gap-2 rounded-full px-3 text-[10px] font-medium uppercase tracking-[0.08em] text-primary transition-colors hover:bg-primary/10"
+          className="hidden"
         >
           <IconX size={13} />
           Clear Filters
@@ -173,7 +173,7 @@ function FilterDropdown({
         onClick={onToggle}
         aria-expanded={open}
         className={`flex items-center gap-2 rounded-full border border-border bg-surface text-muted transition-colors hover:border-primary/30 hover:text-foreground ${
-          compact ? "h-9 px-3 text-[10px]" : "h-10 px-3.5 text-[10px]"
+          compact ? "h-10 px-3 text-[10px]" : "h-10 px-3.5 text-[10px]"
         } uppercase font-medium tracking-[0.1em]`}
       >
         {label}
