@@ -26,7 +26,7 @@ export const shopCategories: ShopCategory[] = [
     name: "Desk Toys",
     description: "Playful companions made for desks and shelves.",
     image: "/catogeries/3.jpg",
-    matchTerms: ["toy", "toys", "desk", "bot", "mini", "companion", "figurine", "kid", "kids", "child", "children"],
+    matchTerms: ["toy", "toys", "desk", "bot", "mini", "companion", "figurine", "kid", "kids", "child", "children", "playful", "fun"],
   },
   {
     id: "custom",
@@ -49,6 +49,13 @@ export const shopCategories: ShopCategory[] = [
     image: "/catogeries/2.jpg",
     matchTerms: ["prop", "props", "weapon", "sword", "armor", "display"],
   },
+  {
+    id: "display",
+    name: "Display",
+    description: "Statement pieces made to stand out on a shelf.",
+    image: "/catogeries/1.jpg",
+    matchTerms: ["display", "shelf", "showpiece", "decor", "collectible", "collection"],
+  },
 ];
 
 export function getShopCategoryForQuery(query: string) {
@@ -70,7 +77,9 @@ export function getDiscoveryFallbackCategory(query: string) {
   const normalized = query.trim().toLowerCase();
   if (!normalized) return null;
 
-  // Explicit semantic matches should win. Otherwise treat an unknown/random query
-  // as a child-friendly discovery search and show playful products instead of a dead end.
-  return getShopCategoryForQuery(normalized) ?? shopCategories.find((category) => category.id === "desk-toys") ?? null;
+  return (
+    getShopCategoryForQuery(normalized) ??
+    shopCategories.find((category) => category.id === "desk-toys") ??
+    null
+  );
 }
