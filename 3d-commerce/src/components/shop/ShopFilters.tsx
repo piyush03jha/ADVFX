@@ -11,7 +11,6 @@ export interface ShopFilterState {
 }
 
 interface ShopFiltersProps {
-  categories: string[];
   filters: ShopFilterState;
   onChange: (filters: ShopFilterState) => void;
   onClear: () => void;
@@ -31,19 +30,8 @@ const RATING_OPTIONS = [
   { label: "3.0+", value: 3 },
 ];
 
-export function ShopFilters({ categories, filters, onChange, onClear, compact = false }: ShopFiltersProps) {
+export function ShopFilters({ filters, onChange, onClear, compact = false }: ShopFiltersProps) {
   const [open, setOpen] = useState<string | null>(null);
-
-  const categoryLabels: Record<string, string> = {
-    gaming: "Gaming",
-    anime: "Anime",
-    "desk-toys": "Desk Toys",
-    "kids-toys": "Kids & Toys",
-    custom: "Custom",
-    heroes: "Heroes",
-    props: "Props",
-    display: "Display",
-  };
 
   const hasActiveFilters =
     filters.categories.length > 0 ||
@@ -53,37 +41,6 @@ export function ShopFilters({ categories, filters, onChange, onClear, compact = 
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <FilterDropdown
-        label={filters.categories.length ? `Category · ${filters.categories.length}` : "Category"}
-        open={open === "category"}
-        onToggle={() => setOpen(open === "category" ? null : "category")}
-        compact={compact}
-      >
-        <div className="w-56 p-2">
-          {categories.map((category) => {
-            const selected = filters.categories.includes(category);
-            return (
-              <button
-                key={category}
-                type="button"
-                onClick={() =>
-                  onChange({
-                    ...filters,
-                    categories: selected
-                      ? filters.categories.filter((item) => item !== category)
-                      : [...filters.categories, category],
-                  })
-                }
-                className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-xs text-muted transition-colors hover:bg-surface-elevated hover:text-foreground"
-              >
-                <span>{categoryLabels[category] ?? category}</span>
-                {selected && <IconCheck size={14} className="text-primary" />}
-              </button>
-            );
-          })}
-        </div>
-      </FilterDropdown>
-
       <FilterDropdown
         label={filters.minPrice !== 0 || filters.maxPrice !== Infinity ? "Price · Active" : "Price"}
         open={open === "price"}
