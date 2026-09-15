@@ -226,9 +226,11 @@ export function ShopProductGrid({
 
           <div className="border-t border-border/50 pt-5">
             <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-center">
-              <ShopSearch value={search} onChange={setSearch} />
+              <div className="w-full xl:flex-1 xl:max-w-none">
+                <ShopSearch value={search} onChange={setSearch} />
+              </div>
 
-              <div className="flex flex-wrap items-center justify-center gap-2">
+              <div className="flex flex-wrap items-center justify-center gap-2 xl:shrink-0">
                 <ShopFilters
                   categories={categories.map((category) => category.id)}
                   filters={filters}
@@ -247,7 +249,7 @@ export function ShopProductGrid({
               </div>
             </div>
 
-            <div className="mt-3 flex justify-end lg:hidden">
+            <div className="mt-3 lg:hidden">
               <Button
                 type="button"
                 variant="outline"
