@@ -2,8 +2,10 @@
 
 import { IconLayoutGrid } from "@tabler/icons-react";
 
+import type { ShopCategory } from "@/config/shop-categories";
+
 interface ShopNavigationProps {
-  categories: string[];
+  categories: ShopCategory[];
   selectedCategories: string[];
   onCategoryChange: (category: string) => void;
   onShowAll: () => void;
@@ -19,36 +21,65 @@ export function ShopNavigation({
   const isAllActive = selectedCategories.length === 0;
 
   return (
-    <div
-      className="
-        flex
-        gap-2
-        overflow-x-auto
-        px-1
-        pb-1
-        [scrollbar-width:none]
-        [&::-webkit-scrollbar]:hidden
-      "
-    >
-      <NavPill active={isAllActive} onClick={onShowAll}>
-        <IconLayoutGrid size={13} stroke={1.8} />
-        All Models
-      </NavPill>
+    <section aria-label="Explore product categories" className="relative overflow-hidden rounded-[28px] border border-border bg-surface/40 p-2 sm:p-3">
+      <div className="mb-3 flex items-end justify-between gap-4 px-2 pt-1 sm:px-3">
+        <div>
+          <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-primary">
+            Browse by collection
+          </p>
+          <h2 className="mt-1 font-serif text-2xl tracking-[-0.04em] text-foreground sm:text-3xl">
+            Find your kind of model
+          </h2>
+        </div>
+        <p className="hidden max-w-xs text-right text-[11px] leading-5 text-muted sm:block">
+          Curated physical 3D pieces for play, display and collecting.
+        </p>
+      </div>
 
-      {categories.map((category) => (
-        <NavPill
-          key={category}
-          active={selectedCategories.includes(category)}
-          onClick={() => onCategoryChange(category)}
-        >
-          {category}
-        </NavPill>
-      ))}
-    </div>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+        <CategoryCard active={isAllActive} onClick={onShowAll}>
+          <div className="relative h-full min-h-36 overflow-hidden rounded-2xl bg-background">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_20%,rgba(139,92,246,0.22),transparent_46%),radial-gradient(circle_at_80%_85%,rgba(139,92,246,0.14),transparent_48%)]" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-surface-elevated text-primary">
+                <IconLayoutGrid size={19} stroke={1.8} />
+              </div>
+            </div>
+            <div className="absolute inset-x-0 bottom-0 p-3">
+              <p className="text-sm font-medium text-foreground">All Models</p>
+              <p className="mt-0.5 text-[10px] uppercase tracking-[0.12em] text-muted">Full collection</p>
+            </div>
+          </div>
+        </CategoryCard>
+
+        {categories.map((category) => (
+          <CategoryCard
+            key={category.id}
+            active={selectedCategories.includes(category.id)}
+            onClick={() => onCategoryChange(category.id)}
+          >
+            <div className="relative min-h-36 overflow-hidden rounded-2xl bg-background">
+              <img
+                src={category.image}
+                alt=""
+                aria-hidden="true"
+                loading="lazy"
+                className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/5" />
+              <div className="absolute inset-x-0 bottom-0 p-3 text-left">
+                <p className="text-sm font-medium text-white">{category.name}</p>
+                <p className="mt-1 line-clamp-2 text-[10px] leading-4 text-white/70">{category.description}</p>
+              </div>
+            </div>
+          </CategoryCard>
+        ))}
+      </div>
+    </section>
   );
 }
 
-function NavPill({
+function CategoryCard({
   active,
   onClick,
   children,
@@ -61,28 +92,12 @@ function NavPill({
     <button
       type="button"
       onClick={onClick}
-      className={`
-        flex
-        h-9
-        shrink-0
-        items-center
-        gap-1.5
-        whitespace-nowrap
-        rounded-full
-        border
-        px-4
-        text-[11px]
-        font-medium
-        uppercase
-        tracking-[0.08em]
-        transition-all
-        duration-300
-        ${
-          active
-            ? "border-primary/50 bg-primary/10 text-primary-hover shadow-[0_0_0_1px_rgba(139,92,246,0.15)]"
-            : "border-border bg-surface/30 text-muted hover:border-primary/30 hover:text-foreground"
-        }
-      `}
+      aria-pressed={active}
+      className={`group relative overflow-hidden rounded-2xl border text-left transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 ${
+        active
+          ? "border-primary/60 bg-primary/[0.06] shadow-[0_0_0_1px_rgba(139,92,246,0.18)]"
+          : "border-border/70 bg-background/30 hover:border-primary/35 hover:bg-surface-elevated"
+      }`}
     >
       {children}
     </button>
