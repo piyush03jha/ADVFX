@@ -51,10 +51,10 @@ export const shopCategories: ShopCategory[] = [
   },
   {
     id: "display",
-    name: "Display",
-    description: "Statement pieces made to stand out on a shelf.",
+    name: "Figures",
+    description: "Statement figures made to stand out on a shelf.",
     image: "/catogeries/1.jpg",
-    matchTerms: ["display", "shelf", "showpiece", "decor", "collectible", "collection"],
+    matchTerms: ["figure", "figures", "statue", "shelf", "showpiece", "decor", "collectible", "collection"],
   },
 ];
 
