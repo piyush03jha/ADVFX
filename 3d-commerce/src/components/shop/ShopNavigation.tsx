@@ -1,5 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+
 import type { ShopCategory } from "@/config/shop-categories";
 
 interface ShopNavigationProps {
@@ -16,13 +18,26 @@ export function ShopNavigation({
   onCategoryChange,
   onShowAll,
 }: ShopNavigationProps) {
+  const router = useRouter();
   const isAllActive = selectedCategories.length === 0;
 
+  const handleCategoryClick = (category: ShopCategory) => {
+    if (category.id === "custom") {
+      router.push("/custom");
+      return;
+    }
+
+    onCategoryChange(category.id);
+  };
+
   return (
-    <section aria-label="Product categories" className="relative overflow-hidden rounded-[28px] border border-border bg-surface/40 p-2 sm:p-3">
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+    <section
+      aria-label="Product categories"
+      className="relative overflow-hidden rounded-[28px] border border-border bg-surface/40 p-2 sm:p-3"
+    >
+      <div className="flex gap-2 overflow-x-auto pb-1 sm:gap-3 xl:grid xl:grid-cols-8 xl:overflow-visible">
         <CategoryCard active={isAllActive} onClick={onShowAll}>
-          <div className="relative min-h-36 overflow-hidden rounded-2xl bg-background">
+          <div className="relative aspect-[3/4] min-w-[112px] overflow-hidden rounded-2xl bg-background sm:min-w-[132px] xl:min-w-0">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_20%,rgba(139,92,246,0.22),transparent_46%),radial-gradient(circle_at_80%_85%,rgba(139,92,246,0.14),transparent_48%)]" />
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-surface-elevated text-primary">
@@ -40,9 +55,9 @@ export function ShopNavigation({
           <CategoryCard
             key={category.id}
             active={selectedCategories.includes(category.id)}
-            onClick={() => onCategoryChange(category.id)}
+            onClick={() => handleCategoryClick(category)}
           >
-            <div className="relative min-h-36 overflow-hidden rounded-2xl bg-background">
+            <div className="relative aspect-[3/4] min-w-[112px] overflow-hidden rounded-2xl bg-background sm:min-w-[132px] xl:min-w-0">
               <img
                 src={category.image}
                 alt={category.name}
@@ -76,7 +91,7 @@ function CategoryCard({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`group relative overflow-hidden rounded-2xl border text-left transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 ${
+      className={`group relative min-w-0 overflow-hidden rounded-2xl border text-left transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 ${
         active
           ? "border-primary/60 bg-primary/[0.06] shadow-[0_0_0_1px_rgba(139,92,246,0.18)]"
           : "border-border/70 bg-background/30 hover:border-primary/35 hover:bg-surface-elevated"
