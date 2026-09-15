@@ -8,7 +8,10 @@ import { Button } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import { Pagination } from "@/components/ui/Pagination";
 import { trendingProducts } from "@/config/trending-products";
-import { shopCategories, getShopCategoryForQuery } from "@/config/shop-categories";
+import {
+  shopCategories,
+  getDiscoveryFallbackCategory,
+} from "@/config/shop-categories";
 
 import { MobileFilters } from "./MobileFilters";
 import { ShopFilters, type ShopFilterState } from "./ShopFilters";
@@ -103,7 +106,7 @@ export function ShopProductGrid({
 
   const filteredProducts = useMemo(() => {
     const query = search.trim().toLowerCase();
-    const fallbackCategory = getShopCategoryForQuery(query);
+    const fallbackCategory = getDiscoveryFallbackCategory(query);
     const fallbackProductCategory = fallbackCategory
       ? categoryIdToProductCategory[fallbackCategory.id]
       : null;
