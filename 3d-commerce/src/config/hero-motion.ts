@@ -1,1 +1,0 @@
-export const HERO_MODEL_ROTATION_MS = 8000;
