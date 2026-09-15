@@ -71,7 +71,6 @@ export function ShopProductGrid({
 
   const categories = useMemo(() => {
     const available = new Set(sourceProducts.map((product) => product.category));
-
     return shopCategories.filter((category) => {
       const productCategory = categoryIdToProductCategory[category.id];
       return productCategory ? available.has(productCategory) : false;
@@ -203,24 +202,11 @@ export function ShopProductGrid({
     setFilters(next);
   };
 
-  const hasActiveFilters =
-    search.trim().length > 0 ||
-    filters.categories.length > 0 ||
-    filters.minPrice !== 0 ||
-    filters.maxPrice !== Infinity ||
-    filters.minRating !== 0;
-
-  const rangeStart = filteredProducts.length === 0 ? 0 : (page - 1) * pageSize + 1;
-  const rangeEnd = Math.min(page * pageSize, filteredProducts.length);
-
   return (
     <>
-      <ShopHeader
-        productCount={filteredProducts.length}
-        onOpenFilters={() => setMobileFiltersOpen(true)}
-      />
+      <ShopHeader />
 
-      <section className="relative pb-20 pt-1 sm:pb-24 sm:pt-2 lg:pb-28 lg:pt-3">
+      <section className="relative pb-20 pt-2 sm:pb-24 sm:pt-3 lg:pb-28 lg:pt-4">
         <Container>
           <div ref={navRef} className="-mx-1 mb-7 scroll-mt-24 sm:mb-8">
             <ShopNavigation
@@ -233,12 +219,12 @@ export function ShopProductGrid({
           </div>
 
           <div className="border-t border-border/50 pt-5">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-              <div className="flex-1 lg:flex lg:justify-center">
-                <ShopSearch value={search} onChange={setSearch} />
-              </div>
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-center">
+              <ShopSearch value={search} onChange={setSearch} />
 
-              <div className="flex flex-wrap items-center justify-center gap-2 lg:justify-end">
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <ShopSort value={sort} onChange={setSort} />
+
                 <ShopFilters
                   categories={categories.map((category) => category.id)}
                   filters={filters}
@@ -246,8 +232,6 @@ export function ShopProductGrid({
                   onClear={clearFilters}
                   compact
                 />
-
-                <ShopSort value={sort} onChange={setSort} />
 
                 <button
                   type="button"
@@ -259,33 +243,16 @@ export function ShopProductGrid({
               </div>
             </div>
 
-            <div className="mt-4 flex items-center justify-between">
-              <p className="text-[10px] uppercase tracking-[0.14em] text-muted">
-                {filteredProducts.length} models available
-              </p>
-
-              <div className="hidden text-right text-[10px] uppercase tracking-[0.14em] text-muted sm:block">
-                {filters.minRating > 0 && `Rating ${filters.minRating}+`}
-                {filters.minRating > 0 && (filters.minPrice !== 0 || filters.maxPrice !== Infinity) ? " · " : ""}
-                {(filters.minPrice !== 0 || filters.maxPrice !== Infinity) && "Price filtered"}
-              </div>
-            </div>
-
-            <div className="mt-3 lg:hidden">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-xs text-muted">
-                  Showing <span className="text-foreground">{filteredProducts.length}</span> models
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setMobileFiltersOpen(true)}
-                  className="rounded-full"
-                >
-                  Filters
-                </Button>
-              </div>
+            <div className="mt-3 flex justify-end lg:hidden">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setMobileFiltersOpen(true)}
+                className="rounded-full"
+              >
+                Filters
+              </Button>
             </div>
           </div>
 
@@ -315,8 +282,7 @@ export function ShopProductGrid({
 
                 <div className="mt-6 flex items-center justify-center sm:mt-8">
                   <p className="text-[11px] uppercase tracking-[0.14em] text-muted">
-                    Showing <span className="text-foreground">{rangeStart}–{rangeEnd}</span> of{" "}
-                    <span className="text-foreground">{filteredProducts.length}</span> models
+                    Showing <span className="text-foreground">{paginatedProducts.length}</span> models
                   </p>
                 </div>
 
@@ -347,9 +313,9 @@ function EmptyProducts({ onClear }: { onClear: () => void }) {
       <div className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-surface-elevated text-muted">
         <IconPackageOff size={20} stroke={1.5} />
       </div>
-      <h3 className="mt-5 text-base font-medium text-foreground">No models found</h3>
+      <h3 className="mt-5 text-base font-medium text-foreground">No matching models</h3>
       <p className="mt-2 max-w-sm text-xs leading-5 text-muted">
-        Try changing your search or filters, or explore the complete collection.
+        Try another product name, category, or filter combination.
       </p>
       <Button type="button" variant="outline" size="sm" onClick={onClear} className="mt-5">
         Clear Search &amp; Filters
