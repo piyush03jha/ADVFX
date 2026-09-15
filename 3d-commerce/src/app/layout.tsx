@@ -4,6 +4,7 @@ import { Geist, Geist_Mono, Fraunces } from "next/font/google";
 import "./globals.css";
 
 import { Footer } from "@/components/layout/Footer";
+import { WhatsAppBot } from "@/components/layout/WhatsAppBot";
 import { CartProvider } from "@/context/CartContext";
 import { WishlistProvider } from "@/context/WishlistContext";
 import { AddressProvider } from "@/context/AddressContext";
@@ -50,6 +51,7 @@ export default function RootLayout({
           </AddressProvider>
         </ThemeProvider>
 
+        <WhatsAppBot />
         <Footer />
       </body>
     </html>
