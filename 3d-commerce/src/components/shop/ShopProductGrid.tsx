@@ -214,16 +214,6 @@ export function ShopProductGrid({
 
       <section className="relative pb-20 pt-2 sm:pb-24 sm:pt-3 lg:pb-28 lg:pt-4">
         <Container>
-          <div ref={navRef} className="-mx-1 mb-7 scroll-mt-24 sm:mb-8">
-            <ShopNavigation
-              categories={categories}
-              selectedCategories={filters.categories}
-              onCategoryChange={handleCategoryChange}
-              onShowAll={clearAll}
-              activeCategory={activeCategory}
-            />
-          </div>
-
           <div className="border-t border-border/50 pt-5">
             <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-center">
               <div className="w-full xl:flex-1 xl:max-w-none">
@@ -260,6 +250,16 @@ export function ShopProductGrid({
                 Filters
               </Button>
             </div>
+          </div>
+
+          <div ref={navRef} className="-mx-1 mb-7 mt-7 scroll-mt-24 sm:mb-8 sm:mt-8">
+            <ShopNavigation
+              categories={categories}
+              selectedCategories={filters.categories}
+              onCategoryChange={handleCategoryChange}
+              onShowAll={clearAll}
+              activeCategory={activeCategory}
+            />
           </div>
 
           <div className="mt-8 sm:mt-9">
