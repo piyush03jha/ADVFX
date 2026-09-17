@@ -4,11 +4,15 @@ import {
   Get,
   Param,
   Post,
-} from "@nestjs/common";
-import { ProcessingJobsService } from "./processing-jobs.service";
-import { ProcessingJobsWorker } from "./processing-jobs.worker";
+  UseGuards,
+} from '@nestjs/common';
+import { AdminGuard } from '../auth/guards/admin.guard';
+import { AuthGuard } from '../auth/guards/auth.guard';
+import { ProcessingJobsService } from './processing-jobs.service';
+import { ProcessingJobsWorker } from './processing-jobs.worker';
 
-@Controller("processing-jobs")
+@UseGuards(AuthGuard, AdminGuard)
+@Controller('processing-jobs')
 export class ProcessingJobsController {
   constructor(
     private readonly processingJobsService: ProcessingJobsService,
@@ -16,9 +20,7 @@ export class ProcessingJobsController {
   ) {}
 
   @Post()
-  async create(
-    @Body("productFileId") productFileId: string,
-  ) {
+  async create(@Body('productFileId') productFileId: string) {
     return this.processingJobsService.create(productFileId);
   }
 
@@ -27,21 +29,19 @@ export class ProcessingJobsController {
     return this.processingJobsService.findAll();
   }
 
-  @Get(":id")
-  async findOne(@Param("id") id: string) {
+  @Get(':id')
+  async findOne(@Param('id') id: string) {
     return this.processingJobsService.findOne(id);
   }
 
-/**
-   * Temporary development endpoint.
-   *
-   * This will later be replaced by a real background
-   * worker/queue consumer.
+  /**
+   * Internal/admin operational endpoint for running the existing worker.
+   * The worker itself is unchanged and can still be invoked directly by
+   * application code without going through HTTP authentication.
    */
-  @Post("worker/run")
+  @Post('worker/run')
   async runWorker() {
-    const processed =
-      await this.processingJobsWorker.processNextJob();
+    const processed = await this.processingJobsWorker.processNextJob();
 
     return {
       processed,

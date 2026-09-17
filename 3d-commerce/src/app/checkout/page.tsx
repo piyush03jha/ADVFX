@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
+import { useRouter } from "next/navigation";
 import { IconLock, IconShoppingBag } from "@tabler/icons-react";
 
 import { Navbar } from "@/components/layout/SiteNavbar";
@@ -9,12 +10,38 @@ import { CheckoutForm } from "@/components/checkout/CheckoutForm";
 import { CheckoutSummary } from "@/components/checkout/CheckoutSummary";
 import { Button } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
+import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import type { CountryCode } from "@/config/countries";
 
 export default function CheckoutPage() {
+  const router = useRouter();
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const { items, isLoaded } = useCart();
   const [country, setCountry] = useState<CountryCode>("IN");
+
+  useEffect(() => {
+    if (!isAuthLoading && !isAuthenticated) {
+      router.replace(`/login?returnTo=${encodeURIComponent("/checkout")}`);
+    }
+  }, [isAuthLoading, isAuthenticated, router]);
+
+  if (isAuthLoading || !isAuthenticated) {
+    return (
+      <>
+        <Navbar />
+        <main className="min-h-screen overflow-hidden bg-background">
+          <section className="relative flex min-h-[calc(100svh-76px)] items-center justify-center px-4 pb-16 pt-28 sm:px-6 lg:px-8">
+            <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-16 h-[460px] w-[460px] -translate-x-1/2 rounded-full bg-primary/[0.07] blur-[140px]" />
+            <div className="relative rounded-3xl border border-white/[0.1] bg-[linear-gradient(135deg,hsl(var(--foreground)/0.06),hsl(var(--background)/0.02)_56%,hsl(var(--primary)/0.07))] px-8 py-7 text-center shadow-[0_24px_80px_rgba(0,0,0,0.18)]">
+              <div className="mx-auto h-7 w-7 animate-spin rounded-full border border-white/10 border-t-primary" />
+              <p className="mt-3 text-[9px] uppercase tracking-[0.18em] text-muted">Checking your account</p>
+            </div>
+          </section>
+        </main>
+      </>
+    );
+  }
 
   return (
     <>
@@ -46,7 +73,7 @@ export default function CheckoutPage() {
             ) : (
               <div className="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:gap-12">
                 <CheckoutForm onCountryChange={setCountry} />
-                <CheckoutSummary country={country} />
+                <CheckoutSummary country={country} customerName={user?.name} customerEmail={user?.email} />
               </div>
             )}
           </Container>

@@ -6,6 +6,7 @@ import "./globals.css";
 import { Footer } from "@/components/layout/Footer";
 import { WhatsAppBot } from "@/components/layout/WhatsAppBot";
 import { AuthPrompt } from "@/components/layout/AuthPrompt";
+import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
 import { WishlistProvider } from "@/context/WishlistContext";
 import { AddressProvider } from "@/context/AddressContext";
@@ -30,7 +31,7 @@ const fraunces = Fraunces({
 export const metadata: Metadata = {
   title: "FORMA — Premium 3D Models & Collectibles",
   description:
-    "Premium 3D models, digital collectibles, and custom 3D creations built with obsessive attention to detail.",
+    "Premium 3D models, custom 3D creations, and physical collectibles built with obsessive attention to detail.",
 };
 
 export default function RootLayout({
@@ -41,16 +42,16 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      <body className="flex min-h-full flex-col">
+        <AuthProvider>
         <ThemeProvider>
           <AddressProvider>
             <CartProvider>
-              <WishlistProvider>
-                {children}
-              </WishlistProvider>
+              <WishlistProvider>{children}</WishlistProvider>
             </CartProvider>
           </AddressProvider>
         </ThemeProvider>
+        </AuthProvider>
 
         <AuthPrompt />
         <WhatsAppBot />

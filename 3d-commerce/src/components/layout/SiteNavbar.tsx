@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   IconHeart,
   IconSearch,
@@ -22,6 +23,7 @@ import {
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { useCart } from "@/context/CartContext";
 import { heroProducts } from "@/config/hero-products";
+import { useAuth } from "@/context/AuthContext";
 
 const navItems = [
   { name: "Home", link: "/" },
@@ -35,12 +37,20 @@ const navItems = [
 export function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
   const { itemCount, isLoaded } = useCart();
+  const { user, isLoading, logout } = useAuth();
+  const router = useRouter();
+
+  const accountHref = user ? "/account" : "/login";
+  const accountLabel = user ? "My account" : "Sign in";
 
   const suggestions = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
 
-    if (query.length < 3) return [];
+    if (query.length < 3) {
+      return [];
+    }
 
     return heroProducts
       .filter((product) =>
@@ -51,29 +61,51 @@ export function Navbar() {
       .slice(0, 5);
   }, [searchQuery]);
 
-  const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  async function handleLogout() {
+    await logout();
+    setIsMobileMenuOpen(false);
+    router.push("/");
+    router.refresh();
+  }
+
+  function handleSearchSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const query = searchQuery.trim();
-    if (!query) return;
 
-    window.location.href = `/shop?search=${encodeURIComponent(query)}`;
-  };
+    if (!query) {
+      return;
+    }
+
+    router.push(`/shop?search=${encodeURIComponent(query)}`);
+    setSearchQuery("");
+    setIsMobileMenuOpen(false);
+  }
+
+  function closeMobileMenu() {
+    setIsMobileMenuOpen(false);
+  }
 
   return (
     <NavbarRoot>
       <NavBody>
         <NavbarLogo />
+
         <NavItems items={navItems} />
 
-        <div className="ml-auto flex min-w-0 items-center gap-1 pointer-events-auto">
+        <div className="pointer-events-auto ml-auto flex min-w-0 items-center gap-1">
           <div className="relative hidden lg:block">
             <form
               onSubmit={handleSearchSubmit}
               className="flex w-[190px] items-center rounded-full border border-border bg-surface/80 px-3"
               role="search"
             >
-              <IconSearch size={16} stroke={1.8} className="shrink-0 text-muted" />
+              <IconSearch
+                size={16}
+                stroke={1.8}
+                className="shrink-0 text-muted"
+              />
+
               <input
                 type="search"
                 value={searchQuery}
@@ -94,12 +126,19 @@ export function Navbar() {
                       onClick={() => setSearchQuery("")}
                       className="block border-b border-border/60 px-4 py-3 last:border-0 hover:bg-surface"
                     >
-                      <p className="text-sm font-medium text-foreground">{product.name}</p>
-                      <p className="mt-0.5 text-xs text-muted">{product.category}</p>
+                      <p className="text-sm font-medium text-foreground">
+                        {product.name}
+                      </p>
+
+                      <p className="mt-0.5 text-xs text-muted">
+                        {product.category}
+                      </p>
                     </Link>
                   ))
                 ) : (
-                  <p className="px-4 py-3 text-sm text-muted">No related products found.</p>
+                  <p className="px-4 py-3 text-sm text-muted">
+                    No related products found.
+                  </p>
                 )}
               </div>
             )}
@@ -109,11 +148,18 @@ export function Navbar() {
             <IconHeart size={18} stroke={1.7} />
           </NavIconLink>
 
-          <NavIconLink href="/account" label="My account">
+          <NavIconLink href={accountHref} label={accountLabel}>
             <IconUserCircle size={19} stroke={1.7} />
+
+            <span
+              className={`absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-primary shadow-[0_0_10px_hsl(var(--primary)/0.55)] transition-opacity ${
+                isLoading || !user ? "opacity-0" : "opacity-100"
+              }`}
+            />
           </NavIconLink>
 
           <ThemeToggle />
+
           <CartLink itemCount={itemCount} isLoaded={isLoaded} />
         </div>
       </NavBody>
@@ -121,25 +167,38 @@ export function Navbar() {
       <MobileNav>
         <MobileNavHeader>
           <NavbarLogo />
+
           <div className="flex items-center gap-1">
             <NavIconLink href="/wishlist" label="Wishlist">
               <IconHeart size={18} stroke={1.7} />
             </NavIconLink>
-            <NavIconLink href="/account" label="My account">
+
+            <NavIconLink href={accountHref} label={accountLabel}>
               <IconUserCircle size={19} stroke={1.7} />
+
+              <span
+                className={`absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-primary transition-opacity ${
+                  isLoading || !user ? "opacity-0" : "opacity-100"
+                }`}
+              />
             </NavIconLink>
+
             <ThemeToggle />
+
             <CartLink itemCount={itemCount} isLoaded={isLoaded} />
+
             <MobileNavToggle
               isOpen={isMobileMenuOpen}
-              onClick={() => setIsMobileMenuOpen((current) => !current)}
+              onClick={() =>
+                setIsMobileMenuOpen((current) => !current)
+              }
             />
           </div>
         </MobileNavHeader>
 
         <MobileNavMenu
           isOpen={isMobileMenuOpen}
-          onClose={() => setIsMobileMenuOpen(false)}
+          onClose={closeMobileMenu}
         >
           <div className="relative">
             <form
@@ -147,7 +206,12 @@ export function Navbar() {
               className="flex items-center rounded-xl border border-border bg-surface px-4"
               role="search"
             >
-              <IconSearch size={17} stroke={1.8} className="shrink-0 text-muted" />
+              <IconSearch
+                size={17}
+                stroke={1.8}
+                className="shrink-0 text-muted"
+              />
+
               <input
                 type="search"
                 value={searchQuery}
@@ -170,8 +234,13 @@ export function Navbar() {
                     }}
                     className="block border-b border-border/60 px-4 py-3 last:border-0"
                   >
-                    <p className="text-sm font-medium text-foreground">{product.name}</p>
-                    <p className="mt-0.5 text-xs text-muted">{product.category}</p>
+                    <p className="text-sm font-medium text-foreground">
+                      {product.name}
+                    </p>
+
+                    <p className="mt-0.5 text-xs text-muted">
+                      {product.category}
+                    </p>
                   </Link>
                 ))}
               </div>
@@ -183,7 +252,7 @@ export function Navbar() {
               <Link
                 key={item.name}
                 href={item.link}
-                onClick={() => setIsMobileMenuOpen(false)}
+                onClick={closeMobileMenu}
                 className="rounded-xl border border-transparent px-4 py-3 text-base text-muted transition-all duration-300 hover:border-border hover:bg-surface-elevated hover:text-foreground"
               >
                 {item.name}
@@ -194,18 +263,30 @@ export function Navbar() {
           <div className="mt-6 grid grid-cols-2 gap-3">
             <MobileActionLink
               href="/wishlist"
-              onClick={() => setIsMobileMenuOpen(false)}
+              onClick={closeMobileMenu}
             >
               <IconHeart size={17} stroke={1.7} />
               <span>Wishlist</span>
             </MobileActionLink>
-            <MobileActionLink
-              href="/account"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              <IconUserCircle size={17} stroke={1.7} />
-              <span>Account</span>
-            </MobileActionLink>
+
+            {user ? (
+              <button
+                type="button"
+                onClick={() => void handleLogout()}
+                className="flex h-11 items-center justify-center gap-2 rounded-full border border-border bg-surface text-sm text-muted transition-all duration-300 hover:border-primary hover:bg-surface-elevated hover:text-foreground"
+              >
+                <IconUserCircle size={17} stroke={1.7} />
+                <span>Sign out</span>
+              </button>
+            ) : (
+              <MobileActionLink
+                href="/login"
+                onClick={closeMobileMenu}
+              >
+                <IconUserCircle size={17} stroke={1.7} />
+                <span>Sign in</span>
+              </MobileActionLink>
+            )}
           </div>
         </MobileNavMenu>
       </MobileNav>
@@ -226,7 +307,7 @@ function NavIconLink({
     <Link
       href={href}
       aria-label={label}
-      className="relative z-50 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-muted pointer-events-auto transition-all duration-300 hover:bg-surface-elevated hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      className="pointer-events-auto relative z-50 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-muted transition-all duration-300 hover:bg-surface-elevated hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
     >
       {children}
     </Link>
@@ -264,11 +345,14 @@ function CartLink({
     <Link
       href="/cart"
       aria-label={
-        itemCount > 0 ? `Shopping cart, ${itemCount} items` : "Shopping cart"
+        itemCount > 0
+          ? `Shopping cart, ${itemCount} items`
+          : "Shopping cart"
       }
-      className="relative z-50 flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted pointer-events-auto transition-all duration-300 hover:bg-surface-elevated hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      className="pointer-events-auto relative z-50 flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted transition-all duration-300 hover:bg-surface-elevated hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
     >
       <IconShoppingCart size={18} stroke={1.7} />
+
       <span
         className={`pointer-events-none absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-semibold text-white shadow-[0_0_12px_var(--glow-primary)] transition-all duration-200 ${
           !isLoaded || itemCount === 0

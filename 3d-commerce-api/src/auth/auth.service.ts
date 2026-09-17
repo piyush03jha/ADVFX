@@ -1,110 +1,516 @@
 import {
+  ConflictException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { timingSafeEqual, randomUUID } from 'node:crypto';
+import {
+  createHash,
+  randomBytes,
+  randomUUID,
+  scrypt as scryptCallback,
+  timingSafeEqual,
+} from 'node:crypto';
+
 import { PrismaService } from '../prisma/prisma.service';
 import type { UserRole } from '@prisma/client';
 import type { AuthenticatedUser } from './auth.types';
+import { AuthEmailService } from './email.service';
 
-interface AuthSession {
-  token: string;
-  userId: string;
-  expiresAt: Date;
-}
+const CUSTOMER_SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
+const ADMIN_SESSION_TTL_MS = 1000 * 60 * 60 * 12;
+const EMAIL_VERIFICATION_TTL_MS = 1000 * 60 * 60 * 24;
+const PASSWORD_RESET_TTL_MS = 1000 * 60 * 30;
+const VERIFICATION_RESEND_COOLDOWN_MS = 1000 * 60;
 
-const MAX_SESSION_COUNT = 10_000;
-const SESSION_TTL_MS = 1000 * 60 * 60 * 12;
+const SCRYPT_KEY_LENGTH = 64;
+const SCRYPT_N = 16_384;
+const SCRYPT_R = 8;
+const SCRYPT_P = 1;
+
+const GENERIC_VERIFICATION_MESSAGE =
+  'If the account exists and is not verified, a verification email has been sent.';
 
 @Injectable()
 export class AuthService {
-  private readonly sessions = new Map<string, AuthSession>();
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly emailService: AuthEmailService,
+  ) {}
 
-  constructor(private readonly prisma: PrismaService) {}
+  async registerCustomer(name: string, email: string, password: string) {
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedName = name.trim();
+    const passwordHash = await hashPassword(password);
 
-  async login(email: string, secret: string) {
-    const expectedSecret = process.env.ADMIN_AUTH_SECRET;
+    const user = await this.prisma.$transaction(async (tx) => {
+      const existingUser = await tx.user.findUnique({
+        where: { email: normalizedEmail },
+        select: { id: true },
+      });
 
-    if (!expectedSecret) {
-      throw new Error('ADMIN_AUTH_SECRET is not configured');
-    }
+      if (existingUser) {
+        throw new ConflictException('An account with this email already exists.');
+      }
 
-    if (!safeSecretEqual(secret, expectedSecret)) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
+      const created = await tx.user.create({
+        data: {
+          email: normalizedEmail,
+          name: normalizedName,
+          role: 'CUSTOMER',
+          isActive: true,
+        },
+        select: { id: true, email: true, name: true, role: true },
+      });
 
-    const user = await this.prisma.user.findUnique({
-      where: { email: email.toLowerCase().trim() },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        isActive: true,
-      },
+      await tx.$executeRaw`
+        INSERT INTO "CustomerCredential"
+          ("id", "userId", "passwordHash", "createdAt", "updatedAt")
+        VALUES
+          (${randomUUID()}, ${created.id}, ${passwordHash}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      `;
+
+      return created;
     });
 
-    if (!user || !user.isActive || user.role !== ('ADMIN' as UserRole)) {
-      throw new UnauthorizedException('Invalid credentials');
+    const verificationToken = await this.createEmailVerificationToken(user.id);
+
+    try {
+      await this.emailService.sendVerificationEmail(user.email, verificationToken);
+    } catch (error) {
+      if (process.env.NODE_ENV === 'production') {
+        await this.revokeVerificationToken(verificationToken);
+        throw error;
+      }
+
+      // In development, keep the token usable so the auth flow can be tested
+      // even when the configured email provider rejects local/test recipients.
+      return {
+        user: this.serializeUser(user),
+        verificationRequired: true,
+        emailDeliveryPending: true,
+        ...this.developmentToken('emailVerificationToken', verificationToken),
+      };
     }
-
-    const token = randomUUID();
-    const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
-
-    if (this.sessions.size >= MAX_SESSION_COUNT) {
-      this.pruneExpiredSessions();
-    }
-
-    this.sessions.set(token, { token, userId: user.id, expiresAt });
 
     return {
-      token,
-      expiresAt,
       user: this.serializeUser(user),
+      verificationRequired: true,
+      ...this.developmentToken('emailVerificationToken', verificationToken),
     };
   }
 
-  async authenticate(token: string): Promise<AuthenticatedUser> {
-    if (!token || token.length > 128 || !/^[0-9a-f-]{36}$/i.test(token)) {
+  async customerLogin(email: string, password: string) {
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const user = await this.prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      select: { id: true, email: true, name: true, role: true, isActive: true },
+    });
+
+    if (!user || !user.isActive || user.role !== ('CUSTOMER' as UserRole)) {
+      throw new UnauthorizedException('Invalid email or password.');
+    }
+
+    const credentials = await this.prisma.$queryRaw<Array<{ passwordHash: string }>>`
+      SELECT "passwordHash"
+      FROM "CustomerCredential"
+      WHERE "userId" = ${user.id}
+      LIMIT 1
+    `;
+
+    if (!credentials[0] || !(await verifyPassword(password, credentials[0].passwordHash))) {
+      throw new UnauthorizedException('Invalid email or password.');
+    }
+
+    const verification = await this.prisma.$queryRaw<Array<{ emailVerifiedAt: Date | null }>>`
+      SELECT "emailVerifiedAt"
+      FROM "User"
+      WHERE "id" = ${user.id}
+      LIMIT 1
+    `;
+
+    if (!verification[0]?.emailVerifiedAt) {
+      throw new UnauthorizedException('Email verification is required before signing in.');
+    }
+
+    return this.createCustomerSession(user);
+  }
+
+  async authenticateCustomer(token: string): Promise<AuthenticatedUser> {
+    if (!token || token.length > 256) {
       throw new UnauthorizedException('Invalid or expired session');
     }
 
-    const session = this.sessions.get(token);
+    const sessions = await this.prisma.$queryRaw<Array<{ userId: string }>>`
+      SELECT "userId"
+      FROM "CustomerAuthSession"
+      WHERE "tokenHash" = ${hashSessionToken(token)}
+        AND "revokedAt" IS NULL
+        AND "expiresAt" > CURRENT_TIMESTAMP
+      LIMIT 1
+    `;
 
-    if (!session || session.expiresAt <= new Date()) {
-      if (session) this.sessions.delete(token);
-      throw new UnauthorizedException('Invalid or expired session');
-    }
+    const session = sessions[0];
+    if (!session) throw new UnauthorizedException('Invalid or expired session');
 
     const user = await this.prisma.user.findUnique({
       where: { id: session.userId },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        isActive: true,
-      },
+      select: { id: true, email: true, name: true, role: true, isActive: true },
     });
 
-    if (!user || !user.isActive || user.role !== ('ADMIN' as UserRole)) {
-      this.sessions.delete(token);
+    if (!user || !user.isActive || user.role !== ('CUSTOMER' as UserRole)) {
+      await this.revokeCustomerSession(hashSessionToken(token));
       throw new UnauthorizedException('User account is inactive');
     }
 
     return this.serializeUser(user);
   }
 
-  logout(token: string) {
-    this.sessions.delete(token);
+  async customerLogout(token: string) {
+    if (token) await this.revokeCustomerSession(hashSessionToken(token));
     return { message: 'Signed out successfully' };
   }
 
-  private pruneExpiredSessions() {
-    const now = new Date();
-    for (const [token, session] of this.sessions) {
-      if (session.expiresAt <= now) this.sessions.delete(token);
+  async verifyCustomerEmail(token: string) {
+    if (!token || token.length > 256) {
+      throw new UnauthorizedException('Invalid or expired verification token.');
     }
+
+    const rows = await this.prisma.$queryRaw<Array<{ id: string; userId: string }>>`
+      SELECT "id", "userId"
+      FROM "AuthVerificationToken"
+      WHERE "tokenHash" = ${hashSessionToken(token)}
+        AND "usedAt" IS NULL
+        AND "expiresAt" > CURRENT_TIMESTAMP
+      LIMIT 1
+    `;
+
+    const record = rows[0];
+    if (!record) throw new UnauthorizedException('Invalid or expired verification token.');
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`
+        UPDATE "User"
+        SET "emailVerifiedAt" = CURRENT_TIMESTAMP, "updatedAt" = CURRENT_TIMESTAMP
+        WHERE "id" = ${record.userId}
+      `;
+
+      await tx.$executeRaw`
+        UPDATE "AuthVerificationToken"
+        SET "usedAt" = CURRENT_TIMESTAMP
+        WHERE "userId" = ${record.userId}
+          AND "usedAt" IS NULL
+      `;
+    });
+
+    return { message: 'Email verified successfully.' };
+  }
+
+  async resendCustomerVerification(email: string) {
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await this.prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      select: { id: true, email: true, isActive: true, role: true },
+    });
+
+    if (!user || !user.isActive || user.role !== ('CUSTOMER' as UserRole)) {
+      return { message: GENERIC_VERIFICATION_MESSAGE };
+    }
+
+    const verification = await this.prisma.$queryRaw<Array<{ emailVerifiedAt: Date | null }>>`
+      SELECT "emailVerifiedAt"
+      FROM "User"
+      WHERE "id" = ${user.id}
+      LIMIT 1
+    `;
+
+    if (verification[0]?.emailVerifiedAt) {
+      return { message: GENERIC_VERIFICATION_MESSAGE };
+    }
+
+    // Use PostgreSQL's clock for both sides of the comparison. This avoids
+    // timezone/driver conversion issues between Node Date.now() and DB timestamps.
+    const recentTokens = await this.prisma.$queryRaw<Array<{ secondsSinceCreation: number }>>`
+      SELECT EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - "createdAt"))::float AS "secondsSinceCreation"
+      FROM "AuthVerificationToken"
+      WHERE "userId" = ${user.id}
+        AND "usedAt" IS NULL
+      ORDER BY "createdAt" DESC
+      LIMIT 1
+    `;
+
+    const secondsSinceCreation = recentTokens[0]
+      ? Number(recentTokens[0].secondsSinceCreation)
+      : null;
+
+    if (
+      secondsSinceCreation !== null &&
+      secondsSinceCreation >= 0 &&
+      secondsSinceCreation < VERIFICATION_RESEND_COOLDOWN_MS / 1000
+    ) {
+      return { message: GENERIC_VERIFICATION_MESSAGE };
+    }
+
+    // createEmailVerificationToken atomically invalidates the previous unused token
+    // before issuing the newest one. If the provider is unavailable in development,
+    // we intentionally keep the new token valid and expose it only in development.
+    const verificationToken = await this.createEmailVerificationToken(user.id);
+
+    try {
+      await this.emailService.sendVerificationEmail(user.email, verificationToken);
+    } catch (error) {
+      if (process.env.NODE_ENV === 'production') {
+        throw error;
+      }
+
+      return {
+        message: GENERIC_VERIFICATION_MESSAGE,
+        emailDeliveryPending: true,
+        ...this.developmentToken('emailVerificationToken', verificationToken),
+      };
+    }
+
+    return {
+      message: GENERIC_VERIFICATION_MESSAGE,
+      ...this.developmentToken('emailVerificationToken', verificationToken),
+    };
+  }
+
+  async forgotCustomerPassword(email: string) {
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await this.prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      select: { id: true, email: true, isActive: true },
+    });
+
+    if (!user || !user.isActive) {
+      return { message: 'If the account exists, password reset instructions have been sent.' };
+    }
+
+    const token = await this.createPasswordResetToken(user.id);
+
+    try {
+      await this.emailService.sendPasswordResetEmail(user.email, token);
+    } catch (error) {
+      if (process.env.NODE_ENV === 'production') {
+        await this.revokePasswordResetToken(token);
+        throw error;
+      }
+
+      return {
+        message: 'If the account exists, password reset instructions have been sent.',
+        emailDeliveryPending: true,
+        ...this.developmentToken('passwordResetToken', token),
+      };
+    }
+
+    return {
+      message: 'If the account exists, password reset instructions have been sent.',
+      ...this.developmentToken('passwordResetToken', token),
+    };
+  }
+
+  async resetCustomerPassword(token: string, password: string) {
+    if (!token || token.length > 256) {
+      throw new UnauthorizedException('Invalid or expired password reset token.');
+    }
+
+    const rows = await this.prisma.$queryRaw<Array<{ id: string; userId: string }>>`
+      SELECT "id", "userId"
+      FROM "AuthPasswordResetToken"
+      WHERE "tokenHash" = ${hashSessionToken(token)}
+        AND "usedAt" IS NULL
+        AND "expiresAt" > CURRENT_TIMESTAMP
+      LIMIT 1
+    `;
+
+    const record = rows[0];
+    if (!record) throw new UnauthorizedException('Invalid or expired password reset token.');
+
+    const passwordHash = await hashPassword(password);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`
+        UPDATE "CustomerCredential"
+        SET "passwordHash" = ${passwordHash}, "updatedAt" = CURRENT_TIMESTAMP
+        WHERE "userId" = ${record.userId}
+      `;
+
+      await tx.$executeRaw`
+        UPDATE "AuthPasswordResetToken"
+        SET "usedAt" = CURRENT_TIMESTAMP
+        WHERE "id" = ${record.id}
+      `;
+
+      await tx.$executeRaw`
+        UPDATE "CustomerAuthSession"
+        SET "revokedAt" = CURRENT_TIMESTAMP
+        WHERE "userId" = ${record.userId}
+          AND "revokedAt" IS NULL
+      `;
+    });
+
+    return { message: 'Password reset successfully.' };
+  }
+
+  async login(email: string, secret: string) {
+    const expectedSecret = process.env.ADMIN_AUTH_SECRET;
+    if (!expectedSecret) throw new Error('ADMIN_AUTH_SECRET is not configured');
+    if (!safeSecretEqual(secret, expectedSecret)) throw new UnauthorizedException('Invalid credentials');
+
+    const user = await this.prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() },
+      select: { id: true, email: true, name: true, role: true, isActive: true },
+    });
+
+    if (!user || !user.isActive || user.role !== ('ADMIN' as UserRole)) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const token = randomBytes(32).toString('base64url');
+    const expiresAt = new Date(Date.now() + ADMIN_SESSION_TTL_MS);
+
+    await this.prisma.$executeRaw`
+      INSERT INTO "AdminAuthSession"
+        ("id", "tokenHash", "userId", "expiresAt", "createdAt")
+      VALUES
+        (${randomUUID()}, ${hashSessionToken(token)}, ${user.id}, ${expiresAt}, CURRENT_TIMESTAMP)
+    `;
+
+    return { token, expiresAt, user: this.serializeUser(user) };
+  }
+
+  async authenticate(token: string): Promise<AuthenticatedUser> {
+    if (!token || token.length > 256) throw new UnauthorizedException('Invalid or expired session');
+
+    const sessions = await this.prisma.$queryRaw<Array<{ userId: string }>>`
+      SELECT "userId"
+      FROM "AdminAuthSession"
+      WHERE "tokenHash" = ${hashSessionToken(token)}
+        AND "revokedAt" IS NULL
+        AND "expiresAt" > CURRENT_TIMESTAMP
+      LIMIT 1
+    `;
+
+    const session = sessions[0];
+    if (!session) throw new UnauthorizedException('Invalid or expired session');
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: session.userId },
+      select: { id: true, email: true, name: true, role: true, isActive: true },
+    });
+
+    if (!user || !user.isActive || user.role !== ('ADMIN' as UserRole)) {
+      await this.revokeAdminSession(hashSessionToken(token));
+      throw new UnauthorizedException('User account is inactive');
+    }
+
+    return this.serializeUser(user);
+  }
+
+  async logout(token: string) {
+    if (token) await this.revokeAdminSession(hashSessionToken(token));
+    return { message: 'Signed out successfully' };
+  }
+
+  private async createCustomerSession(user: {
+    id: string;
+    email: string;
+    name: string | null;
+    role: UserRole;
+  }) {
+    const token = randomBytes(32).toString('base64url');
+    const expiresAt = new Date(Date.now() + CUSTOMER_SESSION_TTL_MS);
+
+    await this.prisma.$executeRaw`
+      INSERT INTO "CustomerAuthSession"
+        ("id", "tokenHash", "userId", "expiresAt", "createdAt")
+      VALUES
+        (${randomUUID()}, ${hashSessionToken(token)}, ${user.id}, ${expiresAt}, CURRENT_TIMESTAMP)
+    `;
+
+    return { token, expiresAt, user: this.serializeUser(user) };
+  }
+
+  private async createEmailVerificationToken(userId: string) {
+    const token = randomBytes(32).toString('base64url');
+
+    await this.prisma.$executeRaw`
+      UPDATE "AuthVerificationToken"
+      SET "usedAt" = CURRENT_TIMESTAMP
+      WHERE "userId" = ${userId}
+        AND "usedAt" IS NULL
+    `;
+
+    await this.prisma.$executeRaw`
+      INSERT INTO "AuthVerificationToken"
+        ("id", "userId", "tokenHash", "expiresAt", "createdAt")
+      VALUES
+        (${randomUUID()}, ${userId}, ${hashSessionToken(token)}, ${new Date(Date.now() + EMAIL_VERIFICATION_TTL_MS)}, CURRENT_TIMESTAMP)
+    `;
+
+    return token;
+  }
+
+  private async revokeVerificationToken(token: string) {
+    await this.prisma.$executeRaw`
+      UPDATE "AuthVerificationToken"
+      SET "usedAt" = CURRENT_TIMESTAMP
+      WHERE "tokenHash" = ${hashSessionToken(token)}
+        AND "usedAt" IS NULL
+    `;
+  }
+
+  private async createPasswordResetToken(userId: string) {
+    const token = randomBytes(32).toString('base64url');
+
+    await this.prisma.$executeRaw`
+      UPDATE "AuthPasswordResetToken"
+      SET "usedAt" = CURRENT_TIMESTAMP
+      WHERE "userId" = ${userId}
+        AND "usedAt" IS NULL
+    `;
+
+    await this.prisma.$executeRaw`
+      INSERT INTO "AuthPasswordResetToken"
+        ("id", "userId", "tokenHash", "expiresAt", "createdAt")
+      VALUES
+        (${randomUUID()}, ${userId}, ${hashSessionToken(token)}, ${new Date(Date.now() + PASSWORD_RESET_TTL_MS)}, CURRENT_TIMESTAMP)
+    `;
+
+    return token;
+  }
+
+  private async revokePasswordResetToken(token: string) {
+    await this.prisma.$executeRaw`
+      UPDATE "AuthPasswordResetToken"
+      SET "usedAt" = CURRENT_TIMESTAMP
+      WHERE "tokenHash" = ${hashSessionToken(token)}
+        AND "usedAt" IS NULL
+    `;
+  }
+
+  private async revokeCustomerSession(tokenHash: string) {
+    await this.prisma.$executeRaw`
+      UPDATE "CustomerAuthSession"
+      SET "revokedAt" = CURRENT_TIMESTAMP
+      WHERE "tokenHash" = ${tokenHash}
+        AND "revokedAt" IS NULL
+    `;
+  }
+
+  private async revokeAdminSession(tokenHash: string) {
+    await this.prisma.$executeRaw`
+      UPDATE "AdminAuthSession"
+      SET "revokedAt" = CURRENT_TIMESTAMP
+      WHERE "tokenHash" = ${tokenHash}
+        AND "revokedAt" IS NULL
+    `;
+  }
+
+  private developmentToken(key: string, token: string) {
+    if (process.env.NODE_ENV === 'production') return {};
+    return { developmentOnly: { [key]: token } };
   }
 
   private serializeUser(user: {
@@ -113,19 +519,67 @@ export class AuthService {
     name: string | null;
     role: UserRole;
   }): AuthenticatedUser {
-    return {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-    };
+    return { id: user.id, email: user.email, name: user.name, role: user.role };
   }
 }
 
-function safeSecretEqual(input: string, expected: string) {
-  const inputBuffer = Buffer.from(input, 'utf8');
-  const expectedBuffer = Buffer.from(expected, 'utf8');
+function scryptAsync(
+  password: string | Buffer,
+  salt: string | Buffer,
+  keylen: number,
+  options: { N: number; r: number; p: number },
+): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    scryptCallback(password, salt, keylen, options, (error, derivedKey) => {
+      if (error) return reject(error);
+      resolve(derivedKey as Buffer);
+    });
+  });
+}
 
-  if (inputBuffer.length !== expectedBuffer.length) return false;
-  return timingSafeEqual(inputBuffer, expectedBuffer);
+async function hashPassword(password: string) {
+  const salt = randomBytes(16);
+  const derivedKey = await scryptAsync(password, salt, SCRYPT_KEY_LENGTH, {
+    N: SCRYPT_N,
+    r: SCRYPT_R,
+    p: SCRYPT_P,
+  });
+
+  return ['scrypt', SCRYPT_N, SCRYPT_R, SCRYPT_P, salt.toString('hex'), derivedKey.toString('hex')].join('$');
+}
+
+async function verifyPassword(password: string, encoded: string) {
+  const [algorithm, n, r, p, saltHex, expectedHex] = encoded.split('$');
+  if (
+    algorithm !== 'scrypt' ||
+    Number(n) !== SCRYPT_N ||
+    Number(r) !== SCRYPT_R ||
+    Number(p) !== SCRYPT_P ||
+    !saltHex ||
+    !expectedHex
+  ) {
+    return false;
+  }
+
+  try {
+    const actual = await scryptAsync(password, Buffer.from(saltHex, 'hex'), SCRYPT_KEY_LENGTH, {
+      N: SCRYPT_N,
+      r: SCRYPT_R,
+      p: SCRYPT_P,
+    });
+    const expected = Buffer.from(expectedHex, 'hex');
+    return expected.length === actual.length && timingSafeEqual(actual, expected);
+  } catch {
+    return false;
+  }
+}
+
+function hashSessionToken(token: string) {
+  return createHash('sha256').update(token).digest('hex');
+}
+
+function safeSecretEqual(actual: string, expected: string) {
+  const actualBuffer = Buffer.from(actual);
+  const expectedBuffer = Buffer.from(expected);
+  return actualBuffer.length === expectedBuffer.length && timingSafeEqual(actualBuffer, expectedBuffer);
 }

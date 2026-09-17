@@ -6,9 +6,15 @@ describe('AuthService', () => {
     user: {
       findUnique: jest.fn(),
     },
+    $executeRaw: jest.fn(),
   } as any;
 
-  const service = new AuthService(prisma);
+  const emailService = {
+    sendVerificationEmail: jest.fn(),
+    sendPasswordResetEmail: jest.fn(),
+  } as any;
+
+  const service = new AuthService(prisma, emailService);
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -34,5 +40,6 @@ describe('AuthService', () => {
     const result = await service.login('admin@example.com', 'test-secret');
     expect(result.token).toBeTruthy();
     expect(result.user.role).toBe('ADMIN');
+    expect(prisma.$executeRaw).toHaveBeenCalled();
   });
 });

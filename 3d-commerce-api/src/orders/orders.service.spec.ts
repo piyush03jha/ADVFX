@@ -16,11 +16,15 @@ describe('OrdersService', () => {
     create: jest.fn(),
   } as any;
 
+  const pricing = {
+    calculate: jest.fn(),
+  } as any;
+
   let service: OrdersService;
 
   beforeEach(() => {
     jest.resetAllMocks();
-    service = new OrdersService(prisma, notifications);
+    service = new OrdersService(prisma, notifications, pricing);
   });
 
   it('rejects invalid order status transitions', async () => {
@@ -74,7 +78,13 @@ describe('OrdersService', () => {
     const tx = {
       inventoryReservation: {
         findMany: jest.fn().mockResolvedValue([
-          { id: 'r1', productId: 'p1', quantity: 2, status: 'ACTIVE' },
+          {
+            id: 'r1',
+            productId: 'p1',
+            productInventoryId: 'inventory-1',
+            quantity: 2,
+            status: 'ACTIVE',
+          },
         ]),
         update: jest.fn(),
       },
@@ -82,7 +92,11 @@ describe('OrdersService', () => {
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
       order: {
-        update: jest.fn().mockResolvedValue({ id: 'order-1', status: 'CANCELLED', userId: 'user-1' }),
+        update: jest.fn().mockResolvedValue({
+          id: 'order-1',
+          status: 'CANCELLED',
+          userId: 'user-1',
+        }),
       },
     } as any;
 
@@ -90,12 +104,10 @@ describe('OrdersService', () => {
 
     await service.updateStatus('order-1', 'CANCELLED' as any);
 
-    expect(tx.productInventory.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({ productId: 'p1', reserved: { gte: 2 } }),
-        data: { reserved: { decrement: 2 } },
-      }),
-    );
+    expect(tx.productInventory.updateMany).toHaveBeenCalledWith({
+      where: { id: 'inventory-1', reserved: { gte: 2 } },
+      data: { reserved: { decrement: 2 } },
+    });
     expect(tx.inventoryReservation.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'r1' },

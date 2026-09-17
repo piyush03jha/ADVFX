@@ -10,8 +10,8 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { CustomRequestStatus } from '@prisma/client';
-import { AuthGuard } from '../auth/guards/auth.guard';
 import { AdminGuard } from '../auth/guards/admin.guard';
+import { AuthGuard } from '../auth/guards/auth.guard';
 import { CreateCustomRequestDto } from './dto/create-custom-request.dto';
 import { SetCustomPreviewDto } from './dto/set-custom-preview.dto';
 import { UpdateCustomRequestStatusDto } from './dto/update-custom-request-status.dto';
@@ -35,25 +35,6 @@ export class CustomBuildController {
   @Get(':id')
   mineOne(@Req() req: any, @Param('id') id: string) {
     return this.customBuildService.mineOne(req.user.id, id);
-  }
-
-  @Post(':id/approve')
-  approve(@Req() req: any, @Param('id') id: string) {
-    return this.customBuildService.approve(req.user.id, id);
-  }
-
-  @Post(':id/add-to-cart')
-  addToCart(@Req() req: any, @Param('id') id: string) {
-    return this.customBuildService.addToCart(req.user.id, id);
-  }
-
-  @Post(':id/revision')
-  requestRevision(
-    @Req() req: any,
-    @Param('id') id: string,
-    @Body('note') note?: string,
-  ) {
-    return this.customBuildService.requestRevision(req.user.id, id, note);
   }
 
   @UseGuards(AdminGuard)

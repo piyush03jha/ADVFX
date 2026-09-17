@@ -1,23 +1,23 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
   Param,
-  Post,
   Patch,
+  Post,
   Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { AuthGuard } from '../auth/guards/auth.guard';
-import { AdminGuard } from '../auth/guards/admin.guard';
-import { CreateOrderDto } from './dto/create-order.dto';
-import { AdminOrderListDto } from './dto/admin-order-list.dto';
-import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
-import { CreateReturnRequestDto } from './dto/create-return-request.dto';
-import { ReturnsService } from './returns.service';
-import { OrdersService } from './orders.service';
 import { OrderStatus } from '@prisma/client';
+import { AdminGuard } from '../auth/guards/admin.guard';
+import { AuthGuard } from '../auth/guards/auth.guard';
+import { CreateOrderDto } from './dto/create-order.dto';
+import { CreateReturnRequestDto } from './dto/create-return-request.dto';
+import { OrdersService } from './orders.service';
+import { ReturnsService } from './returns.service';
+import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 
 @UseGuards(AuthGuard)
 @Controller('orders')
@@ -62,11 +62,17 @@ export class OrdersController {
 
   @UseGuards(AdminGuard)
   @Get('admin/list')
-  findAllAdmin(@Query('status') status?: OrderStatus) {
-    if (status && !Object.values(OrderStatus).includes(status)) {
-      throw new Error(`Invalid order status: ${status}`);
+  findAllAdmin(@Query('status') status?: string) {
+    let parsedStatus: OrderStatus | undefined;
+
+    if (status !== undefined) {
+      if (!Object.values(OrderStatus).includes(status as OrderStatus)) {
+        throw new BadRequestException(`Invalid order status: ${status}`);
+      }
+      parsedStatus = status as OrderStatus;
     }
-    return this.ordersService.findAllAdmin(status);
+
+    return this.ordersService.findAllAdmin(parsedStatus);
   }
 
   @UseGuards(AdminGuard)
