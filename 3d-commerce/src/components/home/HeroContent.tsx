@@ -92,29 +92,18 @@ export function HeroContent({
           >
             <motion.span
               aria-hidden="true"
-              className="pointer-events-none absolute -inset-2 rounded-[inherit] border border-primary/30"
+              className="pointer-events-none absolute left-1/2 top-1/2 h-16 w-[125%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[linear-gradient(90deg,transparent,rgba(139,92,246,0.42),rgba(59,130,246,0.34),transparent)] blur-xl"
               animate={{
-                opacity: [0.15, 0.55, 0.15],
-                scale: [0.96, 1.04, 0.96],
+                x: ["-42%", "42%", "-42%"],
+                opacity: [0.35, 0.8, 0.35],
               }}
               transition={{
-                duration: 2.2,
+                duration: 3.2,
                 repeat: Infinity,
-                ease: "easeInOut",
+                ease: "linear",
               }}
             />
-            <motion.span
-              aria-hidden="true"
-              className="pointer-events-none absolute -inset-1 rounded-[inherit] bg-primary/15 blur-md"
-              animate={{
-                opacity: [0.15, 0.4, 0.15],
-              }}
-              transition={{
-                duration: 2.2,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
-            />
+
             <Button href="/custom" variant="outline">
               Build Custom Pack
               <motion.span
