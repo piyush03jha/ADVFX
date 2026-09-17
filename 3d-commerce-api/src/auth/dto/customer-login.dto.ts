@@ -9,4 +9,14 @@ export class CustomerLoginDto {
   @MinLength(1)
   @MaxLength(128)
   password!: string;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(1024)
+  captchaToken!: string;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(2)
+  captchaAnswer!: string;
 }

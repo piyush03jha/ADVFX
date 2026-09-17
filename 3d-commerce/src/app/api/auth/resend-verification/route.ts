@@ -21,6 +21,7 @@ export async function POST(request: Request) {
     const data = (await backendResponse.json()) as {
       message?: string | string[];
       developmentOnly?: { emailVerificationToken?: string };
+      emailDeliveryPending?: boolean;
     };
 
     const message = Array.isArray(data.message) ? data.message[0] : data.message;
@@ -35,6 +36,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       message: message ?? "If the account exists and is not verified, a verification email has been sent.",
       developmentOnly: data.developmentOnly,
+      emailDeliveryPending: data.emailDeliveryPending ?? false,
     });
   } catch {
     return NextResponse.json(

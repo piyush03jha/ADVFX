@@ -2,6 +2,7 @@ import { Module, forwardRef } from "@nestjs/common";
 import { PrismaModule } from "../prisma/prisma.module";
 import { StorageModule } from "../storage/storage.module";
 import { ProductFilesModule } from "../product-files/product-files.module";
+import { AuthModule } from "../auth/auth.module";
 
 import { ProcessingJobsController } from "./processing-jobs.controller";
 import { ProcessingJobsService } from "./processing-jobs.service";
@@ -15,6 +16,7 @@ import { ModelConverterService } from "./converters/model-converter.service";
   imports: [
     PrismaModule,
     StorageModule,
+    AuthModule,
     forwardRef(() => ProductFilesModule),
   ],
 

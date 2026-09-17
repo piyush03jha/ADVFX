@@ -33,6 +33,10 @@ export function validateEnvironment() {
     if (!process.env.AUTH_EMAIL_FROM) {
       throw new Error('AUTH_EMAIL_FROM must be configured in production');
     }
+
+    if (!process.env.AUTH_CAPTCHA_SECRET || process.env.AUTH_CAPTCHA_SECRET.length < 32) {
+      throw new Error('AUTH_CAPTCHA_SECRET must be at least 32 characters in production');
+    }
   }
 
   return {

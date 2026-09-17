@@ -8,13 +8,7 @@ import { Navbar } from "@/components/layout/SiteNavbar";
 import { MathCaptcha } from "@/components/auth/MathCaptcha";
 import { loginUser } from "@/lib/auth-client";
 import { useAuth } from "@/context/AuthContext";
-
-function createCaptcha() {
-  const first = Math.floor(Math.random() * 9) + 1;
-  const second = Math.floor(Math.random() * 9) + 1;
-  const subtract = Math.random() > 0.5;
-  return { first: subtract ? Math.max(first, second) : first, second: subtract ? Math.min(first, second) : second, operator: subtract ? ("−" as const) : ("+" as const) };
-}
+import { useAuthCaptcha } from "@/lib/auth-captcha";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -25,21 +19,17 @@ export default function LoginPage() {
   const [remember, setRemember] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [captcha, setCaptcha] = useState(createCaptcha);
-  const [captchaAnswer, setCaptchaAnswer] = useState("");
+  const { challenge, answer: captchaAnswer, setAnswer: setCaptchaAnswer, isLoading: isCaptchaLoading, error: captchaError, refresh: refreshCaptcha } = useAuthCaptcha("login");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  function refreshCaptcha() { setCaptcha(createCaptcha()); setCaptchaAnswer(""); }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
-    const expected = captcha.operator === "+" ? captcha.first + captcha.second : captcha.first - captcha.second;
-    if (Number(captchaAnswer) !== expected) { setError("Incorrect CAPTCHA answer. Please try again."); refreshCaptcha(); return; }
+    if (!challenge) { setError(captchaError || "Security check is still loading."); return; }
     setIsSubmitting(true);
-    try { await loginUser(email, password); await refreshSession(); router.replace(returnTo); router.refresh(); }
-    catch (submissionError) { setError(submissionError instanceof Error ? submissionError.message : "Unable to sign in."); }
+    try { await loginUser(email, password, challenge.token, captchaAnswer); await refreshSession(); router.replace(returnTo); router.refresh(); }
+    catch (submissionError) { setError(submissionError instanceof Error ? submissionError.message : "Unable to sign in."); await refreshCaptcha(); }
     finally { setIsSubmitting(false); }
   }
 
@@ -57,10 +47,10 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <label className="block"><span className="mb-2 block text-[9px] font-medium uppercase tracking-[0.15em] text-muted">Email address</span><div className="relative"><IconMail size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" /><input value={email} onChange={(event) => setEmail(event.target.value)} type="email" required autoComplete="email" placeholder="you@example.com" className="h-12 w-full rounded-xl border border-white/[0.1] bg-white/[0.025] pl-10 pr-4 text-sm text-foreground outline-none focus:border-primary/40" /></div></label>
               <label className="block"><div className="mb-2 flex items-center justify-between"><span className="text-[9px] font-medium uppercase tracking-[0.15em] text-muted">Password</span><Link href="/forgot-password" className="text-[10px] text-muted hover:text-primary">Forgot password?</Link></div><div className="relative"><IconLock size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" /><input value={password} onChange={(event) => setPassword(event.target.value)} type={showPassword ? "text" : "password"} required autoComplete={remember ? "current-password" : "off"} placeholder="Enter your password" className="h-12 w-full rounded-xl border border-white/[0.1] bg-white/[0.025] pl-10 pr-11 text-sm text-foreground outline-none focus:border-primary/40" /><button type="button" aria-label={showPassword ? "Hide password" : "Show password"} onClick={() => setShowPassword((value) => !value)} className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center text-muted">{showPassword ? <IconEyeOff size={16} /> : <IconEye size={16} />}</button></div></label>
-              <MathCaptcha {...captcha} answer={captchaAnswer} onAnswerChange={setCaptchaAnswer} onRefresh={refreshCaptcha} />
+              {challenge ? <MathCaptcha {...challenge} answer={captchaAnswer} onAnswerChange={setCaptchaAnswer} onRefresh={() => void refreshCaptcha()} /> : <CaptchaLoading error={captchaError} />}
               <label className="flex cursor-pointer items-center gap-3 pt-1 text-xs text-muted"><input type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} className="h-4 w-4 accent-[hsl(var(--primary))]" />Keep me signed in on this device</label>
               {error && <div role="alert" className="rounded-xl border border-red-400/15 bg-red-400/[0.06] px-3.5 py-3 text-xs text-red-200">{error}</div>}
-              <button type="submit" disabled={isSubmitting} className="mt-2 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 text-[10px] font-semibold uppercase tracking-[0.16em] text-primary-foreground disabled:opacity-60">{isSubmitting ? "Signing in…" : "Sign in"}{!isSubmitting && <IconArrowRight size={15} />}</button>
+              <button type="submit" disabled={isSubmitting || isCaptchaLoading || !challenge} className="mt-2 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 text-[10px] font-semibold uppercase tracking-[0.16em] text-primary-foreground disabled:opacity-60">{isSubmitting ? "Signing in…" : "Sign in"}{!isSubmitting && <IconArrowRight size={15} />}</button>
             </form>
             <p className="mt-7 text-center text-xs text-muted">New to the studio? <Link href={`/register?returnTo=${encodeURIComponent(returnTo)}`} className="font-medium text-primary hover:text-foreground">Create an account</Link></p>
             <p className="mt-6 text-center text-[9px] leading-5 text-muted/70">By continuing, you agree to our Terms of Service and Privacy Policy.</p>
@@ -72,3 +62,5 @@ export default function LoginPage() {
 }
 
 function getSafeReturnPath(value: string | null) { if (!value || !value.startsWith("/") || value.startsWith("//")) return "/account"; return value; }
+
+function CaptchaLoading({ error }: { error: string }) { return <div className="rounded-xl border border-border bg-surface p-3 text-xs text-muted">{error || "Preparing security check…"}</div>; }

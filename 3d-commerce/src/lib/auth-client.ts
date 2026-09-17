@@ -2,11 +2,11 @@
 
 import type { AuthUser } from "@/lib/auth";
 
-export async function loginUser(email: string, password: string) {
+export async function loginUser(email: string, password: string, captchaToken: string, captchaAnswer: string) {
   const response = await fetch("/api/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, captchaToken, captchaAnswer }),
   });
 
   const data = (await response.json()) as { user?: AuthUser; error?: string };
@@ -18,20 +18,29 @@ export async function loginUser(email: string, password: string) {
   return data.user;
 }
 
-export async function registerUser(name: string, email: string, password: string) {
+export async function registerUser(name: string, email: string, password: string, captchaToken: string, captchaAnswer: string) {
   const response = await fetch("/api/auth/register", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, email, password }),
+    body: JSON.stringify({ name, email, password, captchaToken, captchaAnswer }),
   });
 
-  const data = (await response.json()) as { user?: AuthUser; error?: string };
+  const data = (await response.json()) as {
+    user?: AuthUser;
+    error?: string;
+    emailDeliveryPending?: boolean;
+    developmentOnly?: { emailVerificationToken?: string };
+  };
 
   if (!response.ok || !data.user) {
     throw new Error(data.error ?? "Unable to create your account.");
   }
 
-  return data.user;
+  return {
+    user: data.user,
+    emailDeliveryPending: data.emailDeliveryPending ?? false,
+    developmentToken: data.developmentOnly?.emailVerificationToken,
+  };
 }
 
 export async function verifyEmail(token: string) {
@@ -61,6 +70,7 @@ export async function resendVerificationEmail(email: string) {
     message?: string;
     error?: string;
     developmentOnly?: { emailVerificationToken?: string };
+    emailDeliveryPending?: boolean;
   };
 
   if (!response.ok) {
@@ -70,6 +80,7 @@ export async function resendVerificationEmail(email: string) {
   return {
     message: data.message ?? "If the account exists and is not verified, a verification email has been sent.",
     developmentToken: data.developmentOnly?.emailVerificationToken,
+    emailDeliveryPending: data.emailDeliveryPending ?? false,
   };
 }
 

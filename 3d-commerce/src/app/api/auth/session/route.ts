@@ -9,7 +9,10 @@ export async function GET() {
     const token = (await cookies()).get(AUTH_COOKIE_NAME)?.value;
 
     if (!token) {
-      return NextResponse.json({ user: null }, { status: 401 });
+      // An anonymous visitor is an expected application state, not an error.
+      // Returning 200 prevents the initial AuthProvider check from surfacing as
+      // a failed request in the browser console before anyone has signed in.
+      return NextResponse.json({ user: null });
     }
 
     const backendResponse = await fetch(getBackendApiUrl("auth/session"), {
@@ -18,7 +21,7 @@ export async function GET() {
     });
 
     if (!backendResponse.ok) {
-      const response = NextResponse.json({ user: null }, { status: 401 });
+      const response = NextResponse.json({ user: null });
       response.cookies.delete(AUTH_COOKIE_NAME);
       return response;
     }
@@ -28,7 +31,7 @@ export async function GET() {
     };
 
     if (!data.user) {
-      const response = NextResponse.json({ user: null }, { status: 401 });
+      const response = NextResponse.json({ user: null });
       response.cookies.delete(AUTH_COOKIE_NAME);
       return response;
     }

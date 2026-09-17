@@ -5,18 +5,20 @@ import { getBackendApiUrl } from "@/lib/backend-api";
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as { email?: string; password?: string };
+    const body = (await request.json()) as { email?: string; password?: string; captchaToken?: string; captchaAnswer?: string };
     const email = body.email?.trim().toLowerCase();
     const password = body.password ?? "";
+    const captchaToken = body.captchaToken?.trim() ?? "";
+    const captchaAnswer = body.captchaAnswer?.trim() ?? "";
 
-    if (!email || !password) {
-      return NextResponse.json({ error: "Email and password are required." }, { status: 400 });
+    if (!email || !password || !captchaToken || !captchaAnswer) {
+      return NextResponse.json({ error: "Email, password, and CAPTCHA are required." }, { status: 400 });
     }
 
     const backendResponse = await fetch(getBackendApiUrl("auth/login"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, captchaToken, captchaAnswer }),
       cache: "no-store",
     });
 

@@ -20,6 +20,7 @@ export default function VerifyEmailPage() {
   const searchParams = useSearchParams();
   const token = useMemo(() => searchParams.get("token")?.trim() ?? "", [searchParams]);
   const email = useMemo(() => searchParams.get("email")?.trim().toLowerCase() ?? "", [searchParams]);
+  const deliveryPending = searchParams.get("delivery") === "pending";
   const [status, setStatus] = useState<"idle" | "verifying" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
   const [resent, setResent] = useState(false);
@@ -57,7 +58,11 @@ export default function VerifyEmailPage() {
     setResendError("");
 
     try {
-      await resendVerificationEmail(email);
+      const result = await resendVerificationEmail(email);
+      if (result.emailDeliveryPending) {
+        setResendError("We still couldn't deliver the email. The sender domain needs configuration.");
+        return;
+      }
       setResent(true);
     } catch (error) {
       setResendError(error instanceof Error ? error.message : "Unable to resend the verification email.");
@@ -110,7 +115,9 @@ export default function VerifyEmailPage() {
                       : isVerifying
                         ? "Please wait while we securely activate your account."
                         : email
-                          ? <>We&apos;ve sent a verification link to <span className="font-medium text-foreground">{email}</span>. Open it to activate your account.</>
+                          ? deliveryPending
+                            ? <>We couldn&apos;t deliver the verification email yet. Ask an administrator to configure the sender, then use resend.</>
+                            : <>We&apos;ve sent a verification link to <span className="font-medium text-foreground">{email}</span>. Open it to activate your account.</>
                           : "Open the verification link from your email to activate your account."}
                 </p>
               ) : null}

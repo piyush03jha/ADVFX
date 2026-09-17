@@ -8,17 +8,21 @@ export async function POST(request: Request) {
       name?: string;
       email?: string;
       password?: string;
+      captchaToken?: string;
+      captchaAnswer?: string;
     };
 
     const name = body.name?.trim();
     const email = body.email?.trim().toLowerCase();
     const password = body.password ?? "";
+    const captchaToken = body.captchaToken?.trim() ?? "";
+    const captchaAnswer = body.captchaAnswer?.trim() ?? "";
 
-    if (!name || !email || password.length < 8) {
+    if (!name || !email || password.length < 8 || !captchaToken || !captchaAnswer) {
       return NextResponse.json(
         {
           error:
-            "Enter your name, a valid email, and a password of at least 8 characters.",
+            "Enter your name, a valid email, a password of at least 8 characters, and complete the CAPTCHA.",
         },
         { status: 400 },
       );
@@ -27,7 +31,7 @@ export async function POST(request: Request) {
     const backendResponse = await fetch(getBackendApiUrl("auth/register"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password }),
+      body: JSON.stringify({ name, email, password, captchaToken, captchaAnswer }),
       cache: "no-store",
     });
 

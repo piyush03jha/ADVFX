@@ -15,6 +15,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import type { UserRole } from '@prisma/client';
 import type { AuthenticatedUser } from './auth.types';
 import { AuthEmailService } from './email.service';
+import { AuthCaptchaService } from './captcha.service';
 
 const CUSTOMER_SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 const ADMIN_SESSION_TTL_MS = 1000 * 60 * 60 * 12;
@@ -35,9 +36,11 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly emailService: AuthEmailService,
+    private readonly captchaService: AuthCaptchaService,
   ) {}
 
-  async registerCustomer(name: string, email: string, password: string) {
+  async registerCustomer(name: string, email: string, password: string, captchaToken: string, captchaAnswer: string) {
+    this.captchaService.verify(captchaToken, captchaAnswer, 'register');
     const normalizedEmail = email.trim().toLowerCase();
     const normalizedName = name.trim();
     const passwordHash = await hashPassword(password);
@@ -99,7 +102,8 @@ export class AuthService {
     };
   }
 
-  async customerLogin(email: string, password: string) {
+  async customerLogin(email: string, password: string, captchaToken: string, captchaAnswer: string) {
+    this.captchaService.verify(captchaToken, captchaAnswer, 'login');
     const normalizedEmail = email.trim().toLowerCase();
 
     const user = await this.prisma.user.findUnique({

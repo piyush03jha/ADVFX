@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Headers, Post, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Headers, Post, Query, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { AuthGuard } from './guards/auth.guard';
@@ -8,19 +8,26 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
+import { AuthCaptchaService } from './captcha.service';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService, private readonly captchaService: AuthCaptchaService) {}
+
+  @Get('captcha')
+  captcha(@Query('purpose') purpose?: string) {
+    if (purpose !== 'login' && purpose !== 'register') throw new BadRequestException('A valid CAPTCHA purpose is required.');
+    return this.captchaService.issue(purpose);
+  }
 
   @Post('register')
   registerCustomer(@Body() dto: CustomerRegisterDto) {
-    return this.authService.registerCustomer(dto.name, dto.email, dto.password);
+    return this.authService.registerCustomer(dto.name, dto.email, dto.password, dto.captchaToken, dto.captchaAnswer);
   }
 
   @Post('login')
   loginCustomer(@Body() dto: CustomerLoginDto) {
-    return this.authService.customerLogin(dto.email, dto.password);
+    return this.authService.customerLogin(dto.email, dto.password, dto.captchaToken, dto.captchaAnswer);
   }
 
   @Get('session')

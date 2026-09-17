@@ -1,0 +1,76 @@
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { createHmac, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
+
+const CAPTCHA_TTL_MS = 5 * 60 * 1000;
+const PURPOSES = new Set(['login', 'register']);
+
+export type CaptchaPurpose = 'login' | 'register';
+
+type CaptchaPayload = {
+  nonce: string;
+  expiresAt: number;
+  purpose: CaptchaPurpose;
+  proof: string;
+};
+
+@Injectable()
+export class AuthCaptchaService {
+  issue(purpose: string) {
+    if (!PURPOSES.has(purpose)) throw new BadRequestException('Invalid CAPTCHA purpose.');
+
+    const first = randomInt(1, 10);
+    const second = randomInt(1, 10);
+    const subtract = randomInt(0, 1) === 1;
+    const left = subtract ? Math.max(first, second) : first;
+    const right = subtract ? Math.min(first, second) : second;
+    const answer = subtract ? left - right : left + right;
+    const nonce = randomBytes(16).toString('base64url');
+    const expiresAt = Date.now() + CAPTCHA_TTL_MS;
+    const typedPurpose = purpose as CaptchaPurpose;
+    const proof = this.proof(answer, nonce, expiresAt, typedPurpose);
+
+    return {
+      token: Buffer.from(JSON.stringify({ nonce, expiresAt, purpose: typedPurpose, proof })).toString('base64url'),
+      first: left,
+      second: right,
+      operator: subtract ? ('−' as const) : ('+' as const),
+    };
+  }
+
+  verify(token: string, answer: string, purpose: CaptchaPurpose) {
+    const payload = this.decode(token);
+    if (!payload || payload.purpose !== purpose || payload.expiresAt <= Date.now()) {
+      throw new BadRequestException('CAPTCHA has expired. Please try again.');
+    }
+
+    if (!/^\d{1,2}$/.test(answer)) {
+      throw new BadRequestException('Incorrect CAPTCHA answer.');
+    }
+
+    const expected = Buffer.from(this.proof(Number(answer), payload.nonce, payload.expiresAt, purpose), 'hex');
+    const provided = Buffer.from(payload.proof, 'hex');
+    if (expected.length !== provided.length || !timingSafeEqual(expected, provided)) {
+      throw new BadRequestException('Incorrect CAPTCHA answer.');
+    }
+  }
+
+  private decode(token: string): CaptchaPayload | null {
+    if (!token || token.length > 1_024) return null;
+    try {
+      const value = JSON.parse(Buffer.from(token, 'base64url').toString('utf8')) as CaptchaPayload;
+      return typeof value.nonce === 'string' && typeof value.expiresAt === 'number' &&
+        typeof value.purpose === 'string' && typeof value.proof === 'string' ? value : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private proof(answer: number, nonce: string, expiresAt: number, purpose: CaptchaPurpose) {
+    return createHmac('sha256', this.secret()).update(`${answer}:${nonce}:${expiresAt}:${purpose}`).digest('hex');
+  }
+
+  private secret() {
+    if (process.env.AUTH_CAPTCHA_SECRET) return process.env.AUTH_CAPTCHA_SECRET;
+    return process.env.NODE_ENV === 'production' ? '' : 'development-only-captcha-secret';
+  }
+}
