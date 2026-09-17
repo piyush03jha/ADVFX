@@ -74,7 +74,7 @@ export function HeroContent({
           </Button>
 
           <motion.div
-            className="relative"
+            className="relative overflow-hidden rounded-full"
             animate={{
               scale: [1, 1.025, 1],
             }}
@@ -92,34 +92,22 @@ export function HeroContent({
           >
             <motion.span
               aria-hidden="true"
-              className="pointer-events-none absolute left-1/2 top-1/2 h-16 w-[125%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[linear-gradient(90deg,transparent,rgba(139,92,246,0.42),rgba(59,130,246,0.34),transparent)] blur-xl"
+              className="pointer-events-none absolute inset-0 rounded-full bg-[linear-gradient(110deg,transparent_15%,rgba(139,92,246,0.08)_35%,rgba(139,92,246,0.65)_50%,rgba(139,92,246,0.08)_65%,transparent_85%)] bg-[length:220%_100%]"
               animate={{
-                x: ["-42%", "42%", "-42%"],
-                opacity: [0.35, 0.8, 0.35],
+                backgroundPosition: ["120% 0", "-120% 0"],
               }}
               transition={{
-                duration: 3.2,
+                duration: 2.4,
                 repeat: Infinity,
                 ease: "linear",
               }}
             />
-
-            <Button href="/custom" variant="outline">
-              Build Custom Pack
-              <motion.span
-                className="ml-2 inline-block"
-                animate={{
-                  x: [0, 4, 0],
-                }}
-                transition={{
-                  duration: 1.4,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-              >
-                →
-              </motion.span>
-            </Button>
+            <span className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-primary/25" />
+            <span className="relative block rounded-full">
+              <Button href="/custom" variant="outline">
+                Build Custom Pack
+              </Button>
+            </span>
           </motion.div>
         </div>
       </motion.div>
