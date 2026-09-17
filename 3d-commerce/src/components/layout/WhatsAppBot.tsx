@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { IconBrandWhatsapp, IconMessageCircle, IconX } from "@tabler/icons-react";
 
-const WHATSAPP_NUMBER = "919600012345";
+const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "";
 
 const PREDEFINED_QUESTIONS = [
   {
