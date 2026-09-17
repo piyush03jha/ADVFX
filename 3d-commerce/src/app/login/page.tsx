@@ -25,12 +25,39 @@ export default function LoginPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isSubmitting) return;
+
     setError("");
-    if (!challenge) { setError(captchaError || "Security check is still loading."); return; }
+
+    if (!challenge) {
+      setError(captchaError || "Security check is still loading.");
+      return;
+    }
+
     setIsSubmitting(true);
-    try { await loginUser(email, password, challenge.token, captchaAnswer); await refreshSession(); router.replace(returnTo); router.refresh(); }
-    catch (submissionError) { setError(submissionError instanceof Error ? submissionError.message : "Unable to sign in."); await refreshCaptcha(); }
-    finally { setIsSubmitting(false); }
+
+    try {
+      // loginUser validates the BFF response and only resolves after the
+      // authentication cookie has been issued successfully.
+      await loginUser(email, password, challenge.token, captchaAnswer);
+
+      // Update the in-memory auth state first, then navigate. Awaiting this
+      // avoids leaving the login screen while the provider still sees the user
+      // as anonymous.
+      const sessionUser = await refreshSession();
+
+      if (!sessionUser) {
+        throw new Error("Sign-in succeeded, but the new session could not be loaded. Please try again.");
+      }
+
+      router.replace(returnTo);
+      router.refresh();
+    } catch (submissionError) {
+      setError(submissionError instanceof Error ? submissionError.message : "Unable to sign in.");
+      await refreshCaptcha();
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
