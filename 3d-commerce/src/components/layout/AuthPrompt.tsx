@@ -38,6 +38,22 @@ export function AuthPrompt() {
   }, []);
 
   useEffect(() => {
+    const handleNavigation = () => {
+      const pathname = window.location.pathname;
+      const isAuthPage = pathname === "/login" || pathname === "/register" || pathname.startsWith("/auth/");
+      if (isAuthPage) setIsOpen(false);
+    };
+
+    window.addEventListener("popstate", handleNavigation);
+    window.addEventListener("routechange", handleNavigation);
+
+    return () => {
+      window.removeEventListener("popstate", handleNavigation);
+      window.removeEventListener("routechange", handleNavigation);
+    };
+  }, []);
+
+  useEffect(() => {
     setConfirmPassword("");
     setError("");
   }, [mode]);
