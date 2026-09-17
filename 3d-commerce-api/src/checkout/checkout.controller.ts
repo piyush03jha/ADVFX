@@ -1,9 +1,9 @@
 import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
-import { AuthGuard } from '../auth/guards/auth.guard';
+import { CustomerAuthGuard } from '../auth/guards/customer-auth.guard';
 import { CheckoutService } from './checkout.service';
 import { CheckoutQuoteDto } from './dto/checkout-quote.dto';
 
-@UseGuards(AuthGuard)
+@UseGuards(CustomerAuthGuard)
 @Controller('checkout')
 export class CheckoutController {
   constructor(private readonly checkoutService: CheckoutService) {}

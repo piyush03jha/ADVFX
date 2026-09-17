@@ -9,13 +9,13 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { AuthGuard } from '../auth/guards/auth.guard';
+import { CustomerAuthGuard } from '../auth/guards/customer-auth.guard';
 import { CreateAddressDto } from './dto/create-address.dto';
 import { UpdateAddressDto } from './dto/update-address.dto';
 import { UpdateUserProfileDto } from './dto/update-user-profile.dto';
 import { UsersService } from './users.service';
 
-@UseGuards(AuthGuard)
+@UseGuards(CustomerAuthGuard)
 @Controller()
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}

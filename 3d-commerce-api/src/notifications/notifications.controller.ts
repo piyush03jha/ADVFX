@@ -7,10 +7,10 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { AuthGuard } from '../auth/guards/auth.guard';
+import { CustomerAuthGuard } from '../auth/guards/customer-auth.guard';
 import { NotificationsService } from './notifications.service';
 
-@UseGuards(AuthGuard)
+@UseGuards(CustomerAuthGuard)
 @Controller('notifications')
 export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}

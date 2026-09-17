@@ -15,6 +15,7 @@ import {
 import { extname } from 'node:path';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { AdminGuard } from '../auth/guards/admin.guard';
+import { CustomerAuthGuard } from '../auth/guards/customer-auth.guard';
 import { ProcessingJobsService } from '../processing-jobs/processing-jobs.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
@@ -31,7 +32,6 @@ const CUSTOM_PREVIEW_EXTENSIONS: Record<string, ProductFileFormat> = {
   '.gltf': ProductFileFormat.GLTF,
 };
 
-@UseGuards(AuthGuard)
 @Controller('custom-requests/:requestId/files')
 export class CustomBuildFilesController {
   constructor(
@@ -40,6 +40,7 @@ export class CustomBuildFilesController {
     private readonly processingJobs: ProcessingJobsService,
   ) {}
 
+  @UseGuards(CustomerAuthGuard)
   @Post()
   async uploadReference(
     @Req() req: FastifyRequest,
@@ -93,7 +94,7 @@ export class CustomBuildFilesController {
     }
   }
 
-  @UseGuards(AdminGuard)
+  @UseGuards(AuthGuard, AdminGuard)
   @Post('/preview')
   async uploadPreview(
     @Req() req: FastifyRequest,
