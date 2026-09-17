@@ -25,6 +25,14 @@ export function AuthPrompt() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    const pathname = window.location.pathname;
+    const isAuthPage = pathname === "/login" || pathname === "/register" || pathname.startsWith("/auth/");
+
+    if (isAuthPage) {
+      setIsOpen(false);
+      return;
+    }
+
     const timer = window.setTimeout(() => setIsOpen(true), 4000);
     return () => window.clearTimeout(timer);
   }, []);
@@ -82,7 +90,7 @@ export function AuthPrompt() {
           <MathCaptcha {...captcha} answer={captchaAnswer} onAnswerChange={setCaptchaAnswer} onRefresh={refreshCaptcha} />
           {error && <p role="alert" className="rounded-xl border border-red-400/20 bg-red-400/[0.06] px-3 py-2 text-xs text-red-300">{error}</p>}
           <div className="grid grid-cols-2 gap-3">
-            <Link href="/login" className="flex h-12 items-center justify-center rounded-full border border-border bg-surface px-5 text-sm font-semibold text-foreground transition hover:border-primary/40">Full page sign in</Link>
+            <Link href="/login" onClick={() => setIsOpen(false)} className="flex h-12 items-center justify-center rounded-full border border-border bg-surface px-5 text-sm font-semibold text-foreground transition hover:border-primary/40">Full page sign in</Link>
             <button type="submit" className="flex h-12 items-center justify-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground transition hover:opacity-90">{mode === "login" ? "Sign in" : "Create account"}<IconArrowRight size={17} /></button>
           </div>
         </form>
