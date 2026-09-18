@@ -5,7 +5,7 @@ import {
   motion,
   useReducedMotion,
 } from "motion/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   IconArrowUpRight,
@@ -22,11 +22,27 @@ import { Rating } from "@/components/ui/Rating";
 import { WishlistButton } from "@/components/ui/WishlistButton";
 import { useCart } from "@/context/CartContext";
 
-import { mostPurchasedProducts } from "@/config/most-purchased-products";
+import { getBackendApiUrl } from "@/lib/backend-api";
+import { mapCatalogProducts, type CatalogProduct, type StorefrontProduct } from "@/lib/catalog-api";
 
 export function MostPurchased() {
   const shouldReduceMotion = useReducedMotion();
-  const products = mostPurchasedProducts.slice(0, 4);
+  const [products, setProducts] = useState<StorefrontProduct[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(getBackendApiUrl("products"), { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("catalog");
+        return (await response.json()) as CatalogProduct[];
+      })
+      .then((data) => {
+        if (!cancelled) setProducts(mapCatalogProducts(data).filter((product) => product.badge || product.model).slice(0, 4));
+      })
+      .catch(() => {
+        if (!cancelled) setProducts([]);
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   const animationInitial = shouldReduceMotion ? false : { opacity: 0, y: 20 };
   const animationWhileInView = shouldReduceMotion ? undefined : { opacity: 1, y: 0 };
@@ -72,7 +88,7 @@ export function MostPurchased() {
   );
 }
 
-export function ProductCard({ product }: { product: (typeof mostPurchasedProducts)[number] }) {
+export function ProductCard({ product }: { product: StorefrontProduct }) {
   const { addItem } = useCart();
   const [added, setAdded] = useState(false);
 
@@ -85,7 +101,7 @@ export function ProductCard({ product }: { product: (typeof mostPurchasedProduct
   return (
     <Card interactive className="group h-full rounded-xl">
       <div className="relative overflow-hidden">
-        <Link href={`/product/${product.id}`} aria-label={`View ${product.name}`} className="block">
+        <Link href={`/product/${product.slug}`} aria-label={`View ${product.name}`} className="block">
           <div className="relative aspect-[1/0.82] overflow-hidden bg-surface-elevated/40 sm:aspect-[4/4.1]">
             <img src={product.image} alt={product.name} loading="lazy" className="h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.045]" />
             <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
