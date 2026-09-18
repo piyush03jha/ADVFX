@@ -38,7 +38,12 @@ export class ProductsService {
     return this.prisma.product.findMany({
       where: { status: 'ACTIVE' },
       include: this.publicProductInclude(),
-      orderBy: { createdAt: 'desc' },
+      orderBy: [
+        { isFeatured: 'desc' },
+        { isBestseller: 'desc' },
+        { isTrending: 'desc' },
+        { createdAt: 'desc' },
+      ],
     });
   }
 
