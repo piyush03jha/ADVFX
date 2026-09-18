@@ -11,7 +11,7 @@ import {
   IconRotate,
 } from "@tabler/icons-react";
 
-import type { Product } from "@/config/products";
+import type { StorefrontProduct } from "@/lib/catalog-api";
 
 import { IconButton } from "@/components/ui/IconButton";
 
@@ -62,7 +62,7 @@ const Product3DStage = dynamic(
 );
 
 interface ProductGalleryProps {
-  product: Product;
+  product: StorefrontProduct;
 }
 
 type MediaItem =
@@ -86,13 +86,7 @@ export function ProductGallery({
   const [imageSrc, setImageSrc] =
     useState(product.image);
 
-  const fallbackImage =
-    `/catogeries/${
-      Number(product.id) >= 1 &&
-      Number(product.id) <= 4
-        ? product.id
-        : "1"
-    }.jpg`;
+  const fallbackImage = "/catogeries/1.jpg";
 
   const media: MediaItem[] = [
     {
@@ -105,16 +99,7 @@ export function ProductGallery({
       src: product.model,
       label: "Interactive 3D",
     },
-    {
-      type: "image",
-      src: imageSrc,
-      label: "Detail 01",
-    },
-    {
-      type: "image",
-      src: imageSrc,
-      label: "Detail 02",
-    },
+
   ];
 
   const active = media[activeIndex];
