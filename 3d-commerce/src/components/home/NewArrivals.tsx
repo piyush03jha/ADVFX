@@ -7,11 +7,27 @@ import { Button } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import { Section } from "@/components/ui/Section";
 
-import { newArrivals } from "@/config/new-arrivals";
+import { useEffect, useState } from "react";
+import { getBackendApiUrl } from "@/lib/backend-api";
+import { mapCatalogProducts, type CatalogProduct, type StorefrontProduct } from "@/lib/catalog-api";
 import { ProductCard } from "./MostPurchased";
 
 export function NewArrivals() {
   const shouldReduceMotion = useReducedMotion();
+  const [products, setProducts] = useState<StorefrontProduct[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(getBackendApiUrl("products"), { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("catalog");
+        return (await response.json()) as CatalogProduct[];
+      })
+      .then((data) => {
+        if (!cancelled) setProducts(mapCatalogProducts(data).filter((product) => product.badge).slice(0, 4));
+      })
+      .catch(() => { if (!cancelled) setProducts([]); });
+    return () => { cancelled = true; };
+  }, []);
   const animationInitial = shouldReduceMotion ? false : { opacity: 0, y: 20 };
   const animationWhileInView = shouldReduceMotion ? undefined : { opacity: 1, y: 0 };
 
@@ -31,9 +47,9 @@ export function NewArrivals() {
         </motion.div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4">
-          {newArrivals.slice(0, 4).map((product, index) => (
+          {products.map((product, index) => (
             <motion.div key={product.id} initial={animationInitial} whileInView={animationWhileInView} viewport={{ once: true, amount: 0.1 }} transition={{ duration: 0.55, delay: shouldReduceMotion ? 0 : index * 0.06, ease: [0.22, 1, 0.36, 1] }} className="min-w-0">
-              <ProductCard product={{ ...product, rating: product.rating ?? 0, reviewCount: product.reviewCount ?? 0 }} />
+              <ProductCard product={product} />
             </motion.div>
           ))}
         </div>
