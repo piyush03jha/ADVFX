@@ -26,6 +26,11 @@ export class ProductsController {
     return this.productsService.findAll();
   }
 
+  @Get('hero')
+  findHeroProducts() {
+    return this.productsService.findHeroProducts();
+  }
+
   @Get('slug/:slug')
   findBySlug(@Param('slug') slug: string) {
     return this.productsService.findBySlug(slug);
