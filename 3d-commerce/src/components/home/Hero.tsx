@@ -148,6 +148,10 @@ export function Hero() {
   }
 
   if (hasError || !heroProducts.length) {
+    const message = hasError
+      ? "We couldn't load featured products right now."
+      : "No featured hero products have been published yet.";
+
     return (
       <section className="relative isolate min-h-[720px] overflow-hidden">
         <Container className="relative flex min-h-[720px] items-center justify-center">
@@ -159,8 +163,13 @@ export function Hero() {
               Explore our collection
             </h1>
             <p className="mt-4 text-sm leading-6 text-muted">
-              Hero products are currently unavailable.
+              {message}
             </p>
+            {hasError && (
+              <p className="mt-2 text-xs text-muted/70">
+                The storefront will use featured catalog products as soon as the catalog service is available.
+              </p>
+            )}
           </div>
         </Container>
       </section>
