@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 
-import type { Product } from "@/config/products";
+import type { StorefrontProduct } from "@/lib/catalog-api";
 import { Badge } from "@/components/ui/Badge";
 
 import { ProductReviews } from "./ProductReviews";
 import { ProductSpecs } from "./ProductSpecs";
 
 interface ProductDetailsTabsProps {
-  product: Product;
+  product: StorefrontProduct;
 }
 
 type Tab =
@@ -142,7 +142,7 @@ export function ProductDetailsTabs({
 function Description({
   product,
 }: {
-  product: Product;
+  product: StorefrontProduct;
 }) {
   return (
     <div className="max-w-4xl">
@@ -162,21 +162,7 @@ function Description({
         {product.description}
       </p>
 
-      <p
-        className="
-          mt-4
-          max-w-3xl
-          text-sm
-          leading-7
-          text-muted
-          sm:text-[15px]
-        "
-      >
-        Built for modern real-time 3D
-        workflows, this asset is designed
-        to be easy to preview, download,
-        and integrate into your projects.
-      </p>
+
 
       {/* ==================================================
           COLLECTION TAGS
