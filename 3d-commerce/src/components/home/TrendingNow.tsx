@@ -11,13 +11,28 @@ import { Button } from "@/components/ui/Button";
 import { IconButton } from "@/components/ui/IconButton";
 import { Section } from "@/components/ui/Section";
 
-import { trendingProducts } from "@/config/trending-products";
+import { useEffect, useState } from "react";
+import { getBackendApiUrl } from "@/lib/backend-api";
+import { mapCatalogProducts, type CatalogProduct, type StorefrontProduct } from "@/lib/catalog-api";
 
 import { TrendingProductCard } from "./TrendingProductCard";
 
 export function TrendingNow() {
   const shouldReduceMotion = useReducedMotion();
-  const products = trendingProducts.slice(0, 5);
+  const [products, setProducts] = useState<StorefrontProduct[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(getBackendApiUrl("products"), { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("catalog");
+        return (await response.json()) as CatalogProduct[];
+      })
+      .then((data) => {
+        if (!cancelled) setProducts(mapCatalogProducts(data).filter((product) => product.badge || product.discount).slice(0, 5));
+      })
+      .catch(() => { if (!cancelled) setProducts([]); });
+    return () => { cancelled = true; };
+  }, []);
 
   const scroll = (direction: "left" | "right") => {
     const container = document.getElementById("trending-products");
