@@ -2,10 +2,10 @@ import {
   IconStar,
 } from "@tabler/icons-react";
 
-import type { Product } from "@/config/products";
+import type { StorefrontProduct } from "@/lib/catalog-api";
 
 interface ProductReviewsProps {
-  product: Product;
+  product: StorefrontProduct;
 }
 
 const reviews = [
