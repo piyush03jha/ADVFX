@@ -15,10 +15,10 @@ import { Rating } from "@/components/ui/Rating";
 import { WishlistButton } from "@/components/ui/WishlistButton";
 import { useCart } from "@/context/CartContext";
 
-import type { TrendingProduct } from "@/config/trending-products";
+import type { StorefrontProduct } from "@/lib/catalog-api";
 
 interface ShopProductCardProps {
-  product: TrendingProduct;
+  product: StorefrontProduct;
 }
 
 export function ShopProductCard({ product }: ShopProductCardProps) {
@@ -45,7 +45,7 @@ export function ShopProductCard({ product }: ShopProductCardProps) {
   return (
     <Card interactive className="group h-full rounded-2xl">
       <div className="relative aspect-[0.88/1] overflow-hidden bg-[#0c0c0c]">
-        <Link href={`/product/${product.id}`} className="block h-full">
+        <Link href={`/product/${product.slug}`} className="block h-full">
           <img
             src={product.image}
             alt={product.name}
@@ -103,7 +103,7 @@ export function ShopProductCard({ product }: ShopProductCardProps) {
           <div className="flex shrink-0 items-center gap-2">
             <Price value={product.price} size="sm" />
 
-            {product.oldPrice && (
+            {product.oldPrice !== undefined && (
               <span className="text-[10px] text-muted line-through">
                 ₹{product.oldPrice.toLocaleString("en-IN")}
               </span>
