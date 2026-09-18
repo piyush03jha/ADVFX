@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   IconHeart,
@@ -22,8 +22,9 @@ import {
 } from "@/components/ui/resizable-navbar";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { useCart } from "@/context/CartContext";
-import { heroProducts } from "@/config/hero-products";
+import type { HeroProduct } from "@/config/hero-products";
 import { useAuth } from "@/context/AuthContext";
+import { getBackendApiUrl } from "@/lib/backend-api";
 
 const navItems = [
   { name: "Home", link: "/" },
@@ -45,21 +46,86 @@ export function Navbar() {
   const accountHref = user ? "/account" : "/login";
   const accountLabel = user ? "My account" : "Sign in";
 
+  const [searchProducts, setSearchProducts] = useState<HeroProduct[]>([]);
+
+  useEffect(() => {
+    if (searchQuery.trim().length < 3) {
+      setSearchProducts([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadSearchProducts = async () => {
+      try {
+        const response = await fetch(
+          getBackendApiUrl("products"),
+          { cache: "no-store" },
+        );
+
+        if (!response.ok) return;
+
+        const products = (await response.json()) as Array<{
+          id: string;
+          slug: string;
+          name: string;
+          description?: string | null;
+          category?: { name?: string | null } | null;
+          prices?: Array<{ amountMinor: number; currency: string }>;
+          media?: Array<{ type: string; url: string }>;
+        }>;
+
+        if (cancelled) return;
+
+        setSearchProducts(
+          products.slice(0, 20).map((product) => ({
+            id: product.id,
+            slug: product.slug,
+            name: product.name,
+            description: product.description ?? "",
+            price:
+              (product.prices?.find((price) => price.currency === "INR") ??
+                product.prices?.[0])?.amountMinor
+                ? ((product.prices?.find((price) => price.currency === "INR") ??
+                    product.prices?.[0])?.amountMinor ?? 0) / 100
+                : 0,
+            currency:
+              product.prices?.find((price) => price.currency === "INR")
+                ?.currency ??
+              product.prices?.[0]?.currency ??
+              "INR",
+            model:
+              product.media?.find((media) => media.type === "MODEL_PREVIEW")
+                ?.url ?? "",
+            category: product.category?.name ?? "",
+            metrics: [],
+          })),
+        );
+      } catch {
+        if (!cancelled) setSearchProducts([]);
+      }
+    };
+
+    void loadSearchProducts();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [searchQuery]);
+
   const suggestions = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
 
-    if (query.length < 3) {
-      return [];
-    }
+    if (query.length < 3) return [];
 
-    return heroProducts
+    return searchProducts
       .filter((product) =>
         [product.name, product.category, product.description].some((value) =>
           value.toLowerCase().includes(query),
         ),
       )
       .slice(0, 5);
-  }, [searchQuery]);
+  }, [searchProducts, searchQuery]);
 
   async function handleLogout() {
     await logout();
