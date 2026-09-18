@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/Card";
 import { Price } from "@/components/ui/Price";
 import { Rating } from "@/components/ui/Rating";
 
-import type { Product } from "@/config/products";
+import type { StorefrontProduct } from "@/lib/catalog-api";
 
 interface RelatedProductsProps {
   products: Product[];
@@ -118,7 +118,7 @@ export function RelatedProducts({
         {products.map((product) => (
           <Link
             key={product.id}
-            href={`/product/${product.id}`}
+            href={`/product/${product.slug}`}
             scroll={true}
             onClick={handleProductClick}
             className="group"
