@@ -68,7 +68,7 @@ export function HeroContent({
         </div>
 
         <div className="mt-9 flex flex-wrap gap-3">
-          <Button href={`/product/${product.id}`}>
+          <Button href={`/product/${product.slug}`}>
             View Model
             <span className="ml-2">→</span>
           </Button>
