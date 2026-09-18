@@ -7,11 +7,12 @@ import { IconPackageOff } from "@tabler/icons-react";
 import { Button } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import { Pagination } from "@/components/ui/Pagination";
-import { trendingProducts } from "@/config/trending-products";
 import {
   shopCategories,
   getDiscoveryFallbackCategory,
 } from "@/config/shop-categories";
+import { getBackendApiUrl } from "@/lib/backend-api";
+import { mapCatalogProducts, type CatalogProduct, type StorefrontProduct } from "@/lib/catalog-api";
 
 import { MobileFilters } from "./MobileFilters";
 import { ShopFilters, type ShopFilterState } from "./ShopFilters";
@@ -39,7 +40,7 @@ const categoryIdToProductCategory: Record<string, string> = {
 };
 
 interface ShopProductGridProps {
-  products?: typeof trendingProducts;
+  products?: StorefrontProduct[];
   columns?: 3 | 4;
   activeCategory?: string;
   pageSize?: number;
@@ -52,8 +53,50 @@ export function ShopProductGrid({
   pageSize = 12,
 }: ShopProductGridProps) {
   const shouldReduceMotion = useReducedMotion();
-  const sourceProducts = products ?? trendingProducts;
+  const [catalogProducts, setCatalogProducts] = useState<StorefrontProduct[]>(products ?? []);
+  const [isLoadingCatalog, setIsLoadingCatalog] = useState(!products);
+  const [catalogError, setCatalogError] = useState(false);
+  const sourceProducts = products ?? catalogProducts;
   const navRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (products) return;
+
+    let cancelled = false;
+
+    const loadCatalog = async () => {
+      try {
+        setIsLoadingCatalog(true);
+        const response = await fetch(getBackendApiUrl("products"), {
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          throw new Error(`Catalog request failed with ${response.status}`);
+        }
+
+        const data = (await response.json()) as CatalogProduct[];
+
+        if (!cancelled) {
+          setCatalogProducts(mapCatalogProducts(Array.isArray(data) ? data : []));
+          setCatalogError(false);
+          setIsLoadingCatalog(false);
+        }
+      } catch {
+        if (!cancelled) {
+          setCatalogProducts([]);
+          setCatalogError(true);
+          setIsLoadingCatalog(false);
+        }
+      }
+    };
+
+    void loadCatalog();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [products]);
 
   const [filters, setFilters] = useState<ShopFilterState>(() => ({
     ...INITIAL_FILTERS,
@@ -262,7 +305,13 @@ export function ShopProductGrid({
           </div>
 
           <div className="mt-8 sm:mt-9">
-            {paginatedProducts.length > 0 ? (
+            {isLoadingCatalog ? (
+              <div className="flex min-h-[380px] items-center justify-center rounded-2xl border border-dashed border-border bg-surface/40">
+                <p className="text-[10px] uppercase tracking-[0.18em] text-muted">Loading products</p>
+              </div>
+            ) : catalogError ? (
+              <EmptyProducts onClear={clearAll} message="The catalog could not be loaded. Start the backend API and try again." />
+            ) : paginatedProducts.length > 0 ? (
               <>
                 <div
                   className={`grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 ${
@@ -312,7 +361,7 @@ export function ShopProductGrid({
   );
 }
 
-function EmptyProducts({ onClear }: { onClear: () => void }) {
+function EmptyProducts({ onClear, message = "Try another product name, category, or filter combination." }: { onClear: () => void; message?: string }) {
   return (
     <div className="flex min-h-[380px] flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-surface/40 px-6 text-center">
       <div className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-surface-elevated text-muted">
@@ -320,7 +369,7 @@ function EmptyProducts({ onClear }: { onClear: () => void }) {
       </div>
       <h3 className="mt-5 text-base font-medium text-foreground">No matching models</h3>
       <p className="mt-2 max-w-sm text-xs leading-5 text-muted">
-        Try another product name, category, or filter combination.
+        {message}
       </p>
       <Button type="button" variant="outline" size="sm" onClick={onClear} className="mt-5">
         Clear Search &amp; Filters
