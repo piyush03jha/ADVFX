@@ -1,7 +1,7 @@
 import { Container } from "@/components/ui/Container";
 import { Section } from "@/components/ui/Section";
 
-import type { Product } from "@/config/products";
+import type { StorefrontProduct } from "@/lib/catalog-api";
 
 import { ProductBreadcrumb } from "./ProductBreadcrumb";
 import { ProductDetailsTabs } from "./ProductDetailsTabs";
@@ -16,8 +16,8 @@ import {
 } from "@tabler/icons-react";
 
 interface ProductDetailProps {
-  product: Product;
-  relatedProducts: Product[];
+  product: StorefrontProduct;
+  relatedProducts: StorefrontProduct[];
 }
 
 export function ProductDetail({
