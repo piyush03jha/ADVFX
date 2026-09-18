@@ -1,7 +1,7 @@
 import 'dotenv/config';
 
 import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient, UserRole } from '@prisma/client';
+import { PrismaClient, ProductMediaType, ProductStatus, UserRole } from '@prisma/client';
 
 const connectionString = process.env.DATABASE_URL;
 
@@ -39,6 +39,64 @@ async function main() {
   });
 
   console.log(`Admin user seeded: ${email}`);
+
+  // Development storefront fixture: one real catalog product powers the
+  // home hero. The GLB is served by the frontend public directory until
+  // object storage/R2 is introduced.
+  const heroProduct = await prisma.product.upsert({
+    where: { slug: 'cyber-warrior' },
+    update: {
+      name: 'Cyber Warrior',
+      description:
+        'A premium futuristic warrior physical collectible with a cinematic presentation-ready finish.',
+      status: ProductStatus.ACTIVE,
+      isFeatured: true,
+    },
+    create: {
+      name: 'Cyber Warrior',
+      slug: 'cyber-warrior',
+      description:
+        'A premium futuristic warrior physical collectible with a cinematic presentation-ready finish.',
+      status: ProductStatus.ACTIVE,
+      isFeatured: true,
+    },
+  });
+
+  await prisma.productPrice.upsert({
+    where: { id: 'dev-cyber-warrior-price' },
+    update: {
+      productId: heroProduct.id,
+      currency: 'INR',
+      amountMinor: 249900,
+      isActive: true,
+    },
+    create: {
+      id: 'dev-cyber-warrior-price',
+      productId: heroProduct.id,
+      currency: 'INR',
+      amountMinor: 249900,
+      isActive: true,
+    },
+  });
+
+  await prisma.productMedia.deleteMany({
+    where: {
+      productId: heroProduct.id,
+      type: ProductMediaType.MODEL_PREVIEW,
+    },
+  });
+
+  await prisma.productMedia.create({
+    data: {
+      productId: heroProduct.id,
+      type: ProductMediaType.MODEL_PREVIEW,
+      url: '/models/products/1.glb',
+      isPrimary: true,
+      sortOrder: 0,
+    },
+  });
+
+  console.log(`Hero product seeded: ${heroProduct.slug}`);
 }
 
 main()
