@@ -2,12 +2,12 @@ import { Badge } from "@/components/ui/Badge";
 import { Price } from "@/components/ui/Price";
 import { Rating } from "@/components/ui/Rating";
 
-import type { Product } from "@/config/products";
+import type { StorefrontProduct } from "@/lib/catalog-api";
 
 import { ProductActions } from "./ProductActions";
 
 interface ProductInfoProps {
-  product: Product;
+  product: StorefrontProduct;
 }
 
 export function ProductInfo({
