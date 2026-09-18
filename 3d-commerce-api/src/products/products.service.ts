@@ -42,6 +42,29 @@ export class ProductsService {
     });
   }
 
+  /**
+   * Returns the products explicitly marked as featured for the home hero.
+   *
+   * The hero is a presentation of catalog products, so it reuses the
+   * existing Product/ProductMedia data instead of introducing a duplicate
+   * hero table.
+   */
+  async findHeroProducts() {
+    const products = await this.prisma.product.findMany({
+      where: {
+        status: 'ACTIVE',
+        isFeatured: true,
+      },
+      include: this.heroProductInclude(),
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+    });
+
+    return products
+      .map((product) => this.toHeroProduct(product))
+      .filter((product) => product.model);
+  }
+
   async findOne(id: string) {
     const product = await this.prisma.product.findFirst({
       where: { id, status: 'ACTIVE' },
@@ -208,6 +231,63 @@ export class ProductsService {
     if (existingProduct && existingProduct.id !== productId) {
       throw new ConflictException(`A product with slug "${slug}" already exists`);
     }
+  }
+
+  private heroProductInclude(): Prisma.ProductInclude {
+    return {
+      category: true,
+      prices: {
+        where: {
+          isActive: true,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      },
+      media: {
+        where: {
+          type: 'MODEL_PREVIEW',
+        },
+        orderBy: {
+          sortOrder: 'asc',
+        },
+      },
+      tags: {
+        include: {
+          tag: true,
+        },
+      },
+    };
+  }
+
+  private toHeroProduct(
+    product: Prisma.ProductGetPayload<{
+      include: ReturnType<ProductsService['heroProductInclude']>;
+    }>,
+  ) {
+    const activePrice =
+      product.prices.find(
+        (price) => price.currency === 'INR',
+      ) ?? product.prices[0];
+
+    const model =
+      product.media.find(
+        (media) => media.isPrimary,
+      )?.url ??
+      product.media[0]?.url ??
+      null;
+
+    return {
+      id: product.id,
+      slug: product.slug,
+      name: product.name,
+      description: product.description ?? '',
+      price: activePrice ? activePrice.amountMinor / 100 : 0,
+      currency: activePrice?.currency ?? 'INR',
+      model,
+      category: product.category?.name ?? '',
+      metrics: [],
+    };
   }
 
   private publicProductInclude(): Prisma.ProductInclude {
