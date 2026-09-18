@@ -319,9 +319,11 @@ export function ProductViewer({
 
   if (!products.length) return null;
 
-  const activeProduct = products[activeIndex];
+  const activeProduct = products[activeIndex] ?? products[0];
   const previousProduct =
-    previousIndex !== null ? products[previousIndex] : null;
+    previousIndex !== null ? products[previousIndex] ?? null : null;
+
+  if (!activeProduct) return null;
 
   return (
     <div
