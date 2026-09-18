@@ -1,37 +1,20 @@
-import type { Product } from "@/config/products";
+import type { StorefrontProduct } from "@/lib/catalog-api";
 
 interface ProductSpecsProps {
-  product: Product;
+  product: StorefrontProduct;
 }
 
 export function ProductSpecs({
   product,
 }: ProductSpecsProps) {
   const specs = [
-    {
-      label: "Material",
-      value: "Premium Resin",
-    },
-    {
-      label: "Scale",
-      value: "1:6",
-    },
-    {
-      label: "Height",
-      value: "30 cm",
-    },
-    {
-      label: "Base",
-      value: "Weighted resin with felt bottom",
-    },
-    {
-      label: "Packaging",
-      value: "Cherry wood display box",
-    },
-    {
-      label: "Weight",
-      value: "~0.8 kg (varies by size)",
-    },
+    { label: "Material", value: product.material ?? "Not specified" },
+    { label: "Scale", value: product.scale ?? "Not specified" },
+    { label: "Dimensions", value: product.dimensions ?? "Not specified" },
+    { label: "Height", value: product.height ?? "Not specified" },
+    { label: "Base", value: product.base ?? "Not specified" },
+    { label: "Packaging", value: product.packaging ?? "Not specified" },
+    { label: "Weight", value: product.weight ?? "Not specified" },
   ];
 
   return (
