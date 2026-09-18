@@ -17,10 +17,10 @@ import {
   type CartSize,
 } from "@/context/CartContext";
 
-import type { Product } from "@/config/products";
+import type { StorefrontProduct } from "@/lib/catalog-api";
 
 interface ProductActionsProps {
-  product: Product;
+  product: StorefrontProduct;
 }
 
 const SIZES: Array<{
