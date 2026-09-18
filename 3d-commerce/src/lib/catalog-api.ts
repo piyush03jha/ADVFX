@@ -76,6 +76,13 @@ export interface StorefrontProduct {
   badge?: string;
   discount?: string;
   tags: string[];
+  material?: string | null;
+  scale?: string | null;
+  dimensions?: string | null;
+  height?: string | null;
+  base?: string | null;
+  packaging?: string | null;
+  weight?: string | null;
 }
 
 function activePrice(product: CatalogProduct): CatalogPrice | undefined {
@@ -123,6 +130,13 @@ export function mapCatalogProduct(product: CatalogProduct): StorefrontProduct {
         ? `${Math.round(((compareAt - amount) / compareAt) * 100)}% OFF`
         : undefined,
     tags: product.tags.map((item) => item.tag.name),
+    material: product.material,
+    scale: product.scale,
+    dimensions: product.dimensions,
+    height: product.height,
+    base: product.base,
+    packaging: product.packaging,
+    weight: product.weight,
   };
 }
 
