@@ -25,7 +25,7 @@ async function hashAdminPassword(password: string) {
       password,
       salt,
       64,
-      { N: 32_768, r: 8, p: 1 },
+      { N: 32_768, r: 8, p: 1, maxmem: 64 * 1024 * 1024 },
       (error, derivedKey) => {
         if (error) return reject(error);
         resolve([
