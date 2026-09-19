@@ -35,8 +35,34 @@ export function ShopProductCard({ product }: ShopProductCardProps) {
 
   const handleBuyNow = async () => {
     setBuying(true);
-    await addItem(product, null, 1);
-    router.push("/checkout");
+
+    window.localStorage.setItem(
+      "forma-buy-now",
+      JSON.stringify({
+        key: product.id + ":base",
+        product: {
+          id: product.id,
+          name: product.name,
+          category: product.category,
+          price: product.price,
+          currency: product.currency,
+          image: product.image,
+          oldPrice: product.oldPrice,
+          rating: product.rating,
+          reviewCount: product.reviewCount,
+          badge: product.badge,
+          discount: product.discount,
+          model: product.model,
+        },
+        variantId: null,
+        variantName: null,
+        variantSize: null,
+        size: "Standard",
+        quantity: 1,
+      }),
+    );
+
+    router.push("/checkout?mode=buy-now");
   };
 
   return (
