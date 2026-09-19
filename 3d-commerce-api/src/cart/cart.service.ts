@@ -50,6 +50,12 @@ export class CartService {
       update: { quantity: { increment: quantity } },
     });
 
+    await this.prisma.productMetrics.upsert({
+      where: { productId },
+      create: { productId, cartAddCount: 1 },
+      update: { cartAddCount: { increment: 1 } },
+    });
+
     return this.getOrCreate(userId);
   }
 
