@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import Script from "next/script";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -16,12 +16,13 @@ import {
 import { Navbar } from "@/components/layout/SiteNavbar";
 import { Button } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
-import { useCart } from "@/context/CartContext";
+import { useCart, type CartItem } from "@/context/CartContext";
 import {
   createOrder,
   formatQuoteMoney,
   getCheckoutQuote,
   type CheckoutQuote,
+  type CheckoutSelectionItem,
 } from "@/lib/checkout-api";
 import {
   createRazorpayOrder,
@@ -34,7 +35,7 @@ const DRAFT_KEY = "forma-checkout-draft";
 
 export default function PaymentPage() {
   const router = useRouter();
-  const { items, isLoaded, isRefreshing, refreshCart } = useCart();
+  const { items: cartItems, isLoaded, isRefreshing } = useCart();
   const [country, setCountry] = useState<CountryCode>("IN");
   const [processing, setProcessing] = useState(false);
   const [draftLoaded, setDraftLoaded] = useState(false);
@@ -44,16 +45,18 @@ export default function PaymentPage() {
     couponCode?: string;
     email?: string;
     phone?: string;
+    checkoutItems?: CheckoutSelectionItem[];
+    checkoutDisplayItems?: CartItem[];
   } | null>(null);
   const [quote, setQuote] = useState<CheckoutQuote | null>(null);
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [checkoutReady, setCheckoutReady] = useState(false);
 
-  useEffect(() => {
-    if (isLoaded) {
-      void refreshCart();
-    }
-  }, [isLoaded, refreshCart]);
+  const displayItems = draft?.checkoutDisplayItems ?? cartItems;
+  const selectedItems = useMemo(
+    () => draft?.checkoutItems,
+    [draft?.checkoutItems],
+  );
 
   useEffect(() => {
     try {
@@ -65,6 +68,8 @@ export default function PaymentPage() {
           couponCode?: string;
           email?: string;
           phone?: string;
+          checkoutItems?: CheckoutSelectionItem[];
+          checkoutDisplayItems?: CartItem[];
         };
         setDraft(saved);
         if (saved.country) setCountry(saved.country);
@@ -85,7 +90,11 @@ export default function PaymentPage() {
     let cancelled = false;
     setQuoteError(null);
 
-    void getCheckoutQuote(draft.addressId, draft.couponCode)
+    void getCheckoutQuote(
+      draft.addressId,
+      draft.couponCode,
+      selectedItems,
+    )
       .then((value) => {
         if (!cancelled) setQuote(value);
       })
@@ -103,7 +112,7 @@ export default function PaymentPage() {
     return () => {
       cancelled = true;
     };
-  }, [draft?.addressId, draft?.couponCode]);
+  }, [draft?.addressId, draft?.couponCode, selectedItems]);
 
   const countryConfig = getCountry(country);
   const total = quote
@@ -115,7 +124,7 @@ export default function PaymentPage() {
       !draft?.addressId ||
       !quote ||
       quote.summary.totalMinor <= 0 ||
-      items.length === 0
+      displayItems.length === 0
     ) {
       return;
     }
@@ -139,11 +148,8 @@ export default function PaymentPage() {
         quotedTaxMinor: quote.summary.taxMinor,
         quotedTotalMinor: quote.summary.totalMinor,
         quotedCurrency: quote.currency,
+        items: selectedItems,
       });
-
-      // Creating the server order consumes the cart. Reconcile the client
-      // immediately so a cancelled/failed payment cannot reuse stale items.
-      await refreshCart();
 
       const razorpayOrder: RazorpayOrder = await createRazorpayOrder(order.id);
 
@@ -213,7 +219,7 @@ export default function PaymentPage() {
     }
   };
 
-  if (!isLoaded || isRefreshing || !draftLoaded || (draft?.addressId && !quote && !quoteError)) {
+  if (!draftLoaded || (draft?.addressId && !quote && !quoteError)) {
     return (
       <>
         <Navbar />
@@ -351,12 +357,12 @@ export default function PaymentPage() {
                 <div className="mt-2 flex items-end justify-between gap-4">
                   <h2 className="font-serif text-2xl tracking-[-0.035em] text-foreground">Your order</h2>
                   <span className="text-xs text-muted">
-                    {items.reduce((n, item) => n + item.quantity, 0)} items
+                    {displayItems.reduce((n, item) => n + item.quantity, 0)} items
                   </span>
                 </div>
 
-                <div className="mt-5 space-y-4 border-b border-white/[0.07] pb-5">
-                  {items.map((item) => (
+            <div className="mt-5 space-y-4 border-b border-white/[0.07] pb-5">
+                  {displayItems.map((item) => (
                     <div key={item.key} className="flex min-w-0 gap-3">
                       <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-white/[0.07] bg-[#0b0b0c]">
                         <Image
