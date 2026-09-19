@@ -43,6 +43,7 @@ interface ShopProductGridProps {
   products?: StorefrontProduct[];
   columns?: 3 | 4;
   activeCategory?: string;
+  initialSearch?: string;
   pageSize?: number;
 }
 
@@ -50,6 +51,7 @@ export function ShopProductGrid({
   products,
   columns = 4,
   activeCategory,
+  initialSearch = "",
   pageSize = 12,
 }: ShopProductGridProps) {
   const shouldReduceMotion = useReducedMotion();
@@ -102,7 +104,7 @@ export function ShopProductGrid({
     ...INITIAL_FILTERS,
     categories: activeCategory ? [activeCategory] : [],
   }));
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(initialSearch);
   const [sort, setSort] = useState<"featured" | "newest" | "popular" | "rating" | "price-low" | "price-high">("featured");
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [page, setPage] = useState(1);
@@ -112,8 +114,8 @@ export function ShopProductGrid({
       ...INITIAL_FILTERS,
       categories: activeCategory ? [activeCategory] : [],
     });
-    setSearch("");
-  }, [activeCategory]);
+    setSearch(initialSearch);
+  }, [activeCategory, initialSearch]);
 
   const categories = useMemo(() => {
     const available = new Set(sourceProducts.map((product) => product.category));
