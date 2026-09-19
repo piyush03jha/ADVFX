@@ -37,9 +37,7 @@ export class PaymentsController {
     @Headers('x-razorpay-event') event: string,
   ) {
     const rawBody = req.rawBody;
-    if (!rawBody) {
-      throw new BadRequestException('Webhook body is missing');
-    }
+    if (!rawBody) throw new BadRequestException('Webhook body is missing');
 
     return this.payments.handleWebhook(
       rawBody.toString('utf8'),
