@@ -101,9 +101,10 @@ async function bootstrap() {
       // and must not share the public request bucket.
       if (request.url.startsWith("/payments/razorpay/webhook")) return;
 
-      const routeLimit = AUTH_RATE_LIMITS[request.routerPath ?? request.url.split("?")[0]];
+      const routePath = request.routeOptions?.url ?? request.url.split("?")[0];
+      const routeLimit = AUTH_RATE_LIMITS[routePath];
       const limit = routeLimit ?? rateLimitPerMinute;
-      const bucketScope = routeLimit ? (request.routerPath ?? request.url.split("?")[0]) : "global";
+      const bucketScope = routeLimit ? routePath : "global";
       const key = `${bucketScope}:${request.ip}`;
       const current = rateLimitState.get(key);
 
