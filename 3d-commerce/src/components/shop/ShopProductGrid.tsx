@@ -69,7 +69,7 @@ export function ShopProductGrid({
     const loadCatalog = async () => {
       try {
         setIsLoadingCatalog(true);
-        const response = await fetch(getBackendApiUrl("products"), {
+        const response = await fetch("/api/products", {
           cache: "no-store",
         });
 
