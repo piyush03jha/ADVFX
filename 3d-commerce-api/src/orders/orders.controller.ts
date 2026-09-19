@@ -43,6 +43,7 @@ export class OrdersController {
         totalMinor: dto.quotedTotalMinor,
         currency: dto.quotedCurrency,
       },
+      dto.items,
     );
   }
 
