@@ -7,43 +7,96 @@ export class PricingService {
   constructor(private readonly prisma: PrismaService) {}
 
   async calculate(userId: string, dto: CalculatePricingDto) {
-    const cart = await this.prisma.cart.findUnique({
-      where: { userId },
-      include: {
-        items: {
-          include: {
-            variant: {
-              include: { price: true },
-            },
-            product: {
-              include: {
-                inventory: true,
-                prices: {
-                  where: { isActive: true },
-                  orderBy: { createdAt: "desc" },
-                  take: 1,
-                },
-              },
-            },
-          },
-        },
-      },
-    });
-
-    if (!cart || cart.items.length === 0) {
-      throw new BadRequestException("Cart is empty");
-    }
-
     const address = await this.prisma.address.findFirst({
       where: { id: dto.shippingAddressId, userId },
     });
     if (!address) throw new NotFoundException("Shipping address not found");
 
+    type PricingSourceItem = {
+      productId: string;
+      variantId: string | null;
+      quantity: number;
+      product: any;
+      variant: any;
+    };
+
+    let sourceItems: PricingSourceItem[];
+
+    if (dto.items?.length) {
+      const productIds = [...new Set(dto.items.map((item) => item.productId))];
+      const products = await this.prisma.product.findMany({
+        where: { id: { in: productIds } },
+        include: {
+          inventory: true,
+          prices: {
+            where: { isActive: true },
+            orderBy: { createdAt: "desc" },
+            take: 1,
+          },
+          variants: { include: { price: true } },
+        },
+      });
+
+      const productById = new Map(products.map((product) => [product.id, product]));
+      sourceItems = dto.items.map((item) => {
+        const product = productById.get(item.productId);
+        if (!product) {
+          throw new BadRequestException("Product is unavailable");
+        }
+        const variant = item.variantId
+          ? product.variants.find((candidate) => candidate.id === item.variantId)
+          : null;
+        if (item.variantId && !variant) {
+          throw new BadRequestException("Selected variant is unavailable");
+        }
+        return {
+          productId: product.id,
+          variantId: variant?.id ?? null,
+          quantity: item.quantity,
+          product,
+          variant,
+        };
+      });
+    } else {
+      const cart = await this.prisma.cart.findUnique({
+        where: { userId },
+        include: {
+          items: {
+            include: {
+              variant: { include: { price: true } },
+              product: {
+                include: {
+                  inventory: true,
+                  prices: {
+                    where: { isActive: true },
+                    orderBy: { createdAt: "desc" },
+                    take: 1,
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!cart || cart.items.length === 0) {
+        throw new BadRequestException("Cart is empty");
+      }
+
+      sourceItems = cart.items.map((item) => ({
+        productId: item.productId,
+        variantId: item.variantId ?? null,
+        quantity: item.quantity,
+        product: item.product,
+        variant: item.variant,
+      }));
+    }
+
     let subtotalMinor = 0;
     let totalWeightGrams = 0;
     let currency = "INR";
 
-    const items = cart.items.map((item) => {
+    const items = sourceItems.map((item) => {
       const product = item.product;
       const variant = item.variant;
       const basePrice = product.prices[0];
