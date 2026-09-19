@@ -286,10 +286,6 @@ export class PaymentsService {
       };
     });
 
-    if (updated.captured) {
-      await this.incrementPromotionUsageAfterPayment(order.id);
-    }
-
     if (updated.order.userId && updated.captured) {
       await this.notifications.create(updated.order.userId, {
         type: NotificationType.ORDER_CONFIRMED,
@@ -441,16 +437,46 @@ export class PaymentsService {
       const current = await tx.payment.findUnique({
         where: { id: payment.id },
       });
-      if (!current) return null;
-      if (current.status === PaymentStatus.CAPTURED) return null;
+      if (!current || current.status === PaymentStatus.CAPTURED) return null;
+
+      const attempt = razorpayOrderId
+        ? await tx.paymentAttempt.findUnique({
+            where: { providerOrderId: razorpayOrderId },
+          })
+        : null;
+
+      if (!attempt || attempt.paymentId !== current.id) return null;
+
+      const order = await tx.order.findUnique({
+        where: { id: current.orderId },
+      });
+
+      if (!order || order.status !== OrderStatus.PENDING_PAYMENT) return null;
+
+      const activeReservation = await tx.inventoryReservation.findFirst({
+        where: {
+          orderId: order.id,
+          status: 'ACTIVE',
+          expiresAt: { gt: new Date() },
+        },
+      });
+
+      if (!activeReservation) return null;
+
+      if (
+        (typeof amount === 'number' && amount !== current.amountMinor) ||
+        (currency && currency !== current.currency)
+      ) {
+        return null;
+      }
 
       const claimed = await tx.payment.updateMany({
         where: {
           id: current.id,
           status: PaymentStatus.PENDING,
+          providerOrderId: attempt.providerOrderId,
         },
         data: {
-          providerOrderId: razorpayOrderId ?? current.providerOrderId,
           providerPaymentId: paymentId ?? current.providerPaymentId,
           status: PaymentStatus.CAPTURED,
           paidAt: new Date(),
@@ -459,16 +485,17 @@ export class PaymentsService {
 
       if (claimed.count !== 1) return null;
 
+      await tx.paymentAttempt.update({
+        where: { id: attempt.id },
+        data: {
+          providerPaymentId: paymentId ?? attempt.providerPaymentId,
+          status: PaymentStatus.CAPTURED,
+        },
+      });
+
       const savedPayment = await tx.payment.findUniqueOrThrow({
         where: { id: current.id },
       });
-
-      const order = await tx.order.findUnique({
-        where: { id: current.orderId },
-      });
-      if (!order || order.status !== OrderStatus.PENDING_PAYMENT) {
-        return { order, payment: savedPayment };
-      }
 
       await this.consumeReservationsInTransaction(tx, order.id);
       await this.recordPurchaseMetricsInTransaction(tx, order.id);
@@ -555,28 +582,6 @@ export class PaymentsService {
         },
       });
     }
-  }
-
-  private async incrementPromotionUsageAfterPayment(orderId: string) {
-    const order = await this.prisma.order.findUnique({
-      where: { id: orderId },
-      select: { promotionId: true },
-    });
-
-    if (!order?.promotionId) return;
-
-    await this.prisma.$executeRaw(
-      Prisma.sql`
-        UPDATE "Promotion"
-        SET "usageCount" = "usageCount" + 1
-        WHERE "id" = ${order.promotionId}
-          AND "isActive" = true
-          AND (
-            "usageLimit" IS NULL
-            OR "usageCount" < "usageLimit"
-          )
-      `,
-    );
   }
 
   private async releaseReservationsInTransaction(
