@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 interface ShopPageProps {
-  searchParams: Promise<{ category?: string }>;
+  searchParams: Promise<{ category?: string; search?: string }>;
 }
 
 export default async function ShopPage({ searchParams }: ShopPageProps) {
@@ -20,7 +20,7 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
     <>
       <Navbar />
       <main className="min-h-screen bg-background">
-        <ShopProductGrid activeCategory={params.category} />
+        <ShopProductGrid activeCategory={params.category} initialSearch={params.search} />
       </main>
     </>
   );
