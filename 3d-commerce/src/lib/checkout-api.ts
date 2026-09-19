@@ -1,3 +1,9 @@
+export type CheckoutSelectionItem = {
+  productId: string;
+  variantId: string | null;
+  quantity: number;
+};
+
 export type CheckoutQuote = {
   currency: string;
   items: Array<{
@@ -76,10 +82,14 @@ async function request<T>(path: string, init: RequestInit): Promise<T> {
   return data as T;
 }
 
-export function getCheckoutQuote(shippingAddressId: string, couponCode?: string) {
+export function getCheckoutQuote(
+  shippingAddressId: string,
+  couponCode?: string,
+  items?: CheckoutSelectionItem[],
+) {
   return request<CheckoutQuote>("/api/checkout/quote", {
     method: "POST",
-    body: JSON.stringify({ shippingAddressId, couponCode }),
+    body: JSON.stringify({ shippingAddressId, couponCode, items }),
   });
 }
 
@@ -123,6 +133,7 @@ export function createOrder(input: {
   quotedTaxMinor: number;
   quotedTotalMinor: number;
   quotedCurrency: string;
+  items?: CheckoutSelectionItem[];
 }) {
   return request<CreatedOrder>("/api/orders", {
     method: "POST",
