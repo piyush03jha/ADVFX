@@ -127,6 +127,12 @@ export default function PaymentPage() {
         shippingAddressId: draft.addressId,
         couponCode: draft.couponCode,
         idempotencyKey: window.crypto.randomUUID(),
+        quotedSubtotalMinor: quote.summary.subtotalMinor,
+        quotedShippingMinor: quote.summary.shippingMinor,
+        quotedDiscountMinor: quote.summary.discountMinor,
+        quotedTaxMinor: quote.summary.taxMinor,
+        quotedTotalMinor: quote.summary.totalMinor,
+        quotedCurrency: quote.currency,
       });
 
       const razorpayOrder: RazorpayOrder = await createRazorpayOrder(order.id);
