@@ -191,14 +191,41 @@ export class OrdersService {
   }
 
   async expireReservations() {
-    const expired = await this.prisma.inventoryReservation.findMany({ where: { status: 'ACTIVE', expiresAt: { lte: new Date() } }, select: { orderId: true }, distinct: ['orderId'] });
+    const expired = await this.prisma.inventoryReservation.findMany({
+      where: { status: 'ACTIVE', expiresAt: { lte: new Date() } },
+      select: { orderId: true },
+      distinct: ['orderId'],
+    });
+
     for (const reservation of expired) {
       await this.prisma.$transaction(async (tx) => {
-        await this.releaseReservations(tx, reservation.orderId, InventoryReservationStatus.EXPIRED);
-        const order = await tx.order.findUnique({ where: { id: reservation.orderId }, select: { status: true } });
-        if (order?.status === 'PENDING_PAYMENT') await tx.order.update({ where: { id: reservation.orderId }, data: { status: 'CANCELLED' } });
+        await this.releaseReservations(
+          tx,
+          reservation.orderId,
+          InventoryReservationStatus.EXPIRED,
+        );
+
+        const order = await tx.order.findUnique({
+          where: { id: reservation.orderId },
+          select: { status: true, payment: { select: { status: true } } },
+        });
+
+        if (order?.status !== 'PENDING_PAYMENT') return;
+
+        await tx.order.update({
+          where: { id: reservation.orderId },
+          data: { status: 'CANCELLED' },
+        });
+
+        if (order.payment?.status === 'PENDING' || order.payment?.status === 'FAILED') {
+          await tx.payment.update({
+            where: { orderId: reservation.orderId },
+            data: { status: 'FAILED' },
+          });
+        }
       });
     }
+
     return { expiredOrders: expired.length };
   }
 
