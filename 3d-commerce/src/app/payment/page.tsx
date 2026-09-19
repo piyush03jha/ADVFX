@@ -219,11 +219,12 @@ export default function PaymentPage() {
           },
         });
 
-        checkout.on("payment.failed", (response: {
-          error?: { description?: string; reason?: string };
-        }) => {
+        checkout.on("payment.failed", (response: unknown) => {
+          const failure = response as {
+            error?: { description?: string; reason?: string };
+          };
           setQuoteError(
-            response.error?.description ||
+            failure.error?.description ||
               "Payment failed. Your items are still available for checkout.",
           );
           finish();
