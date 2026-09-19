@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   IconChevronLeft,
@@ -87,6 +87,11 @@ export function ProductGallery({
     useState(product.image);
 
   const fallbackImage = "/catogeries/1.jpg";
+
+  useEffect(() => {
+    setActiveIndex(0);
+    setImageSrc(product.image || fallbackImage);
+  }, [product.id, product.image]);
 
   const media: MediaItem[] = [
     {
