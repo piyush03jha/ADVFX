@@ -38,6 +38,13 @@ export class CustomBuildFilesController {
     });
     if (!request) throw new BadRequestException('Custom request not found');
 
+    const referenceCount = await this.prisma.customRequestMedia.count({
+      where: { customRequestId: requestId },
+    });
+    if (referenceCount >= 5) {
+      throw new BadRequestException('A custom request can contain at most 5 reference images.');
+    }
+
     const uploaded = await this.readMultipart(req, 15 * 1024 * 1024);
     if (!REFERENCE_MIME_TYPES.has(uploaded.mimetype)) {
       throw new BadRequestException('Only JPG and PNG references are supported');
