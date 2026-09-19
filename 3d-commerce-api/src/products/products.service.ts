@@ -397,7 +397,6 @@ export class ProductsService {
           tag: true,
         },
       },
-      metrics: true,
     };
   }
 
@@ -427,12 +426,6 @@ export class ProductsService {
       currency: activePrice?.currency ?? 'INR',
       model,
       category: product.category?.name ?? '',
-      metrics: {
-        views: product.metrics?.viewCount ?? 0,
-        cartAdds: product.metrics?.cartAddCount ?? 0,
-        purchases: product.metrics?.purchaseCount ?? 0,
-        unitsSold: product.metrics?.unitsSold ?? 0,
-      },
     };
   }
 
@@ -450,7 +443,6 @@ export class ProductsService {
         include: { price: true },
         orderBy: { createdAt: "asc" },
       },
-      metrics: true,
     };
   }
 
@@ -465,7 +457,6 @@ export class ProductsService {
       media: { orderBy: { sortOrder: 'asc' } },
       tags: { include: { tag: true } },
       files: true,
-      metrics: true,
     };
   }
 }
