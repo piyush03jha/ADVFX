@@ -99,9 +99,7 @@ export function AddressManager({
     setForm((current) => ({ ...current, [field]: value }));
   };
 
-  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
+  const submit = async () => {
     const result = editingId
       ? await updateAddress(editingId, form)
       : await addAddress(form);
@@ -212,7 +210,7 @@ export function AddressManager({
                       <button type="button" onClick={() => openEdit(address)} disabled={mutationDisabled} aria-label={`Edit ${address.fullName} address`} className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-surface-elevated hover:text-foreground">
                         <IconPencil size={14} />
                       </button>
-                      <button type="button" onClick={() => void deleteAddress(address.id)} disabled={mutationDisabled || (address.isDefault && addresses.length === 1)} aria-label={`Delete ${address.fullName} address`} disabled={mutationDisabled || (address.isDefault && addresses.length === 1)} className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-red-500/10 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-30">
+                      <button type="button" onClick={() => void deleteAddress(address.id)} disabled={mutationDisabled || (address.isDefault && addresses.length === 1)} aria-label={`Delete ${address.fullName} address`} className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-red-500/10 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-30">
                         <IconTrash size={14} />
                       </button>
                     </div>
