@@ -5,8 +5,11 @@ describe('AuthService', () => {
   const prisma = {
     user: {
       findUnique: jest.fn(),
+      update: jest.fn(),
     },
     $executeRaw: jest.fn(),
+    $queryRaw: jest.fn(),
+    user: { findUnique: jest.fn(), update: jest.fn() },
   } as any;
 
   const emailService = {
@@ -19,7 +22,6 @@ describe('AuthService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    process.env.ADMIN_AUTH_SECRET = 'test-secret';
   });
 
   it('rejects invalid admin credentials', async () => {
