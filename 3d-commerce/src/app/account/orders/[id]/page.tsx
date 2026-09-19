@@ -1,60 +1,121 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  IconArrowLeft,
-  IconCheck,
-  IconChevronRight,
-  IconCopy,
-  IconMapPin,
-  IconPackage,
-  IconTruck,
-} from "@tabler/icons-react";
-
+import { cookies } from "next/headers";
+import { IconArrowLeft, IconChevronRight, IconMapPin, IconPackage, IconTruck } from "@tabler/icons-react";
+import { Navbar } from "@/components/layout/SiteNavbar";
 import { OrderItems } from "@/components/account/OrderItems";
 import { OrderSummary } from "@/components/account/OrderSummary";
-import { OrderTimeline } from "@/components/account/OrderTimeline";
-import { Navbar } from "@/components/layout/SiteNavbar";
-import { getOrderById, getOrderStatusLabel } from "@/config/orders";
-import { Button } from "@/components/ui/Button";
+import { getBackendApiUrl } from "@/lib/backend-api";
+import { AUTH_COOKIE_NAME } from "@/lib/auth";
 
-interface OrderPageProps {
-  params: Promise<{ id: string }>;
+interface OrderPageProps { params: Promise<{ id: string }>; }
+
+function money(amountMinor: number, currency: string) {
+  return new Intl.NumberFormat("en-IN", { style: "currency", currency, maximumFractionDigits: 2 }).format(amountMinor / 100);
+}
+function label(status: string) {
+  return status.replaceAll("_", " ").toLowerCase().replace(/(^|\s)\S/g, (m) => m.toUpperCase());
 }
 
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(value));
+async function getOrder(id: string) {
+  const token = (await cookies()).get(AUTH_COOKIE_NAME)?.value;
+  if (!token) return null;
+  const response = await fetch(getBackendApiUrl(`orders/${encodeURIComponent(id)}`), {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  if (!response.ok) return null;
+  return (await response.json()) as {
+    id: string;
+    orderNumber: string;
+    createdAt: string;
+    status: string;
+    currency: string;
+    subtotalMinor: number;
+    shippingMinor: number;
+    taxMinor: number;
+    discountMinor: number;
+    totalMinor: number;
+    items: Array<{
+      id: string;
+      productId: string;
+      productName: string;
+      variantName: string | null;
+      quantity: number;
+      unitPriceMinor: number;
+      totalPriceMinor: number;
+    }>;
+    shippingAddress: {
+      fullName: string;
+      phone: string;
+      line1: string;
+      line2: string | null;
+      city: string;
+      state: string;
+      postalCode: string;
+      country: string;
+    };
+    payment: { provider: string; status: string } | null;
+    shipment: {
+      status: string;
+      trackingNumber: string | null;
+      trackingUrl: string | null;
+    } | null;
+  };
 }
 
 export default async function OrderTrackingPage({ params }: OrderPageProps) {
   const { id } = await params;
-  const order = getOrderById(id);
-
+  const order = await getOrder(id);
   if (!order) notFound();
 
+  const items = order.items.map((item) => ({
+    productId: `${item.productId}-${item.id}`,
+    name: item.productName,
+    image: "/catogeries/1.jpg",
+    price: item.unitPriceMinor / 100,
+    quantity: item.quantity,
+  }));
+
+  const adaptedOrder = {
+    id: order.id,
+    orderNumber: order.orderNumber,
+    createdAt: order.createdAt,
+    status: "confirmed" as const,
+    items,
+    subtotal: order.subtotalMinor / 100,
+    shipping: order.shippingMinor / 100,
+    tax: order.taxMinor / 100,
+    discount: order.discountMinor / 100,
+    total: order.totalMinor / 100,
+    paymentMethod: {
+      type: order.payment?.provider ?? "Payment",
+      label: order.payment?.status ?? "Pending",
+    },
+    shippingAddress: {
+      name: order.shippingAddress.fullName,
+      phone: order.shippingAddress.phone,
+      addressLine1: order.shippingAddress.line1,
+      addressLine2: order.shippingAddress.line2 ?? undefined,
+      city: order.shippingAddress.city,
+      state: order.shippingAddress.state,
+      postalCode: order.shippingAddress.postalCode,
+      country: order.shippingAddress.country,
+    },
+  };
+
   const shipment = order.shipment;
-  const currentEvent = shipment?.events.find((event) => event.current);
 
   return (
     <>
       <Navbar />
       <main className="min-h-screen overflow-hidden bg-background">
-        <div className="pointer-events-none fixed inset-0 -z-0 overflow-hidden" aria-hidden="true">
-          <div className="absolute left-[8%] top-20 h-64 w-64 rounded-full bg-primary/[0.07] blur-3xl" />
-          <div className="absolute right-[5%] top-[38%] h-80 w-80 rounded-full bg-primary/[0.045] blur-3xl" />
-        </div>
-
         <div className="relative z-10 mx-auto flex min-h-[calc(100svh-76px)] w-full max-w-7xl flex-col px-4 pb-5 pt-24 sm:px-6 sm:pb-6 sm:pt-28 lg:px-8 lg:pt-24">
           <div className="mb-4 flex items-center justify-between gap-4">
             <Link href="/account/orders" className="inline-flex items-center gap-1.5 text-[10px] font-medium text-muted hover:text-foreground sm:text-xs">
               <IconArrowLeft size={14} /> All orders
             </Link>
-            <span className="rounded-full border border-white/[0.1] bg-[linear-gradient(135deg,hsl(var(--foreground)/0.06),hsl(var(--primary)/0.06))] px-3 py-1.5 text-[9px] font-medium uppercase tracking-[0.14em] text-primary">
-              {getOrderStatusLabel(order.status)}
-            </span>
+            <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1.5 text-[9px] font-medium uppercase tracking-[0.14em] text-primary">{label(order.status)}</span>
           </div>
 
           <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
@@ -65,88 +126,54 @@ export default async function OrderTrackingPage({ params }: OrderPageProps) {
             <div className="flex items-center gap-3 text-[10px] text-muted sm:text-xs">
               <span>{order.orderNumber}</span>
               <span className="h-1 w-1 rounded-full bg-muted/50" />
-              <span>Placed {formatDate(order.createdAt)}</span>
+              <span>Placed {new Date(order.createdAt).toLocaleDateString("en-IN")}</span>
             </div>
           </header>
 
-          <div className="grid flex-1 gap-4 lg:min-h-0 lg:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.8fr)] lg:gap-5">
-            <div className="grid min-h-0 gap-4 lg:grid-rows-[auto_minmax(0,1fr)]">
-              <section className="relative overflow-hidden rounded-2xl border border-white/[0.1] bg-[linear-gradient(135deg,hsl(var(--foreground)/0.07),hsl(var(--background)/0.02)_52%,hsl(var(--primary)/0.09))] p-4 shadow-[0_20px_60px_rgba(0,0,0,0.14)] sm:p-5">
-                <div className="absolute -right-12 -top-16 h-36 w-36 rounded-full bg-primary/[0.09] blur-3xl" />
-                <div className="relative grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+          <div className="grid flex-1 gap-4 lg:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.8fr)] lg:gap-5">
+            <div className="grid min-h-0 gap-4">
+              <section className="rounded-2xl border border-border bg-surface/55 p-4 sm:p-5">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><IconTruck size={18} /></div>
                   <div>
-                    <div className="flex items-center gap-2 text-primary">
-                      <IconTruck size={15} />
-                      <p className="text-[8px] font-medium uppercase tracking-[0.16em]">Shipment status</p>
-                    </div>
-                    <h2 className="mt-1 text-lg font-medium text-foreground sm:text-xl">{currentEvent?.title ?? getOrderStatusLabel(order.status)}</h2>
-                    <p className="mt-0.5 max-w-xl text-[10px] leading-4 text-muted sm:text-xs">{currentEvent?.description ?? "Your order is moving through our fulfillment process."}</p>
-                  </div>
-                  <div className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary shadow-[0_0_24px_var(--glow-primary)] sm:flex">
-                    <IconPackage size={18} />
+                    <p className="text-[8px] uppercase tracking-[0.16em] text-primary">Shipment status</p>
+                    <h2 className="mt-1 text-lg font-medium text-foreground">{shipment ? label(shipment.status) : label(order.status)}</h2>
+                    <p className="mt-1 text-xs leading-5 text-muted">
+                      {shipment?.trackingNumber ? `Tracking number: ${shipment.trackingNumber}` : "Shipment details will appear after fulfillment."}
+                    </p>
                   </div>
                 </div>
-
-                <div className="relative mt-3 grid grid-cols-3 gap-2">
-                  <div className="rounded-xl border border-white/[0.08] bg-[linear-gradient(135deg,hsl(var(--foreground)/0.045),hsl(var(--background)/0.02))] px-3 py-2.5">
-                    <p className="text-[8px] uppercase tracking-[0.1em] text-muted">Carrier</p>
-                    <p className="mt-0.5 truncate text-[10px] font-medium text-foreground">{shipment?.carrier ?? "Preparing"}</p>
-                  </div>
-                  <div className="rounded-xl border border-white/[0.08] bg-[linear-gradient(135deg,hsl(var(--foreground)/0.045),hsl(var(--background)/0.02))] px-3 py-2.5">
-                    <p className="text-[8px] uppercase tracking-[0.1em] text-muted">Tracking</p>
-                    <p className="mt-0.5 truncate text-[10px] font-medium text-foreground">{shipment?.trackingNumber ?? "Pending"}</p>
-                  </div>
-                  <div className="rounded-xl border border-white/[0.08] bg-[linear-gradient(135deg,hsl(var(--foreground)/0.045),hsl(var(--background)/0.02))] px-3 py-2.5">
-                    <p className="text-[8px] uppercase tracking-[0.1em] text-muted">Delivery</p>
-                    <p className="mt-0.5 truncate text-[10px] font-medium text-foreground">{shipment?.estimatedDelivery ?? "We'll update you"}</p>
-                  </div>
-                </div>
-
-                {shipment?.trackingNumber && (
-                  <div className="relative mt-2 flex items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-[linear-gradient(135deg,hsl(var(--primary)/0.055),hsl(var(--background)/0.02))] px-3 py-2">
-                    <div className="flex min-w-0 items-center gap-2"><IconCopy size={13} className="shrink-0 text-muted" /><span className="truncate text-[9px] text-muted">{shipment.trackingNumber}</span></div>
-                    {shipment.trackingUrl ? <a href={shipment.trackingUrl} target="_blank" rel="noreferrer" className="flex shrink-0 items-center gap-1 text-[9px] font-medium text-primary">Carrier tracking <IconChevronRight size={11} /></a> : <span className="shrink-0 text-[9px] text-muted">Tracking active</span>}
-                  </div>
+                {shipment?.trackingUrl && (
+                  <a href={shipment.trackingUrl} target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-primary">
+                    Track carrier <IconChevronRight size={13} />
+                  </a>
                 )}
               </section>
 
-              <section className="min-h-0 overflow-hidden rounded-2xl border border-white/[0.1] bg-[linear-gradient(135deg,hsl(var(--foreground)/0.06),hsl(var(--background)/0.02)_55%,hsl(var(--primary)/0.065))] p-4 shadow-[0_18px_55px_rgba(0,0,0,0.11)] sm:p-5">
-                <div className="mb-3 flex items-end justify-between gap-3">
-                  <div>
-                    <p className="text-[8px] uppercase tracking-[0.16em] text-primary">Delivery journey</p>
-                    <h2 className="mt-0.5 text-base font-medium text-foreground sm:text-lg">Order progress</h2>
-                  </div>
-                  <span className="text-[9px] text-muted">{shipment?.events.filter((event) => event.completed).length ?? 0}/{shipment?.events.length ?? 0} completed</span>
-                </div>
-                {shipment?.events.length ? (
-                  <div className="max-h-[calc(100svh-390px)] overflow-y-auto pr-1 sm:max-h-[calc(100svh-360px)] lg:max-h-none lg:overflow-visible">
-                    <OrderTimeline events={shipment.events} />
-                  </div>
-                ) : (
-                  <div className="rounded-xl border border-white/[0.08] bg-background/20 p-4 text-xs text-muted">Tracking updates will appear here once your shipment is created.</div>
-                )}
+              <section className="rounded-2xl border border-border bg-surface/55 p-4 sm:p-5">
+                <div className="mb-3 flex items-center gap-2"><IconPackage size={15} className="text-muted" /><h2 className="text-xs font-medium uppercase tracking-[0.12em]">Your order</h2></div>
+                <OrderItems items={items} />
               </section>
             </div>
 
-            <aside className="grid content-start gap-4 lg:sticky lg:top-24 lg:max-h-[calc(100svh-120px)] lg:overflow-auto">
-              <section className="rounded-2xl border border-white/[0.1] bg-[linear-gradient(135deg,hsl(var(--foreground)/0.07),hsl(var(--background)/0.02)_52%,hsl(var(--primary)/0.08))] p-4 shadow-[0_20px_60px_rgba(0,0,0,0.12)] sm:p-5">
-                <div className="flex items-center gap-2"><IconMapPin size={14} className="text-primary" /><h2 className="text-[10px] font-medium uppercase tracking-[0.12em] text-foreground">Delivering to</h2></div>
-                <div className="mt-3 rounded-xl border border-white/[0.08] bg-[linear-gradient(135deg,hsl(var(--foreground)/0.04),hsl(var(--background)/0.015))] p-3 text-[10px] leading-4">
-                  <p className="font-medium text-foreground">{order.shippingAddress.name}</p>
-                  <p className="mt-0.5 text-muted">{order.shippingAddress.addressLine1}</p>
-                  {order.shippingAddress.addressLine2 && <p className="text-muted">{order.shippingAddress.addressLine2}</p>}
+            <aside className="grid content-start gap-4 lg:sticky lg:top-24">
+              <section className="rounded-2xl border border-border bg-surface/55 p-4 sm:p-5">
+                <div className="flex items-center gap-2"><IconMapPin size={14} className="text-primary" /><h2 className="text-[10px] font-medium uppercase tracking-[0.12em]">Delivering to</h2></div>
+                <div className="mt-3 text-[10px] leading-4">
+                  <p className="font-medium text-foreground">{order.shippingAddress.fullName}</p>
+                  <p className="text-muted">{order.shippingAddress.line1}</p>
+                  {order.shippingAddress.line2 && <p className="text-muted">{order.shippingAddress.line2}</p>}
                   <p className="text-muted">{order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.postalCode}</p>
                   <p className="text-muted">{order.shippingAddress.country}</p>
                 </div>
               </section>
 
-              <OrderSummary order={order} />
+              <OrderSummary order={adaptedOrder as never} />
 
-              <div className="rounded-2xl border border-white/[0.1] bg-[linear-gradient(135deg,hsl(var(--primary)/0.08),hsl(var(--background)/0.02)_60%,hsl(var(--foreground)/0.045))] p-4">
-                <div className="flex items-start gap-2.5"><div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><IconCheck size={15} /></div><div><p className="text-[10px] font-medium text-foreground">We'll keep you updated</p><p className="mt-0.5 text-[9px] leading-4 text-muted">Your order status will move through each production and delivery milestone here.</p></div></div>
+              <div className="grid gap-2">
+                <Link href="/account/orders" className="flex min-h-11 items-center justify-center rounded-xl bg-primary text-xs font-medium text-white">Back to orders</Link>
+                <Link href="/shop" className="flex min-h-11 items-center justify-center rounded-xl border border-border text-xs font-medium text-foreground">Continue shopping</Link>
               </div>
-
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1"><Button href="/account/orders" size="md">Back to orders</Button><Button href="/shop" variant="outline" size="md">Continue shopping</Button></div>
             </aside>
           </div>
         </div>
