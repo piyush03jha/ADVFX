@@ -1,8 +1,21 @@
 import { NextResponse } from "next/server";
 
 import { getBackendApiUrl } from "@/lib/backend-api";
+function isSafeRequestOrigin(request: Request) {
+  const origin = request.headers.get("origin");
+  if (!origin) return true;
+  try {
+    return origin === new URL(request.url).origin;
+  } catch {
+    return false;
+  }
+}
+
 
 export async function POST(request: Request) {
+  if (!isSafeRequestOrigin(request)) {
+    return NextResponse.json({ error: "Invalid request origin." }, { status: 403 });
+  }
   try {
     const body = (await request.json()) as { email?: string };
     const email = body.email?.trim().toLowerCase();
