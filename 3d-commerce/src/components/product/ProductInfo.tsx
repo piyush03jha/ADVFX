@@ -96,7 +96,7 @@ export function ProductInfo({
             text-muted
           "
         >
-          Highly rated model
+          {product.reviewCount > 0 ? "Customer reviews" : "No reviews yet"}
         </span>
       </div>
 
