@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 
 const steps = [
   { icon: IconCamera, title: "Share your idea", description: "Photos, sketches or references" },
-  { icon: IconSparkles, title: "We craft it", description: "Designed by our 3D team" },
+  { icon: IconSparkles, title: "We craft it", description: "Created by our 3D team" },
   { icon: IconBox, title: "Made real", description: "A physical piece, made for you" },
 ];
 
@@ -44,7 +44,7 @@ export function CustomBuild() {
               </h2>
 
               <p className="mt-6 max-w-lg text-sm leading-6 text-muted sm:text-base sm:leading-7">
-                Create a personalized bobblehead from a photo of your favorite person, pet, or character. Share your reference image, preferred pose, outfit, and dimensions—we will sculpt the details into a memorable physical collectible made just for you.
+                Start with JPG/PNG reference photos and your requirements. We’ll review the request, create the physical piece, and guide you through the final order and delivery.
               </p>
 
               <div className="mt-7 space-y-3">
