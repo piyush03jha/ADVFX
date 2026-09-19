@@ -16,15 +16,14 @@ describe('OrdersService', () => {
     create: jest.fn(),
   } as any;
 
-  const pricing = {
-    calculate: jest.fn(),
-  } as any;
+  const pricing = { calculate: jest.fn() } as any;
+  const razorpay = { refundPayment: jest.fn() } as any;
 
   let service: OrdersService;
 
   beforeEach(() => {
     jest.resetAllMocks();
-    service = new OrdersService(prisma, notifications, pricing);
+    service = new OrdersService(prisma, notifications, pricing, razorpay);
   });
 
   it('rejects invalid order status transitions', async () => {
@@ -116,3 +115,42 @@ describe('OrdersService', () => {
     );
   });
 });
+
+
+  it('requests a provider refund before marking an order refunded', async () => {
+    prisma.order.findUnique.mockResolvedValue({
+      id: 'order-1',
+      status: 'DELIVERED',
+      payment: {
+        status: 'CAPTURED',
+        providerPaymentId: 'pay_1',
+        amountMinor: 249900,
+      },
+      userId: 'user-1',
+    });
+
+    razorpay.refundPayment.mockResolvedValue({ id: 'rfnd_1', status: 'processed' });
+
+    const tx = {
+      payment: {
+        update: jest.fn(),
+      },
+      order: {
+        update: jest.fn().mockResolvedValue({
+          id: 'order-1',
+          status: 'REFUNDED',
+          userId: 'user-1',
+        }),
+      },
+    } as any;
+
+    prisma.$transaction.mockImplementation((callback: any) => callback(tx));
+
+    await service.updateStatus('order-1', 'REFUNDED' as any);
+
+    expect(razorpay.refundPayment).toHaveBeenCalledWith('pay_1', 249900);
+    expect(tx.payment.update).toHaveBeenCalledWith({
+      where: { orderId: 'order-1' },
+      data: { status: 'REFUNDED' },
+    });
+  });
