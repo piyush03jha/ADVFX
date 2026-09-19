@@ -1,0 +1,2 @@
+ALTER TABLE "Order"
+ADD COLUMN "checkoutSource" TEXT NOT NULL DEFAULT 'CART';
