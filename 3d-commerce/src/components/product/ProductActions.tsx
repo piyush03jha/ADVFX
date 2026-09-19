@@ -28,6 +28,7 @@ export function ProductActions({ product }: ProductActionsProps) {
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
   const [pending, setPending] = useState(false);
+  const [buying, setBuying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { addItem } = useCart();
 
@@ -59,6 +60,10 @@ export function ProductActions({ product }: ProductActionsProps) {
   };
 
   const buyNow = async () => {
+    if (pending || buying) return;
+    setBuying(true);
+    setError(null);
+
     const buyNowItem = {
       key:
         product.id +
@@ -214,11 +219,11 @@ export function ProductActions({ product }: ProductActionsProps) {
         <button
           type="button"
           onClick={() => void buyNow()}
-          disabled={pending}
+          disabled={pending || buying}
           className="flex min-h-12 items-center justify-center gap-2 rounded-full border border-primary/60 bg-transparent px-5 text-xs font-medium uppercase tracking-[0.14em] text-primary transition-all hover:bg-primary/8"
         >
           <IconSparkles size={15} />
-          Buy Now
+          {buying ? "Opening…" : "Buy Now"}
         </button>
       </div>
     </div>
