@@ -18,6 +18,7 @@ import { NotificationsModule } from "./notifications/notifications.module";
 import { CheckoutModule } from "./checkout/checkout.module";
 import { ShippingModule } from "./shipping/shipping.module";
 import { PricingModule } from "./pricing/pricing.module";
+import { WishlistModule } from "./wishlist/wishlist.module";
 import { ScheduleModule } from "@nestjs/schedule";
 
 @Module({
@@ -40,6 +41,7 @@ import { ScheduleModule } from "@nestjs/schedule";
     ShippingModule,
     PricingModule,
     CheckoutModule,
+    WishlistModule,
   ],
   controllers: [AppController],
   providers: [AppService],
