@@ -242,7 +242,7 @@ export default function PaymentPage() {
     );
   }
 
-  if (items.length === 0) {
+  if (displayItems.length === 0) {
     return (
       <>
         <Navbar />
