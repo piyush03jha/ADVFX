@@ -159,14 +159,33 @@ export class PaymentsService {
         });
       }
 
-      const savedPayment = await tx.payment.update({
-        where: { id: payment.id },
+      const claimed = await tx.payment.updateMany({
+        where: {
+          id: payment.id,
+          status: PaymentStatus.PENDING,
+        },
         data: {
           providerOrderId: input.razorpayOrderId,
           providerPaymentId: input.razorpayPaymentId,
           status: PaymentStatus.CAPTURED,
           paidAt: new Date(),
         },
+      });
+
+      if (claimed.count !== 1) {
+        return tx.order.findUniqueOrThrow({
+          where: { id: order.id },
+          include: {
+            items: true,
+            shippingAddress: true,
+            payment: true,
+            shipment: true,
+          },
+        });
+      }
+
+      const savedPayment = await tx.payment.findUniqueOrThrow({
+        where: { id: payment.id },
       });
 
       await this.consumeReservationsInTransaction(tx, order.id);
@@ -338,14 +357,23 @@ export class PaymentsService {
       if (!current) return null;
       if (current.status === PaymentStatus.CAPTURED) return null;
 
-      const savedPayment = await tx.payment.update({
-        where: { id: current.id },
+      const claimed = await tx.payment.updateMany({
+        where: {
+          id: current.id,
+          status: PaymentStatus.PENDING,
+        },
         data: {
           providerOrderId: razorpayOrderId ?? current.providerOrderId,
           providerPaymentId: paymentId ?? current.providerPaymentId,
           status: PaymentStatus.CAPTURED,
           paidAt: new Date(),
         },
+      });
+
+      if (claimed.count !== 1) return null;
+
+      const savedPayment = await tx.payment.findUniqueOrThrow({
+        where: { id: current.id },
       });
 
       const order = await tx.order.findUnique({
