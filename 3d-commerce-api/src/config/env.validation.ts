@@ -15,6 +15,10 @@ export function validateEnvironment() {
     if (!process.env.RAZORPAY_WEBHOOK_SECRET) throw new Error('RAZORPAY_WEBHOOK_SECRET is not configured');
   }
 
+  if (process.env.AUTH_EXPOSE_DEV_TOKENS === 'true' && nodeEnv === 'production') {
+    throw new Error('AUTH_EXPOSE_DEV_TOKENS must not be enabled in production');
+  }
+
   if (nodeEnv === 'production') {
     if (process.env.ADMIN_AUTH_SECRET.length < 32) {
       throw new Error('ADMIN_AUTH_SECRET must be at least 32 characters in production');
