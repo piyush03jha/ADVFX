@@ -538,6 +538,7 @@ export class PaymentsService {
       const updatedOrder = await tx.order.update({
         where: { id: order.id },
         data: { status: OrderStatus.CONFIRMED },
+        include: { items: true },
       });
 
       await this.clearCapturedCartLines(tx, updatedOrder);
