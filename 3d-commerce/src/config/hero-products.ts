@@ -7,10 +7,6 @@ export interface HeroProduct {
   currency: string;
   model: string;
   category: string;
-  metrics: {
-    label: string;
-    value: string;
-  }[];
 }
 
 /**
