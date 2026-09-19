@@ -5,15 +5,15 @@ export const ADMIN_COOKIE = "forma_admin_session";
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as { email?: string; secret?: string };
+    const body = (await request.json()) as { email?: string; password?: string };
     const email = body.email?.trim().toLowerCase();
-    const secret = body.secret ?? "";
-    if (!email || !secret) return NextResponse.json({ error: "Email and admin secret are required." }, { status: 400 });
+    const password = body.password ?? "";
+    if (!email || !password) return NextResponse.json({ error: "Email and admin password are required." }, { status: 400 });
 
     const response = await fetch(getBackendApiUrl("auth/admin/login"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, secret }),
+      body: JSON.stringify({ email, password }),
       cache: "no-store",
     });
     const data = await response.json().catch(() => null) as { token?: string; user?: { id:string; name:string|null; email:string; role:string }; message?: string|string[] };
