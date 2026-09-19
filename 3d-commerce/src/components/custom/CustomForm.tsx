@@ -85,11 +85,14 @@ export function CustomForm({
   }
   function handleBodyChange(value: string) { onBodyChange(value); if (isPerson) showGalleryImage(value); }
   function handleHeadChange(value: string) { onHeadChange(value); if (isPerson || hasBobbleHead) showGalleryImage(value); }
+  const [submitting, setSubmitting] = useState(false);
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setAttemptedSubmit(true);
-    if (!hasReference) return;
+    if (!hasReference || submitting) return;
     setFileError("");
+    setSubmitting(true);
 
     const detailsParts = [
       `Category: ${selectedCategory.label}`,
@@ -100,7 +103,8 @@ export function CustomForm({
       `Estimated configuration price: INR ${price}`,
     ];
 
-    const requestResponse = await fetch("/api/custom-requests", {
+    try {
+      const requestResponse = await fetch("/api/custom-requests", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -152,15 +156,20 @@ export function CustomForm({
       }
     }
 
-    onSubmit({
-      requestId: requestBody.id,
-      category,
-      price,
-      bodyLabel: isPerson ? selectedBody.label : "Not applicable",
-      headLabel: hasBobbleHead ? selectedHead.label : "Not applicable",
-      sizeLabel: selectedSize.label,
-      frameLabel: isPerson ? selectedFrame.label : "Not applicable",
-    });
+      onSubmit({
+        requestId: requestBody.id,
+        category,
+        price,
+        bodyLabel: isPerson ? selectedBody.label : "Not applicable",
+        headLabel: hasBobbleHead ? selectedHead.label : "Not applicable",
+        sizeLabel: selectedSize.label,
+        frameLabel: isPerson ? selectedFrame.label : "Not applicable",
+      });
+    } catch {
+      setFileError("Custom request service is unavailable. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   }
   const nextImage = () => setActiveImage((current) => (current + 1) % gallery.length);
   const previousImage = () => setActiveImage((current) => (current - 1 + gallery.length) % gallery.length);
@@ -190,7 +199,7 @@ export function CustomForm({
           <div className="mt-auto pt-7"><div className="flex items-end justify-between gap-4 border-t border-border pt-5"><div><p className="text-[10px] uppercase tracking-[0.16em] text-muted">Fixed price</p><p className="mt-1 text-3xl font-semibold tracking-[-0.04em]">₹{price.toLocaleString("en-IN")}</p></div><div className="text-right"><p className="text-[10px] uppercase tracking-[0.14em] text-muted">Size</p><p className="mt-1 text-sm font-medium">{selectedSize.label}</p></div></div></div>
         </div>
       </div>
-      <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.42fr)]"><div className="rounded-[24px] border border-border bg-surface/45 p-5 sm:p-7"><div><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">Your references</p><h3 className="mt-1 text-lg font-semibold">Upload reference photos</h3><p className="mt-1 text-xs leading-5 text-muted">For people and pets, front, back, left and right JPG/PNG views give us the best likeness.</p></div><div className="mt-5"><CustomUploadZone files={files} onFilesChange={setFiles} error={fileError} onErrorChange={setFileError} /></div>{attemptedSubmit && !hasReference && <p className="mt-3 text-xs text-error">Please upload at least one reference before requesting your build.</p>}<div className="mt-5"><label className="text-xs font-medium">Anything else? <span className="font-normal text-muted">Optional</span></label><textarea value={details} onChange={(event) => setDetails(event.target.value)} maxLength={1000} rows={4} placeholder="Tell us anything important about the pose, clothing, expression, dimensions or scene." className="mt-2 w-full resize-none rounded-xl border border-border bg-background/45 p-3.5 text-sm leading-6 outline-none placeholder:text-muted focus:border-primary/60" /><div className="mt-1 text-right text-[10px] text-muted">{details.length}/1000</div></div></div><aside className="h-fit rounded-[24px] border border-border bg-surface/60 p-5"><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">Your build</p><h3 className="mt-1 text-lg font-semibold">Ready to request</h3><div className="mt-5 space-y-2.5"><SummaryRow label="Category" value={selectedCategory.label} /><SummaryRow label="Size" value={selectedSize.label} /><SummaryRow label="Price" value={`₹${price.toLocaleString("en-IN")}`} /></div><button type="submit" disabled={!hasReference} className="mt-6 flex h-12 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45">{"Request this build"}</button></aside></div>
+      <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.42fr)]"><div className="rounded-[24px] border border-border bg-surface/45 p-5 sm:p-7"><div><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">Your references</p><h3 className="mt-1 text-lg font-semibold">Upload reference photos</h3><p className="mt-1 text-xs leading-5 text-muted">For people and pets, front, back, left and right JPG/PNG views give us the best likeness.</p></div><div className="mt-5"><CustomUploadZone files={files} onFilesChange={setFiles} error={fileError} onErrorChange={setFileError} /></div>{attemptedSubmit && !hasReference && <p className="mt-3 text-xs text-error">Please upload at least one reference before requesting your build.</p>}<div className="mt-5"><label className="text-xs font-medium">Anything else? <span className="font-normal text-muted">Optional</span></label><textarea value={details} onChange={(event) => setDetails(event.target.value)} maxLength={1000} rows={4} placeholder="Tell us anything important about the pose, clothing, expression, dimensions or scene." className="mt-2 w-full resize-none rounded-xl border border-border bg-background/45 p-3.5 text-sm leading-6 outline-none placeholder:text-muted focus:border-primary/60" /><div className="mt-1 text-right text-[10px] text-muted">{details.length}/1000</div></div></div><aside className="h-fit rounded-[24px] border border-border bg-surface/60 p-5"><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">Your build</p><h3 className="mt-1 text-lg font-semibold">Ready to request</h3><div className="mt-5 space-y-2.5"><SummaryRow label="Category" value={selectedCategory.label} /><SummaryRow label="Size" value={selectedSize.label} /><SummaryRow label="Price" value={`₹${price.toLocaleString("en-IN")}`} /></div><button type="submit" disabled={!hasReference || submitting} className="mt-6 flex h-12 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45">{submitting ? "Submitting request…" : "Request this build"}</button></aside></div>
       <div className="mt-5 grid gap-3 sm:grid-cols-3">{processSteps.map((step, index) => <div key={step.title} className="rounded-2xl border border-border bg-surface/35 p-4"><p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-primary">0{index + 1}</p><h3 className="mt-2 text-sm font-semibold">{step.title}</h3><p className="mt-1 text-xs leading-5 text-muted">{step.description}</p></div>)}</div>
     </form>
   );
