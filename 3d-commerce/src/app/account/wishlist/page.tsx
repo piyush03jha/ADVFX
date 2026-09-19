@@ -11,7 +11,7 @@ import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 
 export default function AccountWishlistPage() {
-  const { items, isLoaded, removeFromWishlist } = useWishlist();
+  const { items, isLoaded, isSyncing, removeFromWishlist } = useWishlist();
   const { addItem } = useCart();
 
   return (
@@ -55,7 +55,8 @@ export default function AccountWishlistPage() {
                   <button
                     type="button"
                     aria-label={`Remove ${product.name} from wishlist`}
-                    onClick={() => removeFromWishlist(product.id)}
+                    onClick={() => void removeFromWishlist(product.id)}
+                    disabled={isSyncing}
                     className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-black/45 text-white/80 backdrop-blur-md transition hover:border-primary/40 hover:text-primary"
                   >
                     <IconTrash size={14} stroke={1.5} />
