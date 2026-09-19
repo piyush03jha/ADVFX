@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { IconArrowRight, IconEye, IconEyeOff, IconLock, IconMail, IconShieldCheck, IconSparkles } from "@tabler/icons-react";
@@ -10,7 +11,7 @@ import { loginUser } from "@/lib/auth-client";
 import { useAuth } from "@/context/AuthContext";
 import { useAuthCaptcha } from "@/lib/auth-captcha";
 
-export default function LoginPage() {
+function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { refreshSession } = useAuth();
@@ -85,6 +86,20 @@ export default function LoginPage() {
         </div>
       </section>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="flex min-h-screen items-center justify-center bg-background text-xs text-muted">
+          Loading sign in…
+        </main>
+      }
+    >
+      <LoginPageContent />
+    </Suspense>
   );
 }
 
