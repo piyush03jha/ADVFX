@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -20,7 +20,6 @@ import { Container } from "@/components/ui/Container";
 import { useCart } from "@/context/CartContext";
 import { createOrder, formatQuoteMoney, getCheckoutQuote, type CheckoutQuote } from "@/lib/checkout-api";
 import { getCountry, type CountryCode } from "@/config/countries";
-import { calculateCartPricing, formatMoney } from "@/lib/pricing";
 
 const DRAFT_KEY = "forma-checkout-draft";
 
