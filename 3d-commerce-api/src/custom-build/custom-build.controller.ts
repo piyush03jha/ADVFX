@@ -14,6 +14,7 @@ import { AdminGuard } from '../auth/guards/admin.guard';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { CustomerAuthGuard } from '../auth/guards/customer-auth.guard';
 import { CreateCustomRequestDto } from './dto/create-custom-request.dto';
+import { CustomPricingDto } from './dto/custom-pricing.dto';
 import { CreateCustomCheckoutDto } from './dto/create-custom-checkout.dto';
 import { UpdateCustomRequestStatusDto } from './dto/update-custom-request-status.dto';
 import { CustomBuildService } from './custom-build.service';
@@ -24,7 +25,7 @@ export class CustomBuildController {
 
   @UseGuards(CustomerAuthGuard)
   @Post("quote")
-  quote(@Body() dto: CreateCustomRequestDto) {
+  quote(@Body() dto: CustomPricingDto) {
     return this.customBuildService.quote(dto);
   }
 
