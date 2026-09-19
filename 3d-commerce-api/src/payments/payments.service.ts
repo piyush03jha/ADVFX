@@ -130,6 +130,16 @@ export class PaymentsService {
       throw new BadRequestException('Razorpay payment is not configured');
     }
 
+    if (order.payment.status === PaymentStatus.CAPTURED) {
+      if (
+        order.payment.providerPaymentId === input.razorpayPaymentId &&
+        order.payment.providerOrderId === input.razorpayOrderId
+      ) {
+        return this.getVerifiedOrder(order.id);
+      }
+      throw new ConflictException('Order has already been paid');
+    }
+
     if (order.status !== OrderStatus.PENDING_PAYMENT) {
       throw new ConflictException('Order is no longer awaiting payment');
     }
@@ -144,16 +154,6 @@ export class PaymentsService {
 
     if (!activeReservation) {
       throw new ConflictException('This payment session has expired. Please create a new order from your cart.');
-    }
-
-    if (order.payment.status === PaymentStatus.CAPTURED) {
-      if (
-        order.payment.providerPaymentId === input.razorpayPaymentId &&
-        order.payment.providerOrderId === input.razorpayOrderId
-      ) {
-        return this.getVerifiedOrder(order.id);
-      }
-      throw new ConflictException('Order has already been paid');
     }
 
     if (order.payment.providerOrderId !== input.razorpayOrderId) {
