@@ -20,6 +20,7 @@ interface CheckoutFormProps {
   onCountryChange?: (country: CountryCode) => void;
   onQuoteChange?: (quote: CheckoutQuote | null, error: string | null) => void;
   selectedItems?: CheckoutSelectionItem[];
+  checkoutDisplayItems?: CartItem[];
 }
 interface FormState {
   email: string;
@@ -47,6 +48,7 @@ export function CheckoutForm({
   onCountryChange,
   onQuoteChange,
   selectedItems,
+  checkoutDisplayItems,
 }: CheckoutFormProps) {
   const router = useRouter();
   const { addresses, defaultAddressId, isLoaded } = useAddresses();
@@ -147,9 +149,7 @@ export function CheckoutForm({
       country,
       couponCode: couponCode.trim() || undefined,
       checkoutItems: selectedItems,
-      checkoutDisplayItems: selectedItems
-        ? undefined
-        : undefined,
+      checkoutDisplayItems,
     };
 
     window.localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
