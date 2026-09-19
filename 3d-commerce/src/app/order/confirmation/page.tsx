@@ -35,6 +35,25 @@ export default function OrderConfirmationPage() {
   if (loading) return <main className="min-h-screen bg-background flex items-center justify-center text-xs text-muted">Loading order…</main>;
   if (!order) return <main className="min-h-screen bg-background flex items-center justify-center text-xs text-muted">Order not found.</main>;
 
+  const orderItems = order.items.map((item) => ({
+    productId: item.productId,
+    name: item.productName,
+    image: "/catogeries/1.jpg",
+    price: item.unitPriceMinor / 100,
+    quantity: item.quantity,
+  }));
+
+  const orderSummary = {
+    subtotal: order.subtotalMinor / 100,
+    shipping: order.shippingMinor / 100,
+    tax: order.taxMinor / 100,
+    discount: order.discountMinor / 100,
+    total: order.totalMinor / 100,
+    paymentMethod: {
+      label: order.payment?.provider ?? "Razorpay",
+    },
+  };
+
   return (
     <main className="min-h-screen bg-background">
       <div
@@ -163,7 +182,7 @@ export default function OrderConfirmationPage() {
               </h2>
             </div>
 
-            <OrderItems items={order.items} />
+            <OrderItems items={orderItems} />
           </section>
 
           {/* Bottom */}
@@ -205,7 +224,7 @@ export default function OrderConfirmationPage() {
               </div>
             </section>
 
-            <OrderSummary order={order} />
+            <OrderSummary order={orderSummary} />
           </div>
 
           {/* Actions */}
