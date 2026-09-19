@@ -304,6 +304,11 @@ export class ProductsService {
       },
       media: { orderBy: { sortOrder: 'asc' } },
       tags: { include: { tag: true } },
+      variants: {
+        where: { isActive: true },
+        include: { price: true },
+        orderBy: { createdAt: "asc" },
+      },
     };
   }
 
