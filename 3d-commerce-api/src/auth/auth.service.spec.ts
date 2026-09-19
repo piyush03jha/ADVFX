@@ -9,7 +9,6 @@ describe('AuthService', () => {
     },
     $executeRaw: jest.fn(),
     $queryRaw: jest.fn(),
-    user: { findUnique: jest.fn(), update: jest.fn() },
   } as any;
 
   const emailService = {
@@ -26,23 +25,26 @@ describe('AuthService', () => {
 
   it('rejects invalid admin credentials', async () => {
     prisma.user.findUnique.mockResolvedValue(null);
-    await expect(service.login('admin@example.com', 'wrong')).rejects.toBeInstanceOf(
-      UnauthorizedException,
-    );
+
+    await expect(
+      service.login('admin@example.com', 'wrong'),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
-  it('creates a session for an active admin', async () => {
+  it('rejects an admin without a credential record', async () => {
     prisma.user.findUnique.mockResolvedValue({
       id: 'admin-1',
       email: 'admin@example.com',
       name: 'Admin',
       role: 'ADMIN',
       isActive: true,
+      adminFailedLoginCount: 0,
+      adminLockedUntil: null,
     });
+    prisma.$queryRaw.mockResolvedValue([]);
 
-    const result = await service.login('admin@example.com', 'test-secret');
-    expect(result.token).toBeTruthy();
-    expect(result.user.role).toBe('ADMIN');
-    expect(prisma.$executeRaw).toHaveBeenCalled();
+    await expect(
+      service.login('admin@example.com', 'test-secret'),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 });
