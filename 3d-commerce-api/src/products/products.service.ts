@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -10,6 +11,7 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateInventoryDto } from './dto/update-inventory.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { UpsertPriceDto } from './dto/upsert-price.dto';
+import { CreateProductReviewDto } from './dto/create-product-review.dto';
 
 @Injectable()
 export class ProductsService {
@@ -68,6 +70,110 @@ export class ProductsService {
     return products
       .map((product) => this.toHeroProduct(product))
       .filter((product) => product.model);
+  }
+
+  async recordView(id: string) {
+    await this.ensureActiveProduct(id);
+    return this.prisma.productMetrics.upsert({
+      where: { productId: id },
+      create: { productId: id, viewCount: 1 },
+      update: { viewCount: { increment: 1 } },
+    });
+  }
+
+  async getMetrics(id: string) {
+    await this.ensureActiveProduct(id);
+    const metrics = await this.prisma.productMetrics.findUnique({
+      where: { productId: id },
+    });
+
+    return metrics ?? {
+      productId: id,
+      viewCount: 0,
+      cartAddCount: 0,
+      purchaseCount: 0,
+      unitsSold: 0,
+    };
+  }
+
+  async getReviews(id: string) {
+    await this.ensureActiveProduct(id);
+
+    const [reviews, aggregate] = await this.prisma.$transaction([
+      this.prisma.productReview.findMany({
+        where: { productId: id, isPublished: true },
+        select: {
+          id: true,
+          rating: true,
+          title: true,
+          comment: true,
+          verifiedPurchase: true,
+          createdAt: true,
+          user: { select: { name: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.productReview.aggregate({
+        where: { productId: id, isPublished: true },
+        _avg: { rating: true },
+        _count: { _all: true },
+      }),
+    ]);
+
+    return {
+      reviews,
+      summary: {
+        rating: aggregate._avg.rating ?? 0,
+        reviewCount: aggregate._count._all,
+      },
+    };
+  }
+
+  async createReview(userId: string, productId: string, dto: CreateProductReviewDto) {
+    await this.ensureActiveProduct(productId);
+
+    const purchased = await this.prisma.order.findFirst({
+      where: {
+        userId,
+        payment: { status: 'CAPTURED' },
+        items: { some: { productId } },
+      },
+      select: { id: true },
+    });
+
+    if (!purchased) {
+      throw new ForbiddenException('Only customers who purchased this product can review it');
+    }
+
+    const existing = await this.prisma.productReview.findUnique({
+      where: { productId_userId: { productId, userId } },
+      select: { id: true },
+    });
+
+    if (existing) {
+      throw new ConflictException('You have already reviewed this product');
+    }
+
+    return this.prisma.productReview.create({
+      data: {
+        productId,
+        userId,
+        rating: dto.rating,
+        title: dto.title?.trim() || null,
+        comment: dto.comment.trim(),
+        verifiedPurchase: true,
+        isPublished: true,
+      },
+      select: {
+        id: true,
+        rating: true,
+        title: true,
+        comment: true,
+        verifiedPurchase: true,
+        createdAt: true,
+        user: { select: { name: true } },
+      },
+    });
   }
 
   async findOne(id: string) {
@@ -218,6 +324,15 @@ export class ProductsService {
     return { message: 'Product media removed successfully' };
   }
 
+  private async ensureActiveProduct(id: string) {
+    const product = await this.prisma.product.findFirst({
+      where: { id, status: 'ACTIVE' },
+      select: { id: true },
+    });
+
+    if (!product) throw new NotFoundException(`Product "${id}" not found`);
+  }
+
   private async ensureProductExists(id: string) {
     const product = await this.prisma.product.findUnique({
       where: { id },
@@ -262,6 +377,7 @@ export class ProductsService {
           tag: true,
         },
       },
+      metrics: true,
     };
   }
 
@@ -291,7 +407,12 @@ export class ProductsService {
       currency: activePrice?.currency ?? 'INR',
       model,
       category: product.category?.name ?? '',
-      metrics: [],
+      metrics: {
+        views: product.metrics?.viewCount ?? 0,
+        cartAdds: product.metrics?.cartAddCount ?? 0,
+        purchases: product.metrics?.purchaseCount ?? 0,
+        unitsSold: product.metrics?.unitsSold ?? 0,
+      },
     };
   }
 
@@ -309,6 +430,7 @@ export class ProductsService {
         include: { price: true },
         orderBy: { createdAt: "asc" },
       },
+      metrics: true,
     };
   }
 
