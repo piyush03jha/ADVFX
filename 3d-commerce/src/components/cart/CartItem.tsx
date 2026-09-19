@@ -30,7 +30,7 @@ function normalizeImagePath(src: string) {
 }
 
 export function CartItem({ item }: CartItemProps) {
-  const { decrementItem, incrementItem, removeItem } = useCart();
+  const { decrementItem, incrementItem, removeItem, isSyncing } = useCart();
   const total = item.product.price * item.quantity;
   const imageSrc = normalizeImagePath(item.product.image);
 
@@ -46,7 +46,7 @@ export function CartItem({ item }: CartItemProps) {
             <p className="truncate text-[9px] uppercase tracking-[0.16em] text-primary">{item.product.category}</p>
             <h3 className="mt-1.5 truncate text-sm font-medium text-foreground sm:text-base">{item.product.name}</h3>
           </div>
-          <button type="button" aria-label={`Remove ${item.product.name}`} onClick={() => removeItem(item.key)} className="shrink-0 text-muted transition-colors hover:text-red-400 sm:hidden">
+          <button type="button" aria-label={`Remove ${item.product.name}`} onClick={() => void removeItem(item.key)} disabled={isSyncing} className="shrink-0 text-muted transition-colors hover:text-red-400 disabled:pointer-events-none disabled:opacity-50 sm:hidden">
             <IconTrash size={16} stroke={1.6} />
           </button>
         </div>
@@ -59,11 +59,11 @@ export function CartItem({ item }: CartItemProps) {
 
         <div className="mt-5 flex items-center justify-between gap-4">
           <div className="flex h-9 items-center rounded-full border border-white/[0.08] bg-white/[0.025]">
-            <button type="button" aria-label="Decrease quantity" onClick={() => decrementItem(item.key)} className="flex h-full w-8 items-center justify-center text-muted transition-colors hover:text-foreground">
+            <button type="button" disabled={isSyncing} aria-label="Decrease quantity" onClick={() => void decrementItem(item.key)} className="flex h-full w-8 items-center justify-center text-muted transition-colors hover:text-foreground">
               <IconMinus size={13} />
             </button>
             <span className="min-w-5 text-center text-xs font-medium text-foreground">{item.quantity}</span>
-            <button type="button" aria-label="Increase quantity" onClick={() => incrementItem(item.key)} className="flex h-full w-8 items-center justify-center text-muted transition-colors hover:text-foreground">
+            <button type="button" disabled={isSyncing} aria-label="Increase quantity" onClick={() => void incrementItem(item.key)} className="flex h-full w-8 items-center justify-center text-muted transition-colors hover:text-foreground">
               <IconPlus size={13} />
             </button>
           </div>
