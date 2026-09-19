@@ -132,9 +132,12 @@ export function ShopProductGrid({
   const categoryNameToId = useMemo(
     () =>
       new Map(
-        categories.map((category) => [category.name.toLowerCase(), category.id]),
+        sourceProducts.map((product) => [
+          product.category.toLowerCase(),
+          product.category,
+        ]),
       ),
-    [categories],
+    [sourceProducts],
   );
 
   const effectiveCategoryIds = useMemo(() => {
@@ -175,9 +178,9 @@ export function ShopProductGrid({
         ),
       );
 
-    const selectedCategoryIds = activeCategory ? effectiveCategoryIds : filters.categories;
+      const selectedCategoryIds = activeCategory ? effectiveCategoryIds : filters.categories;
     const selectedProductCategories = selectedCategoryIds
-      .map((id) => categoryIdToProductCategory[id])
+      .map((id) => categoryIdToProductCategory[id] ?? id)
       .filter(Boolean);
 
     const result = sourceProducts.filter((product) => {
