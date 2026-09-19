@@ -11,12 +11,10 @@ import {
 } from "@react-three/drei";
 import * as THREE from "three";
 
-import type {
-  MostPurchasedProduct,
-} from "@/config/most-purchased-products";
+import type { StorefrontProduct } from "@/lib/catalog-api";
 
 interface ProductCard3DProps {
-  product: MostPurchasedProduct;
+  product: StorefrontProduct;
 }
 
 function Model({
