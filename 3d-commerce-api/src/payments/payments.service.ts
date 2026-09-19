@@ -553,6 +553,13 @@ export class PaymentsService {
 
       await this.clearCapturedCartLines(tx, updatedOrder);
 
+      if (updatedOrder.checkoutSource === "CUSTOM") {
+        await tx.customRequest.updateMany({
+          where: { orderId: updatedOrder.id },
+          data: { status: "IN_PRODUCTION" },
+        });
+      }
+
       return { order: updatedOrder, payment: savedPayment };
     });
 
