@@ -118,7 +118,7 @@ export function TrendingNow() {
       </div>
 
       <div className="mt-6 flex justify-center sm:mt-8">
-        <Button href="/models" variant="outline" size="sm">
+        <Button href="/shop" variant="outline" size="sm">
           Explore All Models
         </Button>
       </div>
