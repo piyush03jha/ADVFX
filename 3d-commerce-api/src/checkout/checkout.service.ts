@@ -19,7 +19,6 @@ export class CheckoutService {
     const address = await this.prisma.address.findFirst({
       where: { id: dto.shippingAddressId, userId },
     });
-
     if (!address) throw new NotFoundException('Shipping address not found');
 
     const cart = await this.prisma.cart.findUnique({
@@ -27,6 +26,7 @@ export class CheckoutService {
       include: {
         items: {
           include: {
+            variant: true,
             product: {
               include: { media: { orderBy: { sortOrder: 'asc' } } },
             },
@@ -36,12 +36,16 @@ export class CheckoutService {
       },
     });
 
-    if (!cart || cart.items.length === 0) throw new BadRequestException('Cart is empty');
+    if (!cart || cart.items.length === 0) {
+      throw new BadRequestException('Cart is empty');
+    }
 
     const imageByProduct = new Map(
       cart.items.map((item) => [
         item.productId,
-        item.product.media.find((media) => media.isPrimary && media.type === 'IMAGE')?.url ??
+        item.product.media.find(
+          (media) => media.isPrimary && media.type === 'IMAGE',
+        )?.url ??
           item.product.media.find((media) => media.type === 'IMAGE')?.url ??
           null,
       ]),
@@ -62,7 +66,13 @@ export class CheckoutService {
             estimatedMinDays: quote.shippingRule.estimatedMinDays,
             estimatedMaxDays: quote.shippingRule.estimatedMaxDays,
           }
-        : { amountMinor: 0, ruleId: null, name: null, estimatedMinDays: null, estimatedMaxDays: null },
+        : {
+            amountMinor: 0,
+            ruleId: null,
+            name: null,
+            estimatedMinDays: null,
+            estimatedMaxDays: null,
+          },
       promotion: quote.promotion,
       tax: quote.taxRule
         ? {
@@ -83,12 +93,18 @@ export class CheckoutService {
   async getStatus(userId: string, orderId: string) {
     const order = await this.prisma.order.findFirst({
       where: { id: orderId, userId },
-      include: { payment: true, shipment: true },
+      include: {
+        items: true,
+        shippingAddress: true,
+        payment: true,
+        shipment: true,
+      },
     });
 
     if (!order) throw new NotFoundException('Order not found');
 
     return {
+      order: order as unknown,
       orderId: order.id,
       orderNumber: order.orderNumber,
       orderStatus: order.status,
