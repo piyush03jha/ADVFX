@@ -47,4 +47,27 @@ describe('AuthService', () => {
       service.login('admin@example.com', 'test-secret'),
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
+
+  it('resets a customer password with a valid reset token', async () => {
+    prisma.$queryRaw.mockResolvedValueOnce([
+      { id: 'reset-1', userId: 'customer-1' },
+    ]);
+    prisma.$transaction.mockImplementation(async (callback: any) => callback(prisma));
+
+    await expect(
+      service.resetCustomerPassword('a'.repeat(43), 'new-password-123'),
+    ).resolves.toEqual({ message: 'Password reset successfully.' });
+
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+    expect(prisma.$executeRaw).toHaveBeenCalledTimes(3);
+  });
+
+  it('rejects a missing, expired, or already-used reset token', async () => {
+    prisma.$queryRaw.mockResolvedValueOnce([]);
+
+    await expect(
+      service.resetCustomerPassword('a'.repeat(43), 'new-password-123'),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
 });
