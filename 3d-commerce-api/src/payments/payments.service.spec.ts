@@ -2,7 +2,7 @@ import { PaymentsService } from './payments.service';
 
 describe('PaymentsService', () => {
   const prisma = {
-    payment: { findFirst: jest.fn() },
+    payment: { findFirst: jest.fn(), update: jest.fn() },
     $transaction: jest.fn(),
   } as any;
   const razorpay = { verifyWebhookSignature: jest.fn() } as any;
