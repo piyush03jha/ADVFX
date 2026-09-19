@@ -24,13 +24,13 @@ export function WishlistButton({
   onClick,
   ...props
 }: WishlistButtonProps) {
-  const { isInWishlist, toggleWishlist } = useWishlist();
+  const { isInWishlist, toggleWishlist, isSyncing } = useWishlist();
   const isWishlisted = isInWishlist(product.id);
 
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
-    toggleWishlist(product);
+    void toggleWishlist(product);
     onClick?.(event);
   };
 
@@ -38,6 +38,7 @@ export function WishlistButton({
     <button
       {...props}
       type="button"
+      disabled={isSyncing || props.disabled}
       aria-label={
         isWishlisted
           ? `Remove ${product.name} from wishlist`
