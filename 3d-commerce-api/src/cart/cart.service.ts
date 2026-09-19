@@ -35,7 +35,7 @@ export class CartService {
 
     if (product.inventory?.trackStock && !product.inventory.allowBackorder) {
       const existing = await this.prisma.cartItem.findUnique({
-        where: { cartId_productId_variantId: { cartId: (await this.getOrCreate(userId)).id, productId, variantId: variantId ?? null } },
+        where: { cartId_productId_variantKey: { cartId: (await this.getOrCreate(userId)).id, productId, variantKey: variantId ?? '__base__' } },
       });
       const nextQuantity = (existing?.quantity ?? 0) + quantity;
       if (nextQuantity > (product.inventory.stock ?? 0)) {
@@ -45,8 +45,8 @@ export class CartService {
 
     const cart = await this.getOrCreate(userId);
     await this.prisma.cartItem.upsert({
-      where: { cartId_productId_variantId: { cartId: cart.id, productId, variantId: variantId ?? null } },
-      create: { cartId: cart.id, productId, variantId: variantId ?? null, quantity },
+      where: { cartId_productId_variantKey: { cartId: cart.id, productId, variantKey: variantId ?? '__base__' } },
+      create: { cartId: cart.id, productId, variantId: variantId ?? null, variantKey: variantId ?? '__base__', quantity },
       update: { quantity: { increment: quantity } },
     });
 
@@ -59,7 +59,7 @@ export class CartService {
     }
     const cart = await this.getOrCreate(userId);
     const item = await this.prisma.cartItem.findUnique({
-      where: { cartId_productId_variantId: { cartId: cart.id, productId, variantId: variantId ?? null } },
+      where: { cartId_productId_variantKey: { cartId: cart.id, productId, variantKey: variantId ?? '__base__' } },
       include: { product: { include: { inventory: true } }, variant: true },
     });
 
@@ -70,7 +70,7 @@ export class CartService {
       !item.product.inventory.allowBackorder &&
       quantity > item.product.inventory.stock
     ) {
-      throw new Error('Requested quantity exceeds available stock');
+      throw new BadRequestException('Requested quantity exceeds available stock');
     }
 
     if (quantity <= 0) {
@@ -103,6 +103,9 @@ export class CartService {
     return {
       items: {
         include: {
+          variant: {
+            include: { price: true },
+          },
           product: {
             include: {
               category: true,
