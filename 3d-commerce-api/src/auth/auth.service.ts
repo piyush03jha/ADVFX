@@ -639,6 +639,7 @@ async function verifyPassword(password: string, encoded: string) {
       N: SCRYPT_N,
       r: SCRYPT_R,
       p: SCRYPT_P,
+      maxmem: 64 * 1024 * 1024,
     });
     const expected = Buffer.from(expectedHex, 'hex');
     return expected.length === actual.length && timingSafeEqual(actual, expected);
