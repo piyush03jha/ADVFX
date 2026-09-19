@@ -171,6 +171,11 @@ export default function PaymentPage() {
               razorpaySignature: response.razorpay_signature,
             })
               .then(() => {
+                try {
+                  window.localStorage.removeItem(DRAFT_KEY);
+                } catch {
+                  // Ignore storage failures after a successful payment.
+                }
                 finish();
                 router.push(
                   "/order/confirmation?order=" + encodeURIComponent(order.id),
