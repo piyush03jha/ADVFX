@@ -25,7 +25,6 @@ export default function CustomPage() {
               head={head}
               onHeadChange={setHead}
               onSubmit={setSubmission}
-              isSubmitting={false}
             />
           </section>
         )}
