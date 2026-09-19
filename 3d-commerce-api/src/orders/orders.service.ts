@@ -246,7 +246,12 @@ export class OrdersService {
     if (!allowed.includes(status)) throw new BadRequestException(`Cannot change order from ${order.status} to ${status}`);
 
     const updated = await this.prisma.$transaction(async (tx) => {
-      if (status === 'CANCELLED') await this.releaseReservations(tx, id, InventoryReservationStatus.RELEASED);
+      if (status === 'CANCELLED') {
+        await this.releaseReservations(tx, id, InventoryReservationStatus.RELEASED);
+        if (order.status === OrderStatus.PENDING_PAYMENT && order.promotionId) {
+          await this.releasePromotionUsage(tx, order.promotionId);
+        }
+      }
       if (status === 'CONFIRMED' && order.status === 'PENDING_PAYMENT') await this.consumeReservations(tx, id);
 
       return tx.order.update({
@@ -303,6 +308,10 @@ export class OrdersService {
         });
 
         if (order.payment?.status === 'PENDING' || order.payment?.status === 'FAILED') {
+          await this.releasePromotionUsage(tx, (await tx.order.findUniqueOrThrow({
+            where: { id: reservation.orderId },
+            select: { promotionId: true },
+          })).promotionId);
           await tx.payment.update({
             where: { orderId: reservation.orderId },
             data: { status: 'FAILED' },
@@ -321,6 +330,24 @@ export class OrdersService {
       const updated = await tx.productInventory.updateMany({ where: { id: reservation.productInventoryId, reserved: { gte: reservation.quantity } }, data: { reserved: { decrement: reservation.quantity } } });
       if (updated.count !== 1) throw new BadRequestException(`Unable to release inventory reservation for product ${reservation.productId}`);
       await tx.inventoryReservation.update({ where: { id: reservation.id }, data: { status, releasedAt: new Date() } });
+    }
+  }
+
+  private async releasePromotionUsage(tx: Prisma.TransactionClient, promotionId: string | null) {
+    if (!promotionId) return;
+
+    const updated = await tx.$executeRaw(
+      Prisma.sql`
+        UPDATE "Promotion"
+        SET "usageCount" = GREATEST("usageCount" - 1, 0),
+            "updatedAt" = CURRENT_TIMESTAMP
+        WHERE "id" = ${promotionId}
+          AND "usageCount" > 0
+      `,
+    );
+
+    if (Number(updated) !== 1) {
+      throw new BadRequestException('Unable to release coupon reservation');
     }
   }
 
