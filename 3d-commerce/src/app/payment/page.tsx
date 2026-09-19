@@ -338,7 +338,9 @@ export default function PaymentPage() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-xs font-medium text-foreground">{item.product.name}</p>
-                        <p className="mt-1 text-[10px] text-muted">{item.size}</p>
+                        <p className="mt-1 text-[10px] text-muted">{
+                          item.variantName ?? item.variantSize ?? item.size
+                        }</p>
                       </div>
                     </div>
                   ))}
