@@ -12,7 +12,7 @@ import { Rating } from "@/components/ui/Rating";
 import type { StorefrontProduct } from "@/lib/catalog-api";
 
 interface RelatedProductsProps {
-  products: Product[];
+  products: StorefrontProduct[];
 }
 
 export function RelatedProducts({
