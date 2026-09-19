@@ -105,8 +105,8 @@ export function CustomForm({
 
     try {
       const requestResponse = await fetch("/api/custom-requests", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         title: `Custom ${selectedCategory.label}`,
         requirements: detailsParts.join("\\n"),
@@ -115,8 +115,8 @@ export function CustomForm({
         preferredScale: undefined,
         notes: details.trim() || undefined,
       }),
-      cache: "no-store",
-    });
+        cache: "no-store",
+      });
 
     const requestBody = (await requestResponse.json().catch(() => null)) as
       | { id?: string; error?: string; message?: string | string[] }
