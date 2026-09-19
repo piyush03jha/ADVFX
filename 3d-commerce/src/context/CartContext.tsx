@@ -106,6 +106,7 @@ interface CartContextValue {
   clearCart: () => Promise<void>;
   refreshCart: () => Promise<void>;
   isLoaded: boolean;
+  isRefreshing: boolean;
   isSyncing: boolean;
   error: string | null;
 }
@@ -314,6 +315,7 @@ export function CartProvider({
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const [items, setItems] = useState<CartItem[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -362,6 +364,7 @@ export function CartProvider({
 
   const refreshCart = useCallback(async () => {
     setError(null);
+    setIsRefreshing(true);
 
     try {
       if (isAuthenticated) {
@@ -388,6 +391,7 @@ export function CartProvider({
       setError(message);
     } finally {
       setIsLoaded(true);
+      setIsRefreshing(false);
     }
   }, [isAuthenticated, syncGuestCart]);
 
@@ -699,6 +703,7 @@ export function CartProvider({
       clearCart,
       refreshCart,
       isLoaded,
+      isRefreshing,
       isSyncing,
       error,
     }),
@@ -714,6 +719,7 @@ export function CartProvider({
       clearCart,
       refreshCart,
       isLoaded,
+      isRefreshing,
       isSyncing,
       error,
     ],
