@@ -22,6 +22,7 @@ describe('AuthCaptchaService', () => {
 });
 
 
+
   it('rejects replay of a successfully solved challenge', () => {
     const challenge = service.issue('register');
     const answer = challenge.operator === '+' ? challenge.first + challenge.second : challenge.first - challenge.second;
@@ -29,3 +30,4 @@ describe('AuthCaptchaService', () => {
     expect(() => service.verify(challenge.token, String(answer), 'register')).not.toThrow();
     expect(() => service.verify(challenge.token, String(answer), 'register')).toThrow(BadRequestException);
   });
+});
