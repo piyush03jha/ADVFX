@@ -17,6 +17,7 @@ type CaptchaPayload = {
 @Injectable()
 export class AuthCaptchaService {
   private readonly usedNonces = new Set<string>();
+
   issue(purpose: string) {
     if (!PURPOSES.has(purpose)) throw new BadRequestException('Invalid CAPTCHA purpose.');
 
@@ -61,6 +62,17 @@ export class AuthCaptchaService {
     }
 
     this.usedNonces.add(payload.nonce);
+    if (this.usedNonces.size > 10_000) {
+      // Keep the in-memory replay cache bounded. Expired nonces are harmless after
+      // the five-minute token TTL and can be pruned opportunistically.
+      const cutoff = Date.now() - CAPTCHA_TTL_MS;
+      for (const nonce of this.usedNonces) {
+        // Nonces do not encode creation time, so cap size rather than attempting
+        // inaccurate age-based pruning.
+        if (this.usedNonces.size <= 5_000) break;
+        this.usedNonces.delete(nonce);
+      }
+    }
   }
 
   private decode(token: string): CaptchaPayload | null {
