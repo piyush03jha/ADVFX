@@ -54,7 +54,34 @@ export class OrdersService {
 
       const address = await tx.address.findFirst({ where: { id: shippingAddressId, userId } });
       if (!address) throw new NotFoundException('Shipping address not found');
-      if (quote.summary.totalMinor < 0) throw new BadRequestException('Invalid checkout total');
+      if (quote.summary.totalMinor < 0) {
+        throw new BadRequestException('Invalid checkout total');
+      }
+
+      const quotedCart = new Map(
+        quote.items.map((item) => [
+          item.productId + ':' + (item.variantId ?? '__base__'),
+          item.quantity,
+        ]),
+      );
+
+      const currentCart = new Map(
+        cart.items.map((item) => [
+          item.productId + ':' + (item.variantId ?? '__base__'),
+          item.quantity,
+        ]),
+      );
+
+      if (
+        quotedCart.size !== currentCart.size ||
+        Array.from(quotedCart.entries()).some(
+          ([key, quantity]) => currentCart.get(key) !== quantity,
+        )
+      ) {
+        throw new BadRequestException(
+          'Cart changed while checkout was loading. Please refresh the quote and try again.',
+        );
+      }
 
       if (idempotencyKey) {
         const raced = await tx.order.findFirst({ where: { userId, idempotencyKey }, include: { items: true, shippingAddress: true, payment: true, shipment: true, inventoryReservations: true, promotion: true, shippingRule: true } });
