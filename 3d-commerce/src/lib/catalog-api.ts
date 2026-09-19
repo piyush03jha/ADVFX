@@ -124,6 +124,10 @@ export interface StorefrontProduct {
   isFeatured: boolean;
   isTrending: boolean;
   isBestseller: boolean;
+  stock: number;
+  reserved: number;
+  trackStock: boolean;
+  allowBackorder: boolean;
   createdAt?: string;
   metrics: {
     views: number;
@@ -209,6 +213,10 @@ export function mapCatalogProduct(product: CatalogProduct): StorefrontProduct {
     isFeatured: product.isFeatured,
     isTrending: product.isTrending,
     isBestseller: product.isBestseller,
+    stock: product.inventory?.stock ?? 0,
+    reserved: product.inventory?.reserved ?? 0,
+    trackStock: product.inventory?.trackStock ?? false,
+    allowBackorder: product.inventory?.allowBackorder ?? false,
     createdAt: product.createdAt,
     category: product.category?.name ?? "Uncategorized",
     categorySlug: product.category?.slug,
