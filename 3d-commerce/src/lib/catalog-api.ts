@@ -16,7 +16,6 @@ export interface CatalogCategory {
   id: string;
   name: string;
   slug: string;
-  createdAt?: string;
 }
 
 export interface CatalogPrice {
@@ -48,6 +47,7 @@ export interface CatalogProduct {
   id: string;
   name: string;
   slug: string;
+  createdAt?: string;
   description?: string | null;
   category?: CatalogCategory | null;
   status: "DRAFT" | "ACTIVE" | "ARCHIVED";
