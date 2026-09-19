@@ -14,7 +14,8 @@ describe('AuthService', () => {
     sendPasswordResetEmail: jest.fn(),
   } as any;
 
-  const service = new AuthService(prisma, emailService);
+  const captchaService = { verify: jest.fn() } as any;
+  const service = new AuthService(prisma, emailService, captchaService);
 
   beforeEach(() => {
     jest.clearAllMocks();
