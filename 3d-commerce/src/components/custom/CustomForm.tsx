@@ -155,7 +155,8 @@ export function CustomForm({
         `Head connection: ${hasBobbleHead ? selectedHead.label : "Not applicable"}`,
         `Person in frame: ${isPerson ? selectedFrame.label : "Not applicable"}`,
         `Size: ${selectedSize.label}`,
-      ].join("\n");
+        details.trim() ? `Additional requirements:\\n${details.trim()}` : "",
+      ].filter(Boolean).join("\n");
 
       const requestResponse = await fetch("/api/custom-requests", {
         method: "POST",
