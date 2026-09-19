@@ -57,8 +57,8 @@ export function ProductActions({
 
   const { addItem } = useCart();
 
-  const addToCart = () => {
-    addItem(
+  const addToCart = async () => {
+    await addItem(
       product,
       size,
       quantity,
@@ -71,7 +71,7 @@ export function ProductActions({
     }, 1800);
   };
 
-  const buyNow = () => {
+  const buyNow = async () => {
     addItem(
       product,
       size,
