@@ -40,7 +40,6 @@ export class PaymentsController {
   webhook(
     @Req() req: RawBodyRequest<FastifyRequest>,
     @Headers('x-razorpay-signature') signature: string,
-    @Headers('x-razorpay-event') event: string,
   ) {
     const rawBody = req.rawBody;
     if (!rawBody) throw new BadRequestException('Webhook body is missing');
@@ -48,7 +47,6 @@ export class PaymentsController {
     return this.payments.handleWebhook(
       rawBody.toString('utf8'),
       signature,
-      event,
     );
   }
 }
