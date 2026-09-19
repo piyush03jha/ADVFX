@@ -12,7 +12,7 @@ async function proxy(request: Request, method: "PATCH" | "DELETE") {
   const token = await getToken();
   if (!token) return NextResponse.json({ error: "Authentication is required." }, { status: 401 });
 
-  const path = new URL(request.url).pathname.split("/").filter(Boolean).slice(3);
+  const path = new URL(request.url).pathname.split("/").filter(Boolean).slice(2);
   const backendPath = path.map(encodeURIComponent).join("/");
   const query = new URL(request.url).search;
   try {
