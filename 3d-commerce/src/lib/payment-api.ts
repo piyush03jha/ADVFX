@@ -60,6 +60,13 @@ export function createRazorpayOrder(orderId: string) {
   });
 }
 
+export function retryRazorpayPayment(orderId: string) {
+  return request<RazorpayOrder>("/api/payments/razorpay/retry", {
+    method: "POST",
+    body: JSON.stringify({ orderId }),
+  });
+}
+
 export function verifyRazorpayPayment(input: {
   orderId: string;
   razorpayOrderId: string;
