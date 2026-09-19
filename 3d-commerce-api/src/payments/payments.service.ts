@@ -454,7 +454,13 @@ export class PaymentsService {
           })
         : null;
 
-      if (!attempt || attempt.paymentId !== current.id) return null;
+      if (
+        !attempt ||
+        attempt.paymentId !== current.id ||
+        attempt.providerOrderId !== current.providerOrderId
+      ) {
+        return null;
+      }
 
       const order = await tx.order.findUnique({
         where: { id: current.orderId },
