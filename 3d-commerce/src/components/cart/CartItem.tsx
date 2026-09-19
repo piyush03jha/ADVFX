@@ -159,7 +159,6 @@ export function CartItem({ item }: CartItemProps) {
           </div>
 
           <div className="flex items-center gap-2 sm:hidden">
-            <IconHeart size={15} className="text-muted/70" />
             <p className="text-sm font-medium text-foreground">
               ₹{total.toLocaleString("en-IN")}
             </p>
@@ -191,15 +190,6 @@ export function CartItem({ item }: CartItemProps) {
           <IconHeart size={13} stroke={1.5} />
           {isMoving ? "Moving..." : "Move to wishlist"}
         </button>
-          <button
-            type="button"
-            onClick={() => void removeItem(item.key)}
-            disabled={isSyncing || isMoving || isWishlistSyncing}
-            className="inline-flex items-center gap-1.5 text-[9px] uppercase tracking-[0.13em] text-muted transition-colors hover:text-red-400 disabled:pointer-events-none disabled:opacity-50"
-          >
-            <IconTrash size={13} stroke={1.5} />
-            Remove
-          </button>
         </div>
       </div>
     </article>
