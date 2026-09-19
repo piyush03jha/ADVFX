@@ -23,7 +23,15 @@ export function NewArrivals() {
         return (await response.json()) as CatalogProduct[];
       })
       .then((data) => {
-        if (!cancelled) setProducts(mapCatalogProducts(data).filter((product) => product.badge).slice(0, 4));
+        if (!cancelled) setProducts(
+          mapCatalogProducts(data)
+            .sort((a, b) => {
+              const left = a.createdAt ? Date.parse(a.createdAt) : 0;
+              const right = b.createdAt ? Date.parse(b.createdAt) : 0;
+              return right - left;
+            })
+            .slice(0, 4),
+        );
       })
       .catch(() => { if (!cancelled) setProducts([]); });
     return () => { cancelled = true; };
