@@ -1,4 +1,8 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   IconCheck,
   IconChevronRight,
@@ -6,12 +10,25 @@ import {
   IconPackage,
 } from "@tabler/icons-react";
 
-import { orders } from "@/config/orders";
+import { getOrderStatus } from "@/lib/order-api";
+import type { CreatedOrder } from "@/lib/checkout-api";
 import { OrderItems } from "@/components/account/OrderItems";
 import { OrderSummary } from "@/components/account/OrderSummary";
+import { formatQuoteMoney } from "@/lib/checkout-api";
 
 export default function OrderConfirmationPage() {
-  const order = orders[0];
+  const searchParams = useSearchParams();
+  const orderId = searchParams.get("order");
+  const [order, setOrder] = useState<CreatedOrder | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!orderId) { setLoading(false); return; }
+    void getOrderStatus(orderId).then((value) => setOrder(value.order as CreatedOrder)).catch(() => setOrder(null)).finally(() => setLoading(false));
+  }, [orderId]);
+
+  if (loading) return <main className="min-h-screen bg-background flex items-center justify-center text-xs text-muted">Loading order…</main>;
+  if (!order) return <main className="min-h-screen bg-background flex items-center justify-center text-xs text-muted">Order not found.</main>;
 
   return (
     <main className="min-h-screen bg-background">
@@ -101,7 +118,7 @@ export default function OrderConfirmationPage() {
                 </p>
 
                 <p className="mt-1 text-sm font-medium text-foreground">
-                  {order.shipment?.estimatedDelivery}
+                  {order.shipment ? "Shipment details will appear here." : "Payment is pending; shipment updates will appear after confirmation."}
                 </p>
 
                 <p className="mt-1 text-[10px] text-muted">
@@ -169,7 +186,7 @@ export default function OrderConfirmationPage() {
 
               <div className="mt-3 text-xs leading-5">
                 <p className="font-medium text-foreground">
-                  {order.shippingAddress.name}
+                  {order.shippingAddress?.fullName}
                 </p>
 
                 <p className="text-muted">
@@ -178,7 +195,7 @@ export default function OrderConfirmationPage() {
                 </p>
 
                 <p className="text-muted">
-                  {order.shippingAddress.country}
+                  {order.shippingAddress?.country}
                 </p>
               </div>
             </section>
