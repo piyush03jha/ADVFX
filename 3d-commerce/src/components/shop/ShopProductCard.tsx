@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-import { IconEye } from "@tabler/icons-react";
 
 import { useState } from "react";
 
@@ -74,18 +73,6 @@ export function ShopProductCard({ product }: ShopProductCardProps) {
           product={product}
           className="absolute right-3 top-3 z-10"
         />
-
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/10 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="pointer-events-auto translate-y-2 border-white/25 bg-black/45 text-white opacity-0 backdrop-blur-md transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100"
-          >
-            <IconEye size={14} />
-            Quick View
-          </Button>
-        </div>
 
         {product.discount && (
           <div className="absolute bottom-3 left-3">
