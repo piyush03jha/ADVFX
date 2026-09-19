@@ -10,9 +10,10 @@ import {
 } from "react";
 
 import type { Product } from "@/config/products";
+import type { StorefrontVariant } from "@/lib/catalog-api";
 import { useAuth } from "@/context/AuthContext";
 
-export type CartSize = "small" | "medium" | "large";
+export type CartSize = string;
 
 export interface CartProduct {
   id: string;
@@ -32,7 +33,10 @@ export interface CartProduct {
 export interface CartItem {
   key: string;
   product: CartProduct;
-  size: CartSize;
+  variantId: string | null;
+  variantName: string | null;
+  variantSize: string | null;
+  size: string;
   quantity: number;
 }
 
@@ -58,9 +62,25 @@ export interface BackendCartProduct {
   }>;
 }
 
+export interface BackendCartVariant {
+  id: string;
+  name: string;
+  size?: string | null;
+  isActive: boolean;
+  price?: {
+    id: string;
+    currency: string;
+    amountMinor: number;
+    compareAtMinor?: number | null;
+    isActive: boolean;
+  } | null;
+}
+
 export interface BackendCartItem {
   id: string;
   productId: string;
+  variantId?: string | null;
+  variant?: BackendCartVariant | null;
   quantity: number;
   product: BackendCartProduct;
 }
@@ -76,7 +96,7 @@ interface CartContextValue {
   subtotal: number;
   addItem: (
     product: Product | CartProduct,
-    size?: CartSize,
+    variantOrSize?: StorefrontVariant | CartSize | null,
     quantity?: number,
   ) => Promise<void>;
   removeItem: (key: string) => Promise<void>;
@@ -91,7 +111,10 @@ interface CartContextValue {
 
 interface GuestCartItem {
   product: CartProduct;
-  size: CartSize;
+  variantId: string | null;
+  variantName: string | null;
+  variantSize: string | null;
+  size: string;
   quantity: number;
 }
 
@@ -99,8 +122,16 @@ const GUEST_STORAGE_KEY = "forma-cart";
 
 const CartContext = createContext<CartContextValue | null>(null);
 
-function getItemKey(productId: string, size: CartSize) {
-  return `${productId}:${size}`;
+function getItemKey(
+  productId: string,
+  variantId: string | null,
+  legacySize = "base",
+) {
+  return productId + ":" + (variantId ?? legacySize);
+}
+
+function getDisplaySize(variant?: StorefrontVariant | null) {
+  return variant?.size ?? variant?.name ?? "Standard";
 }
 
 function getLocalGuestCart(): GuestCartItem[] {
@@ -113,6 +144,7 @@ function getLocalGuestCart(): GuestCartItem[] {
 
     return parsed.filter((value): value is GuestCartItem => {
       if (!value || typeof value !== "object") return false;
+
       const item = value as Partial<GuestCartItem>;
       const product = item.product as Partial<CartProduct> | undefined;
 
@@ -126,8 +158,7 @@ function getLocalGuestCart(): GuestCartItem[] {
           typeof product.image === "string" &&
           typeof item.quantity === "number" &&
           item.quantity > 0 &&
-          item.size &&
-          ["small", "medium", "large"].includes(item.size),
+          typeof item.size === "string",
       );
     });
   } catch {
@@ -158,7 +189,9 @@ function clearLocalGuestCart() {
 
 function normalizeBackendImage(product: BackendCartProduct) {
   return (
-    product.media?.find((media) => media.type === "IMAGE" && media.isPrimary)?.url ??
+    product.media?.find(
+      (media) => media.type === "IMAGE" && media.isPrimary,
+    )?.url ??
     product.media?.find((media) => media.type === "IMAGE")?.url ??
     "/catogeries/1.jpg"
   );
@@ -176,39 +209,48 @@ function normalizeBackendModel(product: BackendCartProduct) {
 
 function activeBackendPrice(product: BackendCartProduct) {
   return (
-    product.prices?.find((price) => price.currency === "INR" && price.isActive) ??
+    product.prices?.find(
+      (price) => price.currency === "INR" && price.isActive,
+    ) ??
     product.prices?.find((price) => price.isActive) ??
     product.prices?.[0]
   );
 }
 
 function mapBackendCartItem(item: BackendCartItem): CartItem {
-  const price = activeBackendPrice(item.product);
-  const amount = price?.amountMinor ?? 0;
-  const compareAt = price?.compareAtMinor ?? undefined;
+  const variant = item.variant ?? null;
+  const variantPrice =
+    variant?.isActive && variant.price?.isActive ? variant.price : null;
+  const basePrice = activeBackendPrice(item.product);
+  const selectedPrice = variantPrice ?? basePrice;
+  const amount = selectedPrice?.amountMinor ?? 0;
+  const compareAt = selectedPrice?.compareAtMinor ?? undefined;
+  const size = variant?.size ?? variant?.name ?? "Standard";
 
   const product: CartProduct = {
     id: item.product.id,
     name: item.product.name,
     category: item.product.category?.name ?? "Uncategorized",
     price: amount / 100,
-    currency: price?.currency ?? "INR",
+    currency: selectedPrice?.currency ?? "INR",
     image: normalizeBackendImage(item.product),
-    oldPrice:
-      compareAt !== undefined ? compareAt / 100 : undefined,
+    oldPrice: compareAt !== undefined ? compareAt / 100 : undefined,
     rating: 0,
     reviewCount: 0,
     model: normalizeBackendModel(item.product),
     discount:
       compareAt !== undefined && compareAt > amount
-        ? `${Math.round(((compareAt - amount) / compareAt) * 100)}% OFF`
+        ? Math.round(((compareAt - amount) / compareAt) * 100) + "% OFF"
         : undefined,
   };
 
   return {
-    key: getItemKey(item.productId, "medium"),
+    key: getItemKey(item.productId, item.variantId ?? null),
     product,
-    size: "medium",
+    variantId: item.variantId ?? null,
+    variantName: variant?.name ?? null,
+    variantSize: variant?.size ?? null,
+    size,
     quantity: item.quantity,
   };
 }
@@ -223,6 +265,7 @@ async function readBackendCart(): Promise<BackendCart> {
     const body = (await response.json().catch(() => null)) as
       | { error?: string }
       | null;
+
     throw new Error(body?.error ?? "Unable to load your cart.");
   }
 
@@ -233,7 +276,7 @@ async function mutateBackendCart(
   path: string,
   init: RequestInit,
 ): Promise<BackendCart> {
-  const response = await fetch(`/api/cart${path}`, {
+  const response = await fetch("/api/cart" + path, {
     ...init,
     headers: {
       "Content-Type": "application/json",
@@ -255,6 +298,7 @@ async function mutateBackendCart(
         : data && typeof data === "object" && "error" in data
           ? data.error
           : undefined;
+
     throw new Error(message ?? "Unable to update your cart.");
   }
 
@@ -286,22 +330,29 @@ export function CartProvider({
 
     const backendCart = await readBackendCart();
     const backendQuantities = new Map(
-      backendCart.items.map((item) => [item.productId, item.quantity]),
+      backendCart.items.map((item) => [
+        getItemKey(
+          item.productId,
+          item.variantId ?? null,
+        ),
+        item.quantity,
+      ]),
     );
 
     for (const item of guestItems) {
-      const existingQuantity = backendQuantities.get(item.product.id) ?? 0;
-      const targetQuantity = existingQuantity + item.quantity;
+      const key = getItemKey(item.product.id, item.variantId, item.size);
+      const existingQuantity = backendQuantities.get(key) ?? 0;
 
       await mutateBackendCart("/items", {
         method: "POST",
         body: JSON.stringify({
           productId: item.product.id,
+          variantId: item.variantId ?? undefined,
           quantity: item.quantity,
         }),
       });
 
-      backendQuantities.set(item.product.id, targetQuantity);
+      backendQuantities.set(key, existingQuantity + item.quantity);
     }
 
     clearLocalGuestCart();
@@ -318,10 +369,14 @@ export function CartProvider({
       }
 
       const guestItems = getLocalGuestCart();
+
       setItems(
         guestItems.map((item) => ({
-          key: getItemKey(item.product.id, item.size),
+          key: getItemKey(item.product.id, item.variantId, item.size),
           product: item.product,
+          variantId: item.variantId,
+          variantName: item.variantName,
+          variantSize: item.variantSize,
           size: item.size,
           quantity: item.quantity,
         })),
@@ -343,45 +398,62 @@ export function CartProvider({
   const addItem = useCallback(
     async (
       product: Product | CartProduct,
-      size: CartSize = "medium",
+      variantOrSize: StorefrontVariant | CartSize | null = null,
       quantity = 1,
     ) => {
-      const safeQuantity = Math.max(1, Math.floor(quantity));
+      const variant =
+        variantOrSize && typeof variantOrSize === "object"
+          ? variantOrSize
+          : null;
+      const legacySize =
+        typeof variantOrSize === "string" ? variantOrSize : "Standard";
+      const safeQuantity = Math.min(99, Math.max(1, Math.floor(quantity)));
+      const variantId = variant?.id ?? null;
+      const size = variant ? getDisplaySize(variant) : legacySize;
+
       setError(null);
 
       if (isAuthenticated) {
         setIsSyncing(true);
+
         try {
           const backendCart = await mutateBackendCart("/items", {
             method: "POST",
             body: JSON.stringify({
               productId: product.id,
+              variantId: variantId ?? undefined,
               quantity: safeQuantity,
             }),
           });
+
           applyBackendCart(backendCart);
         } catch (cause) {
           setError(
-            cause instanceof Error ? cause.message : "Unable to add this item.",
+            cause instanceof Error
+              ? cause.message
+              : "Unable to add this item.",
           );
         } finally {
           setIsSyncing(false);
         }
+
         return;
       }
 
       const next = [...getLocalGuestCart()];
       const existing = next.find(
         (item) =>
-          item.product.id === product.id && item.size === size,
+          item.product.id === product.id &&
+          item.variantId === variantId,
       );
+
       const guestProduct: CartProduct = {
         id: product.id,
         name: product.name,
         category: product.category,
-        price: product.price,
+        price: variant?.price ?? product.price,
         image: product.image,
-        oldPrice: product.oldPrice,
+        oldPrice: variant?.oldPrice ?? product.oldPrice,
         rating: product.rating,
         reviewCount: product.reviewCount,
         badge: product.badge,
@@ -391,10 +463,17 @@ export function CartProvider({
 
       if (existing) {
         existing.product = guestProduct;
+        existing.variantId = variantId;
+        existing.variantName = variant?.name ?? null;
+        existing.variantSize = variant?.size ?? null;
+        existing.size = size;
         existing.quantity += safeQuantity;
       } else {
         next.push({
           product: guestProduct,
+          variantId,
+          variantName: variant?.name ?? null,
+          variantSize: variant?.size ?? null,
           size,
           quantity: safeQuantity,
         });
@@ -403,8 +482,11 @@ export function CartProvider({
       setLocalGuestCart(next);
       setItems(
         next.map((item) => ({
-          key: getItemKey(item.product.id, item.size),
+          key: getItemKey(item.product.id, item.variantId, item.size),
           product: item.product,
+          variantId: item.variantId,
+          variantName: item.variantName,
+          variantSize: item.variantSize,
           size: item.size,
           quantity: item.quantity,
         })),
@@ -415,11 +497,22 @@ export function CartProvider({
 
   const updateBackendQuantity = useCallback(
     async (key: string, quantity: number) => {
-      const [productId] = key.split(":");
-      const backendCart = await mutateBackendCart(`/items/${encodeURIComponent(productId)}`, {
-        method: "PATCH",
-        body: JSON.stringify({ productId, quantity }),
-      });
+      const [productId, variantKey] = key.split(":");
+      const variantId =
+        variantKey && variantKey !== "base" ? variantKey : null;
+
+      const backendCart = await mutateBackendCart(
+        "/items/" + encodeURIComponent(productId),
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            productId,
+            variantId: variantId ?? undefined,
+            quantity,
+          }),
+        },
+      );
+
       applyBackendCart(backendCart);
     },
     [applyBackendCart],
@@ -431,31 +524,49 @@ export function CartProvider({
 
       if (isAuthenticated) {
         setIsSyncing(true);
+
         try {
-          const [productId] = key.split(":");
+          const [productId, variantKey] = key.split(":");
+          const variantId =
+            variantKey && variantKey !== "base" ? variantKey : null;
+
+          const query =
+            variantId !== null
+              ? "?variantId=" + encodeURIComponent(variantId)
+              : "";
+
           const backendCart = await mutateBackendCart(
-            `/items/${encodeURIComponent(productId)}`,
+            "/items/" + encodeURIComponent(productId) + query,
             { method: "DELETE" },
           );
+
           applyBackendCart(backendCart);
         } catch (cause) {
           setError(
-            cause instanceof Error ? cause.message : "Unable to remove this item.",
+            cause instanceof Error
+              ? cause.message
+              : "Unable to remove this item.",
           );
         } finally {
           setIsSyncing(false);
         }
+
         return;
       }
 
       const next = getLocalGuestCart().filter(
-        (item) => getItemKey(item.product.id, item.size) !== key,
+        (item) =>
+          getItemKey(item.product.id, item.variantId, item.size) !== key,
       );
+
       setLocalGuestCart(next);
       setItems(
         next.map((item) => ({
-          key: getItemKey(item.product.id, item.size),
+          key: getItemKey(item.product.id, item.variantId, item.size),
           product: item.product,
+          variantId: item.variantId,
+          variantName: item.variantName,
+          variantSize: item.variantSize,
           size: item.size,
           quantity: item.quantity,
         })),
@@ -476,28 +587,36 @@ export function CartProvider({
       if (isAuthenticated) {
         setIsSyncing(true);
         setError(null);
+
         try {
           await updateBackendQuantity(key, safeQuantity);
         } catch (cause) {
           setError(
-            cause instanceof Error ? cause.message : "Unable to update quantity.",
+            cause instanceof Error
+              ? cause.message
+              : "Unable to update quantity.",
           );
         } finally {
           setIsSyncing(false);
         }
+
         return;
       }
 
       const next = getLocalGuestCart().map((item) =>
-        getItemKey(item.product.id, item.size) === key
+        getItemKey(item.product.id, item.variantId, item.size) === key
           ? { ...item, quantity: safeQuantity }
           : item,
       );
+
       setLocalGuestCart(next);
       setItems(
         next.map((item) => ({
-          key: getItemKey(item.product.id, item.size),
+          key: getItemKey(item.product.id, item.variantId, item.size),
           product: item.product,
+          variantId: item.variantId,
+          variantName: item.variantName,
+          variantSize: item.variantSize,
           size: item.size,
           quantity: item.quantity,
         })),
@@ -529,6 +648,7 @@ export function CartProvider({
 
     if (isAuthenticated) {
       setIsSyncing(true);
+
       try {
         const backendCart = await mutateBackendCart("/", {
           method: "DELETE",
@@ -536,11 +656,14 @@ export function CartProvider({
         applyBackendCart(backendCart);
       } catch (cause) {
         setError(
-          cause instanceof Error ? cause.message : "Unable to clear your cart.",
+          cause instanceof Error
+            ? cause.message
+            : "Unable to clear your cart.",
         );
       } finally {
         setIsSyncing(false);
       }
+
       return;
     }
 
@@ -554,7 +677,11 @@ export function CartProvider({
   );
 
   const subtotal = useMemo(
-    () => items.reduce((total, item) => total + item.product.price * item.quantity, 0),
+    () =>
+      items.reduce(
+        (total, item) => total + item.product.price * item.quantity,
+        0,
+      ),
     [items],
   );
 
@@ -589,7 +716,11 @@ export function CartProvider({
     ],
   );
 
-  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
+  return (
+    <CartContext.Provider value={value}>
+      {children}
+    </CartContext.Provider>
+  );
 }
 
 export function useCart() {
