@@ -13,7 +13,7 @@ import { Container } from "@/components/ui/Container";
 import { useCart } from "@/context/CartContext";
 
 export default function CartPage() {
-  const { items, itemCount, isLoaded, clearCart, refreshCart } = useCart();
+  const { items, itemCount, isLoaded, isRefreshing, clearCart, refreshCart } = useCart();
 
   useEffect(() => {
     void refreshCart();
