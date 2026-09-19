@@ -4,7 +4,7 @@ import Image from "next/image";
 import { IconLock, IconShieldCheck, IconTruckDelivery } from "@tabler/icons-react";
 
 import { getCountry, type CountryCode } from "@/config/countries";
-import { useCart } from "@/context/CartContext";
+import { useCart, type CartItem } from "@/context/CartContext";
 import type { CheckoutQuote } from "@/lib/checkout-api";
 
 interface CheckoutSummaryProps {
@@ -13,6 +13,7 @@ interface CheckoutSummaryProps {
   quoteError?: string | null;
   customerName?: string;
   customerEmail?: string;
+  checkoutItems?: CartItem[];
 }
 
 const cardGradient =
@@ -45,8 +46,10 @@ export function CheckoutSummary({
   quoteError,
   customerName,
   customerEmail,
+  checkoutItems,
 }: CheckoutSummaryProps) {
-  const { items } = useCart();
+  const { items: cartItems } = useCart();
+  const items = checkoutItems ?? cartItems;
   const countryConfig = getCountry(country);
 
   return (
