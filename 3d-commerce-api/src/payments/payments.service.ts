@@ -130,6 +130,22 @@ export class PaymentsService {
       throw new BadRequestException('Razorpay payment is not configured');
     }
 
+    if (order.status !== OrderStatus.PENDING_PAYMENT) {
+      throw new ConflictException('Order is no longer awaiting payment');
+    }
+
+    const activeReservation = await this.prisma.inventoryReservation.findFirst({
+      where: {
+        orderId: order.id,
+        status: 'ACTIVE',
+        expiresAt: { gt: new Date() },
+      },
+    });
+
+    if (!activeReservation) {
+      throw new ConflictException('This payment session has expired. Please create a new order from your cart.');
+    }
+
     if (order.payment.status === PaymentStatus.CAPTURED) {
       if (
         order.payment.providerPaymentId === input.razorpayPaymentId &&
