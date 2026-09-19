@@ -12,6 +12,7 @@ import { AuthModule } from 'src/auth/auth.module';
   imports: [PrismaModule, NotificationsModule, PricingModule, AuthModule],
   controllers: [OrdersController],
   providers: [OrdersService, ReturnsService],
+  providers: [OrdersService, ReturnsService, OrdersExpirationScheduler],
   exports: [OrdersService, ReturnsService],
 })
 export class OrdersModule {}
