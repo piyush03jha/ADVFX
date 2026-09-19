@@ -117,31 +117,3 @@ export function CustomUploadZone({
     </div>
   );
 }
-
-function UploadTrigger({
-  title,
-  text,
-  icon,
-  onClick,
-}: {
-  title: string;
-  text: string;
-  icon: ReactNode;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="group flex min-h-[132px] flex-col justify-between rounded-2xl border border-border bg-surface p-4 text-left transition duration-300 hover:border-primary/55 hover:bg-primary/[0.035] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 sm:min-h-[150px] sm:p-5"
-    >
-      <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-surface text-primary transition group-hover:scale-105">
-        {icon}
-      </div>
-      <div>
-        <p className="text-sm font-medium">{title}</p>
-        <p className="mt-1 text-[11px] leading-5 text-muted">{text}</p>
-      </div>
-    </button>
-  );
-}
