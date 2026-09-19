@@ -57,6 +57,9 @@ export default function PaymentPage() {
     () => draft?.checkoutItems,
     [draft?.checkoutItems],
   );
+  const backToCheckoutHref = selectedItems?.length
+    ? "/checkout?mode=buy-now"
+    : "/checkout";
 
   useEffect(() => {
     try {
@@ -279,7 +282,7 @@ export default function PaymentPage() {
           <Container>
             <div className="mb-8 sm:mb-10">
               <Link
-                href="/checkout"
+                href={backToCheckoutHref}
                 className="inline-flex items-center gap-2 text-[9px] uppercase tracking-[0.16em] text-muted transition-colors hover:text-foreground"
               >
                 <IconArrowLeft size={14} />
