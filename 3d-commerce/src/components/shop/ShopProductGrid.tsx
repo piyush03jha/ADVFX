@@ -36,6 +36,8 @@ const categoryIdToProductCategory: Record<string, string> = {
   heroes: "Heroes",
   props: "Weapon Props",
   display: "Display",
+  collectibles: "Collectibles",
+  "mobile-tv": "Mobile / TV",
 };
 
 interface ShopProductGridProps {
