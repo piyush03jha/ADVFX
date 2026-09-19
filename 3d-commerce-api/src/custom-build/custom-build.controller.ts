@@ -14,12 +14,25 @@ import { AdminGuard } from '../auth/guards/admin.guard';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { CustomerAuthGuard } from '../auth/guards/customer-auth.guard';
 import { CreateCustomRequestDto } from './dto/create-custom-request.dto';
+import { CreateCustomCheckoutDto } from './dto/create-custom-checkout.dto';
 import { UpdateCustomRequestStatusDto } from './dto/update-custom-request-status.dto';
 import { CustomBuildService } from './custom-build.service';
 
 @Controller('custom-requests')
 export class CustomBuildController {
   constructor(private readonly customBuildService: CustomBuildService) {}
+
+  @UseGuards(CustomerAuthGuard)
+  @Post("quote")
+  quote(@Body() dto: CreateCustomRequestDto) {
+    return this.customBuildService.quote(dto);
+  }
+
+  @UseGuards(CustomerAuthGuard)
+  @Post("checkout")
+  checkout(@Req() req: any, @Body() dto: CreateCustomCheckoutDto) {
+    return this.customBuildService.checkout(req.user.id, dto);
+  }
 
   @UseGuards(CustomerAuthGuard)
   @Post()
