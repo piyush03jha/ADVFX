@@ -256,14 +256,13 @@ export class OrdersService {
       }
 
       if (status === 'REFUNDED') {
-        if (!order.payment || order.payment.status !== 'CAPTURED' || !order.payment.providerPaymentId) {
+        if (
+          !order.payment ||
+          order.payment.status !== 'CAPTURED' ||
+          !order.payment.providerPaymentId
+        ) {
           throw new BadRequestException('Only captured payments can be refunded.');
         }
-        const payment = await tx.payment.update({
-          where: { orderId: id },
-          data: { status: 'REFUNDED' },
-        });
-        if (!payment.providerPaymentId) throw new BadRequestException('Payment provider reference is missing.');
       }
       if (status === 'CONFIRMED' && order.status === 'PENDING_PAYMENT') await this.consumeReservations(tx, id);
 
