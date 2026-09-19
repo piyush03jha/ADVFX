@@ -30,7 +30,7 @@ export function MostPurchased() {
   const [products, setProducts] = useState<StorefrontProduct[]>([]);
   useEffect(() => {
     let cancelled = false;
-    fetch(getBackendApiUrl("products"), { cache: "no-store" })
+    fetch("/api/products", { cache: "no-store" })
       .then(async (response) => {
         if (!response.ok) throw new Error("catalog");
         return (await response.json()) as CatalogProduct[];
