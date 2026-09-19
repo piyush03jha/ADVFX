@@ -32,6 +32,7 @@ model User {
   customRequests         CustomRequest[]
   customRequestRevisions CustomRequestRevision[]
   notifications          Notification[]
+  productReviews          ProductReview[]
 
   customerCredential   CustomerCredential?
   customerAuthSessions CustomerAuthSession[]
@@ -213,6 +214,9 @@ model Product {
 
   inventoryReservations InventoryReservation[]
 
+  reviews ProductReview[]
+  metrics ProductMetrics?
+
   customPreviewRequests CustomRequest[] @relation("CustomPreviewProduct")
 
   /**
@@ -247,6 +251,50 @@ enum ProductStatus {
  * PRODUCT PRICE
  * ============================================================
  */
+
+model ProductReview {
+  id String @id @default(cuid())
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  rating  Int
+  title   String?
+  comment String
+
+  isPublished    Boolean @default(true)
+  verifiedPurchase Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([productId, userId])
+  @@index([productId, isPublished, createdAt])
+  @@index([userId])
+}
+
+/**
+ * ============================================================
+ * PRODUCT METRICS
+ * ============================================================
+ */
+model ProductMetrics {
+  id String @id @default(cuid())
+
+  productId String @unique
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  viewCount     Int @default(0)
+  cartAddCount  Int @default(0)
+  purchaseCount Int @default(0)
+  unitsSold     Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
 
 model ProductPrice {
   id        String  @id @default(cuid())
