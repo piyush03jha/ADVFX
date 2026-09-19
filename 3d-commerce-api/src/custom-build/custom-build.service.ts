@@ -282,6 +282,24 @@ export class CustomBuildService {
       include: { media: true, quote: true, order: true },
     });
 
+    await this.prisma.customRequestQuote.upsert({
+      where: { customRequestId: request.id },
+      create: {
+        customRequestId: request.id,
+        currency: "INR",
+        amountMinor: price * 100,
+      },
+      update: {
+        currency: "INR",
+        amountMinor: price * 100,
+      },
+    });
+
+    const pricedRequest = await this.prisma.customRequest.findUniqueOrThrow({
+      where: { id: request.id },
+      include: { media: true, quote: true, order: true },
+    });
+
     await this.notifications.create(userId, {
       type: NotificationType.CUSTOM_REQUEST_SUBMITTED,
       title: "Custom build saved",
@@ -290,7 +308,7 @@ export class CustomBuildService {
       entityId: request.id,
     });
 
-    return request;
+    return pricedRequest;
   }
 
 
