@@ -7,11 +7,11 @@ import { PricingService } from '../pricing/pricing.service';
 
 const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   PENDING_PAYMENT: ['CONFIRMED', 'CANCELLED'],
-  CONFIRMED: ['PROCESSING', 'CANCELLED'],
-  PROCESSING: ['READY_TO_SHIP', 'CANCELLED'],
-  READY_TO_SHIP: ['SHIPPED', 'CANCELLED'],
-  SHIPPED: ['DELIVERED'],
-  DELIVERED: [],
+  CONFIRMED: ['PROCESSING', 'CANCELLED', 'REFUNDED'],
+  PROCESSING: ['READY_TO_SHIP', 'CANCELLED', 'REFUNDED'],
+  READY_TO_SHIP: ['SHIPPED', 'CANCELLED', 'REFUNDED'],
+  SHIPPED: ['DELIVERED', 'REFUNDED'],
+  DELIVERED: ['REFUNDED'],
   CANCELLED: [],
   REFUNDED: [],
 };
@@ -247,10 +247,23 @@ export class OrdersService {
 
     const updated = await this.prisma.$transaction(async (tx) => {
       if (status === 'CANCELLED') {
-        await this.releaseReservations(tx, id, InventoryReservationStatus.RELEASED);
-        if (order.status === OrderStatus.PENDING_PAYMENT && order.promotionId) {
-          await this.releasePromotionUsage(tx, order.promotionId);
+        if (order.status === OrderStatus.PENDING_PAYMENT) {
+          await this.releaseReservations(tx, id, InventoryReservationStatus.RELEASED);
+          if (order.promotionId) {
+            await this.releasePromotionUsage(tx, order.promotionId);
+          }
         }
+      }
+
+      if (status === 'REFUNDED') {
+        if (!order.payment || order.payment.status !== 'CAPTURED' || !order.payment.providerPaymentId) {
+          throw new BadRequestException('Only captured payments can be refunded.');
+        }
+        const payment = await tx.payment.update({
+          where: { orderId: id },
+          data: { status: 'REFUNDED' },
+        });
+        if (!payment.providerPaymentId) throw new BadRequestException('Payment provider reference is missing.');
       }
       if (status === 'CONFIRMED' && order.status === 'PENDING_PAYMENT') await this.consumeReservations(tx, id);
 
