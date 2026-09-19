@@ -97,7 +97,7 @@ export default function PaymentPage() {
     return () => {
       cancelled = true;
     };
-  }, [draft?.addressId]);
+  }, [draft?.addressId, draft?.couponCode]);
 
   const countryConfig = getCountry(country);
   const total = quote
