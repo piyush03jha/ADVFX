@@ -26,6 +26,7 @@ async function bootstrap() {
     new FastifyAdapter({
       logger: env.nodeEnv !== "test",
     }),
+    { rawBody: true },
   );
 
   app.enableShutdownHooks();
