@@ -22,6 +22,8 @@ model User {
   emailVerifiedAt DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
+  adminFailedLoginCount Int @default(0)
+  adminLockedUntil      DateTime?
 
   createdProducts        Product[]               @relation("ProductCreatedBy")
   updatedProducts        Product[]               @relation("ProductUpdatedBy")
@@ -653,6 +655,8 @@ model Payment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  attempts PaymentAttempt[]
+
   @@index([providerOrderId])
   @@index([providerPaymentId])
   @@index([status])
@@ -670,6 +674,26 @@ enum PaymentStatus {
   CAPTURED
   FAILED
   REFUNDED
+}
+
+model PaymentAttempt {
+  id String @id @default(cuid())
+
+  paymentId String
+  payment   Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  providerOrderId   String @unique
+  providerPaymentId String?
+  status            PaymentStatus @default(PENDING)
+  amountMinor       Int
+  currency          String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([paymentId, createdAt])
+  @@index([providerPaymentId])
+  @@index([status])
 }
 
 /**
