@@ -241,14 +241,24 @@ async function mutateBackendCart(
     },
   });
 
+  const data = (await response.json().catch(() => null)) as
+    | BackendCart
+    | { message?: string | string[]; error?: string }
+    | null;
+
   if (!response.ok) {
-    const body = (await response.json().catch(() => null)) as
-      | { error?: string }
-      | null;
-    throw new Error(body?.error ?? "Unable to update your cart.");
+    const message =
+      data && typeof data === "object" && "message" in data
+        ? Array.isArray(data.message)
+          ? data.message[0]
+          : data.message
+        : data && typeof data === "object" && "error" in data
+          ? data.error
+          : undefined;
+    throw new Error(message ?? "Unable to update your cart.");
   }
 
-  return (await response.json()) as BackendCart;
+  return data as BackendCart;
 }
 
 export function CartProvider({
