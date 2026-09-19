@@ -223,6 +223,14 @@ export class PricingService {
       subtotalMinor + shippingMinor + taxMinor - discountMinor,
     );
 
+    // Razorpay Orders require a positive amount. Reject zero-value checkout
+    // rather than creating an order that cannot be paid.
+    if (totalMinor <= 0) {
+      throw new BadRequestException(
+        "This order total is zero. Please adjust the coupon or cart before checkout.",
+      );
+    }
+
     return {
       currency,
       items,
