@@ -120,8 +120,27 @@ export class OrdersService {
       }
 
       if (idempotencyKey) {
-        const raced = await tx.order.findFirst({ where: { userId, idempotencyKey }, include: { items: true, shippingAddress: true, payment: true, shipment: true, inventoryReservations: true, promotion: true, shippingRule: true } });
+        const raced = await tx.order.findFirst({
+          where: { userId, idempotencyKey },
+          include: { items: true, shippingAddress: true, payment: true, shipment: true, inventoryReservations: true, promotion: true, shippingRule: true },
+        });
         if (raced) return raced;
+      }
+
+      if (quote.promotion?.id) {
+        const claimedPromotion = await tx.$executeRaw(
+          Prisma.sql`
+            UPDATE "Promotion"
+            SET "usageCount" = "usageCount" + 1,
+                "updatedAt" = CURRENT_TIMESTAMP
+            WHERE "id" = ${quote.promotion.id}
+              AND "isActive" = true
+              AND ("usageLimit" IS NULL OR "usageCount" < "usageLimit")
+          `,
+        );
+        if (Number(claimedPromotion) !== 1) {
+          throw new BadRequestException('Coupon usage limit has been reached');
+        }
       }
 
       const orderItems: Prisma.OrderItemCreateWithoutOrderInput[] = quote.items.map((item) => ({
