@@ -1,5 +1,6 @@
 import {
   Body,
+  Req,
   Controller,
   Delete,
   Get,
@@ -9,9 +10,11 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '../auth/guards/auth.guard';
+import { CustomerAuthGuard } from '../auth/guards/customer-auth.guard';
 import { AdminGuard } from '../auth/guards/admin.guard';
 import { CreateMediaDto } from './dto/create-media.dto';
 import { CreateProductDto } from './dto/create-product.dto';
+import { CreateProductReviewDto } from './dto/create-product-review.dto';
 import { UpdateInventoryDto } from './dto/update-inventory.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { UpsertPriceDto } from './dto/upsert-price.dto';
@@ -29,6 +32,31 @@ export class ProductsController {
   @Get('hero')
   findHeroProducts() {
     return this.productsService.findHeroProducts();
+  }
+
+  @Post(':id/view')
+  recordView(@Param('id') id: string) {
+    return this.productsService.recordView(id);
+  }
+
+  @Get(':id/metrics')
+  getMetrics(@Param('id') id: string) {
+    return this.productsService.getMetrics(id);
+  }
+
+  @Get(':id/reviews')
+  getReviews(@Param('id') id: string) {
+    return this.productsService.getReviews(id);
+  }
+
+  @UseGuards(CustomerAuthGuard)
+  @Post(':id/reviews')
+  createReview(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() dto: CreateProductReviewDto,
+  ) {
+    return this.productsService.createReview(req.user.id, id, dto);
   }
 
   @Get('slug/:slug')
