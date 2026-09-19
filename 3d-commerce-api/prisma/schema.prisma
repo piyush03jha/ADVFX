@@ -13,14 +13,15 @@ datasource db {
  */
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  phone     String?
-  role      UserRole @default(CUSTOMER)
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String    @id @default(cuid())
+  email           String    @unique
+  name            String?
+  phone           String?
+  role            UserRole  @default(CUSTOMER)
+  isActive        Boolean   @default(true)
+  emailVerifiedAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   createdProducts        Product[]               @relation("ProductCreatedBy")
   updatedProducts        Product[]               @relation("ProductUpdatedBy")
@@ -31,11 +32,92 @@ model User {
   customRequests         CustomRequest[]
   customRequestRevisions CustomRequestRevision[]
   notifications          Notification[]
+
+  customerCredential   CustomerCredential?
+  customerAuthSessions CustomerAuthSession[]
+  verificationTokens   AuthVerificationToken[]
+  passwordResetTokens  AuthPasswordResetToken[]
+  adminAuthSessions    AdminAuthSession[]
 }
 
 enum UserRole {
   CUSTOMER
   ADMIN
+}
+
+/**
+ * ============================================================
+ * CUSTOMER / ADMIN AUTH PERSISTENCE
+ * ============================================================
+ */
+
+model CustomerCredential {
+  id           String @id @default(cuid())
+  userId       String @unique
+  passwordHash String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model CustomerAuthSession {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  expiresAt DateTime
+  revokedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, expiresAt])
+}
+
+model AuthVerificationToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model AuthPasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model AdminAuthSession {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  expiresAt DateTime
+  revokedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, expiresAt])
 }
 
 /**
@@ -347,9 +429,9 @@ model CartItem {
   productId String
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  variantId String?
-  variant   ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
-  variantKey String @default("__base__")
+  variantId  String?
+  variant    ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  variantKey String          @default("__base__")
 
   quantity Int
 
@@ -372,13 +454,13 @@ model ProductVariant {
   productId String
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  sku   String? @unique
-  name  String
-  size  String?
-  price ProductVariantPrice?
-  isActive Boolean @default(true)
+  sku      String?              @unique
+  name     String
+  size     String?
+  price    ProductVariantPrice?
+  isActive Boolean              @default(true)
 
-  cartItems CartItem[]
+  cartItems  CartItem[]
   orderItems OrderItem[]
 
   createdAt DateTime @default(now())
@@ -395,14 +477,14 @@ model ProductVariant {
 model ProductVariantPrice {
   id String @id @default(cuid())
 
-  variantId String @unique
+  variantId String         @unique
   variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
 
   currency       String @default("INR")
   amountMinor    Int
   compareAtMinor Int?
 
-  isActive Boolean @default(true)
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
