@@ -1,0 +1,15 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+
+type Dashboard={products:{total:number;active:number;archived:number};categories:number;lowStockProducts:number;inventory:{availableUnits:number;reservedUnits:number};orders:{total:number;pendingPayment:number;processing:number;readyToShip:number};customBuilds:{total:number;needsAttention:number}};
+
+export default function AdminDashboard(){
+ const [data,setData]=useState<Dashboard|null>(null); const [error,setError]=useState("");
+ useEffect(()=>{fetch("/api/admin/dashboard",{cache:"no-store"}).then(r=>r.ok?r.json():Promise.reject(new Error("dashboard"))).then(setData).catch(()=>setError("Unable to load admin dashboard."));},[]);
+ if(error)return <main className="mx-auto max-w-7xl px-4 py-10"><p className="text-sm text-red-300">{error}</p></main>;
+ if(!data)return <main className="mx-auto max-w-7xl px-4 py-10 text-xs text-muted">Loading dashboard…</main>;
+ const cards=[["Products",data.products.active+" active / "+data.products.total+" total"],["Categories",String(data.categories)],["Low stock",String(data.lowStockProducts)],["Available units",String(data.inventory.availableUnits)],["Reserved units",String(data.inventory.reservedUnits)],["Orders",String(data.orders.total)],["Pending payment",String(data.orders.pendingPayment)],["Custom attention",String(data.customBuilds.needsAttention)]];
+ return <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10"><div className="flex items-end justify-between gap-4"><div><p className="text-[9px] uppercase tracking-[0.2em] text-primary">Operations</p><h1 className="mt-2 font-serif text-4xl sm:text-5xl">Dashboard</h1><p className="mt-2 text-sm text-muted">Catalog, inventory, orders and custom build pulse.</p></div><Link href="/shop" className="text-xs text-primary">View storefront →</Link></div><div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">{cards.map(([label,value])=><div key={label} className="rounded-2xl border border-border bg-surface p-4"><p className="text-[9px] uppercase tracking-[0.14em] text-muted">{label}</p><p className="mt-2 text-lg font-semibold">{value}</p></div>)}</div><div className="mt-8 grid gap-4 lg:grid-cols-2"><Link href="/admin/orders" className="rounded-2xl border border-border bg-surface p-5 hover:border-primary/30"><p className="text-[9px] uppercase tracking-[0.15em] text-primary">Orders</p><h2 className="mt-2 text-xl font-medium">Manage fulfillment</h2><p className="mt-2 text-xs text-muted">{data.orders.processing} processing · {data.orders.readyToShip} ready to ship</p></Link><Link href="/admin/custom-requests" className="rounded-2xl border border-border bg-surface p-5 hover:border-primary/30"><p className="text-[9px] uppercase tracking-[0.15em] text-primary">Custom builds</p><h2 className="mt-2 text-xl font-medium">Review incoming requests</h2><p className="mt-2 text-xs text-muted">{data.customBuilds.needsAttention} need attention</p></Link></div></main>
+}
