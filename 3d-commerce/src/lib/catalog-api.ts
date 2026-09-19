@@ -66,6 +66,12 @@ export interface CatalogProduct {
   variants?: CatalogVariant[];
   media: CatalogMedia[];
   tags: CatalogTag[];
+  metrics?: {
+    viewCount: number;
+    cartAddCount: number;
+    purchaseCount: number;
+    unitsSold: number;
+  } | null;
   inventory?: {
     stock: number;
     reserved: number;
@@ -116,6 +122,12 @@ export interface StorefrontProduct {
   isTrending: boolean;
   isBestseller: boolean;
   createdAt?: string;
+  metrics: {
+    views: number;
+    cartAdds: number;
+    purchases: number;
+    unitsSold: number;
+  };
 }
 
 function mapVariant(variant: CatalogVariant): StorefrontVariant | null {
@@ -192,6 +204,12 @@ export function mapCatalogProduct(product: CatalogProduct): StorefrontProduct {
     base: product.base,
     packaging: product.packaging,
     weight: product.weight,
+    metrics: {
+      views: product.metrics?.viewCount ?? 0,
+      cartAdds: product.metrics?.cartAddCount ?? 0,
+      purchases: product.metrics?.purchaseCount ?? 0,
+      unitsSold: product.metrics?.unitsSold ?? 0,
+    },
     variants: (product.variants ?? [])
       .map(mapVariant)
       .filter(
