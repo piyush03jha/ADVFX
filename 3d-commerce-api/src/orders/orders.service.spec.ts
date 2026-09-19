@@ -55,13 +55,18 @@ describe('OrdersService', () => {
         updateMany: jest.fn(),
       },
       order: {
-        update: jest.fn().mockResolvedValue({ id: 'order-1', status: 'CONFIRMED' }),
+        update: jest.fn().mockResolvedValue({
+          id: 'order-1',
+          status: 'CONFIRMED',
+        }),
       },
     } as any;
 
     prisma.$transaction.mockImplementation((callback: any) => callback(tx));
 
-    await expect(service.updateStatus('order-1', 'CONFIRMED' as any)).resolves.toEqual({
+    await expect(
+      service.updateStatus('order-1', 'CONFIRMED' as any),
+    ).resolves.toEqual({
       id: 'order-1',
       status: 'CONFIRMED',
     });
@@ -107,6 +112,7 @@ describe('OrdersService', () => {
       where: { id: 'inventory-1', reserved: { gte: 2 } },
       data: { reserved: { decrement: 2 } },
     });
+
     expect(tx.inventoryReservation.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'r1' },
@@ -127,7 +133,10 @@ describe('OrdersService', () => {
       userId: 'user-1',
     });
 
-    razorpay.refundPayment.mockResolvedValue({ id: 'rfnd_1', status: 'processed' });
+    razorpay.refundPayment.mockResolvedValue({
+      id: 'rfnd_1',
+      status: 'processed',
+    });
 
     const tx = {
       payment: {
@@ -151,10 +160,5 @@ describe('OrdersService', () => {
       where: { orderId: 'order-1' },
       data: { status: 'REFUNDED' },
     });
- 
-
-});
-
-
-
   });
+});
