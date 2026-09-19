@@ -15,6 +15,7 @@ export default function WishlistPage() {
     isLoaded,
     removeFromWishlist,
     clearWishlist,
+    isSyncing,
   } = useWishlist();
   const { addItem } = useCart();
 
@@ -45,7 +46,8 @@ export default function WishlistPage() {
             {items.length > 0 && (
               <button
                 type="button"
-                onClick={clearWishlist}
+                onClick={() => void clearWishlist()}
+                disabled={isSyncing}
                 className="text-[10px] uppercase tracking-[0.12em] text-muted hover:text-primary"
               >
                 Clear all
@@ -81,7 +83,8 @@ export default function WishlistPage() {
                       <button
                         type="button"
                         aria-label={`Remove ${product.name} from wishlist`}
-                        onClick={() => removeFromWishlist(product.id)}
+                        onClick={() => void removeFromWishlist(product.id)}
+                        disabled={isSyncing}
                         className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-black/45 text-white/80 backdrop-blur-md transition hover:border-primary/40 hover:text-primary sm:right-3 sm:top-3"
                       >
                         <IconTrash size={14} stroke={1.5} />
@@ -99,7 +102,7 @@ export default function WishlistPage() {
                         <button
                           type="button"
                           aria-label={`Add ${product.name} to cart`}
-                          onClick={() => addItem(product, "medium", 1)}
+                          onClick={() => void addItem(product, "medium", 1)}
                           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border text-muted transition hover:border-primary/50 hover:bg-primary/10 hover:text-primary sm:h-9 sm:w-9"
                         >
                           <IconShoppingCart size={14} />
