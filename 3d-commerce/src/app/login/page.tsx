@@ -88,6 +88,16 @@ export default function LoginPage() {
   );
 }
 
-function getSafeReturnPath(value: string | null) { if (!value || !value.startsWith("/") || value.startsWith("//")) return "/account"; return value; }
+function getSafeReturnPath(value: string | null) {
+  if (
+    !value ||
+    !value.startsWith("/") ||
+    value.startsWith("//") ||
+    value.startsWith("/\\")
+  ) {
+    return "/account";
+  }
+  return value;
+}
 
 function CaptchaLoading({ error }: { error: string }) { return <div className="rounded-xl border border-border bg-surface p-3 text-xs text-muted">{error || "Preparing security check…"}</div>; }
