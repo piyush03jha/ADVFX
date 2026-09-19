@@ -712,6 +712,7 @@ export function CartProvider({
       decrementItem,
       updateQuantity,
       clearCart,
+      refreshCart,
       isLoaded,
       isSyncing,
       error,
