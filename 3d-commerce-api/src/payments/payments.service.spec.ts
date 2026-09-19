@@ -22,11 +22,10 @@ describe('PaymentsService', () => {
     const tx = { payment: { update: jest.fn() } };
     prisma.$transaction.mockImplementation(async (callback: any) => callback(tx));
 
-    const service = new PaymentsService(prisma, razorpay, orders, notifications);
+    const service = new PaymentsService(prisma, razorpay, notifications);
     await service.handleWebhook(
-      JSON.stringify({ payload: { payment: { entity: { id: 'pay_1', order_id: 'order_1' } } } }),
+      JSON.stringify({ event: 'payment.failed', payload: { payment: { entity: { id: 'pay_1', order_id: 'order_1' } } } }),
       'sig',
-      'payment.failed',
     );
 
     expect(tx.payment.update).toHaveBeenCalledWith(expect.objectContaining({
