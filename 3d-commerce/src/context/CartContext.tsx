@@ -10,20 +10,16 @@ import {
 } from "react";
 
 import type { Product } from "@/config/products";
+import { useAuth } from "@/context/AuthContext";
 
 export type CartSize = "small" | "medium" | "large";
 
-/**
- * Only the product fields the cart actually needs.
- * This lets product cards from different catalog sections
- * add items without forcing every catalog item to contain
- * the full product-detail schema.
- */
 export interface CartProduct {
   id: string;
   name: string;
   category: string;
   price: number;
+  currency?: string;
   image: string;
   oldPrice?: number;
   rating?: number;
@@ -40,6 +36,40 @@ export interface CartItem {
   quantity: number;
 }
 
+export interface BackendCartProduct {
+  id: string;
+  name: string;
+  slug?: string;
+  category?: { id: string; name: string; slug: string } | null;
+  prices?: Array<{
+    id: string;
+    currency: string;
+    amountMinor: number;
+    compareAtMinor?: number | null;
+    isActive: boolean;
+  }>;
+  media?: Array<{
+    id: string;
+    type: "IMAGE" | "MODEL_PREVIEW";
+    url: string;
+    altText?: string | null;
+    sortOrder: number;
+    isPrimary: boolean;
+  }>;
+}
+
+export interface BackendCartItem {
+  id: string;
+  productId: string;
+  quantity: number;
+  product: BackendCartProduct;
+}
+
+export interface BackendCart {
+  id: string;
+  items: BackendCartItem[];
+}
+
 interface CartContextValue {
   items: CartItem[];
   itemCount: number;
@@ -48,16 +78,24 @@ interface CartContextValue {
     product: Product | CartProduct,
     size?: CartSize,
     quantity?: number,
-  ) => void;
-  removeItem: (key: string) => void;
-  incrementItem: (key: string) => void;
-  decrementItem: (key: string) => void;
-  updateQuantity: (key: string, quantity: number) => void;
-  clearCart: () => void;
+  ) => Promise<void>;
+  removeItem: (key: string) => Promise<void>;
+  incrementItem: (key: string) => Promise<void>;
+  decrementItem: (key: string) => Promise<void>;
+  updateQuantity: (key: string, quantity: number) => Promise<void>;
+  clearCart: () => Promise<void>;
   isLoaded: boolean;
+  isSyncing: boolean;
+  error: string | null;
 }
 
-const STORAGE_KEY = "forma-cart";
+interface GuestCartItem {
+  product: CartProduct;
+  size: CartSize;
+  quantity: number;
+}
+
+const GUEST_STORAGE_KEY = "forma-cart";
 
 const CartContext = createContext<CartContextValue | null>(null);
 
@@ -65,26 +103,152 @@ function getItemKey(productId: string, size: CartSize) {
   return `${productId}:${size}`;
 }
 
-function isValidCartItem(value: unknown): value is CartItem {
-  if (!value || typeof value !== "object") return false;
+function getLocalGuestCart(): GuestCartItem[] {
+  try {
+    const raw = window.localStorage.getItem(GUEST_STORAGE_KEY);
+    if (!raw) return [];
 
-  const item = value as Partial<CartItem>;
-  const product = item.product as Partial<CartProduct> | undefined;
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
 
-  return Boolean(
-    item.key &&
-      item.size &&
-      ["small", "medium", "large"].includes(item.size) &&
-      typeof item.quantity === "number" &&
-      item.quantity > 0 &&
-      product &&
-      typeof product.id === "string" &&
-      typeof product.name === "string" &&
-      typeof product.category === "string" &&
-      typeof product.price === "number" &&
-      Number.isFinite(product.price) &&
-      typeof product.image === "string",
+    return parsed.filter((value): value is GuestCartItem => {
+      if (!value || typeof value !== "object") return false;
+      const item = value as Partial<GuestCartItem>;
+      const product = item.product as Partial<CartProduct> | undefined;
+
+      return Boolean(
+        product &&
+          typeof product.id === "string" &&
+          typeof product.name === "string" &&
+          typeof product.category === "string" &&
+          typeof product.price === "number" &&
+          Number.isFinite(product.price) &&
+          typeof product.image === "string" &&
+          typeof item.quantity === "number" &&
+          item.quantity > 0 &&
+          item.size &&
+          ["small", "medium", "large"].includes(item.size),
+      );
+    });
+  } catch {
+    window.localStorage.removeItem(GUEST_STORAGE_KEY);
+    return [];
+  }
+}
+
+function setLocalGuestCart(items: GuestCartItem[]) {
+  try {
+    if (items.length === 0) {
+      window.localStorage.removeItem(GUEST_STORAGE_KEY);
+    } else {
+      window.localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(items));
+    }
+  } catch {
+    // Guest cart persistence is best-effort.
+  }
+}
+
+function clearLocalGuestCart() {
+  try {
+    window.localStorage.removeItem(GUEST_STORAGE_KEY);
+  } catch {
+    // Ignore storage failures.
+  }
+}
+
+function normalizeBackendImage(product: BackendCartProduct) {
+  return (
+    product.media?.find((media) => media.type === "IMAGE" && media.isPrimary)?.url ??
+    product.media?.find((media) => media.type === "IMAGE")?.url ??
+    "/catogeries/1.jpg"
   );
+}
+
+function normalizeBackendModel(product: BackendCartProduct) {
+  return (
+    product.media?.find(
+      (media) => media.type === "MODEL_PREVIEW" && media.isPrimary,
+    )?.url ??
+    product.media?.find((media) => media.type === "MODEL_PREVIEW")?.url ??
+    ""
+  );
+}
+
+function activeBackendPrice(product: BackendCartProduct) {
+  return (
+    product.prices?.find((price) => price.currency === "INR" && price.isActive) ??
+    product.prices?.find((price) => price.isActive) ??
+    product.prices?.[0]
+  );
+}
+
+function mapBackendCartItem(item: BackendCartItem): CartItem {
+  const price = activeBackendPrice(item.product);
+  const amount = price?.amountMinor ?? 0;
+  const compareAt = price?.compareAtMinor ?? undefined;
+
+  const product: CartProduct = {
+    id: item.product.id,
+    name: item.product.name,
+    category: item.product.category?.name ?? "Uncategorized",
+    price: amount / 100,
+    currency: price?.currency ?? "INR",
+    image: normalizeBackendImage(item.product),
+    oldPrice:
+      compareAt !== undefined ? compareAt / 100 : undefined,
+    rating: 0,
+    reviewCount: 0,
+    model: normalizeBackendModel(item.product),
+    discount:
+      compareAt !== undefined && compareAt > amount
+        ? `${Math.round(((compareAt - amount) / compareAt) * 100)}% OFF`
+        : undefined,
+  };
+
+  return {
+    key: getItemKey(item.productId, "medium"),
+    product,
+    size: "medium",
+    quantity: item.quantity,
+  };
+}
+
+async function readBackendCart(): Promise<BackendCart> {
+  const response = await fetch("/api/cart", {
+    method: "GET",
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as
+      | { error?: string }
+      | null;
+    throw new Error(body?.error ?? "Unable to load your cart.");
+  }
+
+  return (await response.json()) as BackendCart;
+}
+
+async function mutateBackendCart(
+  path: string,
+  init: RequestInit,
+): Promise<BackendCart> {
+  const response = await fetch(`/api/cart${path}`, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...(init.headers ?? {}),
+    },
+  });
+
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as
+      | { error?: string }
+      | null;
+    throw new Error(body?.error ?? "Unable to update your cart.");
+  }
+
+  return (await response.json()) as BackendCart;
 }
 
 export function CartProvider({
@@ -92,59 +256,109 @@ export function CartProvider({
 }: {
   children: React.ReactNode;
 }) {
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const [items, setItems] = useState<CartItem[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const applyBackendCart = useCallback((cart: BackendCart) => {
+    setItems(cart.items.map(mapBackendCartItem));
+  }, []);
+
+  const syncGuestCart = useCallback(async () => {
+    const guestItems = getLocalGuestCart();
+
+    if (guestItems.length === 0) {
+      const backendCart = await readBackendCart();
+      applyBackendCart(backendCart);
+      return;
+    }
+
+    for (const item of guestItems) {
+      await mutateBackendCart("/items", {
+        method: "POST",
+        body: JSON.stringify({
+          productId: item.product.id,
+          quantity: item.quantity,
+        }),
+      });
+    }
+
+    clearLocalGuestCart();
+
+    const backendCart = await readBackendCart();
+    applyBackendCart(backendCart);
+  }, [applyBackendCart]);
+
+  const refreshCart = useCallback(async () => {
+    setError(null);
+
     try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-
-      if (raw) {
-        const parsed: unknown = JSON.parse(raw);
-
-        if (Array.isArray(parsed)) {
-          const validItems = parsed.filter(isValidCartItem);
-          setItems(validItems);
-
-          // Clean stale/corrupt cart data immediately.
-          if (validItems.length !== parsed.length) {
-            window.localStorage.setItem(
-              STORAGE_KEY,
-              JSON.stringify(validItems),
-            );
-          }
-        }
+      if (isAuthenticated) {
+        await syncGuestCart();
+        return;
       }
-    } catch {
-      window.localStorage.removeItem(STORAGE_KEY);
+
+      const guestItems = getLocalGuestCart();
+      setItems(
+        guestItems.map((item) => ({
+          key: getItemKey(item.product.id, item.size),
+          product: item.product,
+          size: item.size,
+          quantity: item.quantity,
+        })),
+      );
+    } catch (cause) {
+      const message =
+        cause instanceof Error ? cause.message : "Unable to load your cart.";
+      setError(message);
     } finally {
       setIsLoaded(true);
     }
-  }, []);
+  }, [isAuthenticated, syncGuestCart]);
 
   useEffect(() => {
-    if (!isLoaded) return;
-
-    try {
-      window.localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify(items),
-      );
-    } catch {
-      // Ignore storage failures; cart still works in memory.
-    }
-  }, [items, isLoaded]);
+    if (isAuthLoading) return;
+    void refreshCart();
+  }, [isAuthLoading, refreshCart]);
 
   const addItem = useCallback(
-    (
+    async (
       product: Product | CartProduct,
       size: CartSize = "medium",
       quantity = 1,
     ) => {
       const safeQuantity = Math.max(1, Math.floor(quantity));
-      const key = getItemKey(product.id, size);
+      setError(null);
 
-      const cartProduct: CartProduct = {
+      if (isAuthenticated) {
+        setIsSyncing(true);
+        try {
+          const backendCart = await mutateBackendCart("/items", {
+            method: "POST",
+            body: JSON.stringify({
+              productId: product.id,
+              quantity: safeQuantity,
+            }),
+          });
+          applyBackendCart(backendCart);
+        } catch (cause) {
+          setError(
+            cause instanceof Error ? cause.message : "Unable to add this item.",
+          );
+        } finally {
+          setIsSyncing(false);
+        }
+        return;
+      }
+
+      const next = [...getLocalGuestCart()];
+      const existing = next.find(
+        (item) =>
+          item.product.id === product.id && item.size === size,
+      );
+      const guestProduct: CartProduct = {
         id: product.id,
         name: product.name,
         category: product.category,
@@ -158,114 +372,172 @@ export function CartProvider({
         model: product.model,
       };
 
-      setItems((current) => {
-        const existing = current.find(
-          (item) => item.key === key,
-        );
+      if (existing) {
+        existing.product = guestProduct;
+        existing.quantity += safeQuantity;
+      } else {
+        next.push({
+          product: guestProduct,
+          size,
+          quantity: safeQuantity,
+        });
+      }
 
-        if (existing) {
-          return current.map((item) =>
-            item.key === key
-              ? {
-                  ...item,
-                  // Refresh product information in case catalog data changed.
-                  product: cartProduct,
-                  quantity: item.quantity + safeQuantity,
-                }
-              : item,
-          );
-        }
-
-        return [
-          ...current,
-          {
-            key,
-            product: cartProduct,
-            size,
-            quantity: safeQuantity,
-          },
-        ];
-      });
+      setLocalGuestCart(next);
+      setItems(
+        next.map((item) => ({
+          key: getItemKey(item.product.id, item.size),
+          product: item.product,
+          size: item.size,
+          quantity: item.quantity,
+        })),
+      );
     },
-    [],
+    [applyBackendCart, isAuthenticated],
   );
 
-  const removeItem = useCallback((key: string) => {
-    setItems((current) =>
-      current.filter((item) => item.key !== key),
-    );
-  }, []);
+  const updateBackendQuantity = useCallback(
+    async (key: string, quantity: number) => {
+      const [productId] = key.split(":");
+      const backendCart = await mutateBackendCart(`/items/${encodeURIComponent(productId)}`, {
+        method: "PATCH",
+        body: JSON.stringify({ productId, quantity }),
+      });
+      applyBackendCart(backendCart);
+    },
+    [applyBackendCart],
+  );
 
-  const incrementItem = useCallback((key: string) => {
-    setItems((current) =>
-      current.map((item) =>
-        item.key === key
-          ? { ...item, quantity: item.quantity + 1 }
-          : item,
-      ),
-    );
-  }, []);
+  const removeItem = useCallback(
+    async (key: string) => {
+      setError(null);
 
-  const decrementItem = useCallback((key: string) => {
-    setItems((current) =>
-      current.flatMap((item) => {
-        if (item.key !== key) return [item];
-
-        if (item.quantity <= 1) return [];
-
-        return [
-          {
-            ...item,
-            quantity: item.quantity - 1,
-          },
-        ];
-      }),
-    );
-  }, []);
-
-  const updateQuantity = useCallback(
-    (key: string, quantity: number) => {
-      const safeQuantity = Math.floor(quantity);
-
-      if (safeQuantity <= 0) {
-        removeItem(key);
+      if (isAuthenticated) {
+        setIsSyncing(true);
+        try {
+          const [productId] = key.split(":");
+          const backendCart = await mutateBackendCart(
+            `/items/${encodeURIComponent(productId)}`,
+            { method: "DELETE" },
+          );
+          applyBackendCart(backendCart);
+        } catch (cause) {
+          setError(
+            cause instanceof Error ? cause.message : "Unable to remove this item.",
+          );
+        } finally {
+          setIsSyncing(false);
+        }
         return;
       }
 
-      setItems((current) =>
-        current.map((item) =>
-          item.key === key
-            ? {
-                ...item,
-                quantity: safeQuantity,
-              }
-            : item,
-        ),
+      const next = getLocalGuestCart().filter(
+        (item) => getItemKey(item.product.id, item.size) !== key,
+      );
+      setLocalGuestCart(next);
+      setItems(
+        next.map((item) => ({
+          key: getItemKey(item.product.id, item.size),
+          product: item.product,
+          size: item.size,
+          quantity: item.quantity,
+        })),
       );
     },
-    [removeItem],
+    [applyBackendCart, isAuthenticated],
   );
 
-  const clearCart = useCallback(() => {
+  const updateQuantity = useCallback(
+    async (key: string, quantity: number) => {
+      const safeQuantity = Math.floor(quantity);
+
+      if (safeQuantity <= 0) {
+        await removeItem(key);
+        return;
+      }
+
+      if (isAuthenticated) {
+        setIsSyncing(true);
+        setError(null);
+        try {
+          await updateBackendQuantity(key, safeQuantity);
+        } catch (cause) {
+          setError(
+            cause instanceof Error ? cause.message : "Unable to update quantity.",
+          );
+        } finally {
+          setIsSyncing(false);
+        }
+        return;
+      }
+
+      const next = getLocalGuestCart().map((item) =>
+        getItemKey(item.product.id, item.size) === key
+          ? { ...item, quantity: safeQuantity }
+          : item,
+      );
+      setLocalGuestCart(next);
+      setItems(
+        next.map((item) => ({
+          key: getItemKey(item.product.id, item.size),
+          product: item.product,
+          size: item.size,
+          quantity: item.quantity,
+        })),
+      );
+    },
+    [isAuthenticated, removeItem, updateBackendQuantity],
+  );
+
+  const incrementItem = useCallback(
+    async (key: string) => {
+      const current = items.find((item) => item.key === key);
+      if (!current) return;
+      await updateQuantity(key, current.quantity + 1);
+    },
+    [items, updateQuantity],
+  );
+
+  const decrementItem = useCallback(
+    async (key: string) => {
+      const current = items.find((item) => item.key === key);
+      if (!current) return;
+      await updateQuantity(key, current.quantity - 1);
+    },
+    [items, updateQuantity],
+  );
+
+  const clearCart = useCallback(async () => {
+    setError(null);
+
+    if (isAuthenticated) {
+      setIsSyncing(true);
+      try {
+        const backendCart = await mutateBackendCart("/", {
+          method: "DELETE",
+        });
+        applyBackendCart(backendCart);
+      } catch (cause) {
+        setError(
+          cause instanceof Error ? cause.message : "Unable to clear your cart.",
+        );
+      } finally {
+        setIsSyncing(false);
+      }
+      return;
+    }
+
+    clearLocalGuestCart();
     setItems([]);
-  }, []);
+  }, [applyBackendCart, isAuthenticated]);
 
   const itemCount = useMemo(
-    () =>
-      items.reduce(
-        (total, item) => total + item.quantity,
-        0,
-      ),
+    () => items.reduce((total, item) => total + item.quantity, 0),
     [items],
   );
 
   const subtotal = useMemo(
-    () =>
-      items.reduce(
-        (total, item) =>
-          total + item.product.price * item.quantity,
-        0,
-      ),
+    () => items.reduce((total, item) => total + item.product.price * item.quantity, 0),
     [items],
   );
 
@@ -281,6 +553,8 @@ export function CartProvider({
       updateQuantity,
       clearCart,
       isLoaded,
+      isSyncing,
+      error,
     }),
     [
       items,
@@ -293,23 +567,19 @@ export function CartProvider({
       updateQuantity,
       clearCart,
       isLoaded,
+      isSyncing,
+      error,
     ],
   );
 
-  return (
-    <CartContext.Provider value={value}>
-      {children}
-    </CartContext.Provider>
-  );
+  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
 
 export function useCart() {
   const context = useContext(CartContext);
 
   if (!context) {
-    throw new Error(
-      "useCart must be used within a CartProvider",
-    );
+    throw new Error("useCart must be used within a CartProvider");
   }
 
   return context;
