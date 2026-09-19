@@ -94,15 +94,12 @@ export function ProductGallery({
       src: imageSrc,
       label: "Preview",
     },
-    {
-      type: "model",
-      src: product.model,
-      label: "Interactive 3D",
-    },
-
+    ...(product.model.trim()
+      ? [{ type: "model" as const, src: product.model, label: "Interactive 3D" }]
+      : []),
   ];
 
-  const active = media[activeIndex];
+  const active = media[Math.min(activeIndex, media.length - 1)];
 
   const previous = () => {
     setActiveIndex(
