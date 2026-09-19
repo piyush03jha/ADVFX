@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CheckoutQuoteDto } from './dto/checkout-quote.dto';
 import { PricingService } from '../pricing/pricing.service';
@@ -14,6 +14,7 @@ export class CheckoutService {
     const quote = await this.pricing.calculate(userId, {
       shippingAddressId: dto.shippingAddressId,
       couponCode: dto.couponCode,
+      items: dto.items,
     });
 
     const address = await this.prisma.address.findFirst({
@@ -21,32 +22,19 @@ export class CheckoutService {
     });
     if (!address) throw new NotFoundException('Shipping address not found');
 
-    const cart = await this.prisma.cart.findUnique({
-      where: { userId },
-      include: {
-        items: {
-          include: {
-            variant: true,
-            product: {
-              include: { media: { orderBy: { sortOrder: 'asc' } } },
-            },
-          },
-          orderBy: { createdAt: 'asc' },
-        },
-      },
+    const productIds = [...new Set(quote.items.map((item) => item.productId))];
+    const products = await this.prisma.product.findMany({
+      where: { id: { in: productIds } },
+      include: { media: { orderBy: { sortOrder: 'asc' } } },
     });
 
-    if (!cart || cart.items.length === 0) {
-      throw new BadRequestException('Cart is empty');
-    }
-
     const imageByProduct = new Map(
-      cart.items.map((item) => [
-        item.productId,
-        item.product.media.find(
+      products.map((product) => [
+        product.id,
+        product.media.find(
           (media) => media.isPrimary && media.type === 'IMAGE',
         )?.url ??
-          item.product.media.find((media) => media.type === 'IMAGE')?.url ??
+          product.media.find((media) => media.type === 'IMAGE')?.url ??
           null,
       ]),
     );
