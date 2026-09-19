@@ -34,7 +34,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       message: message ?? "If the account exists, password reset instructions have been sent.",
-      developmentOnly: data.developmentOnly,
+      ...(process.env.NODE_ENV !== "production" ? { developmentOnly: data.developmentOnly } : {}),
     });
   } catch {
     return NextResponse.json(
