@@ -31,6 +31,8 @@ const SCRYPT_P = 1;
 const GENERIC_VERIFICATION_MESSAGE =
   'If the account exists and is not verified, a verification email has been sent.';
 
+const TIMING_ONLY_PASSWORD = 'ADVFX-invalid-account-timing-placeholder';
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -112,6 +114,9 @@ export class AuthService {
     });
 
     if (!user || !user.isActive || user.role !== ('CUSTOMER' as UserRole)) {
+      // Perform the same expensive KDF work on unknown-account paths to reduce
+      // direct email-existence timing leakage.
+      await hashPassword(TIMING_ONLY_PASSWORD);
       throw new UnauthorizedException('Invalid email or password.');
     }
 
