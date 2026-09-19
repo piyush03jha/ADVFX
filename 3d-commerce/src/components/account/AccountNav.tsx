@@ -14,6 +14,7 @@ import {
 const links = [
   { label: "Overview", href: "/account", icon: IconHome },
   { label: "Orders", href: "/account/orders", icon: IconPackage },
+  { label: "Custom requests", href: "/account/custom-requests", icon: IconPackage },
   { label: "Addresses", href: "/account/addresses", icon: IconMapPin },
   { label: "Payments", href: "/account/payments", icon: IconCreditCard },
   { label: "Settings", href: "/account/settings", icon: IconSettings },
