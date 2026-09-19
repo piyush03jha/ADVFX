@@ -149,6 +149,7 @@ export function AddressManager({
           onChange={update}
           onSubmit={submit}
           onCancel={closeForm}
+          mutationDisabled={mutationDisabled}
         />
       )}
 
@@ -257,12 +258,14 @@ function AddressForm({
   onChange,
   onSubmit,
   onCancel,
+  mutationDisabled,
 }: {
   form: FormState;
   editing: boolean;
   onChange: (field: keyof FormState, value: string | boolean) => void;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
   onCancel: () => void;
+  mutationDisabled: boolean;
 }) {
   return (
     <form onSubmit={onSubmit} className="rounded-xl border border-border bg-surface/50 p-4 sm:p-5">
