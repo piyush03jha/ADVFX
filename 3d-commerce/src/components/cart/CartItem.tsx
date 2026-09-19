@@ -89,7 +89,7 @@ export function CartItem({ item }: CartItemProps) {
         return;
       }
 
-          } finally {
+    } finally {
       setIsMoving(false);
     }
   }
