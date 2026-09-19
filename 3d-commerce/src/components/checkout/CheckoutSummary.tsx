@@ -17,6 +17,18 @@ const cardGradient =
 const innerGradient =
   "bg-[linear-gradient(135deg,hsl(var(--foreground)/0.04),hsl(var(--background)/0.015)_65%,hsl(var(--primary)/0.045))]";
 
+function normalizeImagePath(src: string) {
+  if (!src) return "/catogeries/1.jpg";
+
+  try {
+    const url = new URL(src);
+    if (url.hostname === "example.com") return "/catogeries/1.jpg";
+    return url.toString();
+  } catch {
+    return src.startsWith("/") ? src : `/${src}`;
+  }
+}
+
 export function CheckoutSummary({
   country,
   customerName,
@@ -69,11 +81,7 @@ export function CheckoutSummary({
           >
             <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-white/[0.07] bg-[#0b0b0c]">
               <Image
-                src={
-                  item.product.image.startsWith("/")
-                    ? item.product.image
-                    : `/${item.product.image}`
-                }
+                src={normalizeImagePath(item.product.image)}
                 alt={item.product.name}
                 fill
                 sizes="64px"
