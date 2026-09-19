@@ -429,17 +429,18 @@ export class PaymentsService {
 
     if (!order?.promotionId) return;
 
-    await this.prisma.promotion.updateMany({
-      where: {
-        id: order.promotionId,
-        isActive: true,
-        OR: [
-          { usageLimit: null },
-          { usageLimit: { gt: 0 }, usageCount: { lt: 1 } },
-        ],
-      },
-      data: { usageCount: { increment: 1 } },
-    });
+    await this.prisma.$executeRaw(
+      Prisma.sql`
+        UPDATE "Promotion"
+        SET "usageCount" = "usageCount" + 1
+        WHERE "id" = ${order.promotionId}
+          AND "isActive" = true
+          AND (
+            "usageLimit" IS NULL
+            OR "usageCount" < "usageLimit"
+          )
+      `,
+    );
   }
 
   private async releaseReservationsInTransaction(
