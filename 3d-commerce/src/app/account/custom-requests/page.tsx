@@ -17,6 +17,9 @@ type CustomRequest = {
   revisionCount: number;
   createdAt: string;
   quote?: { currency: string; amountMinor: number; notes: string | null } | null;
+  priceMinor: number | null;
+  priceCurrency: string | null;
+  order?: { id: string; orderNumber: string; status: string; payment?: { status: string } | null } | null;
 };
 
 function label(status: string) {
@@ -62,8 +65,8 @@ export default function CustomRequestsPage() {
     <>
       <Navbar />
       <AccountShell
-        title="Custom requests"
-        description="Follow custom builds submitted to our studio from first review through production."
+        title="Custom orders"
+        description="Track your custom physical builds from payment through manufacturing and delivery."
       >
         {loading ? (
           <div className="space-y-3">
@@ -107,7 +110,7 @@ export default function CustomRequestsPage() {
                 <div className="mt-4 grid gap-3 sm:grid-cols-3">
                   <div><p className="text-[9px] uppercase tracking-[0.12em] text-muted">References</p><p className="mt-1 text-xs font-medium text-foreground">{request.referenceFileCount}</p></div>
                   <div><p className="text-[9px] uppercase tracking-[0.12em] text-muted">Revisions</p><p className="mt-1 text-xs font-medium text-foreground">{request.revisionCount}</p></div>
-                  <div><p className="text-[9px] uppercase tracking-[0.12em] text-muted">Quote</p><p className="mt-1 text-xs font-medium text-foreground">{request.quote ? money(request.quote.amountMinor, request.quote.currency) : "Pending review"}</p></div>
+                  <div><p className="text-[9px] uppercase tracking-[0.12em] text-muted">Price</p><p className="mt-1 text-xs font-medium text-foreground">{request.priceMinor != null ? money(request.priceMinor, request.priceCurrency ?? "INR") : request.quote ? money(request.quote.amountMinor, request.quote.currency) : "Unavailable"}</p></div>
                 </div>
 
                 <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
