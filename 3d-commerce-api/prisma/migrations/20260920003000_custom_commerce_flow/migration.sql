@@ -1,0 +1,31 @@
+ALTER TABLE "CustomRequest"
+  ADD COLUMN IF NOT EXISTS "category" TEXT,
+  ADD COLUMN IF NOT EXISTS "bodyType" TEXT,
+  ADD COLUMN IF NOT EXISTS "headType" TEXT,
+  ADD COLUMN IF NOT EXISTS "subjectType" TEXT,
+  ADD COLUMN IF NOT EXISTS "personCount" INTEGER,
+  ADD COLUMN IF NOT EXISTS "petCount" INTEGER,
+  ADD COLUMN IF NOT EXISTS "sizeCm" INTEGER,
+  ADD COLUMN IF NOT EXISTS "priceMinor" INTEGER,
+  ADD COLUMN IF NOT EXISTS "priceCurrency" TEXT,
+  ADD COLUMN IF NOT EXISTS "pricedAt" TIMESTAMP(3),
+  ADD COLUMN IF NOT EXISTS "orderId" TEXT;
+
+CREATE UNIQUE INDEX IF NOT EXISTS "CustomRequest_orderId_key"
+  ON "CustomRequest"("orderId");
+
+ALTER TABLE "Order"
+  ADD COLUMN IF NOT EXISTS "customRequestId" TEXT;
+
+CREATE UNIQUE INDEX IF NOT EXISTS "Order_customRequestId_key"
+  ON "Order"("customRequestId");
+
+ALTER TABLE "CustomRequest"
+  ADD CONSTRAINT "CustomRequest_orderId_fkey"
+  FOREIGN KEY ("orderId") REFERENCES "Order"("id")
+  ON DELETE SET NULL ON UPDATE CASCADE;
+
+ALTER TABLE "Order"
+  ADD CONSTRAINT "Order_customRequestId_fkey"
+  FOREIGN KEY ("customRequestId") REFERENCES "CustomRequest"("id")
+  ON DELETE SET NULL ON UPDATE CASCADE;
