@@ -18,6 +18,7 @@ import { NotificationsModule } from "./notifications/notifications.module";
 import { CheckoutModule } from "./checkout/checkout.module";
 import { ShippingModule } from "./shipping/shipping.module";
 import { PricingModule } from "./pricing/pricing.module";
+import { ScheduleModule } from "@nestjs/schedule";
 
 @Module({
   imports: [
