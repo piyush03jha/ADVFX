@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import Script from "next/script";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -10,62 +11,101 @@ import {
   IconCheck,
   IconLock,
   IconShieldCheck,
-  IconCreditCard,
-  IconBuildingBank,
 } from "@tabler/icons-react";
 
 import { Navbar } from "@/components/layout/SiteNavbar";
 import { Button } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import { useCart } from "@/context/CartContext";
-import { createOrder, formatQuoteMoney, getCheckoutQuote, type CheckoutQuote } from "@/lib/checkout-api";
+import {
+  createOrder,
+  formatQuoteMoney,
+  getCheckoutQuote,
+  type CheckoutQuote,
+} from "@/lib/checkout-api";
+import {
+  createRazorpayOrder,
+  verifyRazorpayPayment,
+  type RazorpayOrder,
+} from "@/lib/payment-api";
 import { getCountry, type CountryCode } from "@/config/countries";
 
 const DRAFT_KEY = "forma-checkout-draft";
 
 export default function PaymentPage() {
   const router = useRouter();
-  const { items, isLoaded, clearCart } = useCart();
+  const { items, isLoaded } = useCart();
   const [country, setCountry] = useState<CountryCode>("IN");
-  const [method, setMethod] = useState<"card" | "upi" | "netbanking">("card");
   const [processing, setProcessing] = useState(false);
   const [draftLoaded, setDraftLoaded] = useState(false);
   const [draft, setDraft] = useState<{ addressId?: string; country?: CountryCode } | null>(null);
   const [quote, setQuote] = useState<CheckoutQuote | null>(null);
   const [quoteError, setQuoteError] = useState<string | null>(null);
+  const [checkoutReady, setCheckoutReady] = useState(false);
 
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(DRAFT_KEY);
       if (raw) {
-        const draft = JSON.parse(raw) as { country?: CountryCode };
-        setDraft(draft);
-        if (draft.country) setCountry(draft.country);
+        const saved = JSON.parse(raw) as { addressId?: string; country?: CountryCode };
+        setDraft(saved);
+        if (saved.country) setCountry(saved.country);
       }
     } catch {
-      // Fall back to India.
+      // Keep the defaults.
     } finally {
       setDraftLoaded(true);
     }
   }, []);
 
   useEffect(() => {
-    if (!draft?.addressId) return;
+    if (!draft?.addressId) {
+      setQuote(null);
+      return;
+    }
+
     let cancelled = false;
     setQuoteError(null);
-    void getCheckoutQuote(draft.addressId).then((value) => {
-      if (!cancelled) setQuote(value);
-    }).catch((cause) => {
-      if (!cancelled) setQuoteError(cause instanceof Error ? cause.message : "Unable to calculate the final order total.");
-    });
-    return () => { cancelled = true; };
+
+    void getCheckoutQuote(draft.addressId)
+      .then((value) => {
+        if (!cancelled) setQuote(value);
+      })
+      .catch((cause) => {
+        if (!cancelled) {
+          setQuote(null);
+          setQuoteError(
+            cause instanceof Error
+              ? cause.message
+              : "Unable to calculate the final order total.",
+          );
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [draft?.addressId]);
 
   const countryConfig = getCountry(country);
-  const total = quote ? { amountMinor: quote.summary.totalMinor, currency: quote.currency } : null;
+  const total = quote
+    ? { amountMinor: quote.summary.totalMinor, currency: quote.currency }
+    : null;
 
   const handlePay = async () => {
-    if (!draft?.addressId || !quote || items.length === 0) return;
+    if (
+      !draft?.addressId ||
+      !quote ||
+      quote.summary.totalMinor <= 0 ||
+      items.length === 0
+    ) {
+      return;
+    }
+
+    if (!window.Razorpay) {
+      setQuoteError("Secure payment checkout is still loading. Please try again.");
+      return;
+    }
 
     setProcessing(true);
     setQuoteError(null);
@@ -75,10 +115,65 @@ export default function PaymentPage() {
         shippingAddressId: draft.addressId,
         idempotencyKey: window.crypto.randomUUID(),
       });
-      await clearCart();
-      router.push(`/order/confirmation?order=${encodeURIComponent(order.id)}`);
+
+      const razorpayOrder: RazorpayOrder = await createRazorpayOrder(order.id);
+
+      if (
+        razorpayOrder.amount !== order.totalMinor ||
+        razorpayOrder.currency !== order.currency
+      ) {
+        throw new Error("Payment amount could not be verified.");
+      }
+
+      await new Promise<void>((resolve) => {
+        let settled = false;
+        const finish = () => {
+          if (!settled) {
+            settled = true;
+            resolve();
+          }
+        };
+
+        const checkout = new window.Razorpay({
+          key: razorpayOrder.keyId,
+          amount: razorpayOrder.amount,
+          currency: razorpayOrder.currency,
+          name: "ADVFX",
+          description: "Physical product order " + razorpayOrder.orderNumber,
+          order_id: razorpayOrder.razorpayOrderId,
+          notes: { orderId: order.id },
+          theme: { color: "#c9a86a" },
+          modal: { ondismiss: finish },
+          handler: (response) => {
+            void verifyRazorpayPayment({
+              orderId: order.id,
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+            })
+              .then(() => {
+                finish();
+                router.push(
+                  "/order/confirmation?order=" + encodeURIComponent(order.id),
+                );
+              })
+              .catch((cause) => {
+                setQuoteError(
+                  cause instanceof Error
+                    ? cause.message
+                    : "Payment verification failed. Your order remains pending.",
+                );
+                finish();
+              });
+          },
+        });
+
+        checkout.open();
+      });
     } catch (cause) {
-      setQuoteError(cause instanceof Error ? cause.message : "Unable to create your order.");
+      setQuoteError(
+        cause instanceof Error ? cause.message : "Unable to start secure payment.",
+      );
     } finally {
       setProcessing(false);
     }
@@ -120,6 +215,11 @@ export default function PaymentPage() {
 
   return (
     <>
+      <Script
+        src="https://checkout.razorpay.com/v1/checkout.js"
+        strategy="afterInteractive"
+        onLoad={() => setCheckoutReady(true)}
+      />
       <Navbar />
       <main className="min-h-screen overflow-hidden">
         <section className="relative pb-20 pt-4 sm:pb-24 sm:pt-7 lg:pb-28 lg:pt-10">
@@ -152,7 +252,7 @@ export default function PaymentPage() {
                   </h1>
 
                   <p className="mt-3 max-w-xl text-sm leading-6 text-muted">
-                    Review the final amount and choose how you'd like to pay.
+                    Complete payment securely with Razorpay.
                   </p>
                 </div>
 
@@ -165,68 +265,32 @@ export default function PaymentPage() {
 
             <div className="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start lg:gap-12">
               <div className="space-y-7">
-                {/* ================================================
-                    PAYMENT METHOD
-                ================================================= */}
-
                 <section className="rounded-2xl border border-white/[0.08] bg-white/[0.015] p-5 sm:p-7">
                   <div className="flex items-center justify-between gap-4">
                     <div>
                       <p className="text-[9px] uppercase tracking-[0.2em] text-primary">01</p>
-                      <h2 className="mt-2 text-xl font-medium text-foreground">Payment method</h2>
+                      <h2 className="mt-2 text-xl font-medium text-foreground">Razorpay</h2>
                     </div>
                     <span className="text-[10px] text-muted">{countryConfig.currency}</span>
                   </div>
 
-                  <div className="mt-6 space-y-2">
-                    <PaymentOption
-                      active={method === "card"}
-                      onClick={() => setMethod("card")}
-                      icon={<IconCreditCard size={18} />}
-                      title="Credit or debit card"
-                      description="Visa, Mastercard, American Express"
-                    />
-                    <PaymentOption
-                      active={method === "upi"}
-                      onClick={() => setMethod("upi")}
-                      icon={<IconShieldCheck size={18} />}
-                      title="UPI"
-                      description="Pay securely using your UPI app"
-                    />
-                    <PaymentOption
-                      active={method === "netbanking"}
-                      onClick={() => setMethod("netbanking")}
-                      icon={<IconBuildingBank size={18} />}
-                      title="Net banking"
-                      description="Use your bank's secure checkout"
-                    />
-                  </div>
-
-                  {method === "card" ? (
-                    <div className="mt-5 rounded-xl border border-white/[0.07] bg-black/10 p-4 sm:p-5">
-                      <div className="grid gap-4">
-                        <FakeInput label="Card number" placeholder="1234  5678  9012  3456" />
-                        <div className="grid grid-cols-2 gap-4">
-                          <FakeInput label="Expiry date" placeholder="MM / YY" />
-                          <FakeInput label="Security code" placeholder="CVC" />
-                        </div>
-                        <FakeInput label="Name on card" placeholder="Full name" />
+                  <div className="mt-6 rounded-xl border border-white/[0.07] bg-black/[0.06] p-5">
+                    <div className="flex gap-4">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
+                        <IconShieldCheck size={18} />
+                      </span>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">
+                          Secure payment gateway
+                        </p>
+                        <p className="mt-1.5 text-xs leading-5 text-muted">
+                          Razorpay will securely handle card, UPI, net banking and other
+                          available payment methods. Payment details are not stored by ADVFX.
+                        </p>
                       </div>
                     </div>
-                  ) : (
-                    <div className="mt-5 rounded-xl border border-white/[0.07] bg-black/10 p-5">
-                      <p className="text-xs font-medium text-foreground">You'll be redirected securely</p>
-                      <p className="mt-1.5 text-[11px] leading-5 text-muted">
-                        Your selected payment provider will handle authentication. Your payment
-                        credentials are never stored by this storefront.
-                      </p>
-                    </div>
-                  )}
+                  </div>
                 </section>
-
-                {/* ================================================
-                    PAYMENT SECURITY
-                ================================================= */}
 
                 <section className="rounded-2xl border border-white/[0.08] bg-white/[0.015] p-5 sm:p-7">
                   <div className="flex gap-4">
@@ -234,22 +298,18 @@ export default function PaymentPage() {
                     <div>
                       <h2 className="text-xl font-medium text-foreground">Payment security</h2>
                       <p className="mt-1.5 text-xs leading-5 text-muted">
-                        We use secure payment processing and never store your full card details.
+                        Payment confirmation is verified by our server before the order is confirmed.
                       </p>
                     </div>
                   </div>
 
                   <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                    <TrustItem icon={<IconLock size={16} />} title="Secure" text="Encrypted" />
-                    <TrustItem icon={<IconShieldCheck size={16} />} title="Protected" text="Verified" />
-                    <TrustItem icon={<IconCheck size={16} />} title="Transparent" text="No hidden fees" />
+                    <TrustItem icon={<IconLock size={16} />} title="Secure" text="Razorpay Checkout" />
+                    <TrustItem icon={<IconShieldCheck size={16} />} title="Protected" text="Server verified" />
+                    <TrustItem icon={<IconCheck size={16} />} title="Transparent" text="Final total from server" />
                   </div>
                 </section>
               </div>
-
-              {/* ================================================
-                  ORDER SUMMARY
-              ================================================= */}
 
               <aside className="rounded-2xl border border-white/[0.08] bg-white/[0.025] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.24)] sm:p-6 lg:sticky lg:top-24">
                 <p className="text-[9px] font-medium uppercase tracking-[0.2em] text-primary">Order summary</p>
@@ -266,7 +326,7 @@ export default function PaymentPage() {
                     <div key={item.key} className="flex min-w-0 gap-3">
                       <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-white/[0.07] bg-[#0b0b0c]">
                         <Image
-                          src={item.product.image.startsWith("/") ? item.product.image : `/${item.product.image}`}
+                          src={item.product.image.startsWith("/") ? item.product.image : "/" + item.product.image}
                           alt={item.product.name}
                           fill
                           sizes="64px"
@@ -278,15 +338,13 @@ export default function PaymentPage() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-xs font-medium text-foreground">{item.product.name}</p>
-                        <p className="mt-1 text-[10px] text-muted">
-                          {item.size.charAt(0).toUpperCase() + item.size.slice(1)}
-                        </p>
+                        <p className="mt-1 text-[10px] text-muted">{item.size}</p>
                       </div>
                     </div>
                   ))}
                 </div>
 
-                {pricing.unavailableProductIds.length > 0 ? (
+                {quoteError ? (
                   <div className="mt-4 rounded-xl border border-red-400/20 bg-red-400/[0.04] p-3 text-[10px] leading-4 text-red-300">
                     {quoteError}
                   </div>
@@ -301,7 +359,7 @@ export default function PaymentPage() {
                       positive={quote.summary.shippingMinor === 0}
                     />
                     {quote.summary.discountMinor > 0 ? (
-                      <SummaryRow label="Discount" value={`-${formatQuoteMoney(quote.summary.discountMinor, quote.currency)}`} positive />
+                      <SummaryRow label="Discount" value={"-" + formatQuoteMoney(quote.summary.discountMinor, quote.currency)} positive />
                     ) : null}
                     {quote.summary.taxMinor > 0 ? (
                       <SummaryRow label="Tax" value={formatQuoteMoney(quote.summary.taxMinor, quote.currency)} />
@@ -326,22 +384,24 @@ export default function PaymentPage() {
                 <Button
                   type="button"
                   size="lg"
-                  disabled={processing || !quote || Boolean(quoteError)}
+                  disabled={
+                    processing ||
+                    !quote ||
+                    quote.summary.totalMinor <= 0 ||
+                    !checkoutReady
+                  }
                   onClick={() => void handlePay()}
                   className="mt-6 w-full"
                 >
-                  {processing ? (
-                    "Preparing secure payment…"
-                  ) : (
-                    <>
-                      <IconLock size={16} />
-                      Pay {total ? formatQuoteMoney(total.amountMinor, total.currency) : "Pay"}
-                    </>
-                  )}
+                  {processing
+                    ? "Opening secure checkout…"
+                    : !checkoutReady
+                      ? "Loading secure checkout…"
+                      : "Pay " + (total ? formatQuoteMoney(total.amountMinor, total.currency) : "")}
                 </Button>
 
                 <p className="mt-3 text-center text-[9px] leading-4 text-muted">
-                  By continuing, you agree to the order details and shipping information shown above.
+                  Your order is confirmed only after successful server-side payment verification.
                 </p>
               </aside>
             </div>
@@ -352,62 +412,15 @@ export default function PaymentPage() {
   );
 }
 
-function PaymentOption({
-  active,
-  onClick,
+function TrustItem({
   icon,
   title,
-  description,
+  text,
 }: {
-  active: boolean;
-  onClick: () => void;
   icon: React.ReactNode;
   title: string;
-  description: string;
+  text: string;
 }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex w-full items-center gap-3 rounded-xl border p-4 text-left transition-colors sm:gap-4 ${
-        active
-          ? "border-primary/50 bg-primary/[0.055]"
-          : "border-white/[0.07] bg-black/[0.06] hover:border-white/[0.14]"
-      }`}
-    >
-      <span
-        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border ${
-          active ? "border-primary/30 bg-primary/10 text-primary" : "border-white/[0.08] text-muted"
-        }`}
-      >
-        {icon}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-xs font-medium text-foreground">{title}</span>
-        <span className="mt-1 block text-[10px] text-muted">{description}</span>
-      </span>
-      <span
-        className={`h-4 w-4 shrink-0 rounded-full border ${
-          active ? "border-[5px] border-primary" : "border-white/20"
-        }`}
-      />
-    </button>
-  );
-}
-
-function FakeInput({ label, placeholder }: { label: string; placeholder: string }) {
-  return (
-    <label className="block">
-      <span className="mb-2 block text-[9px] uppercase tracking-[0.15em] text-muted">{label}</span>
-      <input
-        placeholder={placeholder}
-        className="h-12 w-full rounded-xl border border-white/[0.09] bg-white/[0.015] px-4 text-sm text-foreground outline-none placeholder:text-muted/40 focus:border-primary/60"
-      />
-    </label>
-  );
-}
-
-function TrustItem({ icon, title, text }: { icon: React.ReactNode; title: string; text: string }) {
   return (
     <div className="rounded-xl border border-white/[0.07] bg-black/[0.06] p-4">
       <span className="text-primary">{icon}</span>
@@ -417,7 +430,15 @@ function TrustItem({ icon, title, text }: { icon: React.ReactNode; title: string
   );
 }
 
-function SummaryRow({ label, value, positive = false }: { label: string; value: string; positive?: boolean }) {
+function SummaryRow({
+  label,
+  value,
+  positive = false,
+}: {
+  label: string;
+  value: string;
+  positive?: boolean;
+}) {
   return (
     <div className="flex items-center justify-between gap-4 text-sm">
       <span className="text-muted">{label}</span>
