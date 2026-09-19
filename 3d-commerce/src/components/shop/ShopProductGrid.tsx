@@ -36,6 +36,8 @@ const categoryIdToProductCategory: Record<string, string> = {
   heroes: "Heroes",
   props: "Weapon Props",
   display: "Display",
+  collectibles: "Collectibles",
+  "mobile-tv": "Mobile / TV",
 };
 
 interface ShopProductGridProps {
@@ -129,10 +131,23 @@ export function ShopProductGrid({
     [categories],
   );
 
+  const categoryNameToId = useMemo(
+    () =>
+      new Map(
+        sourceProducts.map((product) => [
+          product.category.toLowerCase(),
+          product.category,
+        ]),
+      ),
+    [sourceProducts],
+  );
+
   const effectiveCategoryIds = useMemo(() => {
     if (!activeCategory) return [];
 
     const normalized = activeCategory.toLowerCase().replace(/[_\s/]+/g, "-");
+    const byName = categoryNameToId.get(activeCategory.toLowerCase().trim());
+    if (byName) return [byName];
     const aliases: Record<string, string> = {
       gaming: "gaming",
       anime: "anime",
@@ -148,7 +163,7 @@ export function ShopProductGrid({
     };
 
     return aliases[normalized] ? [aliases[normalized]] : [activeCategory];
-  }, [activeCategory]);
+  }, [activeCategory, categoryNameToId]);
 
   const filteredProducts = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -165,9 +180,9 @@ export function ShopProductGrid({
         ),
       );
 
-    const selectedCategoryIds = activeCategory ? effectiveCategoryIds : filters.categories;
+      const selectedCategoryIds = activeCategory ? effectiveCategoryIds : filters.categories;
     const selectedProductCategories = selectedCategoryIds
-      .map((id) => categoryIdToProductCategory[id])
+      .map((id) => categoryIdToProductCategory[id] ?? id)
       .filter(Boolean);
 
     const result = sourceProducts.filter((product) => {
@@ -190,9 +205,15 @@ export function ShopProductGrid({
     return [...result].sort((a, b) => {
       switch (sort) {
         case "newest":
-          return sourceProducts.indexOf(b) - sourceProducts.indexOf(a);
+          return (
+            new Date(b.createdAt ?? 0).getTime() -
+            new Date(a.createdAt ?? 0).getTime()
+          );
         case "popular":
-          return b.reviewCount - a.reviewCount;
+          return (
+            (b.metrics.unitsSold + b.metrics.cartAdds) -
+            (a.metrics.unitsSold + a.metrics.cartAdds)
+          );
         case "rating":
           return b.rating - a.rating;
         case "price-low":

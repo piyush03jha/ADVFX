@@ -24,6 +24,8 @@ export interface CatalogPrice {
   amountMinor: number;
   compareAtMinor?: number | null;
   isActive: boolean;
+  startsAt?: string | null;
+  endsAt?: string | null;
 }
 
 export interface CatalogVariantPrice {
@@ -95,6 +97,7 @@ export interface StorefrontProduct {
   name: string;
   slug: string;
   category: string;
+  categorySlug?: string;
   description: string;
   price: number;
   currency: string;
@@ -121,6 +124,10 @@ export interface StorefrontProduct {
   isFeatured: boolean;
   isTrending: boolean;
   isBestseller: boolean;
+  stock: number;
+  reserved: number;
+  trackStock: boolean;
+  allowBackorder: boolean;
   createdAt?: string;
   metrics: {
     views: number;
@@ -149,8 +156,37 @@ function mapVariant(variant: CatalogVariant): StorefrontVariant | null {
 }
 
 function activePrice(product: CatalogProduct): CatalogPrice | undefined {
+  const now = Date.now();
   const prices = product.prices ?? [];
-  return prices.find((price) => price.currency === "INR") ?? prices[0];
+
+  const isCurrentlyActive = (
+    price: CatalogPrice & { startsAt?: string | null; endsAt?: string | null },
+  ) =>
+    price.isActive &&
+    (!price.startsAt || new Date(price.startsAt).getTime() <= now) &&
+    (!price.endsAt || new Date(price.endsAt).getTime() > now);
+
+  return (
+    prices.find(
+      (price) =>
+        price.currency === "INR" &&
+        isCurrentlyActive(
+          price as CatalogPrice & {
+            startsAt?: string | null;
+            endsAt?: string | null;
+          },
+        ),
+    ) ??
+    prices.find(
+      (price) =>
+        price.currency === "INR" &&
+        price.isActive,
+    ) ??
+    prices.find(
+      (price) => price.isActive,
+    ) ??
+    prices[0]
+  );
 }
 
 function primaryImage(product: CatalogProduct): string {
@@ -177,8 +213,13 @@ export function mapCatalogProduct(product: CatalogProduct): StorefrontProduct {
     isFeatured: product.isFeatured,
     isTrending: product.isTrending,
     isBestseller: product.isBestseller,
+    stock: product.inventory?.stock ?? 0,
+    reserved: product.inventory?.reserved ?? 0,
+    trackStock: product.inventory?.trackStock ?? false,
+    allowBackorder: product.inventory?.allowBackorder ?? false,
     createdAt: product.createdAt,
     category: product.category?.name ?? "Uncategorized",
+    categorySlug: product.category?.slug,
     description: product.description ?? "",
     price: amount / 100,
     currency: price?.currency ?? "INR",

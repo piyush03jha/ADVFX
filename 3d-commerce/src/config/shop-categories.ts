@@ -3,7 +3,28 @@ export interface ShopCategory {
   name: string;
   description: string;
   image: string;
-  matchTerms: string[];
+  matchTerms: string[  {
+    id: "display",
+    name: "Display",
+    description: "Display-ready physical pieces for shelves and collections.",
+    image: "/catogeries/2.jpg",
+    matchTerms: ["display", "shelf", "shelves", "collectible", "collection"],
+  },
+  {
+    id: "collectibles",
+    name: "Collectibles",
+    description: "Collector-focused physical figures and display pieces.",
+    image: "/catogeries/2.jpg",
+    matchTerms: ["collectible", "collectibles", "collection", "collector", "figure", "figurine"],
+  },
+  {
+    id: "mobile-tv",
+    name: "Mobile / TV",
+    description: "Media-inspired physical display pieces.",
+    image: "/catogeries/3.jpg",
+    matchTerms: ["mobile", "tv", "media", "movie", "series"],
+  },
+];
 }
 
 export const shopCategories: ShopCategory[] = [

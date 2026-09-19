@@ -6,11 +6,13 @@ import {
 
 interface ProductBreadcrumbProps {
   category: string;
+  categorySlug?: string;
   productName: string;
 }
 
 export function ProductBreadcrumb({
   category,
+  categorySlug,
   productName,
 }: ProductBreadcrumbProps) {
   return (
@@ -45,9 +47,7 @@ export function ProductBreadcrumb({
       />
 
       <Link
-        href={`/shop?category=${encodeURIComponent(
-          category,
-        )}`}
+        href={categorySlug ? `/shop/${categorySlug}` : `/shop?category=${encodeURIComponent(category)}`}
         className="
           shrink-0
           text-muted

@@ -23,18 +23,27 @@ export function ShopProductCard({ product }: ShopProductCardProps) {
   const { addItem } = useCart();
   const [added, setAdded] = useState(false);
   const [buying, setBuying] = useState(false);
+  const [cartError, setCartError] = useState(false);
 
   const handleAddToCart = async () => {
-    await addItem(product, null, 1);
-    setAdded(true);
+    if (added || buying) return;
+    setCartError(false);
 
-    window.setTimeout(() => {
-      setAdded(false);
-    }, 1600);
+    const variant = product.variants?.[0] ?? null;
+    const success = await addItem(product, variant, 1);
+    if (!success) {
+      setCartError(true);
+      return;
+    }
+
+    setAdded(true);
+    window.setTimeout(() => setAdded(false), 1600);
   };
 
   const handleBuyNow = async () => {
+    if (buying || added) return;
     setBuying(true);
+    setCartError(false);
 
     window.localStorage.setItem(
       "forma-buy-now",
@@ -122,7 +131,7 @@ export function ShopProductCard({ product }: ShopProductCardProps) {
           </div>
         </div>
 
-        <Link href={`/product/${product.id}`} className="block">
+        <Link href={`/product/${product.slug}`} className="block">
           <h3 className="mt-1.5 min-h-[2.5rem] text-sm font-medium leading-5 tracking-[-0.015em] text-foreground transition-colors hover:text-primary-hover">
             {product.name}
           </h3>
@@ -134,6 +143,12 @@ export function ShopProductCard({ product }: ShopProductCardProps) {
           size={12}
           className="mt-2.5"
         />
+
+        {cartError ? (
+          <p role="alert" className="mt-3 text-xs text-red-400">
+            Unable to update your cart. Please try again.
+          </p>
+        ) : null}
 
         <div className="mt-4 grid grid-cols-2 gap-2">
           <Button

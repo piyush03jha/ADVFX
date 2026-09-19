@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   IconChevronLeft,
@@ -88,21 +88,23 @@ export function ProductGallery({
 
   const fallbackImage = "/catogeries/1.jpg";
 
+  useEffect(() => {
+    setActiveIndex(0);
+    setImageSrc(product.image || fallbackImage);
+  }, [product.id, product.image]);
+
   const media: MediaItem[] = [
     {
       type: "image",
       src: imageSrc,
       label: "Preview",
     },
-    {
-      type: "model",
-      src: product.model,
-      label: "Interactive 3D",
-    },
-
+    ...(product.model.trim()
+      ? [{ type: "model" as const, src: product.model, label: "Interactive 3D" }]
+      : []),
   ];
 
-  const active = media[activeIndex];
+  const active = media[Math.min(activeIndex, media.length - 1)];
 
   const previous = () => {
     setActiveIndex(

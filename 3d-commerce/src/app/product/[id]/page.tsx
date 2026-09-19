@@ -43,14 +43,40 @@ async function fetchCatalogProducts(): Promise<CatalogProduct[]> {
   }
 }
 
+async function fetchProduct(idOrSlug: string): Promise<CatalogProduct | null> {
+  const encoded = encodeURIComponent(idOrSlug);
+
+  try {
+    const response = await fetch(getBackendApiUrl("products/slug/" + encoded), {
+      next: { revalidate: 60 },
+    });
+
+    if (response.ok) {
+      return (await response.json()) as CatalogProduct;
+    }
+  } catch {
+    // Try the ID endpoint below for backwards-compatible product URLs.
+  }
+
+  try {
+    const response = await fetch(getBackendApiUrl("products/" + encoded), {
+      next: { revalidate: 60 },
+    });
+
+    if (!response.ok) return null;
+    return (await response.json()) as CatalogProduct;
+  } catch {
+    return null;
+  }
+}
+
 export async function generateStaticParams() {
   return [];
 }
 
 export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
   const { id } = await params;
-  const products = await fetchCatalogProducts();
-  const product = products.find((item) => item.id === id || item.slug === id);
+  const product = await fetchProduct(id);
 
   if (!product) return { title: "Product Not Found" };
 
@@ -62,10 +88,11 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
 
 export default async function ProductPage({ params }: ProductPageProps) {
   const { id } = await params;
-  const products = await fetchCatalogProducts();
-  const catalogProduct = products.find((item) => item.id === id || item.slug === id);
+  const catalogProduct = await fetchProduct(id);
 
   if (!catalogProduct) notFound();
+
+  const products = await fetchCatalogProducts();
 
   const reviewSummary = await fetchProductReviewSummary(catalogProduct.id);
   const product = {
