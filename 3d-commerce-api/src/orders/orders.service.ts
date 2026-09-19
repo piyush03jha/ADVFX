@@ -4,14 +4,15 @@ import { randomBytes } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PricingService } from '../pricing/pricing.service';
+import { RazorpayService } from '../payments/razorpay.service';
 
 const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   PENDING_PAYMENT: ['CONFIRMED', 'CANCELLED'],
-  CONFIRMED: ['PROCESSING', 'CANCELLED'],
-  PROCESSING: ['READY_TO_SHIP', 'CANCELLED'],
-  READY_TO_SHIP: ['SHIPPED', 'CANCELLED'],
-  SHIPPED: ['DELIVERED'],
-  DELIVERED: [],
+  CONFIRMED: ['PROCESSING', 'CANCELLED', 'REFUNDED'],
+  PROCESSING: ['READY_TO_SHIP', 'CANCELLED', 'REFUNDED'],
+  READY_TO_SHIP: ['SHIPPED', 'CANCELLED', 'REFUNDED'],
+  SHIPPED: ['DELIVERED', 'REFUNDED'],
+  DELIVERED: ['REFUNDED'],
   CANCELLED: [],
   REFUNDED: [],
 };
@@ -24,6 +25,7 @@ export class OrdersService {
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
     private readonly pricing: PricingService,
+    private readonly razorpay: RazorpayService,
   ) {}
 
   async createFromCart(
@@ -245,11 +247,38 @@ export class OrdersService {
     const allowed = ORDER_TRANSITIONS[order.status];
     if (!allowed.includes(status)) throw new BadRequestException(`Cannot change order from ${order.status} to ${status}`);
 
+    if (status === 'REFUNDED') {
+      if (
+        !order.payment ||
+        order.payment.status !== 'CAPTURED' ||
+        !order.payment.providerPaymentId
+      ) {
+        throw new BadRequestException('Only captured Razorpay payments can be refunded.');
+      }
+
+      await this.razorpay.refundPayment(
+        order.payment.providerPaymentId,
+        order.payment.amountMinor,
+      );
+    }
+
     const updated = await this.prisma.$transaction(async (tx) => {
       if (status === 'CANCELLED') {
-        await this.releaseReservations(tx, id, InventoryReservationStatus.RELEASED);
-        if (order.status === OrderStatus.PENDING_PAYMENT && order.promotionId) {
-          await this.releasePromotionUsage(tx, order.promotionId);
+        if (order.status === OrderStatus.PENDING_PAYMENT) {
+          await this.releaseReservations(tx, id, InventoryReservationStatus.RELEASED);
+          if (order.promotionId) {
+            await this.releasePromotionUsage(tx, order.promotionId);
+          }
+        }
+      }
+
+      if (status === 'REFUNDED') {
+        if (
+          !order.payment ||
+          order.payment.status !== 'CAPTURED' ||
+          !order.payment.providerPaymentId
+        ) {
+          throw new BadRequestException('Only captured payments can be refunded.');
         }
       }
       if (status === 'CONFIRMED' && order.status === 'PENDING_PAYMENT') await this.consumeReservations(tx, id);

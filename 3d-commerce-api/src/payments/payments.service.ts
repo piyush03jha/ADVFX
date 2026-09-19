@@ -105,10 +105,19 @@ export class PaymentsService {
         );
       }
 
+      await tx.paymentAttempt.updateMany({
+        where: {
+          paymentId: payment.id,
+          status: PaymentStatus.PENDING,
+        },
+        data: { status: PaymentStatus.FAILED },
+      });
+
       await tx.payment.update({
         where: { id: payment.id },
         data: {
           providerPaymentId: null,
+          providerOrderId: null,
           status: PaymentStatus.PENDING,
           paidAt: null,
         },
@@ -390,6 +399,24 @@ export class PaymentsService {
 
           if (order?.status === OrderStatus.PENDING_PAYMENT) {
             await this.releaseReservationsInTransaction(tx, current.orderId);
+
+            const orderDetails = await tx.order.findUnique({
+              where: { id: current.orderId },
+              select: { promotionId: true },
+            });
+
+            if (orderDetails?.promotionId) {
+              await tx.$executeRaw(
+                Prisma.sql`
+                  UPDATE "Promotion"
+                  SET "usageCount" = GREATEST("usageCount" - 1, 0),
+                      "updatedAt" = CURRENT_TIMESTAMP
+                  WHERE "id" = ${orderDetails.promotionId}
+                    AND "usageCount" > 0
+                `,
+              );
+            }
+
             await tx.order.update({
               where: { id: current.orderId },
               data: { status: OrderStatus.CANCELLED },
@@ -445,7 +472,13 @@ export class PaymentsService {
           })
         : null;
 
-      if (!attempt || attempt.paymentId !== current.id) return null;
+      if (
+        !attempt ||
+        attempt.paymentId !== current.id ||
+        attempt.providerOrderId !== current.providerOrderId
+      ) {
+        return null;
+      }
 
       const order = await tx.order.findUnique({
         where: { id: current.orderId },

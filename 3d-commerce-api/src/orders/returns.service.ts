@@ -5,10 +5,14 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateReturnRequestDto } from './dto/create-return-request.dto';
+import { RazorpayService } from '../payments/razorpay.service';
 
 @Injectable()
 export class ReturnsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly razorpay: RazorpayService,
+  ) {}
 
   async create(
     userId: string,
@@ -82,11 +86,49 @@ export class ReturnsService {
       throw new NotFoundException('Return request not found');
     }
 
+    if (status === 'REFUNDED') {
+      const payment = request.orderId
+        ? await this.prisma.payment.findUnique({
+            where: { orderId: request.orderId },
+          })
+        : null;
+
+      if (
+        !payment ||
+        payment.status !== 'CAPTURED' ||
+        !payment.providerPaymentId
+      ) {
+        throw new BadRequestException(
+          'A return can only be refunded after a captured payment exists.',
+        );
+      }
+
+      await this.razorpay.refundPayment(
+        payment.providerPaymentId,
+        payment.amountMinor,
+      );
+
+      await this.prisma.$transaction(async (tx) => {
+        await tx.payment.update({
+          where: { id: payment.id },
+          data: { status: 'REFUNDED' },
+        });
+        await tx.order.update({
+          where: { id: request.orderId },
+          data: { status: 'REFUNDED' },
+        });
+        await tx.returnRequest.update({
+          where: { id },
+          data: { status },
+        });
+      });
+
+      return this.prisma.returnRequest.findUniqueOrThrow({ where: { id } });
+    }
+
     return this.prisma.returnRequest.update({
       where: { id },
-      data: {
-        status,
-      },
+      data: { status },
     });
   }
 }

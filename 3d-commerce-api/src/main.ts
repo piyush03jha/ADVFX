@@ -16,7 +16,13 @@ interface RateLimitState {
 
 const rateLimitState = new Map<string, RateLimitState>();
 const RATE_LIMIT_PRODUCTION_WARNING =
-  "API_RATE_LIMIT_PER_MINUTE currently uses process-local memory; production deployments should run a single instance or provide shared edge/API rate limiting until a distributed limiter is introduced.";
+  "API_RATE_LIMIT_PER_MINUTE uses process-local memory; production should also enforce shared edge/API rate limiting. Auth endpoints have stricter local limits below.";
+const AUTH_RATE_LIMITS: Record<string, number> = {
+  "/auth/login": 10,
+  "/auth/register": 6,
+  "/auth/forgot-password": 5,
+  "/auth/resend-verification": 5,
+};
 
 async function bootstrap() {
   const env = validateEnvironment();
@@ -25,10 +31,7 @@ async function bootstrap() {
     AppModule,
     new FastifyAdapter({
       logger: env.nodeEnv !== "test",
-      trustProxy:
-        process.env.TRUST_PROXY === "true"
-          ? true
-          : process.env.TRUST_PROXY ?? false,
+      trustProxy: process.env.TRUST_PROXY === "true",
     }),
     { rawBody: true },
   );
@@ -53,8 +56,10 @@ async function bootstrap() {
     throw new Error("API_RATE_LIMIT_PER_MINUTE must be a positive number");
   }
 
-  if (env.nodeEnv === "production") {
-    app.getHttpAdapter().getInstance().log.warn(RATE_LIMIT_PRODUCTION_WARNING);
+  if (env.nodeEnv === "production" && process.env.TRUST_PROXY !== "true") {
+    app.getHttpAdapter().getInstance().log.warn(
+      "TRUST_PROXY is disabled. Configure it when the API runs behind a trusted reverse proxy.",
+    );
   }
 
   await app.register(multipart, {
@@ -64,15 +69,17 @@ async function bootstrap() {
     },
   });
 
+  const corsOrigins = process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(",").map((value) => value.trim()).filter(Boolean)
+    : [];
+
   app.enableCors({
-    origin: process.env.CORS_ORIGINS
-      ? process.env.CORS_ORIGINS
-          .split(",")
-          .map((value) => value.trim())
-          .filter(Boolean)
-      : env.nodeEnv === "production"
-        ? false
-        : true,
+    origin:
+      corsOrigins.length > 0
+        ? corsOrigins
+        : env.nodeEnv === "development"
+          ? true
+          : false,
     credentials: true,
   });
 
@@ -94,7 +101,10 @@ async function bootstrap() {
       // and must not share the public request bucket.
       if (request.url.startsWith("/payments/razorpay/webhook")) return;
 
-      const key = request.ip;
+      const routeLimit = AUTH_RATE_LIMITS[request.routerPath ?? request.url.split("?")[0]];
+      const limit = routeLimit ?? rateLimitPerMinute;
+      const bucketScope = routeLimit ? (request.routerPath ?? request.url.split("?")[0]) : "global";
+      const key = `${bucketScope}:${request.ip}`;
       const current = rateLimitState.get(key);
 
       const next: RateLimitState =
@@ -117,14 +127,14 @@ async function bootstrap() {
         }
       }
 
-      reply.header("X-RateLimit-Limit", rateLimitPerMinute);
+      reply.header("X-RateLimit-Limit", limit);
 
       reply.header(
         "X-RateLimit-Remaining",
-        Math.max(0, rateLimitPerMinute - next.count),
+        Math.max(0, limit - next.count),
       );
 
-      if (next.count > rateLimitPerMinute) {
+      if (next.count > limit) {
         reply
           .code(429)
           .header("Retry-After", "60")

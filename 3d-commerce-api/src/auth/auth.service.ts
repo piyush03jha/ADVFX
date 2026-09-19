@@ -22,6 +22,7 @@ const ADMIN_SESSION_TTL_MS = 1000 * 60 * 60 * 12;
 const EMAIL_VERIFICATION_TTL_MS = 1000 * 60 * 60 * 24;
 const PASSWORD_RESET_TTL_MS = 1000 * 60 * 30;
 const VERIFICATION_RESEND_COOLDOWN_MS = 1000 * 60;
+const PASSWORD_RESET_RESEND_COOLDOWN_MS = 1000 * 60 * 5;
 
 const SCRYPT_KEY_LENGTH = 64;
 const SCRYPT_N = 32_768;
@@ -296,6 +297,29 @@ export class AuthService {
       return { message: 'If the account exists, password reset instructions have been sent.' };
     }
 
+    const recentReset = await this.prisma.$queryRaw<Array<{ secondsSinceCreation: number }>>`
+      SELECT EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - "createdAt"))::float AS "secondsSinceCreation"
+      FROM "AuthPasswordResetToken"
+      WHERE "userId" = ${user.id}
+        AND "usedAt" IS NULL
+      ORDER BY "createdAt" DESC
+      LIMIT 1
+    `;
+
+    const secondsSinceCreation = recentReset[0]
+      ? Number(recentReset[0].secondsSinceCreation)
+      : null;
+
+    if (
+      secondsSinceCreation !== null &&
+      secondsSinceCreation >= 0 &&
+      secondsSinceCreation < PASSWORD_RESET_RESEND_COOLDOWN_MS / 1000
+    ) {
+      return {
+        message: 'If the account exists, password reset instructions have been sent.',
+      };
+    }
+
     const token = await this.createPasswordResetToken(user.id);
 
     try {
@@ -557,7 +581,7 @@ export class AuthService {
 
   private developmentToken(key: string, token: string) {
     if (process.env.AUTH_EXPOSE_DEV_TOKENS !== 'true') return {};
-    if (process.env.NODE_ENV === 'production') return {};
+    if (process.env.NODE_ENV !== 'development') return {};
     return { developmentOnly: { [key]: token } };
   }
 
