@@ -349,13 +349,14 @@ model CartItem {
 
   variantId String?
   variant   ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  variantKey String @default("__base__")
 
   quantity Int
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([cartId, productId, variantId])
+  @@unique([cartId, productId, variantKey])
   @@index([productId])
   @@index([variantId])
 }
