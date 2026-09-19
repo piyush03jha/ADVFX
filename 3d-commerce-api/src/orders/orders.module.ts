@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaModule } from '../prisma/prisma.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { PricingModule } from '../pricing/pricing.module';
