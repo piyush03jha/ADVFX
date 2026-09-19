@@ -4,6 +4,7 @@ import { CheckoutService } from './checkout.service';
 describe('CheckoutService', () => {
   const prisma = {
     cart: { findUnique: jest.fn() },
+    product: { findMany: jest.fn() },
     address: { findFirst: jest.fn() },
   } as any;
 
@@ -39,6 +40,12 @@ describe('CheckoutService', () => {
         },
       ],
     });
+    prisma.product.findMany.mockResolvedValue([
+      {
+        id: 'p1',
+        media: [{ type: 'IMAGE', isPrimary: true, url: '/model.jpg', sortOrder: 0 }],
+      },
+    ]);
     pricing.calculate.mockResolvedValue({
       currency: 'INR',
       items: [
