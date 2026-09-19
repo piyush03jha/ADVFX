@@ -184,4 +184,4 @@ export class CustomBuildService {
     };
     return events[status];
   }
-}}
+}
