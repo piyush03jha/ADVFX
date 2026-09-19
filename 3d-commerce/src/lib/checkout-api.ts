@@ -117,6 +117,12 @@ export function createOrder(input: {
   shippingAddressId: string;
   couponCode?: string;
   idempotencyKey: string;
+  quotedSubtotalMinor: number;
+  quotedShippingMinor: number;
+  quotedDiscountMinor: number;
+  quotedTaxMinor: number;
+  quotedTotalMinor: number;
+  quotedCurrency: string;
 }) {
   return request<CreatedOrder>("/api/orders", {
     method: "POST",
