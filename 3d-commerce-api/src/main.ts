@@ -25,6 +25,10 @@ async function bootstrap() {
     AppModule,
     new FastifyAdapter({
       logger: env.nodeEnv !== "test",
+      trustProxy:
+        process.env.TRUST_PROXY === "true"
+          ? true
+          : process.env.TRUST_PROXY ?? false,
     }),
     { rawBody: true },
   );
@@ -85,6 +89,11 @@ async function bootstrap() {
     .getInstance()
     .addHook("onRequest", async (request, reply) => {
       const now = Date.now();
+
+      // Razorpay webhooks are already authenticated with their HMAC signature
+      // and must not share the public request bucket.
+      if (request.url.startsWith("/payments/razorpay/webhook")) return;
+
       const key = request.ip;
       const current = rateLimitState.get(key);
 
