@@ -23,7 +23,13 @@ export default function OrderConfirmationPage() {
 
   useEffect(() => {
     if (!orderId) { setLoading(false); return; }
-    void getOrderStatus(orderId).then((value) => setOrder(value.order as CreatedOrder)).catch(() => setOrder(null)).finally(() => setLoading(false));
+    void getOrderStatus(orderId).then((value) => {
+      if (!value.order) {
+        setOrder(null);
+        return;
+      }
+      setOrder(value.order as CreatedOrder);
+    }).catch(() => setOrder(null)).finally(() => setLoading(false));
   }, [orderId]);
 
   if (loading) return <main className="min-h-screen bg-background flex items-center justify-center text-xs text-muted">Loading order…</main>;
