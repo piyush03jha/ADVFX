@@ -11,6 +11,25 @@ interface ProductPageProps {
   params: Promise<{ id: string }>;
 }
 
+async function fetchProductReviewSummary(productId: string) {
+  try {
+    const response = await fetch(
+      getBackendApiUrl(`products/${encodeURIComponent(productId)}/reviews`),
+      { cache: "no-store" },
+    );
+    if (!response.ok) return { rating: 0, reviewCount: 0 };
+    const data = (await response.json()) as {
+      summary?: { rating?: number; reviewCount?: number };
+    };
+    return {
+      rating: data.summary?.rating ?? 0,
+      reviewCount: data.summary?.reviewCount ?? 0,
+    };
+  } catch {
+    return { rating: 0, reviewCount: 0 };
+  }
+}
+
 async function fetchCatalogProducts(): Promise<CatalogProduct[]> {
   try {
     const response = await fetch(getBackendApiUrl("products"), {
@@ -48,7 +67,12 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
   if (!catalogProduct) notFound();
 
-  const product = mapCatalogProduct(catalogProduct);
+  const reviewSummary = await fetchProductReviewSummary(catalogProduct.id);
+  const product = {
+    ...mapCatalogProduct(catalogProduct),
+    rating: reviewSummary.rating,
+    reviewCount: reviewSummary.reviewCount,
+  };
   const relatedProducts = mapCatalogProducts(
     products
       .filter((item) => item.id !== catalogProduct.id)
