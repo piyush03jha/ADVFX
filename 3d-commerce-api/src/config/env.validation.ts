@@ -9,6 +9,12 @@ export function validateEnvironment() {
     throw new Error('ADMIN_AUTH_SECRET is not configured');
   }
 
+  if (nodeEnv !== 'test') {
+    if (!process.env.RAZORPAY_KEY_ID) throw new Error('RAZORPAY_KEY_ID is not configured');
+    if (!process.env.RAZORPAY_KEY_SECRET) throw new Error('RAZORPAY_KEY_SECRET is not configured');
+    if (!process.env.RAZORPAY_WEBHOOK_SECRET) throw new Error('RAZORPAY_WEBHOOK_SECRET is not configured');
+  }
+
   if (nodeEnv === 'production') {
     if (process.env.ADMIN_AUTH_SECRET.length < 32) {
       throw new Error('ADMIN_AUTH_SECRET must be at least 32 characters in production');
