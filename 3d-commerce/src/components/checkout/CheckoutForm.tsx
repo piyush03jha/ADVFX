@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { IconCheck, IconChevronDown, IconMail, IconPhone } from "@tabler/icons-react";
@@ -9,6 +9,7 @@ import { COUNTRIES, type CountryCode } from "@/config/countries";
 import { SavedAddressSelector } from "@/components/checkout/SavedAddressSelector";
 import { Button } from "@/components/ui/Button";
 import { useAddresses, type Address } from "@/context/AddressContext";
+import { getCheckoutQuote, type CheckoutQuote } from "@/lib/checkout-api";
 
 interface CheckoutFormProps { onCountryChange?: (country: CountryCode) => void; }
 interface FormState { email: string; phone: string; }
@@ -25,8 +26,25 @@ export function CheckoutForm({ onCountryChange }: CheckoutFormProps) {
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(defaultAddressId);
   const [saving, setSaving] = useState(false);
+  const [quote, setQuote] = useState<CheckoutQuote | null>(null);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
   const selectedAddress = useMemo(() => addresses.find((address) => address.id === selectedAddressId) ?? null, [addresses, selectedAddressId]);
   const selectedCountry = useMemo(() => COUNTRIES.find((item) => item.code === country) ?? COUNTRIES[0], [country]);
+
+  useEffect(() => {
+    if (!selectedAddressId) {
+      setQuote(null);
+      return;
+    }
+    let cancelled = false;
+    setQuoteError(null);
+    void getCheckoutQuote(selectedAddressId).then((value) => {
+      if (!cancelled) setQuote(value);
+    }).catch((cause) => {
+      if (!cancelled) setQuoteError(cause instanceof Error ? cause.message : "Unable to calculate checkout.");
+    });
+    return () => { cancelled = true; };
+  }, [selectedAddressId]);
   const update = (field: keyof FormState, value: string) => setForm((current) => ({ ...current, [field]: value }));
   const handleCountry = (value: CountryCode) => { setCountry(value); onCountryChange?.(value); };
   const handleAddressChange = (address: Address | null) => {
@@ -39,7 +57,7 @@ export function CheckoutForm({ onCountryChange }: CheckoutFormProps) {
   };
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!selectedAddress) return;
+    if (!selectedAddress || !quote || quoteError) return;
     setSaving(true);
     const draft: CheckoutDraft = { ...form, addressId: selectedAddress.id, address: selectedAddress, country };
     window.localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
@@ -78,11 +96,19 @@ export function CheckoutForm({ onCountryChange }: CheckoutFormProps) {
             <button type="button" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} className="mt-2 text-[9px] font-medium text-primary hover:text-primary-hover">Change address</button>
           </div>
         )}
+        {quoteError ? (
+          <div className="mt-4 rounded-xl border border-red-400/20 bg-red-400/[0.04] p-3 text-[10px] leading-4 text-red-300">{quoteError}</div>
+        ) : quote ? (
+          <div className={`${innerClass} mt-4 grid grid-cols-2 gap-3 p-3.5 text-[10px]`}>
+            <div><p className="text-muted">Subtotal</p><p className="mt-1 text-foreground">{new Intl.NumberFormat("en-IN",{style:"currency",currency:quote.currency,maximumFractionDigits:2}).format(quote.summary.subtotalMinor/100)}</p></div>
+            <div><p className="text-muted">Total</p><p className="mt-1 font-medium text-primary">{new Intl.NumberFormat("en-IN",{style:"currency",currency:quote.currency,maximumFractionDigits:2}).format(quote.summary.totalMinor/100)}</p></div>
+          </div>
+        ) : null}
         <div className={`${innerClass} mt-5 flex items-start gap-3 p-3.5 sm:p-4`}>
           <IconCheck size={16} className="mt-0.5 shrink-0 text-primary" />
           <div><p className="text-xs font-medium text-foreground">Your payment is protected</p><p className="mt-1 text-[11px] leading-5 text-muted">You'll review the final amount and choose a payment method on the secure payment step.</p></div>
         </div>
-        <Button type="submit" size="lg" disabled={saving || !selectedAddress || !isLoaded} className="mt-4 w-full">{saving ? "Opening payment…" : selectedAddress ? "Continue to payment" : "Select a delivery address"}</Button>
+        <Button type="submit" size="lg" disabled={saving || !selectedAddress || !isLoaded || !quote || Boolean(quoteError)} className="mt-4 w-full">{saving ? "Opening payment…" : selectedAddress ? "Continue to payment" : "Select a delivery address"}</Button>
       </section>
     </form>
   );
