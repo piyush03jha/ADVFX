@@ -366,6 +366,8 @@ export class PaymentsService {
     });
 
     if (!updated?.order || !('id' in updated.order)) return;
+
+    await this.incrementPromotionUsageAfterPayment(updated.order.id);
   }
 
   private async consumeReservationsInTransaction(
