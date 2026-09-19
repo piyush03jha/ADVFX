@@ -69,6 +69,7 @@ export function ProductDetail({
 
           <ProductBreadcrumb
             category={product.category}
+            categorySlug={product.categorySlug}
             productName={product.name}
           />
 
@@ -145,7 +146,7 @@ export function ProductDetail({
                   size={14}
                 />
               }
-              title="Free shipping over ₹4,999"
+              title="Shipping calculated at checkout"
             />
 
             <Benefit
@@ -154,7 +155,7 @@ export function ProductDetail({
                   size={14}
                 />
               }
-              title="Authenticity guaranteed"
+              title="Secure payment with Razorpay"
             />
 
             <Benefit
@@ -163,7 +164,7 @@ export function ProductDetail({
                   size={14}
                 />
               }
-              title="Ships in 2–3 business days"
+              title="Physical product delivery"
             />
           </div>
         </Container>
