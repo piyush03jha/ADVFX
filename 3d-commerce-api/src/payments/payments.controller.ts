@@ -25,6 +25,12 @@ export class PaymentsController {
   }
 
   @UseGuards(CustomerAuthGuard)
+  @Post('razorpay/retry')
+  retryOrder(@Req() req: any, @Body() dto: CreateRazorpayOrderDto) {
+    return this.payments.retryRazorpayPayment(req.user.id, dto.orderId);
+  }
+
+  @UseGuards(CustomerAuthGuard)
   @Post('razorpay/verify')
   verify(@Req() req: any, @Body() dto: VerifyRazorpayPaymentDto) {
     return this.payments.verifyRazorpayPayment(req.user.id, dto);
