@@ -81,7 +81,7 @@ export class ProductsController {
     return this.productsService.create(dto);
   }
 
-  @UseGuards(AdminGuard, AuthGuard)
+  @UseGuards(AuthGuard, AdminGuard)
   @Patch(':id')
   update(@Param('id') id: string, @Body() dto: UpdateProductDto) {
     return this.productsService.update(id, dto);
