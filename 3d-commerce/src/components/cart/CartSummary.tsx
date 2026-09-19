@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { useCart } from "@/context/CartContext";
 
 export function CartSummary() {
-  const { subtotal } = useCart();
+  const { subtotal, error } = useCart();
   const shipping = subtotal >= 4999 ? 0 : 199;
   const total = subtotal + shipping;
   const remainingForFreeShipping = Math.max(4999 - subtotal, 0);
@@ -52,6 +52,8 @@ export function CartSummary() {
         </div>
         <span className="text-[9px] text-muted">Inclusive of applicable taxes</span>
       </div>
+
+      {error && <p className="mt-4 rounded-xl border border-red-400/20 bg-red-400/[0.06] p-3 text-xs leading-5 text-red-300">{error}</p>}
 
       <Button href="/checkout" size="lg" className="relative mt-6 w-full">Proceed to Checkout <IconArrowRight size={16} /></Button>
 
