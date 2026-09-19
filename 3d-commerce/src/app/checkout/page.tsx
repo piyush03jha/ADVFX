@@ -18,7 +18,7 @@ import type { CheckoutQuote } from "@/lib/checkout-api";
 export default function CheckoutPage() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
-  const { items, isLoaded } = useCart();
+  const { items, isLoaded, isRefreshing, refreshCart } = useCart();
   const [country, setCountry] = useState<CountryCode>("IN");
   const [quote, setQuote] = useState<CheckoutQuote | null>(null);
   const [quoteError, setQuoteError] = useState<string | null>(null);
@@ -32,10 +32,18 @@ export default function CheckoutPage() {
   );
 
   useEffect(() => {
+    if (isAuthenticated) {
+      void refreshCart();
+    }
+  }, [isAuthenticated, refreshCart]);
+
+  useEffect(() => {
     if (!isAuthLoading && !isAuthenticated) {
       router.replace(`/login?returnTo=${encodeURIComponent("/checkout")}`);
     }
   }, [isAuthLoading, isAuthenticated, router]);
+
+  const cartReady = isLoaded && !isRefreshing;
 
   if (isAuthLoading || !isAuthenticated) {
     return (
@@ -72,7 +80,7 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {!isLoaded ? (
+            {!cartReady ? (
               <div className="flex min-h-[420px] items-center justify-center rounded-2xl border border-white/[0.08] bg-[linear-gradient(135deg,hsl(var(--foreground)/0.05),hsl(var(--background)/0.02)_60%,hsl(var(--primary)/0.06))] shadow-[0_20px_65px_rgba(0,0,0,0.14)]">
                 <div className="text-center">
                   <div className="mx-auto h-7 w-7 animate-spin rounded-full border border-white/10 border-t-primary" />
