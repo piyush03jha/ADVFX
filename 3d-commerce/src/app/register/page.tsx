@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { FormEvent, Suspense, useState } from "react";
 import {
   IconArrowRight,
   IconBrandGoogle,
@@ -21,7 +21,7 @@ import { registerUser } from "@/lib/auth-client";
 import { MathCaptcha } from "@/components/auth/MathCaptcha";
 import { useAuthCaptcha } from "@/lib/auth-captcha";
 
-export default function RegisterPage() {
+function RegisterPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnTo = getSafeReturnPath(searchParams.get("returnTo"));
@@ -214,6 +214,20 @@ export default function RegisterPage() {
         </div>
       </section>
     </main>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="flex min-h-screen items-center justify-center bg-background text-xs text-muted">
+          Loading account creation…
+        </main>
+      }
+    >
+      <RegisterPageContent />
+    </Suspense>
   );
 }
 
