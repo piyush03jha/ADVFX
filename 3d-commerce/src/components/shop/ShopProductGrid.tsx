@@ -129,10 +129,20 @@ export function ShopProductGrid({
     [categories],
   );
 
+  const categoryNameToId = useMemo(
+    () =>
+      new Map(
+        categories.map((category) => [category.name.toLowerCase(), category.id]),
+      ),
+    [categories],
+  );
+
   const effectiveCategoryIds = useMemo(() => {
     if (!activeCategory) return [];
 
     const normalized = activeCategory.toLowerCase().replace(/[_\s/]+/g, "-");
+    const byName = categoryNameToId.get(activeCategory.toLowerCase().trim());
+    if (byName) return [byName];
     const aliases: Record<string, string> = {
       gaming: "gaming",
       anime: "anime",
@@ -148,7 +158,7 @@ export function ShopProductGrid({
     };
 
     return aliases[normalized] ? [aliases[normalized]] : [activeCategory];
-  }, [activeCategory]);
+  }, [activeCategory, categoryNameToId]);
 
   const filteredProducts = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -190,9 +200,15 @@ export function ShopProductGrid({
     return [...result].sort((a, b) => {
       switch (sort) {
         case "newest":
-          return sourceProducts.indexOf(b) - sourceProducts.indexOf(a);
+          return (
+            new Date(b.createdAt ?? 0).getTime() -
+            new Date(a.createdAt ?? 0).getTime()
+          );
         case "popular":
-          return b.reviewCount - a.reviewCount;
+          return (
+            (b.metrics.unitsSold + b.metrics.cartAdds) -
+            (a.metrics.unitsSold + a.metrics.cartAdds)
+          );
         case "rating":
           return b.rating - a.rating;
         case "price-low":
