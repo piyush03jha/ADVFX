@@ -12,7 +12,6 @@ import { IconButton } from "@/components/ui/IconButton";
 import { Section } from "@/components/ui/Section";
 
 import { useEffect, useState } from "react";
-import { getBackendApiUrl } from "@/lib/backend-api";
 import { mapCatalogProducts, type CatalogProduct, type StorefrontProduct } from "@/lib/catalog-api";
 
 import { TrendingProductCard } from "./TrendingProductCard";
