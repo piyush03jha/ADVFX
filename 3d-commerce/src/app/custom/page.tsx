@@ -9,7 +9,6 @@ export default function CustomPage() {
   const [body, setBody] = useState("full");
   const [head, setHead] = useState("bobble");
   const [submission, setSubmission] = useState<CustomSubmission | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -26,7 +25,7 @@ export default function CustomPage() {
               head={head}
               onHeadChange={setHead}
               onSubmit={setSubmission}
-              isSubmitting={isSubmitting}
+              isSubmitting={false}
             />
           </section>
         )}
