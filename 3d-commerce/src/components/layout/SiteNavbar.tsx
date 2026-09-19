@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/resizable-navbar";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { useCart } from "@/context/CartContext";
+import { useWishlist } from "@/context/WishlistContext";
 import type { HeroProduct } from "@/config/hero-products";
 import { useAuth } from "@/context/AuthContext";
 import { getBackendApiUrl } from "@/lib/backend-api";
@@ -40,6 +41,7 @@ export function Navbar() {
   const [searchQuery, setSearchQuery] = useState("");
 
   const { itemCount, isLoaded } = useCart();
+  const { itemCount: wishlistCount, isLoaded: isWishlistLoaded } = useWishlist();
   const { user, isLoading, logout } = useAuth();
   const router = useRouter();
 
@@ -210,8 +212,12 @@ export function Navbar() {
             )}
           </div>
 
-          <NavIconLink href="/wishlist" label="Wishlist">
+          <NavIconLink
+            href="/wishlist"
+            label={wishlistCount > 0 ? `Wishlist, ${wishlistCount} saved` : "Wishlist"}
+          >
             <IconHeart size={18} stroke={1.7} />
+            <NavCountBadge count={wishlistCount} isLoaded={isWishlistLoaded} />
           </NavIconLink>
 
           <NavIconLink href={accountHref} label={accountLabel}>
@@ -235,8 +241,12 @@ export function Navbar() {
           <NavbarLogo />
 
           <div className="flex items-center gap-1">
-            <NavIconLink href="/wishlist" label="Wishlist">
+            <NavIconLink
+              href="/wishlist"
+              label={wishlistCount > 0 ? `Wishlist, ${wishlistCount} saved` : "Wishlist"}
+            >
               <IconHeart size={18} stroke={1.7} />
+              <NavCountBadge count={wishlistCount} isLoaded={isWishlistLoaded} />
             </NavIconLink>
 
             <NavIconLink href={accountHref} label={accountLabel}>
@@ -397,6 +407,16 @@ function MobileActionLink({
     >
       {children}
     </Link>
+  );
+}
+
+function NavCountBadge({ count, isLoaded }: { count: number; isLoaded: boolean }) {
+  return (
+    <span
+      className={`pointer-events-none absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-semibold text-white shadow-[0_0_12px_var(--glow-primary)] transition-all duration-200 ${!isLoaded || count === 0 ? "scale-90 opacity-0" : "scale-100 opacity-100"}`}
+    >
+      {count}
+    </span>
   );
 }
 
