@@ -35,8 +35,8 @@ interface WishlistContextValue {
   error: string | null;
   isInWishlist: (productId: string) => boolean;
   toggleWishlist: (product: WishlistProduct) => Promise<void>;
-  addToWishlist: (product: WishlistProduct) => Promise<void>;
-  removeFromWishlist: (productId: string) => Promise<void>;
+  addToWishlist: (product: WishlistProduct) => Promise<boolean>;
+  removeFromWishlist: (productId: string) => Promise<boolean>;
   clearWishlist: () => Promise<void>;
   refreshWishlist: () => Promise<void>;
 }
@@ -378,7 +378,7 @@ export function WishlistProvider({
           setItems(next);
         }
 
-        return;
+        return true;
       }
 
       const previous = items;
@@ -397,9 +397,12 @@ export function WishlistProvider({
             ? cause.message
             : "Unable to add this product to your wishlist.",
         );
+        return false;
       } finally {
         setIsSyncing(false);
       }
+
+      return true;
     },
     [isAuthenticated, isInWishlist, items],
   );
@@ -414,7 +417,7 @@ export function WishlistProvider({
         );
         writeGuestWishlist(next);
         setItems(next);
-        return;
+        return true;
       }
 
       const previous = items;
@@ -431,9 +434,12 @@ export function WishlistProvider({
             ? cause.message
             : "Unable to remove this product from your wishlist.",
         );
+        return false;
       } finally {
         setIsSyncing(false);
       }
+
+      return true;
     },
     [isAuthenticated, items],
   );
