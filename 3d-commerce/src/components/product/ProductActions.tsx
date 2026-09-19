@@ -27,6 +27,8 @@ export function ProductActions({ product }: ProductActionsProps) {
   );
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { addItem } = useCart();
 
   const selectedVariant = useMemo<StorefrontVariant | null>(
@@ -38,12 +40,22 @@ export function ProductActions({ product }: ProductActionsProps) {
   const displayPrice = selectedVariant?.price ?? product.price;
 
   const addToCart = async () => {
-    await addItem(product, selectedVariant, quantity);
-    setAdded(true);
+    if (pending) return;
+    setPending(true);
+    setError(null);
 
-    window.setTimeout(() => {
-      setAdded(false);
-    }, 1800);
+    try {
+      const success = await addItem(product, selectedVariant, quantity);
+      if (!success) {
+        setError("Unable to add this item to your cart. Please try again.");
+        return;
+      }
+
+      setAdded(true);
+      window.setTimeout(() => setAdded(false), 1800);
+    } finally {
+      setPending(false);
+    }
   };
 
   const buyNow = async () => {
@@ -173,21 +185,28 @@ export function ProductActions({ product }: ProductActionsProps) {
         ) : null}
       </div>
 
+      {error ? (
+        <p role="alert" className="mt-3 text-xs text-red-400">
+          {error}
+        </p>
+      ) : null}
+
       <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
         <Button
           type="button"
           onClick={() => void addToCart()}
+          disabled={pending}
           className="min-h-12 bg-primary text-white shadow-[0_0_30px_var(--glow-primary)] hover:bg-primary-hover"
         >
           {added ? (
             <>
               <IconCheck size={17} />
-              Added to cart
+              {pending ? "Adding…" : "Added to cart"}
             </>
           ) : (
             <>
               <IconShoppingCart size={17} />
-              Add to Cart
+              {pending ? "Adding…" : "Add to Cart"}
             </>
           )}
         </Button>
@@ -195,6 +214,7 @@ export function ProductActions({ product }: ProductActionsProps) {
         <button
           type="button"
           onClick={() => void buyNow()}
+          disabled={pending}
           className="flex min-h-12 items-center justify-center gap-2 rounded-full border border-primary/60 bg-transparent px-5 text-xs font-medium uppercase tracking-[0.14em] text-primary transition-all hover:bg-primary/8"
         >
           <IconSparkles size={15} />
