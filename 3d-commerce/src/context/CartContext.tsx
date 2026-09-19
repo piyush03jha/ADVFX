@@ -270,12 +270,19 @@ export function CartProvider({
     const guestItems = getLocalGuestCart();
 
     if (guestItems.length === 0) {
-      const backendCart = await readBackendCart();
-      applyBackendCart(backendCart);
+      applyBackendCart(await readBackendCart());
       return;
     }
 
+    const backendCart = await readBackendCart();
+    const backendQuantities = new Map(
+      backendCart.items.map((item) => [item.productId, item.quantity]),
+    );
+
     for (const item of guestItems) {
+      const existingQuantity = backendQuantities.get(item.product.id) ?? 0;
+      const targetQuantity = existingQuantity + item.quantity;
+
       await mutateBackendCart("/items", {
         method: "POST",
         body: JSON.stringify({
@@ -283,12 +290,12 @@ export function CartProvider({
           quantity: item.quantity,
         }),
       });
+
+      backendQuantities.set(item.product.id, targetQuantity);
     }
 
     clearLocalGuestCart();
-
-    const backendCart = await readBackendCart();
-    applyBackendCart(backendCart);
+    applyBackendCart(await readBackendCart());
   }, [applyBackendCart]);
 
   const refreshCart = useCallback(async () => {
