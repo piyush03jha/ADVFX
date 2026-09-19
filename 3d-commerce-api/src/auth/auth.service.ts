@@ -24,7 +24,7 @@ const PASSWORD_RESET_TTL_MS = 1000 * 60 * 30;
 const VERIFICATION_RESEND_COOLDOWN_MS = 1000 * 60;
 
 const SCRYPT_KEY_LENGTH = 64;
-const SCRYPT_N = 16_384;
+const SCRYPT_N = 32_768;
 const SCRYPT_R = 8;
 const SCRYPT_P = 1;
 
@@ -513,6 +513,7 @@ export class AuthService {
   }
 
   private developmentToken(key: string, token: string) {
+    if (process.env.AUTH_EXPOSE_DEV_TOKENS !== 'true') return {};
     if (process.env.NODE_ENV === 'production') return {};
     return { developmentOnly: { [key]: token } };
   }
