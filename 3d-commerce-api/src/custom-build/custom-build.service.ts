@@ -148,6 +148,98 @@ export class CustomBuildService {
     };
   }
 
+  async checkout(userId: string, input: CustomPricingInput & { shippingAddressId: string; idempotencyKey?: string }) {
+    const address = await this.prisma.address.findFirst({
+      where: { id: input.shippingAddressId, userId },
+    });
+    if (!address) throw new NotFoundException("Shipping address not found");
+
+    const price = this.calculatePrice(input);
+    const amountMinor = price * 100;
+
+    const existing = input.idempotencyKey
+      ? await this.prisma.order.findFirst({
+          where: { userId, idempotencyKey: input.idempotencyKey },
+          include: { payment: true, shipment: true, shippingAddress: true, items: true },
+        })
+      : null;
+    if (existing) return { requestId: existing.customRequest?.id ?? null, order: existing };
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const customRequest = await tx.customRequest.create({
+        data: {
+          userId,
+          title: `Custom ${input.category}`,
+          requirements: [
+            `Category: ${input.category}`,
+            input.bodyType ? `Body type: ${input.bodyType}` : "",
+            input.headType ? `Head type: ${input.headType}` : "",
+            input.subjectType ? `Subject type: ${input.subjectType}` : "",
+            input.personCount != null ? `People: ${input.personCount}` : "",
+            input.petCount != null ? `Pets: ${input.petCount}` : "",
+            `Size: ${input.sizeCm} cm`,
+          ].filter(Boolean).join("\n"),
+          dimensions: `${input.sizeCm} cm`,
+          category: input.category,
+          bodyType: input.bodyType ?? null,
+          headType: input.headType ?? null,
+          subjectType: input.subjectType ?? null,
+          personCount: input.personCount ?? null,
+          petCount: input.petCount ?? null,
+          sizeCm: input.sizeCm,
+          priceMinor: amountMinor,
+          priceCurrency: "INR",
+          pricedAt: new Date(),
+          referenceFileCount: 0,
+          status: "SUBMITTED",
+        },
+      });
+
+      const order = await tx.order.create({
+        data: {
+          orderNumber: `ADV-${new Date().getFullYear()}-${randomBytes(4).toString("hex").toUpperCase()}`,
+          idempotencyKey: input.idempotencyKey ?? null,
+          checkoutSource: "CUSTOM",
+          userId,
+          status: "PENDING_PAYMENT",
+          currency: "INR",
+          subtotalMinor: amountMinor,
+          discountMinor: 0,
+          shippingMinor: 0,
+          taxMinor: 0,
+          totalMinor: amountMinor,
+          shippingAddressId: address.id,
+          customRequest: { connect: { id: customRequest.id } },
+          payment: {
+            create: {
+              provider: "RAZORPAY",
+              status: "PENDING",
+              amountMinor,
+              currency: "INR",
+            },
+          },
+          shipment: { create: { status: "PENDING" } },
+          items: {
+            create: {
+              productId: (await tx.product.findFirst({ where: { status: "ACTIVE" }, select: { id: true } }))?.id ?? (
+                await tx.product.findFirst({ select: { id: true } })
+              )?.id ?? undefined,
+              productName: `Custom ${input.category}`,
+              quantity: 1,
+              unitPriceMinor: amountMinor,
+              totalPriceMinor: amountMinor,
+            },
+          },
+        },
+        include: { payment: true, shipment: true, shippingAddress: true, items: true },
+      });
+
+      return { customRequest, order };
+    });
+
+    return result;
+  }
+
   async create(userId: string, dto: CreateCustomRequestDto) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
