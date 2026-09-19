@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { IconLock, IconShoppingBag } from "@tabler/icons-react";
 
 import { Navbar } from "@/components/layout/SiteNavbar";
@@ -13,15 +13,22 @@ import { Container } from "@/components/ui/Container";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import type { CountryCode } from "@/config/countries";
-import type { CheckoutQuote } from "@/lib/checkout-api";
+import type {
+  CheckoutQuote,
+  CheckoutSelectionItem,
+} from "@/lib/checkout-api";
+import type { CartItem } from "@/context/CartContext";
 
 export default function CheckoutPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const { items, isLoaded, isRefreshing, refreshCart } = useCart();
   const [country, setCountry] = useState<CountryCode>("IN");
   const [quote, setQuote] = useState<CheckoutQuote | null>(null);
   const [quoteError, setQuoteError] = useState<string | null>(null);
+  const [buyNowItem, setBuyNowItem] = useState<CartItem | null>(null);
+  const isBuyNow = searchParams.get("mode") === "buy-now";
 
   const handleQuoteChange = useCallback(
     (nextQuote: CheckoutQuote | null, error: string | null) => {
@@ -32,10 +39,39 @@ export default function CheckoutPage() {
   );
 
   useEffect(() => {
-    if (isAuthenticated) {
-      void refreshCart();
+    if (!isAuthenticated) return;
+
+    if (isBuyNow) {
+      try {
+        const raw = window.localStorage.getItem("forma-buy-now");
+        if (!raw) {
+          router.replace("/shop");
+          return;
+        }
+
+        const parsed = JSON.parse(raw) as CartItem;
+        if (
+          !parsed ||
+          typeof parsed !== "object" ||
+          typeof parsed.product?.id !== "string" ||
+          typeof parsed.quantity !== "number" ||
+          parsed.quantity < 1
+        ) {
+          window.localStorage.removeItem("forma-buy-now");
+          router.replace("/shop");
+          return;
+        }
+
+        setBuyNowItem(parsed);
+      } catch {
+        window.localStorage.removeItem("forma-buy-now");
+        router.replace("/shop");
+      }
+      return;
     }
-  }, [isAuthenticated, refreshCart]);
+
+    void refreshCart();
+  }, [isAuthenticated, isBuyNow, refreshCart, router]);
 
   useEffect(() => {
     if (!isAuthLoading && !isAuthenticated) {
@@ -44,6 +80,21 @@ export default function CheckoutPage() {
   }, [isAuthLoading, isAuthenticated, router]);
 
   const cartReady = isLoaded && !isRefreshing;
+  const checkoutItems = isBuyNow && buyNowItem ? [buyNowItem] : items;
+  const selectedItems = useMemo<CheckoutSelectionItem[] | undefined>(
+    () =>
+      isBuyNow && buyNowItem
+        ? [
+            {
+              productId: buyNowItem.product.id,
+              variantId: buyNowItem.variantId,
+              quantity: buyNowItem.quantity,
+            },
+          ]
+        : undefined,
+    [buyNowItem, isBuyNow],
+  );
+  const checkoutReady = isBuyNow ? buyNowItem !== null : cartReady;
 
   if (isAuthLoading || !isAuthenticated) {
     return (
@@ -80,20 +131,22 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {!cartReady ? (
+            {!checkoutReady ? (
               <div className="flex min-h-[420px] items-center justify-center rounded-2xl border border-white/[0.08] bg-[linear-gradient(135deg,hsl(var(--foreground)/0.05),hsl(var(--background)/0.02)_60%,hsl(var(--primary)/0.06))] shadow-[0_20px_65px_rgba(0,0,0,0.14)]">
                 <div className="text-center">
                   <div className="mx-auto h-7 w-7 animate-spin rounded-full border border-white/10 border-t-primary" />
                   <p className="mt-3 text-[9px] uppercase tracking-[0.18em] text-muted">Loading checkout</p>
                 </div>
               </div>
-            ) : items.length === 0 ? (
+            ) : checkoutItems.length === 0 ? (
               <EmptyCheckout />
             ) : (
               <div className="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:gap-12">
                 <CheckoutForm
                   onCountryChange={setCountry}
                   onQuoteChange={handleQuoteChange}
+                  selectedItems={selectedItems}
+                  checkoutDisplayItems={checkoutItems}
                 />
                 <CheckoutSummary
                   country={country}
@@ -101,6 +154,7 @@ export default function CheckoutPage() {
                   quoteError={quoteError}
                   customerName={user?.name}
                   customerEmail={user?.email}
+                  checkoutItems={checkoutItems}
                 />
               </div>
             )}
