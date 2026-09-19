@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import {
   IconArrowRight,
   IconCheck,
@@ -16,7 +16,7 @@ import {
 import { Navbar } from "@/components/layout/SiteNavbar";
 import { resendVerificationEmail, verifyEmail } from "@/lib/auth-client";
 
-export default function VerifyEmailPage() {
+function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const token = useMemo(() => searchParams.get("token")?.trim() ?? "", [searchParams]);
   const email = useMemo(() => searchParams.get("email")?.trim().toLowerCase() ?? "", [searchParams]);
@@ -153,3 +153,18 @@ export default function VerifyEmailPage() {
     </main>
   );
 }
+
+export default function VerifyEmailPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="flex min-h-screen items-center justify-center bg-background text-xs text-muted">
+          Loading email verification…
+        </main>
+      }
+    >
+      <VerifyEmailContent />
+    </Suspense>
+  );
+}
+
