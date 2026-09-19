@@ -87,10 +87,8 @@ export class CustomBuildService {
       include: {
         user: true,
         media: true,
-        preview: { include: { productFile: true } },
         quote: true,
         revisions: true,
-        previewProduct: { include: { files: true, media: true, prices: true } },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -102,10 +100,8 @@ export class CustomBuildService {
       include: {
         user: true,
         media: true,
-        preview: { include: { productFile: true } },
         quote: true,
         revisions: true,
-        previewProduct: { include: { files: true, media: true, prices: true } },
       },
     });
     if (!request) throw new NotFoundException('Custom request not found');
@@ -123,10 +119,8 @@ export class CustomBuildService {
         include: {
           user: true,
           media: true,
-          preview: { include: { productFile: true } },
           quote: true,
           revisions: true,
-          previewProduct: true,
         },
       });
 
