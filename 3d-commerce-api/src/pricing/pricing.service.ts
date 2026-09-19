@@ -133,18 +133,18 @@ export class PricingService {
       orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
     });
 
-    if (!shipping) {
-      throw new BadRequestException(
-        "No shipping rule is available for this address",
-      );
-    }
-
-    const shippingMinor = this.calculateShipping(
-      shipping.type,
-      shipping.amountMinor,
-      shipping.freeAboveMinor,
-      subtotalMinor,
-    );
+    // Shipping rules are optional during the initial checkout rollout.
+    // Until an admin configures rules, every valid customer address remains
+    // checkout-eligible and shipping is treated as free. Once rules exist,
+    // the highest-priority matching rule is applied normally.
+    const shippingMinor = shipping
+      ? this.calculateShipping(
+          shipping.type,
+          shipping.amountMinor,
+          shipping.freeAboveMinor,
+          subtotalMinor,
+        )
+      : 0;
 
     let discountMinor = 0;
     let promotion: {
