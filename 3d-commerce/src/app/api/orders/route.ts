@@ -1,0 +1,50 @@
+import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
+
+import { AUTH_COOKIE_NAME } from "@/lib/auth";
+import { getBackendApiUrl } from "@/lib/backend-api";
+
+export async function POST(request: Request) {
+  const token = (await cookies()).get(AUTH_COOKIE_NAME)?.value;
+  if (!token) {
+    return NextResponse.json({ error: "Authentication is required." }, { status: 401 });
+  }
+
+  try {
+    const response = await fetch(getBackendApiUrl("orders"), {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(await request.json()),
+      cache: "no-store",
+    });
+    const data = await response.json().catch(() => null);
+    return NextResponse.json(data ?? { error: "Unable to create order." }, {
+      status: response.status,
+    });
+  } catch {
+    return NextResponse.json({ error: "Order service is unavailable." }, { status: 503 });
+  }
+}
+
+export async function GET() {
+  const token = (await cookies()).get(AUTH_COOKIE_NAME)?.value;
+  if (!token) {
+    return NextResponse.json({ error: "Authentication is required." }, { status: 401 });
+  }
+
+  try {
+    const response = await fetch(getBackendApiUrl("orders"), {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    const data = await response.json().catch(() => null);
+    return NextResponse.json(data ?? { error: "Unable to load orders." }, {
+      status: response.status,
+    });
+  } catch {
+    return NextResponse.json({ error: "Order service is unavailable." }, { status: 503 });
+  }
+}
