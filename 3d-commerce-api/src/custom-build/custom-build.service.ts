@@ -148,22 +148,40 @@ export class CustomBuildService {
     };
   }
 
-  async checkout(userId: string, input: CustomPricingInput & { shippingAddressId: string; idempotencyKey?: string }) {
+  async checkout(
+    userId: string,
+    input: CustomPricingInput & {
+      shippingAddressId: string;
+      idempotencyKey?: string;
+    },
+  ) {
     const address = await this.prisma.address.findFirst({
       where: { id: input.shippingAddressId, userId },
     });
     if (!address) throw new NotFoundException("Shipping address not found");
 
-    const price = this.calculatePrice(input);
-    const amountMinor = price * 100;
+    const priceMinor = this.calculatePrice(input) * 100;
+    const idempotencyKey = input.idempotencyKey?.trim() || undefined;
 
-    const existing = input.idempotencyKey
+    const existing = idempotencyKey
       ? await this.prisma.order.findFirst({
-          where: { userId, idempotencyKey: input.idempotencyKey },
-          include: { payment: true, shipment: true, shippingAddress: true, items: true },
+          where: { userId, idempotencyKey },
+          include: {
+            payment: true,
+            shipment: true,
+            shippingAddress: true,
+            items: true,
+            customRequest: true,
+          },
         })
       : null;
-    if (existing) return { requestId: existing.customRequest?.id ?? null, order: existing };
+
+    if (existing) {
+      return {
+        requestId: existing.customRequest?.id ?? null,
+        order: existing,
+      };
+    }
 
     const result = await this.prisma.$transaction(async (tx) => {
       const customRequest = await tx.customRequest.create({
@@ -187,7 +205,7 @@ export class CustomBuildService {
           personCount: input.personCount ?? null,
           petCount: input.petCount ?? null,
           sizeCm: input.sizeCm,
-          priceMinor: amountMinor,
+          priceMinor: priceMinor,
           priceCurrency: "INR",
           pricedAt: new Date(),
           referenceFileCount: 0,
@@ -198,32 +216,46 @@ export class CustomBuildService {
       const order = await tx.order.create({
         data: {
           orderNumber: `ADV-${new Date().getFullYear()}-${randomBytes(4).toString("hex").toUpperCase()}`,
-          idempotencyKey: input.idempotencyKey ?? null,
+          idempotencyKey: idempotencyKey ?? null,
           checkoutSource: "CUSTOM",
           userId,
           status: "PENDING_PAYMENT",
           currency: "INR",
-          subtotalMinor: amountMinor,
+          subtotalMinor: priceMinor,
           discountMinor: 0,
           shippingMinor: 0,
           taxMinor: 0,
-          totalMinor: amountMinor,
+          totalMinor: priceMinor,
           shippingAddressId: address.id,
           customRequest: { connect: { id: customRequest.id } },
           payment: {
             create: {
               provider: "RAZORPAY",
               status: "PENDING",
-              amountMinor,
+              amountMinor: priceMinor,
               currency: "INR",
             },
           },
           shipment: { create: { status: "PENDING" } },
         },
-        include: { payment: true, shipment: true, shippingAddress: true, items: true },
+        include: {
+          payment: true,
+          shipment: true,
+          shippingAddress: true,
+          items: true,
+          customRequest: true,
+        },
       });
 
       return { customRequest, order };
+    });
+
+    await this.notifications.create(userId, {
+      type: NotificationType.CUSTOM_REQUEST_SUBMITTED,
+      title: "Custom build ready for payment",
+      message: `Your ${input.category} custom build is ready for secure payment.`,
+      entityType: "CUSTOM_REQUEST",
+      entityId: result.customRequest.id,
     });
 
     return result;
