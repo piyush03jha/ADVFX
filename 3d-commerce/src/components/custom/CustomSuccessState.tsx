@@ -6,7 +6,14 @@ import { IconArrowRight, IconCheck } from "@tabler/icons-react";
 import { processSteps } from "./customOptions";
 import type { CustomSubmission } from "./CustomForm";
 
-export function CustomSuccessState({ price, bodyLabel, headLabel, sizeLabel, frameLabel }: CustomSubmission) {
+export function CustomSuccessState({
+  requestId,
+  price,
+  bodyLabel,
+  headLabel,
+  sizeLabel,
+  frameLabel,
+}: CustomSubmission) {
   return (
     <section className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-5xl items-center px-4 py-12 sm:px-6 lg:px-8">
       <div className="w-full rounded-[32px] border border-border bg-surface/60 p-6 text-center shadow-[0_30px_100px_rgba(0,0,0,0.28)] backdrop-blur-xl sm:p-10 lg:p-12">
@@ -20,7 +27,10 @@ export function CustomSuccessState({ price, bodyLabel, headLabel, sizeLabel, fra
             <div key={label} className="rounded-2xl border border-border bg-background/45 p-4 text-left"><p className="text-[10px] uppercase tracking-[0.16em] text-muted">{label}</p><p className="mt-2 text-sm font-medium">{value}</p></div>
           ))}
         </div>
-        <p className="mt-3 text-xs text-muted">Frame: {frameLabel}</p>
+        <p className="mt-3 text-xs text-muted">
+          Request ID: <span className="font-mono text-foreground">{requestId}</span>
+        </p>
+        <p className="mt-1 text-xs text-muted">Frame: {frameLabel}</p>
 
         <div className="mx-auto mt-8 grid max-w-4xl grid-cols-2 gap-3 text-left sm:grid-cols-4">
           {processSteps.map((item, index) => <div key={item.title} className="min-h-[120px] rounded-2xl border border-border bg-background/40 p-4"><span className="text-[10px] uppercase tracking-[0.14em] text-primary">Step {index + 1}</span><p className="mt-2 text-sm font-medium">{item.title}</p><p className="mt-1 text-[11px] leading-5 text-muted">{item.description}</p></div>)}
