@@ -15,17 +15,17 @@ export class CartController {
 
   @Post('items')
   addItem(@Req() req: any, @Body() dto: UpsertCartItemDto) {
-    return this.cartService.addItem(req.user.id, dto.productId, dto.quantity);
+    return this.cartService.addItem(req.user.id, dto.productId, dto.quantity, dto.variantId);
   }
 
   @Patch('items/:productId')
   updateItem(@Req() req: any, @Param('productId') productId: string, @Body() dto: UpsertCartItemDto) {
-    return this.cartService.updateItem(req.user.id, productId, dto.quantity);
+    return this.cartService.updateItem(req.user.id, productId, dto.quantity, dto.variantId);
   }
 
   @Delete('items/:productId')
   removeItem(@Req() req: any, @Param('productId') productId: string) {
-    return this.cartService.removeItem(req.user.id, productId);
+    return this.cartService.removeItem(req.user.id, productId, typeof req.query?.variantId === 'string' ? req.query.variantId : undefined);
   }
 
   @Delete()
