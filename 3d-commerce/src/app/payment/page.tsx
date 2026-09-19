@@ -34,7 +34,7 @@ const DRAFT_KEY = "forma-checkout-draft";
 
 export default function PaymentPage() {
   const router = useRouter();
-  const { items, isLoaded, refreshCart } = useCart();
+  const { items, isLoaded, isRefreshing, refreshCart } = useCart();
   const [country, setCountry] = useState<CountryCode>("IN");
   const [processing, setProcessing] = useState(false);
   const [draftLoaded, setDraftLoaded] = useState(false);
@@ -48,6 +48,12 @@ export default function PaymentPage() {
   const [quote, setQuote] = useState<CheckoutQuote | null>(null);
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [checkoutReady, setCheckoutReady] = useState(false);
+
+  useEffect(() => {
+    if (isLoaded) {
+      void refreshCart();
+    }
+  }, [isLoaded, refreshCart]);
 
   useEffect(() => {
     try {
@@ -207,7 +213,7 @@ export default function PaymentPage() {
     }
   };
 
-  if (!isLoaded || !draftLoaded || (draft?.addressId && !quote && !quoteError)) {
+  if (!isLoaded || isRefreshing || !draftLoaded || (draft?.addressId && !quote && !quoteError)) {
     return (
       <>
         <Navbar />
