@@ -104,6 +104,7 @@ interface CartContextValue {
   decrementItem: (key: string) => Promise<void>;
   updateQuantity: (key: string, quantity: number) => Promise<void>;
   clearCart: () => Promise<void>;
+  refreshCart: () => Promise<void>;
   isLoaded: boolean;
   isSyncing: boolean;
   error: string | null;
@@ -696,6 +697,7 @@ export function CartProvider({
       decrementItem,
       updateQuantity,
       clearCart,
+      refreshCart,
       isLoaded,
       isSyncing,
       error,
