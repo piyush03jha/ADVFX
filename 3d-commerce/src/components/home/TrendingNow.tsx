@@ -28,7 +28,11 @@ export function TrendingNow() {
         return (await response.json()) as CatalogProduct[];
       })
       .then((data) => {
-        if (!cancelled) setProducts(mapCatalogProducts(data).filter((product) => product.badge || product.discount).slice(0, 5));
+        if (!cancelled) setProducts(
+          mapCatalogProducts(data)
+            .filter((product) => product.isTrending)
+            .slice(0, 5),
+        );
       })
       .catch(() => { if (!cancelled) setProducts([]); });
     return () => { cancelled = true; };
