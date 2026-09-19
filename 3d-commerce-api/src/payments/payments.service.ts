@@ -19,6 +19,7 @@ type PayableOrder = Prisma.OrderGetPayload<{ include: { payment: true } }> & {
 };
 
 type WebhookPayload = {
+  event?: unknown;
   payload?: {
     payment?: { entity?: Record<string, unknown> };
     order?: { entity?: Record<string, unknown> };
@@ -254,7 +255,7 @@ export class PaymentsService {
     };
   }
 
-  async handleWebhook(rawBody: string, signature: string, event: string) {
+  async handleWebhook(rawBody: string, signature: string) {
     if (!this.razorpay.verifyWebhookSignature(rawBody, signature)) {
       throw new BadRequestException('Invalid Razorpay webhook signature');
     }
@@ -265,6 +266,8 @@ export class PaymentsService {
     } catch {
       throw new BadRequestException('Invalid webhook payload');
     }
+
+    const event = typeof payload.event === 'string' ? payload.event : '';
 
     switch (event) {
       case 'payment.captured': {
