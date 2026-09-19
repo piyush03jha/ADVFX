@@ -15,6 +15,9 @@ export class CartService {
   }
 
   async addItem(userId: string, productId: string, quantity: number) {
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 99) {
+      throw new BadRequestException('Quantity must be an integer between 1 and 99');
+    }
     const product = await this.prisma.product.findFirst({
       where: { id: productId, status: 'ACTIVE' },
       include: { inventory: true },
@@ -45,6 +48,9 @@ export class CartService {
   }
 
   async updateItem(userId: string, productId: string, quantity: number) {
+    if (!Number.isInteger(quantity) || quantity < 0 || quantity > 99) {
+      throw new BadRequestException('Quantity must be an integer between 0 and 99');
+    }
     const cart = await this.getOrCreate(userId);
     const item = await this.prisma.cartItem.findUnique({
       where: { cartId_productId: { cartId: cart.id, productId } },
