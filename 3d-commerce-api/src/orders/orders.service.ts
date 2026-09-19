@@ -85,6 +85,15 @@ export class OrdersService {
           appliedCouponCode: quote.promotion?.code ?? null,
           shippingAddress: { connect: { id: address.id } },
           items: { create: orderItems },
+          payment: {
+            create: {
+              provider: 'RAZORPAY',
+              status: 'PENDING',
+              amountMinor: quote.summary.totalMinor,
+              currency: quote.currency,
+            },
+          },
+          shipment: { create: { status: 'PENDING' } },
         },
         include: { items: true, shippingAddress: true },
       });
