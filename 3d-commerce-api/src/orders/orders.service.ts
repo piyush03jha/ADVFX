@@ -169,11 +169,17 @@ export class OrdersService {
       for (const item of cart.items) {
         const inventory = item.product.inventory;
         if (!inventory || !inventory.trackStock || inventory.allowBackorder) continue;
-        const updated = await tx.productInventory.updateMany({
-          where: { productId: item.product.id, stock: { gte: inventory.reserved + item.quantity } },
-          data: { reserved: { increment: item.quantity } },
-        });
-        if (updated.count !== 1) throw new BadRequestException(`Stock changed for "${item.product.name}"; please try again`);
+        const updated = await tx.$executeRaw(
+          Prisma.sql`
+            UPDATE "ProductInventory"
+            SET "reserved" = "reserved" + ${item.quantity}
+            WHERE "id" = ${inventory.id}
+              AND "trackStock" = true
+              AND "allowBackorder" = false
+              AND ("stock" - "reserved") >= ${item.quantity}
+          `,
+        );
+        if (Number(updated) !== 1) throw new BadRequestException(`Stock changed for "${item.product.name}"; please try again`);
         await tx.inventoryReservation.create({
           data: { productId: item.product.id, productInventoryId: inventory.id, orderId: order.id, quantity: item.quantity, status: 'ACTIVE', expiresAt },
         });
