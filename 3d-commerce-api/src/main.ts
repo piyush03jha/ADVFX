@@ -25,10 +25,7 @@ async function bootstrap() {
     AppModule,
     new FastifyAdapter({
       logger: env.nodeEnv !== "test",
-      trustProxy:
-        process.env.TRUST_PROXY === "true"
-          ? true
-          : process.env.TRUST_PROXY ?? false,
+      trustProxy: process.env.TRUST_PROXY === "true",
     }),
     { rawBody: true },
   );
@@ -53,8 +50,10 @@ async function bootstrap() {
     throw new Error("API_RATE_LIMIT_PER_MINUTE must be a positive number");
   }
 
-  if (env.nodeEnv === "production") {
-    app.getHttpAdapter().getInstance().log.warn(RATE_LIMIT_PRODUCTION_WARNING);
+  if (env.nodeEnv === "production" && process.env.TRUST_PROXY !== "true") {
+    app.getHttpAdapter().getInstance().log.warn(
+      "TRUST_PROXY is disabled. Configure it when the API runs behind a trusted reverse proxy.",
+    );
   }
 
   await app.register(multipart, {
@@ -64,15 +63,17 @@ async function bootstrap() {
     },
   });
 
+  const corsOrigins = process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(",").map((value) => value.trim()).filter(Boolean)
+    : [];
+
   app.enableCors({
-    origin: process.env.CORS_ORIGINS
-      ? process.env.CORS_ORIGINS
-          .split(",")
-          .map((value) => value.trim())
-          .filter(Boolean)
-      : env.nodeEnv === "production"
-        ? false
-        : true,
+    origin:
+      corsOrigins.length > 0
+        ? corsOrigins
+        : env.nodeEnv === "development"
+          ? true
+          : false,
     credentials: true,
   });
 
