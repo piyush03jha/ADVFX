@@ -324,22 +324,6 @@ export class PaymentsService {
             },
           });
 
-          const order = await tx.order.findUnique({
-            where: { id: payment.orderId },
-            select: { status: true },
-          });
-
-          if (order?.status === OrderStatus.PENDING_PAYMENT) {
-            await this.releaseReservationsInTransaction(
-              tx,
-              payment.orderId,
-            );
-
-            await tx.order.update({
-              where: { id: payment.orderId },
-              data: { status: OrderStatus.CANCELLED },
-            });
-          }
         });
         break;
       }
