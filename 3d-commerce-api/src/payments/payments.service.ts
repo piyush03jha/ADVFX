@@ -14,6 +14,10 @@ import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { RazorpayService } from './razorpay.service';
 
+type PayableOrder = Prisma.OrderGetPayload<{ include: { payment: true } }> & {
+  payment: NonNullable<Prisma.OrderGetPayload<{ include: { payment: true } }>['payment']>;
+};
+
 type WebhookPayload = {
   payload?: {
     payment?: { entity?: Record<string, unknown> };
@@ -552,7 +556,7 @@ export class PaymentsService {
     }
   }
 
-  private async getPayableOrder(userId: string, orderId: string) {
+  private async getPayableOrder(userId: string, orderId: string): Promise<PayableOrder> {
     const order = await this.prisma.order.findFirst({
       where: { id: orderId, userId },
       include: { payment: true },
@@ -580,7 +584,7 @@ export class PaymentsService {
       );
     }
 
-    return order;
+    return order as PayableOrder;
   }
 
   private formatRazorpayOrder(order: {
