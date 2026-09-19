@@ -315,15 +315,12 @@ export class PaymentsService {
 
         if (!payment || payment.status === PaymentStatus.CAPTURED) break;
 
-        await this.prisma.$transaction(async (tx) => {
-          await tx.payment.update({
-            where: { id: payment.id },
-            data: {
-              providerPaymentId: paymentId ?? payment.providerPaymentId,
-              status: PaymentStatus.FAILED,
-            },
-          });
-
+        await this.prisma.payment.update({
+          where: { id: payment.id },
+          data: {
+            providerPaymentId: paymentId ?? payment.providerPaymentId,
+            status: PaymentStatus.FAILED,
+          },
         });
         break;
       }
