@@ -1,13 +1,9 @@
 "use client";
 
-import { ChangeEvent, DragEvent, useRef, useState } from "react";
+import { ChangeEvent, DragEvent, ReactNode, useRef, useState } from "react";
 import { IconPhoto, IconX } from "@tabler/icons-react";
 
-const IMAGE_TYPES = ["image/jpeg", "image/png"] as const;
-
-function isReferenceImage(file: File) {
-  return IMAGE_TYPES.includes(file.type as (typeof IMAGE_TYPES)[number]);
-}
+const IMAGE_TYPES = ["image/jpeg", "image/png"];
 
 export function CustomUploadZone({
   files,
@@ -20,11 +16,11 @@ export function CustomUploadZone({
   error: string;
   onErrorChange: (error: string) => void;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
 
   function acceptFiles(incoming: File[]) {
-    const accepted = incoming.filter(isReferenceImage);
+    const accepted = incoming.filter((file) => IMAGE_TYPES.includes(file.type));
     onErrorChange(
       accepted.length !== incoming.length
         ? "Only JPG and PNG files are accepted."
@@ -47,7 +43,7 @@ export function CustomUploadZone({
   return (
     <div>
       <input
-        ref={inputRef}
+        ref={photoInputRef}
         type="file"
         multiple
         accept="image/jpeg,image/png"
@@ -62,15 +58,16 @@ export function CustomUploadZone({
         }}
         onDragLeave={() => setDragActive(false)}
         onDrop={handleDrop}
-        className={`rounded-[24px] border border-dashed p-3 transition ${
-          dragActive
+        className={
+          "rounded-[24px] border border-dashed p-3 transition " +
+          (dragActive
             ? "border-primary/70 bg-primary/[0.05]"
-            : "border-border bg-background/25"
-        }`}
+            : "border-border bg-background/25")
+        }
       >
         <button
           type="button"
-          onClick={() => inputRef.current?.click()}
+          onClick={() => photoInputRef.current?.click()}
           className="group flex min-h-[150px] w-full flex-col justify-between rounded-2xl border border-border bg-surface p-5 text-left transition duration-300 hover:border-primary/55 hover:bg-primary/[0.035] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
         >
           <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-surface text-primary transition group-hover:scale-105">
@@ -79,7 +76,7 @@ export function CustomUploadZone({
           <div>
             <p className="text-sm font-medium">Upload reference photos</p>
             <p className="mt-1 text-[11px] leading-5 text-muted">
-              JPG or PNG · front · back · left · right
+              JPG or PNG · up to 10 references · 50 MB each
             </p>
           </div>
         </button>
@@ -94,16 +91,20 @@ export function CustomUploadZone({
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
           {files.map((file, index) => (
             <div
-              key={file.name + "-" + index}
+              key={`${file.name}-${index}`}
               className="flex items-center justify-between gap-2 rounded-xl border border-border bg-background/40 px-3 py-2.5"
             >
               <div className="flex min-w-0 items-center gap-2">
-                <IconPhoto size={15} className="shrink-0 text-primary" />
+                <span className="shrink-0 text-primary">
+                  <IconPhoto size={15} />
+                </span>
                 <span className="truncate text-xs text-muted">{file.name}</span>
               </div>
               <button
                 type="button"
-                onClick={() => onFilesChange(files.filter((_, i) => i !== index))}
+                onClick={() =>
+                  onFilesChange(files.filter((_, i) => i !== index))
+                }
                 aria-label={`Remove ${file.name}`}
                 className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted hover:bg-surface-elevated"
               >
@@ -114,5 +115,33 @@ export function CustomUploadZone({
         </div>
       )}
     </div>
+  );
+}
+
+function UploadTrigger({
+  title,
+  text,
+  icon,
+  onClick,
+}: {
+  title: string;
+  text: string;
+  icon: ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group flex min-h-[132px] flex-col justify-between rounded-2xl border border-border bg-surface p-4 text-left transition duration-300 hover:border-primary/55 hover:bg-primary/[0.035] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 sm:min-h-[150px] sm:p-5"
+    >
+      <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-surface text-primary transition group-hover:scale-105">
+        {icon}
+      </div>
+      <div>
+        <p className="text-sm font-medium">{title}</p>
+        <p className="mt-1 text-[11px] leading-5 text-muted">{text}</p>
+      </div>
+    </button>
   );
 }
