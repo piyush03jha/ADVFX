@@ -313,6 +313,7 @@ export function WishlistProvider({
   const [items, setItems] = useState<WishlistProduct[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [syncingIds, setSyncingIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
 
   const refreshWishlist = useCallback(async () => {
@@ -386,6 +387,7 @@ export function WishlistProvider({
         setItems([...items, normalized]);
       }
       setIsSyncing(true);
+      setSyncingIds((current) => new Set(current).add(normalized.id));
 
       try {
         const next = await addBackendWishlistItem(normalized.id);
@@ -398,6 +400,11 @@ export function WishlistProvider({
             : "Unable to add this product to your wishlist.",
         );
       } finally {
+        setSyncingIds((current) => {
+          const next = new Set(current);
+          next.delete(normalized.id);
+          return next;
+        });
         setIsSyncing(false);
       }
     },
@@ -420,6 +427,7 @@ export function WishlistProvider({
       const previous = items;
       setItems(items.filter((item) => item.id !== productId));
       setIsSyncing(true);
+      setSyncingIds((current) => new Set(current).add(productId));
 
       try {
         const next = await removeBackendWishlistItem(productId);
@@ -432,6 +440,11 @@ export function WishlistProvider({
             : "Unable to remove this product from your wishlist.",
         );
       } finally {
+        setSyncingIds((current) => {
+          const next = new Set(current);
+          next.delete(productId);
+          return next;
+        });
         setIsSyncing(false);
       }
     },
