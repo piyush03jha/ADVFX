@@ -11,9 +11,10 @@ import {
 import { PrismaService } from "../prisma/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { CreateCustomRequestDto } from "./dto/create-custom-request.dto";
+import { CustomPricingDto } from "./dto/custom-pricing.dto";
 
 type CustomPricingInput = Pick<
-  CreateCustomRequestDto,
+  CustomPricingDto,
   | "category"
   | "bodyType"
   | "headType"
