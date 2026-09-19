@@ -10,6 +10,7 @@ import { ProcessingJobsModule } from "./processing-jobs/processing-jobs.module";
 import { CategoriesModule } from "./categories/categories.module";
 import { CartModule } from "./cart/cart.module";
 import { OrdersModule } from "./orders/orders.module";
+import { PaymentsModule } from "./payments/payments.module";
 import { ShipmentsModule } from "./shipments/shipments.module";
 import { CustomBuildModule } from "./custom-build/custom-build.module";
 import { UsersModule } from "./users/users.module";
@@ -30,6 +31,7 @@ import { PricingModule } from "./pricing/pricing.module";
     ProcessingJobsModule,
     CartModule,
     OrdersModule,
+    PaymentsModule,
     ShipmentsModule,
     CustomBuildModule,
     NotificationsModule,
