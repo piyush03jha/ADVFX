@@ -173,7 +173,7 @@ export class PaymentsService {
       });
 
       if (claimed.count !== 1) {
-        return tx.order.findUniqueOrThrow({
+        const existingOrder = await tx.order.findUniqueOrThrow({
           where: { id: order.id },
           include: {
             items: true,
@@ -182,6 +182,12 @@ export class PaymentsService {
             shipment: true,
           },
         });
+
+        return {
+          order: existingOrder,
+          payment: existingOrder.payment,
+          captured: false,
+        };
       }
 
       const savedPayment = await tx.payment.findUniqueOrThrow({
@@ -201,12 +207,18 @@ export class PaymentsService {
         },
       });
 
-      return { ...updatedOrder, payment: savedPayment };
+      return {
+        order: updatedOrder,
+        payment: savedPayment,
+        captured: true,
+      };
     });
 
-    await this.incrementPromotionUsageAfterPayment(order.id);
+    if (updated.captured) {
+      await this.incrementPromotionUsageAfterPayment(order.id);
+    }
 
-    if (updated.userId) {
+    if (updated.order.userId && updated.captured) {
       await this.notifications.create(updated.userId, {
         type: NotificationType.ORDER_CONFIRMED,
         title: 'Payment confirmed',
@@ -217,12 +229,12 @@ export class PaymentsService {
     }
 
     return {
-      orderId: updated.id,
-      orderNumber: updated.orderNumber,
-      orderStatus: updated.status,
+      orderId: updated.order.id,
+      orderNumber: updated.order.orderNumber,
+      orderStatus: updated.order.status,
       payment: updated.payment,
-      totalMinor: updated.totalMinor,
-      currency: updated.currency,
+      totalMinor: updated.order.totalMinor,
+      currency: updated.order.currency,
     };
   }
 
