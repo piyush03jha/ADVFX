@@ -4,9 +4,9 @@ import {
   IconArrowUpRight,
   IconMapPin,
   IconPackage,
+  IconShoppingBag,
   IconTruck,
 } from "@tabler/icons-react";
-
 
 const stats = [
   { label: "Orders", value: "—", icon: IconPackage, href: "/account/orders" },
@@ -15,7 +15,6 @@ const stats = [
 ];
 
 export function AccountOverview() {
-
   return (
     <div className="space-y-6 sm:space-y-8">
       <section className="relative overflow-hidden rounded-3xl border border-white/[0.1] bg-[radial-gradient(circle_at_85%_15%,hsl(var(--primary)/0.18),transparent_34%),linear-gradient(135deg,hsl(var(--foreground)/0.07),hsl(var(--background)/0.02)_52%,hsl(var(--primary)/0.08))] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.18)] sm:p-7">
