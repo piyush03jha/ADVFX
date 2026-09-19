@@ -96,6 +96,26 @@ export class ProductsService {
     };
   }
 
+  async getLatestReviews(limit = 6) {
+    const reviews = await this.prisma.productReview.findMany({
+      where: { isPublished: true },
+      select: {
+        id: true,
+        rating: true,
+        title: true,
+        comment: true,
+        verifiedPurchase: true,
+        createdAt: true,
+        user: { select: { name: true } },
+        product: { select: { id: true, name: true, slug: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: Math.min(Math.max(limit, 1), 12),
+    });
+
+    return reviews;
+  }
+
   async getReviews(id: string) {
     await this.ensureActiveProduct(id);
 
