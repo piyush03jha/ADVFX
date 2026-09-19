@@ -34,6 +34,11 @@ export class ProductsController {
     return this.productsService.findHeroProducts();
   }
 
+  @Get('reviews/latest')
+  getLatestReviews() {
+    return this.productsService.getLatestReviews();
+  }
+
   @Post(':id/view')
   recordView(@Param('id') id: string) {
     return this.productsService.recordView(id);
