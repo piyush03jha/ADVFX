@@ -1,4 +1,4 @@
-const DEFAULT_BACKEND_API_URL = "http://localhost:3001";
+const DEFAULT_BACKEND_API_URL = "http://localhost:4000";
 
 export function getBackendApiUrl(path: string) {
   const baseUrl = process.env.BACKEND_API_URL ?? DEFAULT_BACKEND_API_URL;
