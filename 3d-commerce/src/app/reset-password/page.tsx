@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, Suspense, useMemo, useState } from "react";
 import {
   IconArrowLeft,
   IconArrowRight,
@@ -17,7 +17,7 @@ import {
 import { Navbar } from "@/components/layout/SiteNavbar";
 import { resetPassword } from "@/lib/auth-client";
 
-export default function ResetPasswordPage() {
+function ResetPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = useMemo(() => searchParams.get("token")?.trim() ?? "", [searchParams]);
@@ -100,3 +100,18 @@ export default function ResetPasswordPage() {
     </main>
   );
 }
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="flex min-h-screen items-center justify-center bg-background text-xs text-muted">
+          Loading password reset…
+        </main>
+      }
+    >
+      <ResetPasswordContent />
+    </Suspense>
+  );
+}
+
