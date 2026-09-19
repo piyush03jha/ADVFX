@@ -11,13 +11,28 @@ import { Button } from "@/components/ui/Button";
 import { useAddresses, type Address } from "@/context/AddressContext";
 import { getCheckoutQuote, type CheckoutQuote } from "@/lib/checkout-api";
 
-interface CheckoutFormProps { onCountryChange?: (country: CountryCode) => void; }
-interface FormState { email: string; phone: string; }
-export interface CheckoutDraft { email: string; phone: string; addressId: string; address: Address; country: CountryCode; }
+interface CheckoutFormProps {
+  onCountryChange?: (country: CountryCode) => void;
+}
+interface FormState {
+  email: string;
+  phone: string;
+}
+export interface CheckoutDraft {
+  email: string;
+  phone: string;
+  addressId: string;
+  address: Address;
+  country: CountryCode;
+  couponCode?: string;
+}
+
 const INITIAL_FORM: FormState = { email: "", phone: "" };
 const DRAFT_KEY = "forma-checkout-draft";
-const sectionClass = "relative overflow-hidden rounded-3xl border border-white/[0.1] bg-[linear-gradient(135deg,hsl(var(--foreground)/0.06),hsl(var(--background)/0.02)_55%,hsl(var(--primary)/0.07))] p-4 shadow-[0_20px_60px_rgba(0,0,0,0.14)] sm:p-6";
-const innerClass = "rounded-xl border border-white/[0.08] bg-[linear-gradient(135deg,hsl(var(--foreground)/0.04),hsl(var(--background)/0.015)_65%,hsl(var(--primary)/0.045))]";
+const sectionClass =
+  "relative overflow-hidden rounded-3xl border border-white/[0.1] bg-[linear-gradient(135deg,hsl(var(--foreground)/0.06),hsl(var(--background)/0.02)_55%,hsl(var(--primary)/0.07))] p-4 shadow-[0_20px_60px_rgba(0,0,0,0.14)] sm:p-6";
+const innerClass =
+  "rounded-xl border border-white/[0.08] bg-[linear-gradient(135deg,hsl(var(--foreground)/0.04),hsl(var(--background)/0.015)_65%,hsl(var(--primary)/0.045))]";
 
 export function CheckoutForm({ onCountryChange }: CheckoutFormProps) {
   const router = useRouter();
@@ -25,41 +40,93 @@ export function CheckoutForm({ onCountryChange }: CheckoutFormProps) {
   const [country, setCountry] = useState<CountryCode>("IN");
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(defaultAddressId);
+  const [couponCode, setCouponCode] = useState("");
   const [saving, setSaving] = useState(false);
   const [quote, setQuote] = useState<CheckoutQuote | null>(null);
   const [quoteError, setQuoteError] = useState<string | null>(null);
-  const selectedAddress = useMemo(() => addresses.find((address) => address.id === selectedAddressId) ?? null, [addresses, selectedAddressId]);
-  const selectedCountry = useMemo(() => COUNTRIES.find((item) => item.code === country) ?? COUNTRIES[0], [country]);
+
+  const selectedAddress = useMemo(
+    () => addresses.find((address) => address.id === selectedAddressId) ?? null,
+    [addresses, selectedAddressId],
+  );
+  const selectedCountry = useMemo(
+    () => COUNTRIES.find((item) => item.code === country) ?? COUNTRIES[0],
+    [country],
+  );
 
   useEffect(() => {
     if (!selectedAddressId) {
       setQuote(null);
       return;
     }
+
     let cancelled = false;
+    setQuote(null);
     setQuoteError(null);
-    void getCheckoutQuote(selectedAddressId).then((value) => {
-      if (!cancelled) setQuote(value);
-    }).catch((cause) => {
-      if (!cancelled) setQuoteError(cause instanceof Error ? cause.message : "Unable to calculate checkout.");
-    });
-    return () => { cancelled = true; };
-  }, [selectedAddressId]);
-  const update = (field: keyof FormState, value: string) => setForm((current) => ({ ...current, [field]: value }));
-  const handleCountry = (value: CountryCode) => { setCountry(value); onCountryChange?.(value); };
+
+    void getCheckoutQuote(selectedAddressId, couponCode.trim() || undefined)
+      .then((value) => {
+        if (!cancelled) setQuote(value);
+      })
+      .catch((cause) => {
+        if (!cancelled) {
+          setQuote(null);
+          setQuoteError(
+            cause instanceof Error
+              ? cause.message
+              : "Unable to calculate checkout.",
+          );
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [couponCode, selectedAddressId]);
+
+  const update = (field: keyof FormState, value: string) =>
+    setForm((current) => ({ ...current, [field]: value }));
+
+  const handleCountry = (value: CountryCode) => {
+    setCountry(value);
+    onCountryChange?.(value);
+  };
+
   const handleAddressChange = (address: Address | null) => {
     setSelectedAddressId(address?.id ?? null);
+
     if (address) {
-      const countryEntry = COUNTRIES.find((item) => item.name.toLowerCase() === address.country.toLowerCase());
-      if (countryEntry) { setCountry(countryEntry.code); onCountryChange?.(countryEntry.code); }
-      setForm((current) => ({ ...current, phone: current.phone || address.phone }));
+      const countryEntry = COUNTRIES.find(
+        (item) => item.name.toLowerCase() === address.country.toLowerCase(),
+      );
+
+      if (countryEntry) {
+        setCountry(countryEntry.code);
+        onCountryChange?.(countryEntry.code);
+      }
+
+      setForm((current) => ({
+        ...current,
+        phone: current.phone || address.phone,
+      }));
     }
   };
+
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
     if (!selectedAddress || !quote || quoteError) return;
+
     setSaving(true);
-    const draft: CheckoutDraft = { ...form, addressId: selectedAddress.id, address: selectedAddress, country };
+
+    const draft: CheckoutDraft = {
+      ...form,
+      addressId: selectedAddress.id,
+      address: selectedAddress,
+      country,
+      couponCode: couponCode.trim() || undefined,
+    };
+
     window.localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
     router.push("/payment");
   };
@@ -67,61 +134,301 @@ export function CheckoutForm({ onCountryChange }: CheckoutFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
       <section className={sectionClass}>
-        <SectionHeading number="01" title="Contact information" description="We'll use this for order confirmation and delivery updates." />
+        <SectionHeading
+          number="01"
+          title="Contact information"
+          description="We'll use this for order confirmation and delivery updates."
+        />
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          <Field label="Email address" icon={<IconMail size={15} />} type="email" value={form.email} onChange={(value) => update("email", value)} placeholder="you@example.com" required />
-          <Field label="Phone number" icon={<IconPhone size={15} />} type="tel" value={form.phone} onChange={(value) => update("phone", value)} placeholder="Your phone number" required />
+          <Field
+            label="Email address"
+            icon={<IconMail size={15} />}
+            type="email"
+            value={form.email}
+            onChange={(value) => update("email", value)}
+            placeholder="you@example.com"
+            required
+          />
+          <Field
+            label="Phone number"
+            icon={<IconPhone size={15} />}
+            type="tel"
+            value={form.phone}
+            onChange={(value) => update("phone", value)}
+            placeholder="Your phone number"
+            required
+          />
         </div>
       </section>
 
       <section className={sectionClass}>
-        <SectionHeading number="02" title="Delivery address" description={isLoaded && addresses.length > 0 ? "Choose where this order should be delivered. Your default address is selected automatically." : "Add a delivery address for this order."} />
-        <div className="mt-5"><SavedAddressSelector value={selectedAddressId} onChange={handleAddressChange} /></div>
+        <SectionHeading
+          number="02"
+          title="Delivery address"
+          description={
+            isLoaded && addresses.length > 0
+              ? "Choose where this order should be delivered. Your default address is selected automatically."
+              : "Add a delivery address for this order."
+          }
+        />
+        <div className="mt-5">
+          <SavedAddressSelector
+            value={selectedAddressId}
+            onChange={handleAddressChange}
+          />
+        </div>
+
         {selectedAddress && (
           <div className={`${innerClass} mt-4 flex items-start gap-3 p-3.5 sm:p-4`}>
             <IconCheck size={15} className="mt-0.5 shrink-0 text-primary" />
-            <p className="text-[11px] leading-5 text-muted">Delivering to <span className="text-foreground">{selectedAddress.city}, {selectedAddress.state}</span> · Currency: <span className="text-foreground">{selectedCountry.currency}</span></p>
+            <p className="text-[11px] leading-5 text-muted">
+              Delivering to{" "}
+              <span className="text-foreground">
+                {selectedAddress.city}, {selectedAddress.state}
+              </span>{" "}
+              · Currency:{" "}
+              <span className="text-foreground">{selectedCountry.currency}</span>
+            </p>
           </div>
         )}
-        {!selectedAddress && <div className="mt-4"><SelectField label="Country / region" value={country} onChange={(value) => handleCountry(value as CountryCode)} options={COUNTRIES.map((item) => ({ value: item.code, label: item.name }))} /></div>}
+
+        {!selectedAddress && (
+          <div className="mt-4">
+            <SelectField
+              label="Country / region"
+              value={country}
+              onChange={(value) => handleCountry(value as CountryCode)}
+              options={COUNTRIES.map((item) => ({
+                value: item.code,
+                label: item.name,
+              }))}
+            />
+          </div>
+        )}
       </section>
 
       <section className={sectionClass}>
-        <SectionHeading number="03" title="Review & payment" description="Review the selected delivery address before entering payment information." />
+        <SectionHeading
+          number="03"
+          title="Review & payment"
+          description="Review the selected delivery address and final server-calculated total before payment."
+        />
+
         {selectedAddress && (
           <div className={`${innerClass} mt-5 p-3.5 sm:p-4`}>
-            <p className="text-[9px] uppercase tracking-[0.15em] text-muted">Delivering to</p>
-            <p className="mt-1 text-xs font-medium text-foreground">{selectedAddress.fullName}</p>
-            <p className="mt-0.5 text-[10px] leading-4 text-muted">{selectedAddress.addressLine1}{selectedAddress.addressLine2 ? `, ${selectedAddress.addressLine2}` : ""}, {selectedAddress.city}, {selectedAddress.state} {selectedAddress.postalCode}</p>
-            <button type="button" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} className="mt-2 text-[9px] font-medium text-primary hover:text-primary-hover">Change address</button>
+            <p className="text-[9px] uppercase tracking-[0.15em] text-muted">
+              Delivering to
+            </p>
+            <p className="mt-1 text-xs font-medium text-foreground">
+              {selectedAddress.fullName}
+            </p>
+            <p className="mt-0.5 text-[10px] leading-4 text-muted">
+              {selectedAddress.addressLine1}
+              {selectedAddress.addressLine2
+                ? `, ${selectedAddress.addressLine2}`
+                : ""}
+              , {selectedAddress.city}, {selectedAddress.state}{" "}
+              {selectedAddress.postalCode}
+            </p>
+            <button
+              type="button"
+              onClick={() =>
+                window.scrollTo({ top: 0, behavior: "smooth" })
+              }
+              className="mt-2 text-[9px] font-medium text-primary hover:text-primary-hover"
+            >
+              Change address
+            </button>
           </div>
         )}
+
+        <div className="mt-5">
+          <label className="block">
+            <span className="mb-2 block text-[9px] font-medium uppercase tracking-[0.15em] text-muted">
+              Coupon code
+            </span>
+            <div className="flex gap-2">
+              <input
+                value={couponCode}
+                onChange={(event) => setCouponCode(event.target.value)}
+                placeholder="Optional"
+                className="h-11 min-w-0 flex-1 rounded-xl border border-white/[0.09] bg-background px-4 text-sm text-foreground outline-none focus:border-primary/60"
+              />
+              <span className="flex h-11 shrink-0 items-center rounded-xl border border-border px-3 text-[9px] uppercase tracking-[0.12em] text-muted">
+                Server checked
+              </span>
+            </div>
+          </label>
+        </div>
+
         {quoteError ? (
-          <div className="mt-4 rounded-xl border border-red-400/20 bg-red-400/[0.04] p-3 text-[10px] leading-4 text-red-300">{quoteError}</div>
+          <div className="mt-4 rounded-xl border border-red-400/20 bg-red-400/[0.04] p-3 text-[10px] leading-4 text-red-300">
+            {quoteError}
+          </div>
         ) : quote ? (
           <div className={`${innerClass} mt-4 grid grid-cols-2 gap-3 p-3.5 text-[10px]`}>
-            <div><p className="text-muted">Subtotal</p><p className="mt-1 text-foreground">{new Intl.NumberFormat("en-IN",{style:"currency",currency:quote.currency,maximumFractionDigits:2}).format(quote.summary.subtotalMinor/100)}</p></div>
-            <div><p className="text-muted">Total</p><p className="mt-1 font-medium text-primary">{new Intl.NumberFormat("en-IN",{style:"currency",currency:quote.currency,maximumFractionDigits:2}).format(quote.summary.totalMinor/100)}</p></div>
+            <div>
+              <p className="text-muted">Subtotal</p>
+              <p className="mt-1 text-foreground">
+                {new Intl.NumberFormat("en-IN", {
+                  style: "currency",
+                  currency: quote.currency,
+                  maximumFractionDigits: 2,
+                }).format(quote.summary.subtotalMinor / 100)}
+              </p>
+            </div>
+            <div>
+              <p className="text-muted">Total</p>
+              <p className="mt-1 font-medium text-primary">
+                {new Intl.NumberFormat("en-IN", {
+                  style: "currency",
+                  currency: quote.currency,
+                  maximumFractionDigits: 2,
+                }).format(quote.summary.totalMinor / 100)}
+              </p>
+            </div>
           </div>
         ) : null}
+
         <div className={`${innerClass} mt-5 flex items-start gap-3 p-3.5 sm:p-4`}>
           <IconCheck size={16} className="mt-0.5 shrink-0 text-primary" />
-          <div><p className="text-xs font-medium text-foreground">Your payment is protected</p><p className="mt-1 text-[11px] leading-5 text-muted">You'll review the final amount and choose a payment method on the secure payment step.</p></div>
+          <div>
+            <p className="text-xs font-medium text-foreground">
+              Your payment is protected
+            </p>
+            <p className="mt-1 text-[11px] leading-5 text-muted">
+              You'll review the final amount and choose a payment method on the secure payment step.
+            </p>
+          </div>
         </div>
-        <Button type="submit" size="lg" disabled={saving || !selectedAddress || !isLoaded || !quote || Boolean(quoteError)} className="mt-4 w-full">{saving ? "Opening payment…" : selectedAddress ? "Continue to payment" : "Select a delivery address"}</Button>
+
+        <Button
+          type="submit"
+          size="lg"
+          disabled={
+            saving ||
+            !selectedAddress ||
+            !isLoaded ||
+            !quote ||
+            Boolean(quoteError)
+          }
+          className="mt-4 w-full"
+        >
+          {saving
+            ? "Opening payment…"
+            : selectedAddress
+              ? "Continue to payment"
+              : "Select a delivery address"}
+        </Button>
       </section>
     </form>
   );
 }
 
-function SectionHeading({ number, title, description }: { number: string; title: string; description: string }) {
-  return <div className="flex gap-3.5"><span className="pt-0.5 font-mono text-[10px] tracking-[0.15em] text-primary">{number}</span><div className="min-w-0"><h2 className="text-base font-medium tracking-[-0.02em] text-foreground sm:text-xl">{title}</h2><p className="mt-1.5 max-w-xl text-xs leading-5 text-muted">{description}</p></div></div>;
+function SectionHeading({
+  number,
+  title,
+  description,
+}: {
+  number: string;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="flex gap-3.5">
+      <span className="pt-0.5 font-mono text-[10px] tracking-[0.15em] text-primary">
+        {number}
+      </span>
+      <div className="min-w-0">
+        <h2 className="text-base font-medium tracking-[-0.02em] text-foreground sm:text-xl">
+          {title}
+        </h2>
+        <p className="mt-1.5 max-w-xl text-xs leading-5 text-muted">
+          {description}
+        </p>
+      </div>
+    </div>
+  );
 }
 
-function Field({ label, icon, type = "text", value, onChange, placeholder, required = false }: { label: string; icon?: React.ReactNode; type?: string; value: string; onChange: (value: string) => void; placeholder?: string; required?: boolean }) {
-  return <label className="block min-w-0"><span className="mb-2 block text-[9px] font-medium uppercase tracking-[0.16em] text-muted">{label}</span><span className="relative block">{icon && <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted">{icon}</span>}<input type={type} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} required={required} className={`h-11 w-full min-w-0 rounded-xl border border-white/[0.09] bg-[linear-gradient(135deg,hsl(var(--foreground)/0.04),hsl(var(--background)/0.02))] px-4 text-sm text-foreground outline-none transition-colors placeholder:text-muted/50 focus:border-primary/60 ${icon ? "pl-11" : ""}`} /></span></label>;
+function Field({
+  label,
+  icon,
+  type = "text",
+  value,
+  onChange,
+  placeholder,
+  required = false,
+}: {
+  label: string;
+  icon?: React.ReactNode;
+  type?: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  required?: boolean;
+}) {
+  return (
+    <label className="block min-w-0">
+      <span className="mb-2 block text-[9px] font-medium uppercase tracking-[0.16em] text-muted">
+        {label}
+      </span>
+      <span className="relative block">
+        {icon && (
+          <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted">
+            {icon}
+          </span>
+        )}
+        <input
+          type={type}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={placeholder}
+          required={required}
+          className={`h-11 w-full min-w-0 rounded-xl border border-white/[0.09] bg-[linear-gradient(135deg,hsl(var(--foreground)/0.04),hsl(var(--background)/0.02))] px-4 text-sm text-foreground outline-none transition-colors placeholder:text-muted/50 focus:border-primary/60 ${icon ? "pl-11" : ""}`}
+        />
+      </span>
+    </label>
+  );
 }
 
-function SelectField({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: Array<{ value: string; label: string }> }) {
-  return <label className="block min-w-0"><span className="mb-2 block text-[9px] font-medium uppercase tracking-[0.16em] text-muted">{label}</span><span className="relative block"><select value={value} onChange={(event) => onChange(event.target.value)} className="h-11 w-full appearance-none rounded-xl border border-white/[0.09] bg-[linear-gradient(135deg,hsl(var(--foreground)/0.04),hsl(var(--background)/0.02))] px-4 pr-10 text-sm text-foreground outline-none transition-colors focus:border-primary/60">{options.map((option) => <option key={option.value} value={option.value} className="bg-[#111113] text-white">{option.label}</option>)}</select><IconChevronDown size={16} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-muted" /></span></label>;
+function SelectField({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: Array<{ value: string; label: string }>;
+}) {
+  return (
+    <label className="block min-w-0">
+      <span className="mb-2 block text-[9px] font-medium uppercase tracking-[0.16em] text-muted">
+        {label}
+      </span>
+      <span className="relative block">
+        <select
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className="h-11 w-full appearance-none rounded-xl border border-white/[0.09] bg-[linear-gradient(135deg,hsl(var(--foreground)/0.04),hsl(var(--background)/0.02))] px-4 pr-10 text-sm text-foreground outline-none transition-colors focus:border-primary/60"
+        >
+          {options.map((option) => (
+            <option
+              key={option.value}
+              value={option.value}
+              className="bg-[#111113] text-white"
+            >
+              {option.label}
+            </option>
+          ))}
+        </select>
+        <IconChevronDown
+          size={16}
+          className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-muted"
+        />
+      </span>
+    </label>
+  );
 }
