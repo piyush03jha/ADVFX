@@ -1,0 +1,3 @@
+-- Historical migration retained for migration-history compatibility.
+-- The AdminCredential table is created by the subsequent
+-- 20260919141500_admin_credentials migration.
