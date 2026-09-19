@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   IconCheck,
@@ -15,7 +15,22 @@ import type { CreatedOrder } from "@/lib/checkout-api";
 import { OrderItems } from "@/components/account/OrderItems";
 import { OrderSummary } from "@/components/account/OrderSummary";
 
+
 export default function OrderConfirmationPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="flex min-h-screen items-center justify-center bg-background text-xs text-muted">
+          Loading order…
+        </main>
+      }
+    >
+      <OrderConfirmationContent />
+    </Suspense>
+  );
+}
+
+function OrderConfirmationContent() {
   const searchParams = useSearchParams();
   const orderId = searchParams.get("order");
   const [order, setOrder] = useState<CreatedOrder | null>(null);
