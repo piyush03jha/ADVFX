@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -30,7 +30,7 @@ export class CartService {
       });
       const nextQuantity = (existing?.quantity ?? 0) + quantity;
       if (nextQuantity > (product.inventory.stock ?? 0)) {
-        throw new Error('Requested quantity exceeds available stock');
+        throw new BadRequestException('Requested quantity exceeds available stock');
       }
     }
 
@@ -61,10 +61,14 @@ export class CartService {
       throw new Error('Requested quantity exceeds available stock');
     }
 
-    await this.prisma.cartItem.update({
-      where: { id: item.id },
-      data: { quantity },
-    });
+    if (quantity <= 0) {
+      await this.prisma.cartItem.delete({ where: { id: item.id } });
+    } else {
+      await this.prisma.cartItem.update({
+        where: { id: item.id },
+        data: { quantity },
+      });
+    }
 
     return this.getOrCreate(userId);
   }
