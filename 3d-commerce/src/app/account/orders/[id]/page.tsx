@@ -6,7 +6,6 @@ import { Navbar } from "@/components/layout/SiteNavbar";
 import { OrderItems } from "@/components/account/OrderItems";
 import { OrderSummary } from "@/components/account/OrderSummary";
 import { OrderTimeline } from "@/components/account/OrderTimeline";
-import { OrderTimeline } from "@/components/account/OrderTimeline";
 import { getBackendApiUrl } from "@/lib/backend-api";
 import { AUTH_COOKIE_NAME } from "@/lib/auth";
 
@@ -165,8 +164,6 @@ export default async function OrderTrackingPage({ params }: OrderPageProps) {
               </section>
 
               <section className="rounded-2xl border border-border bg-surface/55 p-4 sm:p-5">
-
-              <section className="rounded-2xl border border-border bg-surface/55 p-4 sm:p-5">
                 <div className="mb-3 flex items-center gap-2"><IconPackage size={15} className="text-muted" /><h2 className="text-xs font-medium uppercase tracking-[0.12em]">Your order</h2></div>
                 <OrderItems items={items} />
               </section>
@@ -190,8 +187,6 @@ export default async function OrderTrackingPage({ params }: OrderPageProps) {
                 <div className="flex items-center gap-2"><IconCreditCard size={14} className="text-primary" /><h2 className="text-[10px] font-medium uppercase tracking-[0.12em]">Payment</h2></div>
                 <div className="mt-3 space-y-2 text-[10px]"><div className="flex justify-between gap-4"><span className="text-muted">Provider</span><span>{order.payment?.provider ?? "—"}</span></div><div className="flex justify-between gap-4"><span className="text-muted">Status</span><span>{order.payment?.status ?? "PENDING"}</span></div></div>
               </section>
-
-              <section className="rounded-2xl border border-border bg-surface/55 p-4 sm:p-5">
 
               <div className="grid gap-2">
                 <Link href="/account/orders" className="flex min-h-11 items-center justify-center rounded-xl bg-primary text-xs font-medium text-white">Back to orders</Link>
