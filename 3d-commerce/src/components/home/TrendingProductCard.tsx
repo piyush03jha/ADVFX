@@ -15,10 +15,10 @@ import { Rating } from "@/components/ui/Rating";
 import { Price } from "@/components/ui/Price";
 import { WishlistButton } from "@/components/ui/WishlistButton";
 import { useCart } from "@/context/CartContext";
-import type { TrendingProduct } from "@/config/trending-products";
+import type { StorefrontProduct } from "@/lib/catalog-api";
 
 interface TrendingProductCardProps {
-  product: TrendingProduct;
+  product: StorefrontProduct;
 }
 
 export function TrendingProductCard({ product }: TrendingProductCardProps) {
