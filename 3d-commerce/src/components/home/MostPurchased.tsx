@@ -93,7 +93,7 @@ export function ProductCard({ product }: { product: StorefrontProduct }) {
   const [added, setAdded] = useState(false);
 
   const handleAddToCart = async () => {
-    await addItem(product, "medium", 1);
+    await addItem(product, null, 1);
     setAdded(true);
     window.setTimeout(() => setAdded(false), 1600);
   };
