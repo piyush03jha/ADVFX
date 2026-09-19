@@ -206,6 +206,7 @@ export class PaymentsService {
       });
 
       await this.consumeReservationsInTransaction(tx, order.id);
+      await this.recordPurchaseMetricsInTransaction(tx, order.id);
 
       const updatedOrder = await tx.order.update({
         where: { id: order.id },
@@ -407,6 +408,7 @@ export class PaymentsService {
       }
 
       await this.consumeReservationsInTransaction(tx, order.id);
+      await this.recordPurchaseMetricsInTransaction(tx, order.id);
 
       const updatedOrder = await tx.order.update({
         where: { id: order.id },
@@ -419,6 +421,31 @@ export class PaymentsService {
     if (!updated?.order || !('id' in updated.order)) return;
 
     await this.incrementPromotionUsageAfterPayment(updated.order.id);
+  }
+
+  private async recordPurchaseMetricsInTransaction(
+    tx: Prisma.TransactionClient,
+    orderId: string,
+  ) {
+    const items = await tx.orderItem.findMany({
+      where: { orderId },
+      select: { productId: true, quantity: true },
+    });
+
+    for (const item of items) {
+      await tx.productMetrics.upsert({
+        where: { productId: item.productId },
+        create: {
+          productId: item.productId,
+          purchaseCount: 1,
+          unitsSold: item.quantity,
+        },
+        update: {
+          purchaseCount: { increment: 1 },
+          unitsSold: { increment: item.quantity },
+        },
+      });
+    }
   }
 
   private async consumeReservationsInTransaction(
