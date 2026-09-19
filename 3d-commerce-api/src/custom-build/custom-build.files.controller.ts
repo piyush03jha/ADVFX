@@ -9,6 +9,8 @@ import {
 import type { FastifyRequest } from 'fastify';
 import { CustomerAuthGuard } from '../auth/guards/customer-auth.guard';
 import { PrismaService } from '../prisma/prisma.service';
+import { FileContentValidationService } from '../product-files/file-content-validation.service';
+import { ProductFileFormat } from '@prisma/client';
 import { StorageService } from '../storage/storage.service';
 
 const REFERENCE_MIME_TYPES = new Set(['image/jpeg', 'image/png']);
@@ -18,6 +20,7 @@ export class CustomBuildFilesController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
+    private readonly contentValidator: FileContentValidationService,
   ) {}
 
   @UseGuards(CustomerAuthGuard)
@@ -37,10 +40,13 @@ export class CustomBuildFilesController {
 
     const uploaded = await this.readMultipart(req, 50 * 1024 * 1024);
     if (!REFERENCE_MIME_TYPES.has(uploaded.mimetype)) {
-      throw new BadRequestException(
-        'Only JPG and PNG references are supported',
-      );
+      throw new BadRequestException('Only JPG and PNG references are supported');
     }
+
+    const extension = uploaded.filename.toLowerCase().match(/\.([a-z0-9]+)$/)?.[1];
+    const format = extension === 'png' ? ProductFileFormat.PNG : extension === 'jpg' || extension === 'jpeg' ? ProductFileFormat.JPEG : null;
+    if (!format) throw new BadRequestException('Reference filename must end in .jpg, .jpeg, or .png');
+    await this.contentValidator.validate(format, uploaded.buffer);
 
     const stored = await this.storage.saveCustomRequestFile(
       requestId,
@@ -82,6 +88,10 @@ export class CustomBuildFilesController {
 
     const uploaded = await multipart();
     if (!uploaded) throw new BadRequestException('File is required');
+
+    if (uploaded.fieldname !== 'file') {
+      throw new BadRequestException('Multipart field must be named file');
+    }
 
     const buffer = await uploaded.toBuffer();
     if (!buffer.length) throw new BadRequestException('Uploaded file is empty');
