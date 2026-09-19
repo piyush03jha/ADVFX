@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, DragEvent, ReactNode, useRef, useState } from "react";
+import { ChangeEvent, DragEvent, useRef, useState } from "react";
 import { IconPhoto, IconX } from "@tabler/icons-react";
 
 const IMAGE_TYPES = ["image/jpeg", "image/png"];
