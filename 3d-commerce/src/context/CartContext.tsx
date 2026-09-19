@@ -98,8 +98,8 @@ interface CartContextValue {
     product: Product | CartProduct,
     variantOrSize?: StorefrontVariant | CartSize | null,
     quantity?: number,
-  ) => Promise<void>;
-  removeItem: (key: string) => Promise<void>;
+  ) => Promise<boolean>;
+  removeItem: (key: string) => Promise<boolean>;
   incrementItem: (key: string) => Promise<void>;
   decrementItem: (key: string) => Promise<void>;
   updateQuantity: (key: string, quantity: number) => Promise<void>;
@@ -438,11 +438,12 @@ export function CartProvider({
               ? cause.message
               : "Unable to add this item.",
           );
+          return false;
         } finally {
           setIsSyncing(false);
         }
 
-        return;
+        return true;
       }
 
       const next = [...getLocalGuestCart()];
@@ -496,6 +497,7 @@ export function CartProvider({
           quantity: item.quantity,
         })),
       );
+      return true;
     },
     [applyBackendCart, isAuthenticated],
   );
@@ -552,11 +554,12 @@ export function CartProvider({
               ? cause.message
               : "Unable to remove this item.",
           );
+          return false;
         } finally {
           setIsSyncing(false);
         }
 
-        return;
+        return true;
       }
 
       const next = getLocalGuestCart().filter(
@@ -576,6 +579,7 @@ export function CartProvider({
           quantity: item.quantity,
         })),
       );
+      return true;
     },
     [applyBackendCart, isAuthenticated],
   );
