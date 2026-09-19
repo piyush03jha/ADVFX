@@ -9,14 +9,14 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { CreateCustomRequestDto } from './dto/create-custom-request.dto';
 
 const TRANSITIONS: Record<CustomRequestStatus, CustomRequestStatus[]> = {
-  SUBMITTED: ['UNDER_REVIEW', 'CANCELLED'],
-  UNDER_REVIEW: ['IN_PRODUCTION', 'CANCELLED'],
-  IN_PRODUCTION: ['ORDERABLE', 'CANCELLED'],
+  SUBMITTED: ["UNDER_REVIEW", "CANCELLED"],
+  UNDER_REVIEW: ["IN_PRODUCTION", "CANCELLED"],
+  IN_PRODUCTION: ["ORDERABLE", "CANCELLED"],
+  PREVIEW_READY: ["CANCELLED"],
+  CUSTOMER_REVIEW: ["CANCELLED"],
+  REVISION_REQUESTED: ["CANCELLED"],
+  APPROVED: ["CANCELLED"],
   ORDERABLE: [],
-  PREVIEW_READY: [],
-  CUSTOMER_REVIEW: [],
-  REVISION_REQUESTED: [],
-  APPROVED: [],
   CANCELLED: [],
 };
 
@@ -173,20 +173,15 @@ export class CustomBuildService {
     > = {
       UNDER_REVIEW: {
         type: NotificationType.CUSTOM_REQUEST_SUBMITTED,
-        title: 'Custom build is under review',
-        messagePrefix: 'We are reviewing your custom build',
+        title: "Custom build is under review",
+        messagePrefix: "We are reviewing your custom build",
       },
       IN_PRODUCTION: {
         type: NotificationType.CUSTOM_REQUEST_SUBMITTED,
-        title: 'Custom build is in production',
-        messagePrefix: 'Your custom build is now in production',
-      },
-      ORDERABLE: {
-        type: NotificationType.CUSTOM_ORDERABLE,
-        title: 'Custom build is ready to order',
-        messagePrefix: 'Your custom build is ready to order',
+        title: "Custom build is in production",
+        messagePrefix: "Your custom build is now in production",
       },
     };
     return events[status];
   }
-}
+}}
