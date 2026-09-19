@@ -150,115 +150,90 @@ export class CustomBuildService {
 
   async checkout(
     userId: string,
-    input: CustomPricingInput & {
-      shippingAddressId: string;
-      idempotencyKey?: string;
-    },
+    requestId: string,
+    shippingAddressId: string,
+    idempotencyKey?: string,
   ) {
+    const request = await this.prisma.customRequest.findFirst({
+      where: { id: requestId, userId },
+    });
+    if (!request) throw new NotFoundException("Custom request not found");
+    if (!request.category || !request.sizeCm || !request.priceMinor || !request.priceCurrency) {
+      throw new BadRequestException("Custom request is missing a valid price configuration");
+    }
+
     const address = await this.prisma.address.findFirst({
-      where: { id: input.shippingAddressId, userId },
+      where: { id: shippingAddressId, userId },
     });
     if (!address) throw new NotFoundException("Shipping address not found");
 
-    const priceMinor = this.calculatePrice(input) * 100;
-    const idempotencyKey = input.idempotencyKey?.trim() || undefined;
-
-    const existing = idempotencyKey
-      ? await this.prisma.order.findFirst({
-          where: { userId, idempotencyKey },
-          include: {
-            payment: true,
-            shipment: true,
-            shippingAddress: true,
-            items: true,
-            customRequest: true,
-          },
-        })
-      : null;
-
-    if (existing) {
-      return {
-        requestId: existing.customRequest?.id ?? null,
-        order: existing,
-      };
+    if (request.status === "CANCELLED") {
+      throw new BadRequestException("Cancelled custom requests cannot be purchased");
     }
 
-    const result = await this.prisma.$transaction(async (tx) => {
-      const customRequest = await tx.customRequest.create({
-        data: {
-          userId,
-          title: `Custom ${input.category}`,
-          requirements: [
-            `Category: ${input.category}`,
-            input.bodyType ? `Body type: ${input.bodyType}` : "",
-            input.headType ? `Head type: ${input.headType}` : "",
-            input.subjectType ? `Subject type: ${input.subjectType}` : "",
-            input.personCount != null ? `People: ${input.personCount}` : "",
-            input.petCount != null ? `Pets: ${input.petCount}` : "",
-            `Size: ${input.sizeCm} cm`,
-          ].filter(Boolean).join("\n"),
-          dimensions: `${input.sizeCm} cm`,
-          category: input.category,
-          bodyType: input.bodyType ?? null,
-          headType: input.headType ?? null,
-          subjectType: input.subjectType ?? null,
-          personCount: input.personCount ?? null,
-          petCount: input.petCount ?? null,
-          sizeCm: input.sizeCm,
-          priceMinor: priceMinor,
-          priceCurrency: "INR",
-          pricedAt: new Date(),
-          referenceFileCount: 0,
-          status: "SUBMITTED",
-        },
-      });
+    const amountMinor = request.priceMinor;
+    const idempotency = idempotencyKey?.trim() || undefined;
 
-      const order = await tx.order.create({
-        data: {
-          orderNumber: `ADV-${new Date().getFullYear()}-${randomBytes(4).toString("hex").toUpperCase()}`,
-          idempotencyKey: idempotencyKey ?? null,
-          checkoutSource: "CUSTOM",
-          userId,
-          status: "PENDING_PAYMENT",
-          currency: "INR",
-          subtotalMinor: priceMinor,
-          discountMinor: 0,
-          shippingMinor: 0,
-          taxMinor: 0,
-          totalMinor: priceMinor,
-          shippingAddressId: address.id,
-          customRequest: { connect: { id: customRequest.id } },
-          payment: {
-            create: {
-              provider: "RAZORPAY",
-              status: "PENDING",
-              amountMinor: priceMinor,
-              currency: "INR",
-            },
-          },
-          shipment: { create: { status: "PENDING" } },
-        },
+    if (idempotency) {
+      const existing = await this.prisma.order.findFirst({
+        where: { userId, idempotencyKey: idempotency },
         include: {
           payment: true,
           shipment: true,
           shippingAddress: true,
-          items: true,
           customRequest: true,
         },
       });
+      if (existing) return { requestId: existing.customRequest?.id ?? requestId, order: existing };
+    }
 
-      return { customRequest, order };
+    const order = await this.prisma.order.create({
+      data: {
+        orderNumber: `ADV-${new Date().getFullYear()}-${randomBytes(4).toString("hex").toUpperCase()}`,
+        idempotencyKey: idempotency ?? null,
+        checkoutSource: "CUSTOM",
+        userId,
+        status: "PENDING_PAYMENT",
+        currency: request.priceCurrency,
+        subtotalMinor: amountMinor,
+        discountMinor: 0,
+        shippingMinor: 0,
+        taxMinor: 0,
+        totalMinor: amountMinor,
+        shippingAddressId: address.id,
+        customRequest: { connect: { id: request.id } },
+        payment: {
+          create: {
+            provider: "RAZORPAY",
+            status: "PENDING",
+            amountMinor,
+            currency: request.priceCurrency,
+          },
+        },
+        shipment: { create: { status: "PENDING" } },
+      },
+      include: {
+        payment: true,
+        shipment: true,
+        shippingAddress: true,
+        customRequest: true,
+      },
     });
 
-    await this.notifications.create(userId, {
-      type: NotificationType.CUSTOM_REQUEST_SUBMITTED,
-      title: "Custom build ready for payment",
-      message: `Your ${input.category} custom build is ready for secure payment.`,
-      entityType: "CUSTOM_REQUEST",
-      entityId: result.customRequest.id,
+    await this.prisma.customRequestQuote.upsert({
+      where: { customRequestId: request.id },
+      create: {
+        customRequestId: request.id,
+        currency: request.priceCurrency,
+        amountMinor,
+      },
+      update: {
+        currency: request.priceCurrency,
+        amountMinor,
+      },
     });
 
-    return result;
+    return { requestId: request.id, order };
   }
 
   async create(userId: string, dto: CreateCustomRequestDto) {
