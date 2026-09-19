@@ -535,19 +535,29 @@ export class AuthService {
   private async createPasswordResetToken(userId: string) {
     const token = randomBytes(32).toString('base64url');
 
-    await this.prisma.$executeRaw`
-      UPDATE "AuthPasswordResetToken"
-      SET "usedAt" = CURRENT_TIMESTAMP
-      WHERE "userId" = ${userId}
-        AND "usedAt" IS NULL
-    `;
+    // Use PostgreSQL's clock for creation and expiry so token lifetime is
+    // evaluated against the same clock used by resetCustomerPassword().
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`
+        UPDATE "AuthPasswordResetToken"
+        SET "usedAt" = CURRENT_TIMESTAMP
+        WHERE "userId" = ${userId}
+          AND "usedAt" IS NULL
+      `;
 
-    await this.prisma.$executeRaw`
-      INSERT INTO "AuthPasswordResetToken"
-        ("id", "userId", "tokenHash", "expiresAt", "createdAt")
-      VALUES
-        (${randomUUID()}, ${userId}, ${hashSessionToken(token)}, ${new Date(Date.now() + PASSWORD_RESET_TTL_MS)}, CURRENT_TIMESTAMP)
-    `;
+      await tx.$executeRaw`
+        INSERT INTO "AuthPasswordResetToken"
+          ("id", "userId", "tokenHash", "expiresAt", "createdAt")
+        VALUES
+          (
+            ${randomUUID()},
+            ${userId},
+            ${hashSessionToken(token)},
+            CURRENT_TIMESTAMP + INTERVAL '30 minutes',
+            CURRENT_TIMESTAMP
+          )
+      `;
+    });
 
     return token;
   }
