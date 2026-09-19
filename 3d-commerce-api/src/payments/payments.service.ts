@@ -399,6 +399,24 @@ export class PaymentsService {
 
           if (order?.status === OrderStatus.PENDING_PAYMENT) {
             await this.releaseReservationsInTransaction(tx, current.orderId);
+
+            const orderDetails = await tx.order.findUnique({
+              where: { id: current.orderId },
+              select: { promotionId: true },
+            });
+
+            if (orderDetails?.promotionId) {
+              await tx.$executeRaw(
+                Prisma.sql`
+                  UPDATE "Promotion"
+                  SET "usageCount" = GREATEST("usageCount" - 1, 0),
+                      "updatedAt" = CURRENT_TIMESTAMP
+                  WHERE "id" = ${orderDetails.promotionId}
+                    AND "usageCount" > 0
+                `,
+              );
+            }
+
             await tx.order.update({
               where: { id: current.orderId },
               data: { status: OrderStatus.CANCELLED },
