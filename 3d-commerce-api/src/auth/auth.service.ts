@@ -599,7 +599,7 @@ function scryptAsync(
   password: string | Buffer,
   salt: string | Buffer,
   keylen: number,
-  options: { N: number; r: number; p: number },
+  options: { N: number; r: number; p: number; maxmem?: number },
 ): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     scryptCallback(password, salt, keylen, options, (error, derivedKey) => {
@@ -615,6 +615,7 @@ async function hashPassword(password: string) {
     N: SCRYPT_N,
     r: SCRYPT_R,
     p: SCRYPT_P,
+    maxmem: 64 * 1024 * 1024,
   });
 
   return ['scrypt', SCRYPT_N, SCRYPT_R, SCRYPT_P, salt.toString('hex'), derivedKey.toString('hex')].join('$');
