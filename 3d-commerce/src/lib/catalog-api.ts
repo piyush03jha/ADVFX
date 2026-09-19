@@ -24,6 +24,8 @@ export interface CatalogPrice {
   amountMinor: number;
   compareAtMinor?: number | null;
   isActive: boolean;
+  startsAt?: string | null;
+  endsAt?: string | null;
 }
 
 export interface CatalogVariantPrice {
@@ -161,18 +163,24 @@ function activePrice(product: CatalogProduct): CatalogPrice | undefined {
     (!price.endsAt || new Date(price.endsAt).getTime() > now);
 
   return (
-    prices.find((price) =>
-      isCurrentlyActive(price as CatalogPrice & {
-        startsAt?: string | null;
-        endsAt?: string | null;
-      }) && price.currency === "INR",
+    prices.find(
+      (price) =>
+        price.currency === "INR" &&
+        isCurrentlyActive(
+          price as CatalogPrice & {
+            startsAt?: string | null;
+            endsAt?: string | null;
+          },
+        ),
     ) ??
-    prices.find((price) => isCurrentlyActive(price as CatalogPrice & {
-      startsAt?: string | null;
-      endsAt?: string | null;
-    }) && price.currency === "INR") ??
-    prices.find((price) => price.isActive && price.currency === "INR") ??
-    prices.find((price) => price.isActive) ??
+    prices.find(
+      (price) =>
+        price.currency === "INR" &&
+        price.isActive,
+    ) ??
+    prices.find(
+      (price) => price.isActive,
+    ) ??
     prices[0]
   );
 }
