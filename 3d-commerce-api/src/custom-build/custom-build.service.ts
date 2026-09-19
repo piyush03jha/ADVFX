@@ -6,8 +6,8 @@ import {
 import {
   CustomRequestStatus,
   NotificationType,
-  Prisma,
 } from "@prisma/client";
+import { randomBytes } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { CreateCustomRequestDto } from "./dto/create-custom-request.dto";
