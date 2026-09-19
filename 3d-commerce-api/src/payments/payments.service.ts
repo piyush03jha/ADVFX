@@ -153,10 +153,21 @@ export class PaymentsService {
       if (!payment) throw new NotFoundException('Payment not found');
 
       if (payment.status === PaymentStatus.CAPTURED) {
-        return tx.order.findUniqueOrThrow({
+        const existingOrder = await tx.order.findUniqueOrThrow({
           where: { id: order.id },
-          include: { items: true, shippingAddress: true, payment: true, shipment: true },
+          include: {
+            items: true,
+            shippingAddress: true,
+            payment: true,
+            shipment: true,
+          },
         });
+
+        return {
+          order: existingOrder,
+          payment: existingOrder.payment,
+          captured: false,
+        };
       }
 
       const claimed = await tx.payment.updateMany({
@@ -219,12 +230,12 @@ export class PaymentsService {
     }
 
     if (updated.order.userId && updated.captured) {
-      await this.notifications.create(updated.userId, {
+      await this.notifications.create(updated.order.userId, {
         type: NotificationType.ORDER_CONFIRMED,
         title: 'Payment confirmed',
-        message: `Order ${updated.orderNumber} has been paid and confirmed.`,
+        message: `Order ${updated.order.orderNumber} has been paid and confirmed.`,
         entityType: 'ORDER',
-        entityId: updated.id,
+        entityId: updated.order.id,
       });
     }
 
