@@ -34,7 +34,7 @@ const DRAFT_KEY = "forma-checkout-draft";
 
 export default function PaymentPage() {
   const router = useRouter();
-  const { items, isLoaded } = useCart();
+  const { items, isLoaded, refreshCart } = useCart();
   const [country, setCountry] = useState<CountryCode>("IN");
   const [processing, setProcessing] = useState(false);
   const [draftLoaded, setDraftLoaded] = useState(false);
@@ -134,6 +134,10 @@ export default function PaymentPage() {
         quotedTotalMinor: quote.summary.totalMinor,
         quotedCurrency: quote.currency,
       });
+
+      // Creating the server order consumes the cart. Reconcile the client
+      // immediately so a cancelled/failed payment cannot reuse stale items.
+      await refreshCart();
 
       const razorpayOrder: RazorpayOrder = await createRazorpayOrder(order.id);
 
