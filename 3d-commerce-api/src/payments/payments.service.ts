@@ -368,16 +368,6 @@ export class PaymentsService {
     });
 
     if (!updated?.order || !('id' in updated.order)) return;
-
-    try {
-      await this.orders.updateStatus(updated.order.id, OrderStatus.CONFIRMED);
-    } catch (error) {
-      const latest = await this.prisma.order.findUnique({
-        where: { id: updated.order.id },
-        select: { status: true },
-      });
-      if (latest?.status !== OrderStatus.CONFIRMED) throw error;
-    }
   }
 
   private async consumeReservationsInTransaction(
