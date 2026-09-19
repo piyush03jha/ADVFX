@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { IconCheck, IconChevronDown, IconStar } from "@tabler/icons-react";
 import {
   bodyOptions,
@@ -79,6 +80,7 @@ export function CustomForm({
   const [serverPrice, setServerPrice] = useState<number | null>(null);
   const [pricingError, setPricingError] = useState<string | null>(null);
   const [pricingLoading, setPricingLoading] = useState(false);
+  const router = useRouter();
 
   const selectedBody =
     bodyOptions.find((option) => option.id === body) ?? bodyOptions[1];
