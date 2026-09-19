@@ -2,7 +2,9 @@ export type CheckoutQuote = {
   currency: string;
   items: Array<{
     productId: string;
+    variantId: string | null;
     productName: string;
+    variantName: string | null;
     quantity: number;
     unitPriceMinor: number;
     lineTotalMinor: number;
