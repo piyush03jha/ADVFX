@@ -2,16 +2,66 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
-} from '@nestjs/common';
-import { CustomRequestStatus, NotificationType } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
-import { NotificationsService } from '../notifications/notifications.service';
-import { CreateCustomRequestDto } from './dto/create-custom-request.dto';
+} from "@nestjs/common";
+import {
+  CustomRequestStatus,
+  NotificationType,
+  Prisma,
+} from "@prisma/client";
+import { PrismaService } from "../prisma/prisma.service";
+import { NotificationsService } from "../notifications/notifications.service";
+import { CreateCustomRequestDto } from "./dto/create-custom-request.dto";
+
+type CustomPricingInput = Pick<
+  CreateCustomRequestDto,
+  | "category"
+  | "bodyType"
+  | "headType"
+  | "subjectType"
+  | "personCount"
+  | "petCount"
+  | "sizeCm"
+>;
+
+const CATEGORY_BASE: Record<string, number> = {
+  person: 0,
+  pet: 2999,
+  object: 2799,
+  vehicle: 3299,
+  character: 2999,
+  other: 2499,
+};
+
+const BODY_BASE: Record<string, number> = {
+  half: 2499,
+  full: 3499,
+};
+
+const HEAD_ADD: Record<string, number> = {
+  bobble: 500,
+  stationary: 0,
+};
+
+const SUBJECT_ADD: Record<string, number> = {
+  single: 0,
+  couple: 1800,
+  pet: 1200,
+  group: 3200,
+};
+
+const SIZE_MULTIPLIER: Record<number, number> = {
+  8: 0.75,
+  12: 0.9,
+  15: 1,
+  20: 1.35,
+  25: 1.75,
+  30: 2.15,
+};
 
 const TRANSITIONS: Record<CustomRequestStatus, CustomRequestStatus[]> = {
-  SUBMITTED: ["UNDER_REVIEW", "CANCELLED"],
-  UNDER_REVIEW: ["IN_PRODUCTION", "CANCELLED"],
-  IN_PRODUCTION: ["ORDERABLE", "CANCELLED"],
+  SUBMITTED: ["CANCELLED"],
+  UNDER_REVIEW: ["CANCELLED"],
+  IN_PRODUCTION: ["CANCELLED"],
   PREVIEW_READY: ["CANCELLED"],
   CUSTOMER_REVIEW: ["CANCELLED"],
   REVISION_REQUESTED: ["CANCELLED"],
@@ -27,33 +77,129 @@ export class CustomBuildService {
     private readonly notifications: NotificationsService,
   ) {}
 
+  calculatePrice(input: CustomPricingInput) {
+    const multiplier = SIZE_MULTIPLIER[input.sizeCm];
+    if (!multiplier) {
+      throw new BadRequestException("Unsupported custom size");
+    }
+
+    if (input.category === "person") {
+      if (!input.bodyType || !input.headType || !input.subjectType) {
+        throw new BadRequestException(
+          "Person custom builds require body type, head type and subject type",
+        );
+      }
+
+      if (input.subjectType === "couple") {
+        input.personCount = input.personCount ?? 2;
+      } else if (input.subjectType === "group") {
+        if ((input.personCount ?? 0) < 3) {
+          throw new BadRequestException(
+            "Family/group builds require at least 3 people",
+          );
+        }
+      } else if (input.subjectType === "single") {
+        input.personCount = 1;
+      } else if (input.subjectType === "pet") {
+        input.personCount = 1;
+        input.petCount = input.petCount ?? 1;
+      }
+
+      const base =
+        BODY_BASE[input.bodyType] +
+        HEAD_ADD[input.headType] +
+        SUBJECT_ADD[input.subjectType];
+
+      return Math.round(base * multiplier);
+    }
+
+    if (
+      (input.category === "pet" || input.category === "character") &&
+      !input.headType
+    ) {
+      throw new BadRequestException("This category requires a head type");
+    }
+
+    return Math.round(
+      (CATEGORY_BASE[input.category] +
+        (input.category === "pet" || input.category === "character"
+          ? HEAD_ADD[input.headType ?? "stationary"]
+          : 0)) *
+        multiplier,
+    );
+  }
+
+  async quote(input: CustomPricingInput) {
+    const priceMinor = this.calculatePrice({ ...input });
+
+    return {
+      currency: "INR",
+      amountMinor: priceMinor * 100,
+      priceMinor: priceMinor * 100,
+      breakdown: {
+        category: input.category,
+        bodyType: input.bodyType ?? null,
+        headType: input.headType ?? null,
+        subjectType: input.subjectType ?? null,
+        personCount: input.personCount ?? null,
+        petCount: input.petCount ?? null,
+        sizeCm: input.sizeCm,
+      },
+    };
+  }
+
   async create(userId: string, dto: CreateCustomRequestDto) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { id: true },
     });
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException("User not found");
+
+    const price = this.calculatePrice(dto);
+    const sizeLabel = `${dto.sizeCm} cm`;
+    const requirements = [
+      dto.requirements.trim(),
+      `Category: ${dto.category}`,
+      dto.bodyType ? `Body type: ${dto.bodyType}` : "",
+      dto.headType ? `Head type: ${dto.headType}` : "",
+      dto.subjectType ? `Subject type: ${dto.subjectType}` : "",
+      dto.personCount != null ? `People: ${dto.personCount}` : "",
+      dto.petCount != null ? `Pets: ${dto.petCount}` : "",
+      `Size: ${sizeLabel}`,
+    ]
+      .filter(Boolean)
+      .join("\n");
 
     const request = await this.prisma.customRequest.create({
       data: {
         userId,
         title: dto.title.trim(),
-        requirements: dto.requirements.trim(),
-        dimensions: dto.dimensions?.trim() || null,
+        requirements,
+        dimensions: dto.dimensions?.trim() || sizeLabel,
         preferredMaterial: dto.preferredMaterial?.trim() || null,
-        preferredScale: dto.preferredScale?.trim() || null,
+        preferredScale: dto.preferredScale?.trim() || sizeLabel,
         notes: dto.notes?.trim() || null,
+        category: dto.category,
+        bodyType: dto.bodyType ?? null,
+        headType: dto.headType ?? null,
+        subjectType: dto.subjectType ?? null,
+        personCount: dto.personCount ?? null,
+        petCount: dto.petCount ?? null,
+        sizeCm: dto.sizeCm,
+        priceMinor: price * 100,
+        priceCurrency: "INR",
+        pricedAt: new Date(),
         referenceFileCount: 0,
-        status: 'SUBMITTED',
+        status: "SUBMITTED",
       },
-      include: { media: true, quote: true },
+      include: { media: true, quote: true, order: true },
     });
 
     await this.notifications.create(userId, {
       type: NotificationType.CUSTOM_REQUEST_SUBMITTED,
-      title: 'Custom build request submitted',
-      message: `Your custom build request “${request.title}” has been received.`,
-      entityType: 'CUSTOM_REQUEST',
+      title: "Custom build request created",
+      message: `Your custom build “${request.title}” has been created at ${this.formatMoney(request.priceMinor, "INR")}.`,
+      entityType: "CUSTOM_REQUEST",
       entityId: request.id,
     });
 
@@ -63,8 +209,8 @@ export class CustomBuildService {
   async mine(userId: string) {
     return this.prisma.customRequest.findMany({
       where: { userId },
-      include: { media: true, quote: true },
-      orderBy: { createdAt: 'desc' },
+      include: { media: true, quote: true, order: true },
+      orderBy: { createdAt: "desc" },
     });
   }
 
@@ -75,9 +221,10 @@ export class CustomBuildService {
         media: true,
         quote: true,
         revisions: true,
+        order: { include: { payment: true, shipment: true, items: true } },
       },
     });
-    if (!request) throw new NotFoundException('Custom request not found');
+    if (!request) throw new NotFoundException("Custom request not found");
     return request;
   }
 
@@ -89,8 +236,9 @@ export class CustomBuildService {
         media: true,
         quote: true,
         revisions: true,
+        order: { include: { payment: true, shipment: true } },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
   }
 
@@ -102,86 +250,43 @@ export class CustomBuildService {
         media: true,
         quote: true,
         revisions: true,
+        order: { include: { payment: true, shipment: true, items: true } },
       },
     });
-    if (!request) throw new NotFoundException('Custom request not found');
+    if (!request) throw new NotFoundException("Custom request not found");
     return request;
   }
 
   async updateStatus(id: string, status: CustomRequestStatus) {
     const request = await this.findOneAdmin(id);
-    const allowed = TRANSITIONS[request.status];
-
-    if (status === 'CANCELLED') {
-      const updated = await this.prisma.customRequest.update({
+    if (status === "CANCELLED") {
+      return this.prisma.customRequest.update({
         where: { id },
-        data: { status: 'CANCELLED' },
-        include: {
-          user: true,
-          media: true,
-          quote: true,
-          revisions: true,
-        },
+        data: { status: "CANCELLED" },
+        include: { user: true, media: true, quote: true, order: true },
       });
-
-      await this.notifications.create(updated.userId, {
-        type: NotificationType.CUSTOM_REVISION_REQUESTED,
-        title: 'Custom build cancelled',
-        message: `Your custom build request “${updated.title}” was cancelled.`,
-        entityType: 'CUSTOM_REQUEST',
-        entityId: updated.id,
-      });
-      return updated;
     }
 
-    if (!allowed.includes(status)) {
+    const allowed = TRANSITIONS[request.status];
+    if (!allowed?.includes(status)) {
       throw new BadRequestException(
         `Cannot change custom request from ${request.status} to ${status}`,
       );
     }
 
-    const updated = await this.prisma.customRequest.update({
+    return this.prisma.customRequest.update({
       where: { id },
       data: { status },
-      include: {
-        user: true,
-        media: true,
-        quote: true,
-        revisions: true,
-      },
+      include: { user: true, media: true, quote: true, order: true },
     });
-
-    const event = this.statusNotification(status);
-    if (event) {
-      await this.notifications.create(updated.userId, {
-        type: event.type,
-        title: event.title,
-        message: `${event.messagePrefix} “${updated.title}”.`,
-        entityType: 'CUSTOM_REQUEST',
-        entityId: updated.id,
-      });
-    }
-    return updated;
   }
 
-  private statusNotification(status: CustomRequestStatus) {
-    const events: Partial<
-      Record<
-        CustomRequestStatus,
-        { type: NotificationType; title: string; messagePrefix: string }
-      >
-    > = {
-      UNDER_REVIEW: {
-        type: NotificationType.CUSTOM_REQUEST_SUBMITTED,
-        title: "Custom build is under review",
-        messagePrefix: "We are reviewing your custom build",
-      },
-      IN_PRODUCTION: {
-        type: NotificationType.CUSTOM_REQUEST_SUBMITTED,
-        title: "Custom build is in production",
-        messagePrefix: "Your custom build is now in production",
-      },
-    };
-    return events[status];
+  private formatMoney(amountMinor: number | null, currency: string) {
+    if (amountMinor == null) return `${currency} 0`;
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 0,
+    }).format(amountMinor / 100);
   }
 }
