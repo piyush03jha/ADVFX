@@ -219,17 +219,6 @@ export class CustomBuildService {
             },
           },
           shipment: { create: { status: "PENDING" } },
-          items: {
-            create: {
-              productId: (await tx.product.findFirst({ where: { status: "ACTIVE" }, select: { id: true } }))?.id ?? (
-                await tx.product.findFirst({ select: { id: true } })
-              )?.id ?? undefined,
-              productName: `Custom ${input.category}`,
-              quantity: 1,
-              unitPriceMinor: amountMinor,
-              totalPriceMinor: amountMinor,
-            },
-          },
         },
         include: { payment: true, shipment: true, shippingAddress: true, items: true },
       });
@@ -258,9 +247,7 @@ export class CustomBuildService {
       dto.personCount != null ? `People: ${dto.personCount}` : "",
       dto.petCount != null ? `Pets: ${dto.petCount}` : "",
       `Size: ${sizeLabel}`,
-    ]
-      .filter(Boolean)
-      .join("\n");
+    ].filter(Boolean).join("\n");
 
     const request = await this.prisma.customRequest.create({
       data: {
@@ -289,14 +276,15 @@ export class CustomBuildService {
 
     await this.notifications.create(userId, {
       type: NotificationType.CUSTOM_REQUEST_SUBMITTED,
-      title: "Custom build request created",
-      message: `Your custom build “${request.title}” has been created at ${this.formatMoney(request.priceMinor, "INR")}.`,
+      title: "Custom build saved",
+      message: `Your custom build “${request.title}” is ready for payment.`,
       entityType: "CUSTOM_REQUEST",
       entityId: request.id,
     });
 
     return request;
   }
+
 
   async mine(userId: string) {
     return this.prisma.customRequest.findMany({
