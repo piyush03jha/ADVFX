@@ -309,7 +309,7 @@ export function WishlistProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const [items, setItems] = useState<WishlistProduct[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -357,7 +357,7 @@ export function WishlistProvider({
 
   useEffect(() => {
     void refreshWishlist();
-  }, [refreshWishlist]);
+  }, [isAuthLoading, user?.id, refreshWishlist]);
 
   const isInWishlist = useCallback(
     (productId: string) => items.some((item) => item.id === productId),

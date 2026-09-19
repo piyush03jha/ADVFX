@@ -1,5 +1,9 @@
 import Link from "next/link";
 
+import { useAuth } from "@/context/AuthContext";
+import { useCart } from "@/context/CartContext";
+import { useWishlist } from "@/context/WishlistContext";
+
 import {
   IconArrowUpRight,
   IconMapPin,
@@ -15,6 +19,10 @@ const stats = [
 ];
 
 export function AccountOverview() {
+  const { user } = useAuth();
+  const { itemCount: cartCount } = useCart();
+  const { itemCount: wishlistCount } = useWishlist();
+
   return (
     <div className="space-y-6 sm:space-y-8">
       <section className="relative overflow-hidden rounded-3xl border border-white/[0.1] bg-[radial-gradient(circle_at_85%_15%,hsl(var(--primary)/0.18),transparent_34%),linear-gradient(135deg,hsl(var(--foreground)/0.07),hsl(var(--background)/0.02)_52%,hsl(var(--primary)/0.08))] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.18)] sm:p-7">
@@ -36,6 +44,21 @@ export function AccountOverview() {
             Explore models
             <IconArrowUpRight size={13} />
           </Link>
+        </div>
+      </section>
+
+      <section className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-2xl border border-white/[0.1] bg-surface/45 p-4 sm:p-5">
+          <p className="text-[9px] font-medium uppercase tracking-[0.16em] text-primary">Signed in as</p>
+          <p className="mt-2 text-base font-medium text-foreground">{user?.name || "Customer"}</p>
+          <p className="mt-1 text-xs text-muted">{user?.email}</p>
+        </div>
+        <div className="rounded-2xl border border-white/[0.1] bg-surface/45 p-4 sm:p-5">
+          <p className="text-[9px] font-medium uppercase tracking-[0.16em] text-primary">Saved collection</p>
+          <div className="mt-2 flex items-end gap-4">
+            <span className="text-base font-medium text-foreground">{cartCount} cart {cartCount === 1 ? "item" : "items"}</span>
+            <span className="text-xs text-muted">{wishlistCount} wishlisted</span>
+          </div>
         </div>
       </section>
 
