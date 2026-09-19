@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 
-import type { Product } from "@/config/products";
+import type { StorefrontProduct as Product } from "@/lib/catalog-api";
 import type { StorefrontVariant } from "@/lib/catalog-api";
 import { useAuth } from "@/context/AuthContext";
 
