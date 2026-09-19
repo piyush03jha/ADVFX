@@ -39,9 +39,4 @@ export class CreateCustomRequestDto {
   @MaxLength(2000)
   notes?: string;
 
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  @Max(20)
-  referenceFileCount?: number;
 }
