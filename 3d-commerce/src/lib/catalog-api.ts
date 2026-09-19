@@ -95,6 +95,7 @@ export interface StorefrontProduct {
   name: string;
   slug: string;
   category: string;
+  categorySlug?: string;
   description: string;
   price: number;
   currency: string;
@@ -179,6 +180,7 @@ export function mapCatalogProduct(product: CatalogProduct): StorefrontProduct {
     isBestseller: product.isBestseller,
     createdAt: product.createdAt,
     category: product.category?.name ?? "Uncategorized",
+    categorySlug: product.category?.slug,
     description: product.description ?? "",
     price: amount / 100,
     currency: price?.currency ?? "INR",
