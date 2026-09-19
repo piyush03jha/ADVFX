@@ -4,6 +4,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  IsIn,
   Max,
   MaxLength,
   Min,
@@ -72,7 +73,6 @@ export class CreateCustomRequestDto {
   petCount?: number;
 
   @IsInt()
-  @Min(8)
-  @Max(30)
+  @IsIn([8, 12, 15, 20, 25, 30])
   sizeCm: number;
 }
