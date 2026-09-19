@@ -274,8 +274,10 @@ export class PaymentsService {
         where: { id: payment.id },
       });
 
-      await this.consumeReservationsInTransaction(tx, order.id);
-      await this.recordPurchaseMetricsInTransaction(tx, order.id);
+      if (order.checkoutSource !== 'CUSTOM') {
+        await this.consumeReservationsInTransaction(tx, order.id);
+        await this.recordPurchaseMetricsInTransaction(tx, order.id);
+      }
 
       const updatedOrder = await tx.order.update({
         where: { id: order.id },
@@ -289,6 +291,12 @@ export class PaymentsService {
       });
 
       await this.clearCapturedCartLines(tx, updatedOrder);
+      if (updatedOrder.checkoutSource === 'CUSTOM') {
+        await tx.customRequest.updateMany({
+          where: { orderId: updatedOrder.id },
+          data: { status: 'SUBMITTED' },
+        });
+      }
 
       return {
         order: updatedOrder,
@@ -496,7 +504,7 @@ export class PaymentsService {
         },
       });
 
-      if (!activeReservation) return null;
+      if (!activeReservation && order.checkoutSource !== 'CUSTOM') return null;
 
       if (
         (typeof amount === 'number' && amount !== current.amountMinor) ||
@@ -532,8 +540,10 @@ export class PaymentsService {
         where: { id: current.id },
       });
 
-      await this.consumeReservationsInTransaction(tx, order.id);
-      await this.recordPurchaseMetricsInTransaction(tx, order.id);
+      if (order.checkoutSource !== 'CUSTOM') {
+        await this.consumeReservationsInTransaction(tx, order.id);
+        await this.recordPurchaseMetricsInTransaction(tx, order.id);
+      }
 
       const updatedOrder = await tx.order.update({
         where: { id: order.id },
