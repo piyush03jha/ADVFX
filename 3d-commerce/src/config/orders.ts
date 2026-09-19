@@ -1,5 +1,3 @@
-import type { Product } from "@/config/products";
-
 export type OrderStatus =
   | "placed"
   | "confirmed"
