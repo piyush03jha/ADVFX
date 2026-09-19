@@ -47,8 +47,37 @@ export function ProductActions({ product }: ProductActionsProps) {
   };
 
   const buyNow = async () => {
-    await addItem(product, selectedVariant, quantity);
-    router.push("/cart");
+    const buyNowItem = {
+      key:
+        product.id +
+        ":" +
+        (selectedVariant?.id ?? "base"),
+      product: {
+        id: product.id,
+        name: product.name,
+        category: product.category,
+        price: selectedVariant?.price ?? product.price,
+        currency: product.currency,
+        image: product.image,
+        oldPrice: selectedVariant?.oldPrice ?? product.oldPrice,
+        rating: product.rating,
+        reviewCount: product.reviewCount,
+        badge: product.badge,
+        discount: product.discount,
+        model: product.model,
+      },
+      variantId: selectedVariant?.id ?? null,
+      variantName: selectedVariant?.name ?? null,
+      variantSize: selectedVariant?.size ?? null,
+      size: selectedVariant?.size ?? selectedVariant?.name ?? "Standard",
+      quantity,
+    };
+
+    window.localStorage.setItem(
+      "forma-buy-now",
+      JSON.stringify(buyNowItem),
+    );
+    router.push("/checkout?mode=buy-now");
   };
 
   return (
