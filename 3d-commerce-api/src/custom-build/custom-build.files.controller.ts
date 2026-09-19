@@ -7,18 +7,11 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { FastifyRequest } from 'fastify';
-import { AuthGuard } from '../auth/guards/auth.guard';
-import { AdminGuard } from '../auth/guards/admin.guard';
 import { CustomerAuthGuard } from '../auth/guards/customer-auth.guard';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 
 const REFERENCE_MIME_TYPES = new Set(['image/jpeg', 'image/png']);
-
-const CUSTOM_PREVIEW_EXTENSIONS: Record<string, ProductFileFormat> = {
-  '.glb': ProductFileFormat.GLB,
-  '.gltf': ProductFileFormat.GLTF,
-};
 
 @Controller('custom-requests/:requestId/files')
 export class CustomBuildFilesController {
@@ -45,7 +38,7 @@ export class CustomBuildFilesController {
     const uploaded = await this.readMultipart(req, 50 * 1024 * 1024);
     if (!REFERENCE_MIME_TYPES.has(uploaded.mimetype)) {
       throw new BadRequestException(
-        'Only JPG, PNG, WEBP and PDF references are supported',
+        'Only JPG and PNG references are supported',
       );
     }
 
