@@ -270,12 +270,31 @@ export class PaymentsService {
 
         if (!payment || payment.status === PaymentStatus.CAPTURED) break;
 
-        await this.prisma.payment.update({
-          where: { id: payment.id },
-          data: {
-            providerPaymentId: paymentId ?? payment.providerPaymentId,
-            status: PaymentStatus.FAILED,
-          },
+        await this.prisma.$transaction(async (tx) => {
+          await tx.payment.update({
+            where: { id: payment.id },
+            data: {
+              providerPaymentId: paymentId ?? payment.providerPaymentId,
+              status: PaymentStatus.FAILED,
+            },
+          });
+
+          const order = await tx.order.findUnique({
+            where: { id: payment.orderId },
+            select: { status: true },
+          });
+
+          if (order?.status === OrderStatus.PENDING_PAYMENT) {
+            await this.releaseReservationsInTransaction(
+              tx,
+              payment.orderId,
+            );
+
+            await tx.order.update({
+              where: { id: payment.orderId },
+              data: { status: OrderStatus.CANCELLED },
+            });
+          }
         });
         break;
       }
@@ -337,6 +356,8 @@ export class PaymentsService {
       if (!order || order.status !== OrderStatus.PENDING_PAYMENT) {
         return { order, payment: savedPayment };
       }
+
+      await this.consumeReservationsInTransaction(tx, order.id);
 
       const updatedOrder = await tx.order.update({
         where: { id: order.id },
@@ -403,7 +424,7 @@ export class PaymentsService {
   private async incrementPromotionUsageAfterPayment(orderId: string) {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
-      select: { promotionId: true, appliedCouponCode: true },
+      select: { promotionId: true },
     });
 
     if (!order?.promotionId) return;
@@ -414,11 +435,47 @@ export class PaymentsService {
         isActive: true,
         OR: [
           { usageLimit: null },
-          { usageCount: { lt: 1 } },
+          { usageLimit: { gt: 0 }, usageCount: { lt: 1 } },
         ],
       },
       data: { usageCount: { increment: 1 } },
     });
+  }
+
+  private async releaseReservationsInTransaction(
+    tx: Prisma.TransactionClient,
+    orderId: string,
+  ) {
+    const reservations = await tx.inventoryReservation.findMany({
+      where: { orderId, status: "ACTIVE" },
+    });
+
+    for (const reservation of reservations) {
+      if (!reservation.productInventoryId) continue;
+
+      const updated = await tx.productInventory.updateMany({
+        where: {
+          id: reservation.productInventoryId,
+          reserved: { gte: reservation.quantity },
+        },
+        data: { reserved: { decrement: reservation.quantity } },
+      });
+
+      if (updated.count !== 1) {
+        throw new BadRequestException(
+          "Unable to release inventory for product " +
+            reservation.productId,
+        );
+      }
+
+      await tx.inventoryReservation.update({
+        where: { id: reservation.id },
+        data: {
+          status: "RELEASED",
+          releasedAt: new Date(),
+        },
+      });
+    }
   }
 
   private async getPayableOrder(userId: string, orderId: string) {
