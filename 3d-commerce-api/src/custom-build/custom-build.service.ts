@@ -131,12 +131,12 @@ export class CustomBuildService {
   }
 
   async quote(input: CustomPricingInput) {
-    const priceMinor = this.calculatePrice({ ...input });
+    const priceMinor = this.calculatePrice(input) * 100;
 
     return {
       currency: "INR",
-      amountMinor: priceMinor * 100,
-      priceMinor: priceMinor * 100,
+      amountMinor: priceMinor,
+      priceMinor,
       breakdown: {
         category: input.category,
         bodyType: input.bodyType ?? null,
