@@ -41,16 +41,37 @@ export class OrdersService {
       totalMinor?: number;
       currency?: string;
     },
+    selectedItems?: Array<{
+      productId: string;
+      variantId?: string;
+      quantity: number;
+    }>,
   ) {
     if (idempotencyKey) {
       const existing = await this.prisma.order.findFirst({
         where: { userId, idempotencyKey },
-        include: { items: true, shippingAddress: true, payment: true, shipment: true, inventoryReservations: true, promotion: true, shippingRule: true },
+        include: {
+          items: true,
+          shippingAddress: true,
+          payment: true,
+          shipment: true,
+          inventoryReservations: true,
+          promotion: true,
+          shippingRule: true,
+        },
       });
       if (existing) return existing;
     }
 
-    const quote = await this.pricing.calculate(userId, { shippingAddressId, couponCode });
+    const checkoutItems = selectedItems?.length
+      ? selectedItems
+      : undefined;
+
+    const quote = await this.pricing.calculate(userId, {
+      shippingAddressId,
+      couponCode,
+      items: checkoutItems,
+    });
 
     if (quotedSnapshot) {
       const expected = [
@@ -77,54 +98,77 @@ export class OrdersService {
     const expiresAt = new Date(Date.now() + RESERVATION_MINUTES * 60_000);
 
     const result = await this.prisma.$transaction(async (tx) => {
-      const cart = await tx.cart.findUnique({
-        where: { userId },
-        include: {
-          items: {
+      const cart = checkoutItems
+        ? null
+        : await tx.cart.findUnique({
+            where: { userId },
             include: {
-              variant: { include: { price: true } },
-              product: { include: { inventory: true, prices: { where: { isActive: true }, orderBy: { createdAt: "desc" }, take: 1 } } },
+              items: {
+                include: {
+                  variant: { include: { price: true } },
+                  product: {
+                    include: {
+                      inventory: true,
+                      prices: {
+                        where: { isActive: true },
+                        orderBy: { createdAt: "desc" },
+                        take: 1,
+                      },
+                    },
+                  },
+                },
+              },
             },
-          },
-        },
-      });
-      if (!cart || cart.items.length === 0) throw new BadRequestException('Cart is empty');
+          });
 
-      const address = await tx.address.findFirst({ where: { id: shippingAddressId, userId } });
-      if (!address) throw new NotFoundException('Shipping address not found');
-      if (quote.summary.totalMinor < 0) {
-        throw new BadRequestException('Invalid checkout total');
+      if (!checkoutItems && (!cart || cart.items.length === 0)) {
+        throw new BadRequestException("Cart is empty");
       }
 
-      const quotedCart = new Map(
+      const address = await tx.address.findFirst({
+        where: { id: shippingAddressId, userId },
+      });
+      if (!address) throw new NotFoundException("Shipping address not found");
+
+      const quoteMap = new Map(
         quote.items.map((item) => [
-          item.productId + ':' + (item.variantId ?? '__base__'),
+          item.productId + ":" + (item.variantId ?? "__base__"),
           item.quantity,
         ]),
       );
 
-      const currentCart = new Map(
-        cart.items.map((item) => [
-          item.productId + ':' + (item.variantId ?? '__base__'),
-          item.quantity,
-        ]),
-      );
-
-      if (
-        quotedCart.size !== currentCart.size ||
-        Array.from(quotedCart.entries()).some(
-          ([key, quantity]) => currentCart.get(key) !== quantity,
-        )
-      ) {
-        throw new BadRequestException(
-          'Cart changed while checkout was loading. Please refresh the quote and try again.',
+      if (cart) {
+        const currentCart = new Map(
+          cart.items.map((item) => [
+            item.productId + ":" + (item.variantId ?? "__base__"),
+            item.quantity,
+          ]),
         );
+
+        if (
+          quoteMap.size !== currentCart.size ||
+          Array.from(quoteMap.entries()).some(
+            ([key, quantity]) => currentCart.get(key) !== quantity,
+          )
+        ) {
+          throw new BadRequestException(
+            "Cart changed while checkout was loading. Please refresh the quote and try again.",
+          );
+        }
       }
 
       if (idempotencyKey) {
         const raced = await tx.order.findFirst({
           where: { userId, idempotencyKey },
-          include: { items: true, shippingAddress: true, payment: true, shipment: true, inventoryReservations: true, promotion: true, shippingRule: true },
+          include: {
+            items: true,
+            shippingAddress: true,
+            payment: true,
+            shipment: true,
+            inventoryReservations: true,
+            promotion: true,
+            shippingRule: true,
+          },
         });
         if (raced) return raced;
       }
@@ -141,55 +185,67 @@ export class OrdersService {
           `,
         );
         if (Number(claimedPromotion) !== 1) {
-          throw new BadRequestException('Coupon usage limit has been reached');
+          throw new BadRequestException("Coupon usage limit has been reached");
         }
       }
 
-      const orderItems: Prisma.OrderItemCreateWithoutOrderInput[] = quote.items.map((item) => ({
-        product: { connect: { id: item.productId } },
-        variant: item.variantId
-          ? { connect: { id: item.variantId } }
-          : undefined,
-        productName: item.productName,
-        variantName: item.variantName,
-        quantity: item.quantity,
-        unitPriceMinor: item.unitPriceMinor,
-        totalPriceMinor: item.lineTotalMinor,
-      }));
+      const orderItems: Prisma.OrderItemCreateWithoutOrderInput[] =
+        quote.items.map((item) => ({
+          product: { connect: { id: item.productId } },
+          variant: item.variantId
+            ? { connect: { id: item.variantId } }
+            : undefined,
+          productName: item.productName,
+          variantName: item.variantName,
+          quantity: item.quantity,
+          unitPriceMinor: item.unitPriceMinor,
+          totalPriceMinor: item.lineTotalMinor,
+        }));
 
       const order = await tx.order.create({
         data: {
           orderNumber: this.generateOrderNumber(),
           idempotencyKey: idempotencyKey ?? null,
+          checkoutSource: checkoutItems ? "BUY_NOW" : "CART",
           user: { connect: { id: userId } },
-          status: 'PENDING_PAYMENT',
+          status: "PENDING_PAYMENT",
           currency: quote.currency,
           subtotalMinor: quote.summary.subtotalMinor,
           discountMinor: quote.summary.discountMinor,
           shippingMinor: quote.summary.shippingMinor,
           taxMinor: quote.summary.taxMinor,
           totalMinor: quote.summary.totalMinor,
-          shippingRule: quote.shippingRule ? { connect: { id: quote.shippingRule.id } } : undefined,
-          promotion: quote.promotion ? { connect: { id: quote.promotion.id } } : undefined,
+          shippingRule: quote.shippingRule
+            ? { connect: { id: quote.shippingRule.id } }
+            : undefined,
+          promotion: quote.promotion
+            ? { connect: { id: quote.promotion.id } }
+            : undefined,
           appliedCouponCode: quote.promotion?.code ?? null,
           shippingAddress: { connect: { id: address.id } },
           items: { create: orderItems },
           payment: {
             create: {
-              provider: 'RAZORPAY',
-              status: 'PENDING',
+              provider: "RAZORPAY",
+              status: "PENDING",
               amountMinor: quote.summary.totalMinor,
               currency: quote.currency,
             },
           },
-          shipment: { create: { status: 'PENDING' } },
+          shipment: { create: { status: "PENDING" } },
         },
         include: { items: true, shippingAddress: true },
       });
 
-      for (const item of cart.items) {
-        const inventory = item.product.inventory;
-        if (!inventory || !inventory.trackStock || inventory.allowBackorder) continue;
+      for (const item of quote.items) {
+        const inventory = await tx.productInventory.findFirst({
+          where: { productId: item.productId },
+        });
+
+        if (!inventory || !inventory.trackStock || inventory.allowBackorder) {
+          continue;
+        }
+
         const updated = await tx.$executeRaw(
           Prisma.sql`
             UPDATE "ProductInventory"
@@ -200,25 +256,40 @@ export class OrdersService {
               AND ("stock" - "reserved") >= ${item.quantity}
           `,
         );
-        if (Number(updated) !== 1) throw new BadRequestException(`Stock changed for "${item.product.name}"; please try again`);
+
+        if (Number(updated) !== 1) {
+          throw new BadRequestException(
+            `Stock changed for "${item.productName}"; please try again`,
+          );
+        }
+
         await tx.inventoryReservation.create({
-          data: { productId: item.product.id, productInventoryId: inventory.id, orderId: order.id, quantity: item.quantity, status: 'ACTIVE', expiresAt },
+          data: {
+            productId: item.productId,
+            productInventoryId: inventory.id,
+            orderId: order.id,
+            quantity: item.quantity,
+            status: "ACTIVE",
+            expiresAt,
+          },
         });
       }
 
-      await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
+      // Cart contents remain available until payment is actually captured.
+      // Successful payment clears only the purchased cart lines.
       return this.findOneForTransaction(tx, order.id);
     });
 
     if (result.userId) {
       await this.notifications.create(result.userId, {
         type: NotificationType.ORDER_CREATED,
-        title: 'Order created',
+        title: "Order created",
         message: `Order ${result.orderNumber} has been created and is awaiting payment.`,
-        entityType: 'ORDER',
+        entityType: "ORDER",
         entityId: result.id,
       });
     }
+
     return result;
   }
 
