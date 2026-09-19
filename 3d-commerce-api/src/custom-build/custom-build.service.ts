@@ -148,7 +148,6 @@ export class CustomBuildService {
         media: true,
         quote: true,
         revisions: true,
-        previewProduct: true,
       },
     });
 
