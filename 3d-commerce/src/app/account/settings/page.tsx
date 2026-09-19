@@ -88,6 +88,7 @@ export default function AccountSettingsPage() {
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                 Account active
               </div>
+            <p id="email-help" className="mt-2 text-[10px] text-muted">Email changes are disabled here to keep your sign-in identity stable.</p>
             </div>
           </section>
 
@@ -106,7 +107,7 @@ export default function AccountSettingsPage() {
                 <span className="mb-2 block text-[9px] font-medium uppercase tracking-[0.14em] text-muted">Email address</span>
                 <div className="relative">
                   <IconMail size={15} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
-                  <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" className="h-11 w-full rounded-xl border border-white/[0.1] bg-white/[0.025] pl-10 pr-3.5 text-sm text-foreground outline-none transition-colors focus:border-primary/40 focus:bg-white/[0.04]" />
+                  <input type="email" value={email} readOnly autoComplete="email" aria-describedby="email-help" className="h-11 w-full cursor-not-allowed rounded-xl border border-white/[0.1] bg-white/[0.015] pl-10 pr-3.5 text-sm text-muted outline-none" />
                 </div>
               </label>
             </div>
