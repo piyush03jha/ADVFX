@@ -14,7 +14,6 @@ import { AdminGuard } from '../auth/guards/admin.guard';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { CustomerAuthGuard } from '../auth/guards/customer-auth.guard';
 import { CreateCustomRequestDto } from './dto/create-custom-request.dto';
-import { SetCustomPreviewDto } from './dto/set-custom-preview.dto';
 import { UpdateCustomRequestStatusDto } from './dto/update-custom-request-status.dto';
 import { CustomBuildService } from './custom-build.service';
 
@@ -61,12 +60,4 @@ export class CustomBuildController {
     return this.customBuildService.updateStatus(id, dto.status);
   }
 
-  @UseGuards(AuthGuard, AdminGuard)
-  @Patch('admin/:id/preview')
-  setPreview(
-    @Param('id') id: string,
-    @Body() dto: SetCustomPreviewDto,
-  ) {
-    return this.customBuildService.upsertPreview(id, dto.url);
-  }
 }
