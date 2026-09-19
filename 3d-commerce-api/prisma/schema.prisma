@@ -41,6 +41,7 @@ model User {
   verificationTokens   AuthVerificationToken[]
   passwordResetTokens  AuthPasswordResetToken[]
   adminAuthSessions    AdminAuthSession[]
+  adminCredential      AdminCredential?
 }
 
 enum UserRole {
@@ -53,6 +54,19 @@ enum UserRole {
  * CUSTOMER / ADMIN AUTH PERSISTENCE
  * ============================================================
  */
+
+model AdminCredential {
+  id           String @id @default(cuid())
+  userId       String @unique
+  passwordHash String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
 
 model CustomerCredential {
   id           String @id @default(cuid())
