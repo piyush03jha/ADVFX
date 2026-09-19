@@ -6,6 +6,7 @@ import { Navbar } from "@/components/layout/SiteNavbar";
 import { OrderItems } from "@/components/account/OrderItems";
 import { OrderSummary } from "@/components/account/OrderSummary";
 import { OrderTimeline } from "@/components/account/OrderTimeline";
+import { OrderTimeline } from "@/components/account/OrderTimeline";
 import { getBackendApiUrl } from "@/lib/backend-api";
 import { AUTH_COOKIE_NAME } from "@/lib/auth";
 
@@ -164,6 +165,21 @@ export default async function OrderTrackingPage({ params }: OrderPageProps) {
               </section>
 
               <section className="rounded-2xl border border-border bg-surface/55 p-4 sm:p-5">
+                <div className="mb-4 flex items-center gap-2"><IconPackage size={15} className="text-primary" /><h2 className="text-xs font-medium uppercase tracking-[0.12em]">Order timeline</h2></div>
+                <OrderTimeline
+                  events={[
+                    { status: "placed", title: "Order placed", description: "Your order has been received.", timestamp: new Date(order.createdAt).toLocaleString("en-IN"), completed: true, current: false },
+                    { status: "confirmed", title: "Payment confirmed", description: "Payment confirmation for this order.", timestamp: order.payment?.status === "CAPTURED" ? "Confirmed" : "", completed: order.payment?.status === "CAPTURED", current: order.status === "CONFIRMED" },
+                    { status: "processing", title: "Processing", description: "Your order is being prepared.", timestamp: "", completed: ["PROCESSING","READY_TO_SHIP","SHIPPED","DELIVERED"].includes(order.status), current: order.status === "PROCESSING" },
+                    { status: "packed", title: "Ready to ship", description: "Your order is ready for shipment.", timestamp: "", completed: ["READY_TO_SHIP","SHIPPED","DELIVERED"].includes(order.status), current: order.status === "READY_TO_SHIP" },
+                    { status: "shipped", title: "Shipped", description: "Your package has left our facility.", timestamp: shipment?.trackingNumber ? "Tracking available" : "", completed: ["SHIPPED","DELIVERED"].includes(order.status), current: order.status === "SHIPPED" },
+                    { status: "in_transit", title: "In transit", description: "Your package is moving toward you.", timestamp: "", completed: shipment?.status === "IN_TRANSIT" || shipment?.status === "DELIVERED", current: shipment?.status === "IN_TRANSIT" },
+                    { status: "delivered", title: "Delivered", description: "Your order has been delivered.", timestamp: "", completed: order.status === "DELIVERED" || shipment?.status === "DELIVERED", current: order.status === "DELIVERED" },
+                  ]}
+                />
+              </section>
+
+              <section className="rounded-2xl border border-border bg-surface/55 p-4 sm:p-5">
                 <div className="mb-3 flex items-center gap-2"><IconPackage size={15} className="text-muted" /><h2 className="text-xs font-medium uppercase tracking-[0.12em]">Your order</h2></div>
                 <OrderItems items={items} />
               </section>
@@ -182,6 +198,11 @@ export default async function OrderTrackingPage({ params }: OrderPageProps) {
               </section>
 
               <OrderSummary order={adaptedOrder} />
+
+              <section className="rounded-2xl border border-border bg-surface/55 p-4 sm:p-5">
+                <div className="flex items-center gap-2"><IconCreditCard size={14} className="text-primary" /><h2 className="text-[10px] font-medium uppercase tracking-[0.12em]">Payment</h2></div>
+                <div className="mt-3 space-y-2 text-[10px]"><div className="flex justify-between gap-4"><span className="text-muted">Provider</span><span>{order.payment?.provider ?? "—"}</span></div><div className="flex justify-between gap-4"><span className="text-muted">Status</span><span>{order.payment?.status ?? "PENDING"}</span></div></div>
+              </section>
 
               <section className="rounded-2xl border border-border bg-surface/55 p-4 sm:p-5">
                 <div className="flex items-center gap-2"><IconCreditCard size={14} className="text-primary" /><h2 className="text-[10px] font-medium uppercase tracking-[0.12em]">Payment</h2></div>
