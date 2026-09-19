@@ -44,16 +44,17 @@ export default function RootLayout({
     >
       <body className="flex min-h-full flex-col">
         <AuthProvider>
-        <ThemeProvider>
-          <AddressProvider>
-            <CartProvider>
-              <WishlistProvider>{children}</WishlistProvider>
-            </CartProvider>
-          </AddressProvider>
-        </ThemeProvider>
+          <ThemeProvider>
+            <AddressProvider>
+              <CartProvider>
+                <WishlistProvider>{children}</WishlistProvider>
+              </CartProvider>
+            </AddressProvider>
+          </ThemeProvider>
+
+          <AuthPrompt />
         </AuthProvider>
 
-        <AuthPrompt />
         <WhatsAppBot />
         <Footer />
       </body>
