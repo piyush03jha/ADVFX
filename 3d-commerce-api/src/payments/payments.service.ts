@@ -432,17 +432,22 @@ export class PaymentsService {
       select: { productId: true, quantity: true },
     });
 
+    const totals = new Map<string, number>();
     for (const item of items) {
+      totals.set(item.productId, (totals.get(item.productId) ?? 0) + item.quantity);
+    }
+
+    for (const [productId, unitsSold] of totals) {
       await tx.productMetrics.upsert({
-        where: { productId: item.productId },
+        where: { productId },
         create: {
-          productId: item.productId,
+          productId,
           purchaseCount: 1,
-          unitsSold: item.quantity,
+          unitsSold,
         },
         update: {
           purchaseCount: { increment: 1 },
-          unitsSold: { increment: item.quantity },
+          unitsSold: { increment: unitsSold },
         },
       });
     }
