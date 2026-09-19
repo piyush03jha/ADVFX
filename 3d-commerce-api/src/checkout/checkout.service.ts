@@ -73,7 +73,7 @@ export class CheckoutService {
       payment: {
         required: true,
         status: 'NOT_STARTED',
-        provider: 'RAZORPAY_PENDING_CONFIGURATION',
+        provider: 'RAZORPAY',
       },
     };
   }
