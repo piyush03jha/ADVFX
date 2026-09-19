@@ -1,4 +1,5 @@
 import {
+  IsIn,
   IsInt,
   IsNotEmpty,
   IsOptional,
@@ -6,7 +7,7 @@ import {
   Max,
   MaxLength,
   Min,
-} from 'class-validator';
+} from "class-validator";
 
 export class CreateCustomRequestDto {
   @IsString()
@@ -39,4 +40,39 @@ export class CreateCustomRequestDto {
   @MaxLength(2000)
   notes?: string;
 
+  @IsString()
+  @IsIn(["person", "pet", "object", "vehicle", "character", "other"])
+  category: string;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(["half", "full"])
+  bodyType?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(["bobble", "stationary"])
+  headType?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(["single", "couple", "pet", "group"])
+  subjectType?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(20)
+  personCount?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(20)
+  petCount?: number;
+
+  @IsInt()
+  @Min(8)
+  @Max(30)
+  sizeCm: number;
 }
