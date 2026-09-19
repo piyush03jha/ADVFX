@@ -116,12 +116,7 @@ export interface StorefrontProduct {
 function mapVariant(variant: CatalogVariant): StorefrontVariant | null {
   if (!variant.isActive) return null;
 
-  const price =
-    variant.price?.currency === "INR"
-      ? variant.price
-      : variant.price?.isActive
-        ? variant.price
-        : null;
+  const price = variant.price?.isActive ? variant.price : null;
 
   return {
     id: variant.id,
