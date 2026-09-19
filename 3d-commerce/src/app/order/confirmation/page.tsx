@@ -14,7 +14,6 @@ import { getOrderStatus } from "@/lib/order-api";
 import type { CreatedOrder } from "@/lib/checkout-api";
 import { OrderItems } from "@/components/account/OrderItems";
 import { OrderSummary } from "@/components/account/OrderSummary";
-import { formatQuoteMoney } from "@/lib/checkout-api";
 
 export default function OrderConfirmationPage() {
   const searchParams = useSearchParams();
