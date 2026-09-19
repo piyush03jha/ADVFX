@@ -9,6 +9,7 @@ describe('AuthService', () => {
     },
     $executeRaw: jest.fn(),
     $queryRaw: jest.fn(),
+    $transaction: jest.fn(),
   } as any;
 
   const emailService = {
