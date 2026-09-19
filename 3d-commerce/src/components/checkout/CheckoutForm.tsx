@@ -97,7 +97,11 @@ export function CheckoutForm({
     return () => {
       cancelled = true;
     };
-  }, [couponCode, selectedAddressId, onQuoteChange]);
+  }, [couponCode, selectedAddressId, selectedItems, onQuoteChange]);
+
+  useEffect(() => {
+    onQuoteChange?.(quote, quoteError);
+  }, [onQuoteChange, quote, quoteError]);
 
   const update = (field: keyof FormState, value: string) =>
     setForm((current) => ({ ...current, [field]: value }));
