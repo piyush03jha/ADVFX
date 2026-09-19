@@ -38,7 +38,13 @@ export default function PaymentPage() {
   const [country, setCountry] = useState<CountryCode>("IN");
   const [processing, setProcessing] = useState(false);
   const [draftLoaded, setDraftLoaded] = useState(false);
-  const [draft, setDraft] = useState<{ addressId?: string; country?: CountryCode } | null>(null);
+  const [draft, setDraft] = useState<{
+    addressId?: string;
+    country?: CountryCode;
+    couponCode?: string;
+    email?: string;
+    phone?: string;
+  } | null>(null);
   const [quote, setQuote] = useState<CheckoutQuote | null>(null);
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [checkoutReady, setCheckoutReady] = useState(false);
@@ -47,7 +53,13 @@ export default function PaymentPage() {
     try {
       const raw = window.localStorage.getItem(DRAFT_KEY);
       if (raw) {
-        const saved = JSON.parse(raw) as { addressId?: string; country?: CountryCode };
+        const saved = JSON.parse(raw) as {
+          addressId?: string;
+          country?: CountryCode;
+          couponCode?: string;
+          email?: string;
+          phone?: string;
+        };
         setDraft(saved);
         if (saved.country) setCountry(saved.country);
       }
@@ -67,7 +79,7 @@ export default function PaymentPage() {
     let cancelled = false;
     setQuoteError(null);
 
-    void getCheckoutQuote(draft.addressId)
+    void getCheckoutQuote(draft.addressId, draft.couponCode)
       .then((value) => {
         if (!cancelled) setQuote(value);
       })
@@ -113,6 +125,7 @@ export default function PaymentPage() {
     try {
       const order = await createOrder({
         shippingAddressId: draft.addressId,
+        couponCode: draft.couponCode,
         idempotencyKey: window.crypto.randomUUID(),
       });
 
