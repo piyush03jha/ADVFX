@@ -23,7 +23,7 @@ function getSizeLabel(size: string) {
     large: "Large",
   };
 
-  return labels[size.toLowerCase()] ?? size || "Standard";
+  return labels[size.toLowerCase()] ?? (size || "Standard");
 }
 
 function normalizeImagePath(src: string) {
@@ -32,9 +32,6 @@ function normalizeImagePath(src: string) {
   try {
     const url = new URL(src);
 
-    // Seed/catalog data currently contains example.com placeholder media.
-    // Never pass that URL to next/image because it is neither real product
-    // media nor an allowed Next.js image host.
     if (url.hostname === "example.com") {
       return "/catogeries/1.jpg";
     }
