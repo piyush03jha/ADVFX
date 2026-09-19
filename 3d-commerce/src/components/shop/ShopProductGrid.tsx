@@ -11,7 +11,6 @@ import {
   shopCategories,
   getDiscoveryFallbackCategory,
 } from "@/config/shop-categories";
-import { getBackendApiUrl } from "@/lib/backend-api";
 import { mapCatalogProducts, type CatalogProduct, type StorefrontProduct } from "@/lib/catalog-api";
 
 import { MobileFilters } from "./MobileFilters";
