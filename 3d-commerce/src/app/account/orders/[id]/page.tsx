@@ -168,7 +168,7 @@ export default async function OrderTrackingPage({ params }: OrderPageProps) {
                 </div>
               </section>
 
-              <OrderSummary order={adaptedOrder as never} />
+              <OrderSummary order={adaptedOrder} />
 
               <div className="grid gap-2">
                 <Link href="/account/orders" className="flex min-h-11 items-center justify-center rounded-xl bg-primary text-xs font-medium text-white">Back to orders</Link>
