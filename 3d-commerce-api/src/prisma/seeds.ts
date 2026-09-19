@@ -17,6 +17,23 @@ const prisma = new PrismaClient({
   adapter,
 });
 
+
+async function hashAdminPassword(password: string) {
+  return new Promise<string>((resolve, reject) => {
+    const salt = require('node:crypto').randomBytes(16);
+    require('node:crypto').scrypt(
+      password,
+      salt,
+      64,
+      { N: 32_768, r: 8, p: 1 },
+      (error: Error | null, derivedKey: Buffer) => {
+        if (error) return reject(error);
+        resolve(`scrypt:N=32768,r=8,p=1:${salt.toString('base64')}:\${derivedKey.toString('base64')}`);
+      },
+    );
+  });
+}
+
 async function main() {
   const email = process.env.ADMIN_EMAIL?.toLowerCase().trim();
 
@@ -37,6 +54,24 @@ async function main() {
       isActive: true,
     },
   });
+
+  const admin = await prisma.user.findUniqueOrThrow({
+    where: { email },
+    select: { id: true },
+  });
+
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  if (!adminPassword || adminPassword.length < 12) {
+    throw new Error('ADMIN_PASSWORD must be configured with at least 12 characters');
+  }
+
+  const adminPasswordHash = await hashAdminPassword(adminPassword);
+  await prisma.$executeRaw`
+    INSERT INTO "AdminCredential" ("id","userId","passwordHash","createdAt","updatedAt")
+    VALUES (gen_random_uuid()::text, ${admin.id}, ${adminPasswordHash}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    ON CONFLICT ("userId")
+    DO UPDATE SET "passwordHash" = EXCLUDED."passwordHash", "updatedAt" = CURRENT_TIMESTAMP
+  `;
 
   console.log(`Admin user seeded: ${email}`);
 
