@@ -362,19 +362,57 @@ export class AuthService {
     return { message: 'Password reset successfully.' };
   }
 
-  async login(email: string, secret: string) {
-    const expectedSecret = process.env.ADMIN_AUTH_SECRET;
-    if (!expectedSecret) throw new Error('ADMIN_AUTH_SECRET is not configured');
-    if (!safeSecretEqual(secret, expectedSecret)) throw new UnauthorizedException('Invalid credentials');
+  async login(email: string, password: string) {
+    const normalizedEmail = email.toLowerCase().trim();
 
     const user = await this.prisma.user.findUnique({
-      where: { email: email.toLowerCase().trim() },
-      select: { id: true, email: true, name: true, role: true, isActive: true },
+      where: { email: normalizedEmail },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        isActive: true,
+        adminFailedLoginCount: true,
+        adminLockedUntil: true,
+      },
     });
 
     if (!user || !user.isActive || user.role !== ('ADMIN' as UserRole)) {
+      await hashPassword(TIMING_ONLY_PASSWORD);
       throw new UnauthorizedException('Invalid credentials');
     }
+
+    if (user.adminLockedUntil && user.adminLockedUntil > new Date()) {
+      throw new UnauthorizedException('Admin account temporarily locked. Please try again later.');
+    }
+
+    const credentialRows = await this.prisma.$queryRaw<Array<{ passwordHash: string }>>`
+      SELECT "passwordHash"
+      FROM "AdminCredential"
+      WHERE "userId" = ${user.id}
+      LIMIT 1
+    `;
+
+    if (!credentialRows[0] || !(await verifyPassword(password, credentialRows[0].passwordHash))) {
+      const failedCount = user.adminFailedLoginCount + 1;
+      const lockout = failedCount >= 5 ? new Date(Date.now() + 15 * 60_000) : null;
+
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          adminFailedLoginCount: lockout ? 0 : failedCount,
+          adminLockedUntil: lockout,
+        },
+      });
+
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { adminFailedLoginCount: 0, adminLockedUntil: null },
+    });
 
     const token = randomBytes(32).toString('base64url');
     const expiresAt = new Date(Date.now() + ADMIN_SESSION_TTL_MS);
