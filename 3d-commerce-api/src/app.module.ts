@@ -21,6 +21,7 @@ import { PricingModule } from "./pricing/pricing.module";
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     PrismaModule,
     AuthModule,
     AdminModule,
