@@ -27,15 +27,19 @@ async function forward(request: Request, context: RouteContext, method: "PATCH" 
       cache: "no-store",
     };
 
+    const backendUrl = new URL(
+      getBackendApiUrl("cart/items/" + encodeURIComponent(productId)),
+    );
+
     if (method === "PATCH") {
       headers["Content-Type"] = "application/json";
       init.body = JSON.stringify(await request.json());
+    } else {
+      const variantId = new URL(request.url).searchParams.get("variantId");
+      if (variantId) backendUrl.searchParams.set("variantId", variantId);
     }
 
-    const backendResponse = await fetch(
-      getBackendApiUrl(`cart/items/${encodeURIComponent(productId)}`),
-      init,
-    );
+    const backendResponse = await fetch(backendUrl, init);
 
     const data = await backendResponse.json().catch(() => null);
     return NextResponse.json(data ?? { error: "Unable to update cart." }, {
