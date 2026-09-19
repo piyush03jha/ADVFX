@@ -26,7 +26,7 @@ export function AuthPrompt() {
     isLoading: isCaptchaLoading,
     error: captchaError,
     refresh: refreshCaptcha,
-  } = useAuthCaptcha(mode);
+  } = useAuthCaptcha(mode === "signup" ? "register" : "login");
 
   useEffect(() => {
     const pathname = window.location.pathname;
