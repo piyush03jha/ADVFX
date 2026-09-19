@@ -2,6 +2,7 @@
 
 import { IconArrowLeft, IconShoppingBag } from "@tabler/icons-react";
 import Link from "next/link";
+import { useEffect } from "react";
 
 import { Navbar } from "@/components/layout/SiteNavbar";
 import { CartItem } from "@/components/cart/CartItem";
@@ -12,7 +13,11 @@ import { Container } from "@/components/ui/Container";
 import { useCart } from "@/context/CartContext";
 
 export default function CartPage() {
-  const { items, itemCount, isLoaded, clearCart } = useCart();
+  const { items, itemCount, isLoaded, clearCart, refreshCart } = useCart();
+
+  useEffect(() => {
+    void refreshCart();
+  }, [refreshCart]);
 
   return (
     <>
