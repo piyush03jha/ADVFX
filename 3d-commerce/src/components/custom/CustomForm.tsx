@@ -115,6 +115,7 @@ export function CustomForm({
         preferredScale: undefined,
         notes: details.trim() || undefined,
       }),
+      cache: "no-store",
     });
 
     const requestBody = (await requestResponse.json().catch(() => null)) as
