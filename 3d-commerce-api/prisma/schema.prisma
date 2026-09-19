@@ -569,8 +569,9 @@ model Order {
   userId String?
   user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
-  status   OrderStatus @default(PENDING_PAYMENT)
-  currency String      @default("INR")
+  status         OrderStatus @default(PENDING_PAYMENT)
+  checkoutSource String      @default("CART")
+  currency       String      @default("INR")
 
   subtotalMinor Int
   discountMinor Int @default(0)
