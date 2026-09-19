@@ -8,6 +8,7 @@ import {
   NotificationType,
   OrderStatus,
   PaymentStatus,
+  Prisma,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
