@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { IconCheck, IconChevronDown, IconStar } from "@tabler/icons-react";
 import {
   bodyOptions,
@@ -76,6 +76,9 @@ export function CustomForm({
   const [activeImage, setActiveImage] = useState(0);
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [serverPrice, setServerPrice] = useState<number | null>(null);
+  const [pricingError, setPricingError] = useState<string | null>(null);
+  const [pricingLoading, setPricingLoading] = useState(false);
 
   const selectedBody =
     bodyOptions.find((option) => option.id === body) ?? bodyOptions[1];
@@ -92,7 +95,7 @@ export function CustomForm({
   const selectedCategory =
     categories.find((option) => option.id === category) ?? categories[0];
 
-  const price = useMemo(
+  const localPrice = useMemo(
     () =>
       isPerson
         ? calculatePrice({
@@ -108,6 +111,52 @@ export function CustomForm({
           }),
     [category, isPerson, selectedBody, selectedFrame, selectedHead, selectedSize],
   );
+
+  useEffect(() => {
+    let cancelled = false;
+    setPricingLoading(true);
+    setPricingError(null);
+
+    void fetch("/api/custom-requests/quote", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        category,
+        bodyType: isPerson ? body : undefined,
+        headType: hasBobbleHead ? head : undefined,
+        subjectType: isPerson ? frame : undefined,
+        sizeCm: Number(size),
+      }),
+      cache: "no-store",
+    })
+      .then(async (response) => {
+        const data = await response.json().catch(() => null);
+        if (!response.ok) {
+          throw new Error(data?.error ?? data?.message ?? "Unable to calculate custom price.");
+        }
+        return data as { amountMinor: number };
+      })
+      .then((data) => {
+        if (!cancelled) setServerPrice(data.amountMinor);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setServerPrice(null);
+          setPricingError(
+            error instanceof Error ? error.message : "Unable to calculate custom price.",
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setPricingLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [category, body, frame, hasBobbleHead, head, isPerson, size]);
+
+  const price = serverPrice ?? localPrice;
 
   const hasReference = files.length > 0;
   const activeGallery = gallery[activeImage];
@@ -158,6 +207,10 @@ export function CustomForm({
         details.trim() ? `Additional requirements:\\n${details.trim()}` : "",
       ].filter(Boolean).join("\n");
 
+      if (serverPrice == null || pricingLoading || pricingError) {
+        throw new Error(pricingError ?? "Custom price is still being calculated.");
+      }
+
       const requestResponse = await fetch("/api/custom-requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -166,6 +219,14 @@ export function CustomForm({
           requirements,
           dimensions: selectedSize.label,
           notes: details.trim() || undefined,
+          category,
+          bodyType: isPerson ? body : undefined,
+          headType: hasBobbleHead ? head : undefined,
+          subjectType: isPerson ? frame : undefined,
+          personCount:
+            frame === "single" ? 1 : frame === "couple" ? 2 : frame === "group" ? 3 : 1,
+          petCount: frame === "pet" ? 1 : 0,
+          sizeCm: Number(size),
         }),
         cache: "no-store",
       });
@@ -489,15 +550,22 @@ export function CustomForm({
           <div className="mt-5 space-y-2.5">
             <SummaryRow label="Category" value={selectedCategory.label} />
             <SummaryRow label="Size" value={selectedSize.label} />
-            <SummaryRow label="Estimated price" value={`₹${price.toLocaleString("en-IN")}`} />
+            <SummaryRow
+              label={pricingLoading ? "Calculating price" : "Price"}
+              value={`₹${price.toLocaleString("en-IN")}`}
+            />
           </div>
 
           <button
             type="submit"
-            disabled={!hasReference || submitting}
+            disabled={!hasReference || submitting || pricingLoading || Boolean(pricingError) || serverPrice == null}
             className="mt-6 flex h-12 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
           >
-            {submitting ? "Submitting request…" : "Submit custom request"}
+            {submitting
+              ? "Preparing payment…"
+              : pricingLoading
+                ? "Calculating price…"
+                : "Continue to payment"}
           </button>
         </aside>
       </div>
