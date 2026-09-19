@@ -44,7 +44,8 @@ export class OrdersService {
         include: {
           items: {
             include: {
-              product: { include: { inventory: true, prices: { where: { isActive: true }, orderBy: { createdAt: 'desc' }, take: 1 } } },
+              variant: { include: { price: true } },
+              product: { include: { inventory: true, prices: { where: { isActive: true }, orderBy: { createdAt: "desc" }, take: 1 } } },
             },
           },
         },
@@ -62,7 +63,11 @@ export class OrdersService {
 
       const orderItems: Prisma.OrderItemCreateWithoutOrderInput[] = quote.items.map((item) => ({
         product: { connect: { id: item.productId } },
+        variant: item.variantId
+          ? { connect: { id: item.variantId } }
+          : undefined,
         productName: item.productName,
+        variantName: item.variantName,
         quantity: item.quantity,
         unitPriceMinor: item.unitPriceMinor,
         totalPriceMinor: item.lineTotalMinor,
