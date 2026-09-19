@@ -1,6 +1,6 @@
 import { getCountry, type CountryCode } from "@/config/countries";
 import type { CartItem } from "@/context/CartContext";
-import type { Product } from "@/config/products";
+import type { StorefrontProduct as Product } from "@/lib/catalog-api";
 
 import { PRODUCT_COUNTRY_PRICE_OVERRIDES } from "./catalog";
 import type {
