@@ -631,6 +631,7 @@ model Order {
   shipment              Shipment?
   inventoryReservations InventoryReservation[]
   returnRequest         ReturnRequest?
+  customRequest         CustomRequest?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1196,6 +1197,19 @@ model CustomRequest {
   preferredMaterial String?
   preferredScale    String?
   notes             String?
+
+  category        String?
+  bodyType        String?
+  headType        String?
+  subjectType     String?
+  personCount     Int?
+  petCount        Int?
+  sizeCm          Int?
+  priceMinor      Int?
+  priceCurrency   String?
+  pricedAt        DateTime?
+  orderId         String? @unique
+  order           Order?  @relation(fields: [orderId], references: [id], onDelete: SetNull)
 
   referenceFileCount Int @default(0)
 
