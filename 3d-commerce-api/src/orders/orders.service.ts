@@ -280,6 +280,11 @@ export class OrdersService {
         ) {
           throw new BadRequestException('Only captured payments can be refunded.');
         }
+
+        await tx.payment.update({
+          where: { orderId: id },
+          data: { status: 'REFUNDED' },
+        });
       }
       if (status === 'CONFIRMED' && order.status === 'PENDING_PAYMENT') await this.consumeReservations(tx, id);
 
