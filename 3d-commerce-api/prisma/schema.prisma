@@ -512,6 +512,7 @@ model Payment {
   order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   provider          PaymentProvider
+  providerOrderId   String?
   providerPaymentId String?
   status            PaymentStatus   @default(PENDING)
 
@@ -522,6 +523,7 @@ model Payment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([providerOrderId])
   @@index([providerPaymentId])
   @@index([status])
 }
