@@ -22,6 +22,7 @@ export default function AccountSettingsPage() {
   const { user, logout, refreshSession } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [orderUpdates, setOrderUpdates] = useState(true);
   const [productNews, setProductNews] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -32,6 +33,7 @@ export default function AccountSettingsPage() {
     if (user) {
       setName(user.name);
       setEmail(user.email);
+      setPhone(user.phone ?? "");
     }
   }, [user]);
 
@@ -43,7 +45,7 @@ export default function AccountSettingsPage() {
       const response = await fetch("/api/account/me", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, phone: user?.phone ?? "" }),
+        body: JSON.stringify({ name, phone }),
       });
       const data = (await response.json().catch(() => null)) as { message?: string; error?: string } | null;
       if (!response.ok) throw new Error(data?.error ?? data?.message ?? "Unable to save profile.");
@@ -95,6 +97,10 @@ export default function AccountSettingsPage() {
               <label className="block">
                 <span className="mb-2 block text-[9px] font-medium uppercase tracking-[0.14em] text-muted">Full name</span>
                 <input value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" className="h-11 w-full rounded-xl border border-white/[0.1] bg-white/[0.025] px-3.5 text-sm text-foreground outline-none transition-colors focus:border-primary/40 focus:bg-white/[0.04]" />
+              </label>
+              <label className="block">
+                <span className="mb-2 block text-[9px] font-medium uppercase tracking-[0.14em] text-muted">Phone number</span>
+                <input value={phone} onChange={(event) => setPhone(event.target.value)} autoComplete="tel" className="h-11 w-full rounded-xl border border-white/[0.1] bg-white/[0.025] px-3.5 text-sm text-foreground outline-none transition-colors focus:border-primary/40 focus:bg-white/[0.04]" />
               </label>
               <label className="block">
                 <span className="mb-2 block text-[9px] font-medium uppercase tracking-[0.14em] text-muted">Email address</span>
