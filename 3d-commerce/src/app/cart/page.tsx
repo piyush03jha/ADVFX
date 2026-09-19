@@ -62,7 +62,7 @@ export default function CartPage() {
               )}
             </div>
 
-            {!isLoaded ? (
+            {!isLoaded || isRefreshing ? (
               <div className="flex min-h-[420px] items-center justify-center rounded-2xl border border-white/[0.08] bg-[linear-gradient(135deg,hsl(var(--foreground)/0.055),hsl(var(--background)/0.02)_55%,hsl(var(--primary)/0.07))] shadow-[0_18px_55px_rgba(0,0,0,0.12)]">
                 <div className="text-center">
                   <div className="mx-auto h-7 w-7 animate-spin rounded-full border border-white/10 border-t-primary" />
