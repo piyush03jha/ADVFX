@@ -5,6 +5,7 @@ import { CartModule } from '../cart/cart.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { StorageModule } from '../storage/storage.module';
+import { ProductFilesModule } from '../product-files/product-files.module';
 
 import { CustomBuildController } from './custom-build.controller';
 import { CustomBuildFilesController } from './custom-build.files.controller';
@@ -17,6 +18,7 @@ import { CustomBuildService } from './custom-build.service';
     CartModule,
     NotificationsModule,
     AuthModule,
+    ProductFilesModule,
   ],
 
   controllers: [
