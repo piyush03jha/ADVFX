@@ -170,16 +170,23 @@ export class PaymentsService {
         },
       });
 
+      await this.consumeReservationsInTransaction(tx, order.id);
+
       const updatedOrder = await tx.order.update({
         where: { id: order.id },
         data: { status: OrderStatus.CONFIRMED },
-        include: { items: true, shippingAddress: true, payment: true, shipment: true },
+        include: {
+          items: true,
+          shippingAddress: true,
+          payment: true,
+          shipment: true,
+        },
       });
 
       return { ...updatedOrder, payment: savedPayment };
     });
 
-    await this.finalizeReservationsAfterPayment(order.id);
+    await this.incrementPromotionUsageAfterPayment(order.id);
 
     if (updated.userId) {
       await this.notifications.create(updated.userId, {
@@ -351,13 +358,66 @@ export class PaymentsService {
     }
   }
 
-  private async finalizeReservationsAfterPayment(orderId: string) {
-    const current = await this.prisma.order.findUnique({
-      where: { id: orderId },
-      select: { status: true },
+  private async consumeReservationsInTransaction(
+    tx: Prisma.TransactionClient,
+    orderId: string,
+  ) {
+    const reservations = await tx.inventoryReservation.findMany({
+      where: { orderId, status: "ACTIVE" },
     });
-    if (current?.status === OrderStatus.CONFIRMED) return;
-    await this.orders.updateStatus(orderId, OrderStatus.CONFIRMED);
+
+    for (const reservation of reservations) {
+      if (!reservation.productInventoryId) continue;
+
+      const updated = await tx.productInventory.updateMany({
+        where: {
+          id: reservation.productInventoryId,
+          stock: { gte: reservation.quantity },
+          reserved: { gte: reservation.quantity },
+        },
+        data: {
+          stock: { decrement: reservation.quantity },
+          reserved: { decrement: reservation.quantity },
+        },
+      });
+
+      if (updated.count !== 1) {
+        throw new BadRequestException(
+          "Unable to finalize inventory for product " +
+            reservation.productId,
+        );
+      }
+
+      await tx.inventoryReservation.update({
+        where: { id: reservation.id },
+        data: {
+          status: "CONSUMED",
+          consumedAt: new Date(),
+          releasedAt: null,
+        },
+      });
+    }
+  }
+
+  private async incrementPromotionUsageAfterPayment(orderId: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      select: { promotionId: true, appliedCouponCode: true },
+    });
+
+    if (!order?.promotionId) return;
+
+    await this.prisma.promotion.updateMany({
+      where: {
+        id: order.promotionId,
+        isActive: true,
+        OR: [
+          { usageLimit: null },
+          { usageCount: { lt: 1 } },
+        ],
+      },
+      data: { usageCount: { increment: 1 } },
+    });
   }
 
   private async getPayableOrder(userId: string, orderId: string) {
