@@ -13,12 +13,15 @@ import { Container } from "@/components/ui/Container";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import type { CountryCode } from "@/config/countries";
+import type { CheckoutQuote } from "@/lib/checkout-api";
 
 export default function CheckoutPage() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const { items, isLoaded } = useCart();
   const [country, setCountry] = useState<CountryCode>("IN");
+  const [quote, setQuote] = useState<CheckoutQuote | null>(null);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isAuthLoading && !isAuthenticated) {
@@ -72,8 +75,8 @@ export default function CheckoutPage() {
               <EmptyCheckout />
             ) : (
               <div className="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:gap-12">
-                <CheckoutForm onCountryChange={setCountry} />
-                <CheckoutSummary country={country} customerName={user?.name} customerEmail={user?.email} />
+                <CheckoutForm\n                  onCountryChange={setCountry}\n                  onQuoteChange={(nextQuote, error) => {\n                    setQuote(nextQuote);\n                    setQuoteError(error);\n                  }}\n                />
+                <CheckoutSummary\n                  country={country}\n                  quote={quote}\n                  quoteError={quoteError}\n                  customerName={user?.name}\n                  customerEmail={user?.email}\n                />
               </div>
             )}
           </Container>
