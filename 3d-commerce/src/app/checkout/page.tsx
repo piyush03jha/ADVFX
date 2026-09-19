@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { IconLock, IconShoppingBag } from "@tabler/icons-react";
 
 import { Navbar } from "@/components/layout/SiteNavbar";
@@ -21,14 +21,13 @@ import type { CartItem } from "@/context/CartContext";
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const { items, isLoaded, isRefreshing, refreshCart } = useCart();
   const [country, setCountry] = useState<CountryCode>("IN");
   const [quote, setQuote] = useState<CheckoutQuote | null>(null);
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [buyNowItem, setBuyNowItem] = useState<CartItem | null>(null);
-  const isBuyNow = searchParams.get("mode") === "buy-now";
+  const [isBuyNow, setIsBuyNow] = useState(false);
 
   const handleQuoteChange = useCallback(
     (nextQuote: CheckoutQuote | null, error: string | null) => {
@@ -41,7 +40,11 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    if (isBuyNow) {
+    const buyNowMode =
+      new URLSearchParams(window.location.search).get("mode") === "buy-now";
+    setIsBuyNow(buyNowMode);
+
+    if (buyNowMode) {
       try {
         const raw = window.localStorage.getItem("forma-buy-now");
         if (!raw) {
@@ -71,7 +74,7 @@ export default function CheckoutPage() {
     }
 
     void refreshCart();
-  }, [isAuthenticated, isBuyNow, refreshCart, router]);
+  }, [isAuthenticated, refreshCart, router]);
 
   useEffect(() => {
     if (!isAuthLoading && !isAuthenticated) {
