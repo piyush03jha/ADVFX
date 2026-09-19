@@ -8,6 +8,7 @@ import { ProductDetailsTabs } from "./ProductDetailsTabs";
 import { ProductGallery } from "./ProductGallery";
 import { ProductInfo } from "./ProductInfo";
 import { RelatedProducts } from "./RelatedProducts";
+import { ProductViewTracker } from "./ProductViewTracker";
 
 import {
   IconClock,
@@ -26,6 +27,7 @@ export function ProductDetail({
 }: ProductDetailProps) {
   return (
     <main className="w-full overflow-hidden">
+      <ProductViewTracker productId={product.id} />
       {/* =====================================================
           PRODUCT HERO
       ====================================================== */}
