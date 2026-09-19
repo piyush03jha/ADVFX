@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/Badge";
 import { Price } from "@/components/ui/Price";
 import { Rating } from "@/components/ui/Rating";
+import { WishlistButton } from "@/components/ui/WishlistButton";
 
 import type { StorefrontProduct } from "@/lib/catalog-api";
 
@@ -104,15 +105,8 @@ export function ProductInfo({
           PRICE
       ================================================== */}
 
-      <div
-        className="
-          mt-7
-          flex
-          flex-wrap
-          items-end
-          gap-3
-        "
-      >
+      <div className="mt-7 flex flex-wrap items-end justify-between gap-4">
+        <div className="flex flex-wrap items-end gap-3">
         <Price
           value={product.price}
           size="lg"
@@ -134,11 +128,17 @@ export function ProductInfo({
           </span>
         )}
 
-        {product.discount && (
-          <Badge variant="primary" className="mb-1 rounded-md px-2 py-1 font-semibold">
-            {product.discount}
-          </Badge>
-        )}
+          {product.discount && (
+            <Badge variant="primary" className="mb-1 rounded-md px-2 py-1 font-semibold">
+              {product.discount}
+            </Badge>
+          )}
+        </div>
+
+        <WishlistButton
+          product={product}
+          className="h-10 w-10 sm:h-11 sm:w-11"
+        />
       </div>
 
       {/* ==================================================
