@@ -4,7 +4,6 @@ import {
   IconArrowUpRight,
   IconMapPin,
   IconPackage,
-  IconShoppingBag,
   IconTruck,
 } from "@tabler/icons-react";
 
@@ -69,19 +68,16 @@ export function AccountOverview() {
       </section>
 
       <section className="relative overflow-hidden rounded-3xl border border-white/[0.1] bg-[linear-gradient(135deg,hsl(var(--foreground)/0.045),hsl(var(--background)/0.015)_52%,hsl(var(--primary)/0.055))] p-4 shadow-[0_20px_65px_rgba(0,0,0,0.14)] sm:p-6">
-        <div aria-hidden="true" className="pointer-events-none absolute -right-20 top-1/2 h-48 w-48 -translate-y-1/2 rounded-full bg-primary/[0.055] blur-3xl" />
         <div className="relative mb-5 flex items-end justify-between gap-4">
           <div>
             <p className="text-[9px] font-medium uppercase tracking-[0.18em] text-primary">Recent activity</p>
-            <h2 className="mt-1 text-base font-medium text-foreground sm:text-lg">Active orders</h2>
+            <h2 className="mt-1 text-base font-medium text-foreground sm:text-lg">Orders</h2>
           </div>
-
           <Link href="/account/orders" className="inline-flex items-center gap-1 text-[10px] uppercase tracking-[0.1em] text-muted transition-colors hover:text-primary">
             View all
             <IconArrowUpRight size={13} />
           </Link>
         </div>
-
         <div className="relative rounded-2xl border border-border bg-surface/45 p-5 text-sm text-muted">
           Your live orders are available from the Orders section.
         </div>
