@@ -16,6 +16,7 @@ export interface CatalogCategory {
   id: string;
   name: string;
   slug: string;
+  createdAt?: string;
 }
 
 export interface CatalogPrice {
@@ -111,6 +112,10 @@ export interface StorefrontProduct {
   packaging?: string | null;
   weight?: string | null;
   variants: StorefrontVariant[];
+  isFeatured: boolean;
+  isTrending: boolean;
+  isBestseller: boolean;
+  createdAt?: string;
 }
 
 function mapVariant(variant: CatalogVariant): StorefrontVariant | null {
@@ -157,6 +162,10 @@ export function mapCatalogProduct(product: CatalogProduct): StorefrontProduct {
     id: product.id,
     name: product.name,
     slug: product.slug,
+    isFeatured: product.isFeatured,
+    isTrending: product.isTrending,
+    isBestseller: product.isBestseller,
+    createdAt: product.createdAt,
     category: product.category?.name ?? "Uncategorized",
     description: product.description ?? "",
     price: amount / 100,
