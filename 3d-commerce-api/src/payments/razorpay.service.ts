@@ -74,6 +74,19 @@ export class RazorpayService {
     return this.safeEqual(expected, input.razorpaySignature);
   }
 
+  async refundPayment(paymentId: string, amountMinor?: number) {
+    try {
+      const refund = await this.client.payments.refund(paymentId, amountMinor != null
+        ? { amount: amountMinor }
+        : {});
+      return refund as { id: string; amount: number; status: string };
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unable to create Razorpay refund";
+      throw new ServiceUnavailableException(message);
+    }
+  }
+
   verifyWebhookSignature(rawBody: string, signature: string) {
     if (!this.webhookSecret || !signature) return false;
 
