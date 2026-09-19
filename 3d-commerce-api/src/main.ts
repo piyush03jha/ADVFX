@@ -28,6 +28,8 @@ async function bootstrap() {
     }),
   );
 
+  app.enableShutdownHooks();
+
   const maxUploadSizeMb = Number(process.env.MAX_UPLOAD_SIZE_MB ?? 50);
 
   if (
