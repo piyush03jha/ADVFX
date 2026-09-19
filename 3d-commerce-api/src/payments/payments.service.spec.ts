@@ -42,6 +42,14 @@ describe('PaymentsService', () => {
       productInventory: {
         updateMany: jest.fn(),
       },
+      cart: {
+        findUnique: jest.fn().mockResolvedValue(null),
+      },
+      cartItem: {
+        findFirst: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
+      },
     };
 
     prisma.$transaction.mockImplementation(async (callback: any) => callback(tx));
