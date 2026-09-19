@@ -103,14 +103,6 @@ export class OrdersService {
         include: { items: true, shippingAddress: true },
       });
 
-      if (quote.promotion) {
-        const promotion = await tx.promotion.updateMany({
-          where: { id: quote.promotion.id, isActive: true, OR: [{ usageLimit: null }, { usageCount: { lt: 1 } }] },
-          data: { usageCount: { increment: 1 } },
-        });
-        if (promotion.count !== 1) throw new BadRequestException('Coupon usage limit has been reached');
-      }
-
       for (const item of cart.items) {
         const inventory = item.product.inventory;
         if (!inventory || !inventory.trackStock || inventory.allowBackorder) continue;
