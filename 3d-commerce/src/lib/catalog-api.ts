@@ -26,6 +26,23 @@ export interface CatalogPrice {
   isActive: boolean;
 }
 
+export interface CatalogVariantPrice {
+  id: string;
+  currency: string;
+  amountMinor: number;
+  compareAtMinor?: number | null;
+  isActive: boolean;
+}
+
+export interface CatalogVariant {
+  id: string;
+  name: string;
+  size?: string | null;
+  sku?: string | null;
+  isActive: boolean;
+  price?: CatalogVariantPrice | null;
+}
+
 export interface CatalogProduct {
   id: string;
   name: string;
@@ -45,6 +62,7 @@ export interface CatalogProduct {
   packaging?: string | null;
   weight?: string | null;
   prices: CatalogPrice[];
+  variants?: CatalogVariant[];
   media: CatalogMedia[];
   tags: CatalogTag[];
   inventory?: {
@@ -54,6 +72,15 @@ export interface CatalogProduct {
     trackStock: boolean;
     allowBackorder: boolean;
   } | null;
+}
+
+export interface StorefrontVariant {
+  id: string;
+  name: string;
+  size?: string | null;
+  sku?: string | null;
+  price?: number;
+  oldPrice?: number;
 }
 
 export interface StorefrontProduct {
@@ -83,6 +110,30 @@ export interface StorefrontProduct {
   base?: string | null;
   packaging?: string | null;
   weight?: string | null;
+  variants: StorefrontVariant[];
+}
+
+function mapVariant(variant: CatalogVariant): StorefrontVariant | null {
+  if (!variant.isActive) return null;
+
+  const price =
+    variant.price?.currency === "INR"
+      ? variant.price
+      : variant.price?.isActive
+        ? variant.price
+        : null;
+
+  return {
+    id: variant.id,
+    name: variant.name,
+    size: variant.size,
+    sku: variant.sku,
+    price: price ? price.amountMinor / 100 : undefined,
+    oldPrice:
+      price?.compareAtMinor != null
+        ? price.compareAtMinor / 100
+        : undefined,
+  };
 }
 
 function activePrice(product: CatalogProduct): CatalogPrice | undefined {
@@ -137,6 +188,11 @@ export function mapCatalogProduct(product: CatalogProduct): StorefrontProduct {
     base: product.base,
     packaging: product.packaging,
     weight: product.weight,
+    variants: (product.variants ?? [])
+      .map(mapVariant)
+      .filter(
+        (variant): variant is StorefrontVariant => Boolean(variant),
+      ),
   };
 }
 
