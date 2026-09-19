@@ -146,7 +146,6 @@ export class CustomBuildService {
       include: {
         user: true,
         media: true,
-        preview: { include: { productFile: true } },
         quote: true,
         revisions: true,
         previewProduct: true,
