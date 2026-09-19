@@ -315,12 +315,32 @@ export class PaymentsService {
 
         if (!payment || payment.status === PaymentStatus.CAPTURED) break;
 
-        await this.prisma.payment.update({
-          where: { id: payment.id },
-          data: {
-            providerPaymentId: paymentId ?? payment.providerPaymentId,
-            status: PaymentStatus.FAILED,
-          },
+        await this.prisma.$transaction(async (tx) => {
+          const current = await tx.payment.findUnique({
+            where: { id: payment.id },
+          });
+          if (!current || current.status === PaymentStatus.CAPTURED) return;
+
+          await tx.payment.update({
+            where: { id: current.id },
+            data: {
+              providerPaymentId: paymentId ?? current.providerPaymentId,
+              status: PaymentStatus.FAILED,
+            },
+          });
+
+          const order = await tx.order.findUnique({
+            where: { id: current.orderId },
+            select: { status: true },
+          });
+
+          if (order?.status === OrderStatus.PENDING_PAYMENT) {
+            await this.releaseReservationsInTransaction(tx, current.orderId);
+            await tx.order.update({
+              where: { id: current.orderId },
+              data: { status: OrderStatus.CANCELLED },
+            });
+          }
         });
         break;
       }
