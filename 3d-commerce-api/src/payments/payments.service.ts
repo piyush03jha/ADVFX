@@ -31,31 +31,13 @@ export class PaymentsService {
   ) {}
 
   async createRazorpayOrder(userId: string, orderId: string) {
-    const order = await this.prisma.order.findFirst({
-      where: { id: orderId, userId },
-      include: { payment: true },
-    });
-
-    if (!order) throw new NotFoundException('Order not found');
-    if (order.status !== OrderStatus.PENDING_PAYMENT) {
-      throw new ConflictException('Order is no longer awaiting payment');
-    }
-    if (!order.payment || order.payment.provider !== 'RAZORPAY') {
-      throw new ConflictException('Razorpay payment is not configured');
-    }
+    const order = await this.getPayableOrder(userId, orderId);
 
     if (
       order.payment.providerOrderId &&
       order.payment.status !== PaymentStatus.FAILED
     ) {
-      return {
-        keyId: this.razorpay.getPublicKeyId(),
-        razorpayOrderId: order.payment.providerOrderId,
-        amount: order.payment.amountMinor,
-        currency: order.payment.currency,
-        orderId: order.id,
-        orderNumber: order.orderNumber,
-      };
+      return this.formatRazorpayOrder(order);
     }
 
     const providerOrder = await this.razorpay.createOrder({
@@ -89,6 +71,29 @@ export class PaymentsService {
       orderId: order.id,
       orderNumber: order.orderNumber,
     };
+  }
+
+  async retryRazorpayPayment(userId: string, orderId: string) {
+    const order = await this.getPayableOrder(userId, orderId);
+
+    const refreshed = await this.prisma.$transaction(async (tx) => {
+      await tx.payment.update({
+        where: { id: order.payment.id },
+        data: {
+          providerOrderId: null,
+          providerPaymentId: null,
+          status: PaymentStatus.PENDING,
+          paidAt: null,
+        },
+      });
+
+      return tx.order.findUniqueOrThrow({
+        where: { id: order.id },
+        include: { payment: true },
+      });
+    });
+
+    return this.createRazorpayOrder(userId, refreshed.id);
   }
 
   async verifyRazorpayPayment(
@@ -353,6 +358,58 @@ export class PaymentsService {
     });
     if (current?.status === OrderStatus.CONFIRMED) return;
     await this.orders.updateStatus(orderId, OrderStatus.CONFIRMED);
+  }
+
+  private async getPayableOrder(userId: string, orderId: string) {
+    const order = await this.prisma.order.findFirst({
+      where: { id: orderId, userId },
+      include: { payment: true },
+    });
+
+    if (!order) throw new NotFoundException('Order not found');
+    if (order.status !== OrderStatus.PENDING_PAYMENT) {
+      throw new ConflictException('Order is no longer awaiting payment');
+    }
+    if (!order.payment || order.payment.provider !== 'RAZORPAY') {
+      throw new ConflictException('Razorpay payment is not configured');
+    }
+
+    const activeReservation = await this.prisma.inventoryReservation.findFirst({
+      where: {
+        orderId: order.id,
+        status: 'ACTIVE',
+        expiresAt: { gt: new Date() },
+      },
+    });
+
+    if (!activeReservation) {
+      throw new ConflictException(
+        'This payment session has expired. Please create a new order from your cart.',
+      );
+    }
+
+    return order;
+  }
+
+  private formatRazorpayOrder(order: {
+    id: string;
+    orderNumber: string;
+    totalMinor: number;
+    currency: string;
+    payment: {
+      providerOrderId: string | null;
+      amountMinor: number;
+      currency: string;
+    };
+  }) {
+    return {
+      keyId: this.razorpay.getPublicKeyId(),
+      razorpayOrderId: order.payment.providerOrderId,
+      amount: order.payment.amountMinor,
+      currency: order.payment.currency,
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+    };
   }
 
   private getVerifiedOrder(orderId: string) {
