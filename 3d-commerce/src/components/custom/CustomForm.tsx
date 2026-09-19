@@ -107,14 +107,14 @@ export function CustomForm({
       const requestResponse = await fetch("/api/custom-requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+        body: JSON.stringify({
         title: `Custom ${selectedCategory.label}`,
         requirements: detailsParts.join("\\n"),
         dimensions: selectedSize.label,
         preferredMaterial: undefined,
         preferredScale: undefined,
-        notes: details.trim() || undefined,
-      }),
+          notes: details.trim() || undefined,
+        }),
         cache: "no-store",
       });
 
