@@ -19,12 +19,14 @@ import { Navbar } from "@/components/layout/SiteNavbar";
 import { useAuth } from "@/context/AuthContext";
 
 export default function AccountSettingsPage() {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshSession } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [orderUpdates, setOrderUpdates] = useState(true);
   const [productNews, setProductNews] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -33,10 +35,26 @@ export default function AccountSettingsPage() {
     }
   }, [user]);
 
-  function handleSave(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSave(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setSaved(true);
-    window.setTimeout(() => setSaved(false), 2200);
+    setSaving(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/account/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, phone: user?.phone ?? "" }),
+      });
+      const data = (await response.json().catch(() => null)) as { message?: string; error?: string } | null;
+      if (!response.ok) throw new Error(data?.error ?? data?.message ?? "Unable to save profile.");
+      await refreshSession();
+      setSaved(true);
+      window.setTimeout(() => setSaved(false), 2200);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to save profile.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleLogout() {
@@ -122,11 +140,12 @@ export default function AccountSettingsPage() {
             </div>
           </section>
 
+          {error && <p className="text-xs text-red-300" role="alert">{error}</p>}
           <div className="flex flex-col gap-3 border-t border-white/[0.07] pt-5 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-[10px] leading-5 text-muted">Profile edits are ready to be saved.</p>
-            <button type="submit" className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-primary-foreground shadow-[0_12px_35px_hsl(var(--primary)/0.16)] transition-all hover:-translate-y-0.5 sm:w-auto">
+            <button type="submit" disabled={saving} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-primary-foreground shadow-[0_12px_35px_hsl(var(--primary)/0.16)] transition-all hover:-translate-y-0.5 sm:w-auto">
               {saved ? <IconCheck size={14} /> : <IconDeviceFloppy size={14} />}
-              {saved ? "Saved" : "Save changes"}
+              {saving ? "Saving…" : saved ? "Saved" : "Save changes"}
             </button>
           </div>
         </form>
