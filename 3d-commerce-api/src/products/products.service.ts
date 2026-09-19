@@ -465,6 +465,7 @@ export class ProductsService {
       media: { orderBy: { sortOrder: 'asc' } },
       tags: { include: { tag: true } },
       files: true,
+      metrics: true,
     };
   }
 }
