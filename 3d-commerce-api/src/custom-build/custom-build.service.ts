@@ -9,14 +9,14 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { CreateCustomRequestDto } from './dto/create-custom-request.dto';
 
 const TRANSITIONS: Record<CustomRequestStatus, CustomRequestStatus[]> = {
-  SUBMITTED: ['UNDER_REVIEW'],
-  UNDER_REVIEW: ['IN_PRODUCTION', 'REVISION_REQUESTED'],
-  IN_PRODUCTION: ['PREVIEW_READY'],
-  PREVIEW_READY: ['CUSTOMER_REVIEW'],
-  CUSTOMER_REVIEW: ['REVISION_REQUESTED', 'APPROVED'],
-  REVISION_REQUESTED: ['IN_PRODUCTION'],
-  APPROVED: ['ORDERABLE'],
+  SUBMITTED: ['UNDER_REVIEW', 'CANCELLED'],
+  UNDER_REVIEW: ['IN_PRODUCTION', 'CANCELLED'],
+  IN_PRODUCTION: ['ORDERABLE', 'CANCELLED'],
   ORDERABLE: [],
+  PREVIEW_READY: [],
+  CUSTOMER_REVIEW: [],
+  REVISION_REQUESTED: [],
+  APPROVED: [],
   CANCELLED: [],
 };
 
@@ -172,95 +172,6 @@ export class CustomBuildService {
     return updated;
   }
 
-  async upsertPreview(id: string, url: string) {
-    if (!url.trim()) throw new BadRequestException('Preview URL is required');
-    const request = await this.findOneAdmin(id);
-    const preview = await this.prisma.customRequestPreview.upsert({
-      where: { customRequestId: id },
-      create: { customRequestId: id, url: url.trim(), status: 'READY' },
-      update: { url: url.trim(), status: 'READY' },
-    });
-    await this.prisma.customRequest.update({
-      where: { id },
-      data: { status: 'CUSTOMER_REVIEW' },
-    });
-    await this.notifications.create(request.userId, {
-      type: NotificationType.CUSTOM_PREVIEW_READY,
-      title: 'Custom build processing update',
-      message: `Your custom build request “${request.title}” has a new internal processing update.`,
-      entityType: 'CUSTOM_REQUEST',
-      entityId: id,
-    });
-    return preview;
-  }
-
-  async linkProcessedPreview(customRequestId: string, productFileId: string) {
-    const request = await this.findOneAdmin(customRequestId);
-    const file = await this.prisma.productFile.findUnique({
-      where: { id: productFileId },
-      select: { id: true, storageUrl: true, processingStatus: true, format: true },
-    });
-    if (!file) throw new NotFoundException('Preview file not found');
-    if (file.processingStatus !== 'COMPLETED') {
-      throw new BadRequestException('Preview file is not processed yet');
-    }
-    if (!file.storageUrl) {
-      throw new BadRequestException('Processed preview file has no storage URL');
-    }
-
-    const preview = await this.prisma.customRequestPreview.upsert({
-      where: { customRequestId },
-      create: {
-        customRequestId,
-        productFileId: file.id,
-        url: file.storageUrl,
-        status: 'READY',
-      },
-      update: {
-        productFileId: file.id,
-        url: file.storageUrl,
-        status: 'READY',
-      },
-    });
-
-    await this.prisma.customRequest.update({
-      where: { id: customRequestId },
-      data: { status: 'CUSTOMER_REVIEW' },
-    });
-    await this.notifications.create(request.userId, {
-      type: NotificationType.CUSTOM_PREVIEW_READY,
-      title: 'Custom build processing update',
-      message: `Your custom build request “${request.title}” has a new internal processing update.`,
-      entityType: 'CUSTOM_REQUEST',
-      entityId: customRequestId,
-    });
-    return preview;
-  }
-
-  async ensurePreviewProduct(id: string) {
-    const request = await this.prisma.customRequest.findUnique({
-      where: { id },
-      select: { previewProductId: true },
-    });
-    if (request?.previewProductId) return request.previewProductId;
-
-    const product = await this.prisma.product.create({
-      data: {
-        name: `Custom preview ${id}`,
-        slug: `custom-preview-${id}`,
-        status: 'DRAFT',
-        inventory: { create: { stock: 0, trackStock: false } },
-      },
-      select: { id: true },
-    });
-
-    await this.prisma.customRequest.update({
-      where: { id },
-      data: { previewProductId: product.id },
-    });
-    return product.id;
-  }
-
   private statusNotification(status: CustomRequestStatus) {
     const events: Partial<
       Record<
@@ -277,6 +188,11 @@ export class CustomBuildService {
         type: NotificationType.CUSTOM_REQUEST_SUBMITTED,
         title: 'Custom build is in production',
         messagePrefix: 'Your custom build is now in production',
+      },
+      ORDERABLE: {
+        type: NotificationType.CUSTOM_ORDERABLE,
+        title: 'Custom build is ready to order',
+        messagePrefix: 'Your custom build is ready to order',
       },
     };
     return events[status];
