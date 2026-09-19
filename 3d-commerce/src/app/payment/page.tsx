@@ -35,7 +35,7 @@ const DRAFT_KEY = "forma-checkout-draft";
 
 export default function PaymentPage() {
   const router = useRouter();
-  const { items: cartItems, isLoaded, isRefreshing } = useCart();
+  const { items: cartItems } = useCart();
   const [country, setCountry] = useState<CountryCode>("IN");
   const [processing, setProcessing] = useState(false);
   const [draftLoaded, setDraftLoaded] = useState(false);
@@ -178,7 +178,14 @@ export default function PaymentPage() {
           order_id: razorpayOrder.razorpayOrderId,
           notes: { orderId: order.id },
           theme: { color: "#c9a86a" },
-          modal: { ondismiss: finish },
+          modal: {
+            ondismiss: () => {
+              setQuoteError(
+                "Payment was not completed. Your items are still available for checkout.",
+              );
+              finish();
+            },
+          },
           handler: (response) => {
             void verifyRazorpayPayment({
               orderId: order.id,
@@ -189,6 +196,7 @@ export default function PaymentPage() {
               .then(() => {
                 try {
                   window.localStorage.removeItem(DRAFT_KEY);
+                  window.localStorage.removeItem("forma-buy-now");
                 } catch {
                   // Ignore storage failures after a successful payment.
                 }
