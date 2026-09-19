@@ -34,7 +34,7 @@ const sectionClass =
 const innerClass =
   "rounded-xl border border-white/[0.08] bg-[linear-gradient(135deg,hsl(var(--foreground)/0.04),hsl(var(--background)/0.015)_65%,hsl(var(--primary)/0.045))]";
 
-export function CheckoutForm({ onCountryChange }: CheckoutFormProps) {
+export function CheckoutForm({ onCountryChange, onQuoteChange }: CheckoutFormProps) {
   const router = useRouter();
   const { addresses, defaultAddressId, isLoaded } = useAddresses();
   const [country, setCountry] = useState<CountryCode>("IN");
@@ -82,7 +82,7 @@ export function CheckoutForm({ onCountryChange }: CheckoutFormProps) {
     return () => {
       cancelled = true;
     };
-  }, [couponCode, selectedAddressId]);
+  }, [couponCode, selectedAddressId, onQuoteChange]);
 
   const update = (field: keyof FormState, value: string) =>
     setForm((current) => ({ ...current, [field]: value }));
