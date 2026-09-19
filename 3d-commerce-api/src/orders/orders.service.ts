@@ -26,7 +26,20 @@ export class OrdersService {
     private readonly pricing: PricingService,
   ) {}
 
-  async createFromCart(userId: string, shippingAddressId: string, couponCode?: string, idempotencyKey?: string) {
+  async createFromCart(
+    userId: string,
+    shippingAddressId: string,
+    couponCode?: string,
+    idempotencyKey?: string,
+    quotedSnapshot?: {
+      subtotalMinor?: number;
+      shippingMinor?: number;
+      discountMinor?: number;
+      taxMinor?: number;
+      totalMinor?: number;
+      currency?: string;
+    },
+  ) {
     if (idempotencyKey) {
       const existing = await this.prisma.order.findFirst({
         where: { userId, idempotencyKey },
@@ -36,6 +49,29 @@ export class OrdersService {
     }
 
     const quote = await this.pricing.calculate(userId, { shippingAddressId, couponCode });
+
+    if (quotedSnapshot) {
+      const expected = [
+        ["subtotal", quotedSnapshot.subtotalMinor, quote.summary.subtotalMinor],
+        ["shipping", quotedSnapshot.shippingMinor, quote.summary.shippingMinor],
+        ["discount", quotedSnapshot.discountMinor, quote.summary.discountMinor],
+        ["tax", quotedSnapshot.taxMinor, quote.summary.taxMinor],
+        ["total", quotedSnapshot.totalMinor, quote.summary.totalMinor],
+      ] as const;
+
+      if (
+        (quotedSnapshot.currency && quotedSnapshot.currency !== quote.currency) ||
+        expected.some(
+          ([, clientValue, serverValue]) =>
+            clientValue !== undefined && clientValue !== serverValue,
+        )
+      ) {
+        throw new BadRequestException(
+          "The checkout total changed. Please refresh the quote and try again.",
+        );
+      }
+    }
+
     const expiresAt = new Date(Date.now() + RESERVATION_MINUTES * 60_000);
 
     const result = await this.prisma.$transaction(async (tx) => {
