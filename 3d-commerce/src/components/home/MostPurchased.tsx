@@ -22,7 +22,6 @@ import { Rating } from "@/components/ui/Rating";
 import { WishlistButton } from "@/components/ui/WishlistButton";
 import { useCart } from "@/context/CartContext";
 
-import { getBackendApiUrl } from "@/lib/backend-api";
 import { mapCatalogProducts, type CatalogProduct, type StorefrontProduct } from "@/lib/catalog-api";
 
 export function MostPurchased() {
