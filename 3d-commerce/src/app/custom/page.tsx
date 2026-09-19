@@ -9,6 +9,7 @@ export default function CustomPage() {
   const [body, setBody] = useState("full");
   const [head, setHead] = useState("bobble");
   const [submission, setSubmission] = useState<CustomSubmission | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -19,7 +20,14 @@ export default function CustomPage() {
           <CustomSuccessState {...submission} />
         ) : (
           <section className="mx-auto max-w-[1440px] px-3 pb-20 sm:px-6 lg:px-10">
-            <CustomForm body={body} onBodyChange={setBody} head={head} onHeadChange={setHead} onSubmit={setSubmission} />
+            <CustomForm
+              body={body}
+              onBodyChange={setBody}
+              head={head}
+              onHeadChange={setHead}
+              onSubmit={setSubmission}
+              isSubmitting={isSubmitting}
+            />
           </section>
         )}
       </main>
