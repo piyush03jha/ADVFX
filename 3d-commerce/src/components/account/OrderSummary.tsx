@@ -1,12 +1,20 @@
-import type { Order } from "@/config/orders";
-
-interface OrderSummaryProps { order: Order; }
+export interface OrderSummaryData {
+  subtotal: number;
+  shipping: number;
+  tax: number;
+  discount: number;
+  total: number;
+  paymentMethod: {
+    label: string;
+    lastFour?: string;
+  };
+}
 
 function formatPrice(value: number) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value);
 }
 
-export function OrderSummary({ order }: OrderSummaryProps) {
+export function OrderSummary({ order }: { order: OrderSummaryData }) {
   return (
     <div className="rounded-2xl border border-white/[0.1] bg-[linear-gradient(135deg,hsl(var(--foreground)/0.065),hsl(var(--background)/0.02)_55%,hsl(var(--primary)/0.09))] p-3.5 shadow-[0_16px_50px_rgba(0,0,0,0.12)] sm:p-5">
       <h3 className="text-sm font-medium tracking-tight text-foreground sm:text-base">Payment summary</h3>
