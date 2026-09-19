@@ -150,8 +150,31 @@ function mapVariant(variant: CatalogVariant): StorefrontVariant | null {
 }
 
 function activePrice(product: CatalogProduct): CatalogPrice | undefined {
+  const now = Date.now();
   const prices = product.prices ?? [];
-  return prices.find((price) => price.currency === "INR") ?? prices[0];
+
+  const isCurrentlyActive = (
+    price: CatalogPrice & { startsAt?: string | null; endsAt?: string | null },
+  ) =>
+    price.isActive &&
+    (!price.startsAt || new Date(price.startsAt).getTime() <= now) &&
+    (!price.endsAt || new Date(price.endsAt).getTime() > now);
+
+  return (
+    prices.find((price) =>
+      isCurrentlyActive(price as CatalogPrice & {
+        startsAt?: string | null;
+        endsAt?: string | null;
+      }) && price.currency === "INR",
+    ) ??
+    prices.find((price) => isCurrentlyActive(price as CatalogPrice & {
+      startsAt?: string | null;
+      endsAt?: string | null;
+    }) && price.currency === "INR") ??
+    prices.find((price) => price.isActive && price.currency === "INR") ??
+    prices.find((price) => price.isActive) ??
+    prices[0]
+  );
 }
 
 function primaryImage(product: CatalogProduct): string {
