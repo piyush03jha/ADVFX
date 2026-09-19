@@ -166,15 +166,6 @@ export function CartItem({ item }: CartItemProps) {
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => void moveToWishlist()}
-          disabled={isSyncing || isMoving || isWishlistSyncing}
-          className="mt-3 inline-flex items-center gap-1.5 text-[9px] uppercase tracking-[0.13em] text-muted transition-colors hover:text-primary disabled:pointer-events-none disabled:opacity-50"
-        >
-          <IconHeart size={13} stroke={1.5} />
-          {isMoving ? "Moving..." : "Move to wishlist"}
-        </button>
       </div>
 
       <div className="hidden min-w-[120px] flex-col items-end justify-between py-0.5 sm:flex">
@@ -184,13 +175,22 @@ export function CartItem({ item }: CartItemProps) {
         <div className="flex flex-col items-end gap-2">
           <button
             type="button"
-            onClick={() => void moveToWishlist()}
+            onClick={() => void removeItem(item.key)}
             disabled={isSyncing || isMoving || isWishlistSyncing}
-            className="inline-flex items-center gap-1.5 text-[9px] uppercase tracking-[0.13em] text-muted transition-colors hover:text-primary disabled:pointer-events-none disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 text-[9px] uppercase tracking-[0.13em] text-muted transition-colors hover:text-red-400 disabled:pointer-events-none disabled:opacity-50"
           >
-            <IconHeart size={13} stroke={1.5} />
-            {isMoving ? "Moving..." : "Move to wishlist"}
+            <IconTrash size={13} stroke={1.5} />
+            Remove
           </button>
+          <button
+          type="button"
+          onClick={() => void moveToWishlist()}
+          disabled={isSyncing || isMoving || isWishlistSyncing}
+          className="mt-3 inline-flex items-center gap-1.5 text-[9px] uppercase tracking-[0.13em] text-muted transition-colors hover:text-primary disabled:pointer-events-none disabled:opacity-50"
+        >
+          <IconHeart size={13} stroke={1.5} />
+          {isMoving ? "Moving..." : "Move to wishlist"}
+        </button>
           <button
             type="button"
             onClick={() => void removeItem(item.key)}
