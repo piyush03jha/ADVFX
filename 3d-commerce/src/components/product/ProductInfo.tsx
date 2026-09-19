@@ -145,6 +145,22 @@ export function ProductInfo({
           DESCRIPTION
       ================================================== */}
 
+      <div className="mt-5 flex flex-wrap items-center gap-2">
+        {product.trackStock ? (
+          product.stock > product.reserved ? (
+            <Badge variant="primary">
+              {product.stock - product.reserved} in stock
+            </Badge>
+          ) : product.allowBackorder ? (
+            <Badge>Available to order</Badge>
+          ) : (
+            <Badge>Out of stock</Badge>
+          )
+        ) : (
+          <Badge>Made to order</Badge>
+        )}
+      </div>
+
       <p
         className="
           mt-5
