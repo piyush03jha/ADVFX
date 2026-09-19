@@ -43,7 +43,7 @@ export class CustomBuildService {
         preferredMaterial: dto.preferredMaterial?.trim() || null,
         preferredScale: dto.preferredScale?.trim() || null,
         notes: dto.notes?.trim() || null,
-        referenceFileCount: dto.referenceFileCount ?? 0,
+        referenceFileCount: 0,
         status: 'SUBMITTED',
       },
       include: { media: true, quote: true },
