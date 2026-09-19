@@ -18,7 +18,6 @@ const prisma = new PrismaClient({
   adapter,
 });
 
-
 async function hashAdminPassword(password: string) {
   return new Promise<string>((resolve, reject) => {
     const salt = randomBytes(16);
@@ -36,7 +35,11 @@ async function hashAdminPassword(password: string) {
           1,
           salt.toString('hex'),
           Buffer.from(derivedKey).toString('hex'),
-        ].join('
+        ].join('$'));
+      },
+    );
+  });
+}
 
 async function main() {
   const email = process.env.ADMIN_EMAIL?.toLowerCase().trim();
