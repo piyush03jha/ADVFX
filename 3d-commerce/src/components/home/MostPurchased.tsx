@@ -36,7 +36,11 @@ export function MostPurchased() {
         return (await response.json()) as CatalogProduct[];
       })
       .then((data) => {
-        if (!cancelled) setProducts(mapCatalogProducts(data).filter((product) => product.badge || product.model).slice(0, 4));
+        if (!cancelled) setProducts(
+          mapCatalogProducts(data)
+            .filter((product) => product.isBestseller)
+            .slice(0, 4),
+        );
       })
       .catch(() => {
         if (!cancelled) setProducts([]);
