@@ -39,6 +39,10 @@ export function validateEnvironment() {
     if (!process.env.AUTH_CAPTCHA_SECRET || process.env.AUTH_CAPTCHA_SECRET.length < 32) {
       throw new Error('AUTH_CAPTCHA_SECRET must be at least 32 characters in production');
     }
+
+    if (process.env.AUTH_EXPOSE_DEV_TOKENS === 'true') {
+      throw new Error('AUTH_EXPOSE_DEV_TOKENS must be disabled in production');
+    }
   }
 
   return {
