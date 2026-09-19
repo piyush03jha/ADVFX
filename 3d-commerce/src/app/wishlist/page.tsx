@@ -27,20 +27,16 @@ export default function WishlistPage() {
     );
     const previousQuantity = existing?.quantity ?? 0;
 
-    try {
-      await addItem(product, null, 1);
-      try {
-        await removeFromWishlist(product.id);
-      } catch (cause) {
-        if (existing) {
-          await updateQuantity(existing.key, previousQuantity);
-        } else {
-          await removeItem(`${product.id}:base`);
-        }
-        throw cause;
-      }
-    } catch {
-      // Contexts expose the operation error in their UI state; avoid a second action.
+    const added = await addItem(product, null, 1);
+    if (!added) return;
+
+    const removed = await removeFromWishlist(product.id);
+    if (removed) return;
+
+    if (existing) {
+      await updateQuantity(existing.key, previousQuantity);
+    } else {
+      await removeItem(`${product.id}:base`);
     }
   }
 
