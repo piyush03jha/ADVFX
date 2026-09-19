@@ -67,7 +67,7 @@ export default function OrderConfirmationPage() {
           </div>
 
           <p className="mt-5 text-[9px] uppercase tracking-[0.22em] text-primary">
-            FORMA / ORDER CONFIRMED
+            FORMA / ORDER STATUS
           </p>
 
           <h1
@@ -80,7 +80,7 @@ export default function OrderConfirmationPage() {
               sm:text-4xl
             "
           >
-            Your order is confirmed.
+            {order.status === "CONFIRMED" ? "Your order is confirmed." : "Your order is being processed."}
           </h1>
 
           <p className="mx-auto mt-2 max-w-md text-xs leading-5 text-muted sm:text-sm">
