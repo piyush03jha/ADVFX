@@ -105,10 +105,19 @@ export class PaymentsService {
         );
       }
 
+      await tx.paymentAttempt.updateMany({
+        where: {
+          paymentId: payment.id,
+          status: PaymentStatus.PENDING,
+        },
+        data: { status: PaymentStatus.FAILED },
+      });
+
       await tx.payment.update({
         where: { id: payment.id },
         data: {
           providerPaymentId: null,
+          providerOrderId: null,
           status: PaymentStatus.PENDING,
           paidAt: null,
         },
