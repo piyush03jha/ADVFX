@@ -9,10 +9,16 @@ import { COUNTRIES, type CountryCode } from "@/config/countries";
 import { SavedAddressSelector } from "@/components/checkout/SavedAddressSelector";
 import { Button } from "@/components/ui/Button";
 import { useAddresses, type Address } from "@/context/AddressContext";
-import { getCheckoutQuote, type CheckoutQuote } from "@/lib/checkout-api";
+import {
+  getCheckoutQuote,
+  type CheckoutQuote,
+  type CheckoutSelectionItem,
+} from "@/lib/checkout-api";
 
 interface CheckoutFormProps {
   onCountryChange?: (country: CountryCode) => void;
+  onQuoteChange?: (quote: CheckoutQuote | null, error: string | null) => void;
+  selectedItems?: CheckoutSelectionItem[];
 }
 interface FormState {
   email: string;
@@ -25,6 +31,7 @@ export interface CheckoutDraft {
   address: Address;
   country: CountryCode;
   couponCode?: string;
+  checkoutItems?: CheckoutSelectionItem[];
 }
 
 const INITIAL_FORM: FormState = { email: "", phone: "" };
@@ -34,7 +41,11 @@ const sectionClass =
 const innerClass =
   "rounded-xl border border-white/[0.08] bg-[linear-gradient(135deg,hsl(var(--foreground)/0.04),hsl(var(--background)/0.015)_65%,hsl(var(--primary)/0.045))]";
 
-export function CheckoutForm({ onCountryChange, onQuoteChange }: CheckoutFormProps) {
+export function CheckoutForm({
+  onCountryChange,
+  onQuoteChange,
+  selectedItems,
+}: CheckoutFormProps) {
   const router = useRouter();
   const { addresses, defaultAddressId, isLoaded } = useAddresses();
   const [country, setCountry] = useState<CountryCode>("IN");
@@ -64,7 +75,11 @@ export function CheckoutForm({ onCountryChange, onQuoteChange }: CheckoutFormPro
     setQuote(null);
     setQuoteError(null);
 
-    void getCheckoutQuote(selectedAddressId, couponCode.trim() || undefined)
+    void getCheckoutQuote(
+      selectedAddressId,
+      couponCode.trim() || undefined,
+      selectedItems,
+    )
       .then((value) => {
         if (!cancelled) setQuote(value);
       })
@@ -125,6 +140,7 @@ export function CheckoutForm({ onCountryChange, onQuoteChange }: CheckoutFormPro
       address: selectedAddress,
       country,
       couponCode: couponCode.trim() || undefined,
+      checkoutItems: selectedItems,
     };
 
     window.localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
