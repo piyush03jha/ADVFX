@@ -18,6 +18,7 @@ import { Navbar } from "@/components/layout/SiteNavbar";
 import { Button } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import { useCart } from "@/context/CartContext";
+import { createOrder, formatQuoteMoney, getCheckoutQuote, type CheckoutQuote } from "@/lib/checkout-api";
 import { getCountry, type CountryCode } from "@/config/countries";
 import { calculateCartPricing, formatMoney } from "@/lib/pricing";
 
@@ -30,12 +31,16 @@ export default function PaymentPage() {
   const [method, setMethod] = useState<"card" | "upi" | "netbanking">("card");
   const [processing, setProcessing] = useState(false);
   const [draftLoaded, setDraftLoaded] = useState(false);
+  const [draft, setDraft] = useState<{ addressId?: string; country?: CountryCode } | null>(null);
+  const [quote, setQuote] = useState<CheckoutQuote | null>(null);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
 
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(DRAFT_KEY);
       if (raw) {
         const draft = JSON.parse(raw) as { country?: CountryCode };
+        setDraft(draft);
         if (draft.country) setCountry(draft.country);
       }
     } catch {
@@ -45,42 +50,42 @@ export default function PaymentPage() {
     }
   }, []);
 
-  const pricing = useMemo(
-    () => calculateCartPricing(items, country),
-    [items, country],
-  );
-  const countryConfig = getCountry(country);
-  const shippingMinor = pricing.subtotal.amountMinor >= 499900 ? 0 : 19900;
-  const total = {
-    amountMinor: pricing.subtotal.amountMinor + shippingMinor,
-    currency: pricing.currency,
-  };
+  useEffect(() => {
+    if (!draft?.addressId) return;
+    let cancelled = false;
+    setQuoteError(null);
+    void getCheckoutQuote(draft.addressId).then((value) => {
+      if (!cancelled) setQuote(value);
+    }).catch((cause) => {
+      if (!cancelled) setQuoteError(cause instanceof Error ? cause.message : "Unable to calculate the final order total.");
+    });
+    return () => { cancelled = true; };
+  }, [draft?.addressId]);
 
-  const handlePay = () => {
-    if (pricing.unavailableProductIds.length > 0 || items.length === 0) return;
+  const countryConfig = getCountry(country);
+  const total = quote ? { amountMinor: quote.summary.totalMinor, currency: quote.currency } : null;
+
+  const handlePay = async () => {
+    if (!draft?.addressId || !quote || items.length === 0) return;
 
     setProcessing(true);
+    setQuoteError(null);
 
-    const orderId = `ORD-${Date.now().toString().slice(-8)}`;
-    const order = {
-      id: orderId,
-      createdAt: new Date().toISOString(),
-      paymentStatus: "pending",
-      fulfillmentStatus: "pending",
-      country,
-      currency: pricing.currency,
-      total,
-    };
-
-    window.localStorage.setItem("forma-last-order", JSON.stringify(order));
-
-    window.setTimeout(() => {
-      clearCart();
-      router.push(`/order/confirmation?order=${orderId}`);
-    }, 700);
+    try {
+      const order = await createOrder({
+        shippingAddressId: draft.addressId,
+        idempotencyKey: window.crypto.randomUUID(),
+      });
+      await clearCart();
+      router.push(`/order/confirmation?order=${encodeURIComponent(order.id)}`);
+    } catch (cause) {
+      setQuoteError(cause instanceof Error ? cause.message : "Unable to create your order.");
+    } finally {
+      setProcessing(false);
+    }
   };
 
-  if (!isLoaded || !draftLoaded) {
+  if (!isLoaded || !draftLoaded || (draft?.addressId && !quote && !quoteError)) {
     return (
       <>
         <Navbar />
@@ -284,29 +289,32 @@ export default function PaymentPage() {
 
                 {pricing.unavailableProductIds.length > 0 ? (
                   <div className="mt-4 rounded-xl border border-red-400/20 bg-red-400/[0.04] p-3 text-[10px] leading-4 text-red-300">
-                    Some products are not priced for {countryConfig.name}. Return to checkout and choose
-                    a configured country.
+                    {quoteError}
                   </div>
                 ) : null}
 
-                <div className="mt-5 space-y-3">
-                  <SummaryRow label="Subtotal" value={formatMoney(pricing.subtotal)} />
-                  <SummaryRow
-                    label="Shipping"
-                    value={
-                      shippingMinor === 0
-                        ? "FREE"
-                        : formatMoney({ amountMinor: shippingMinor, currency: pricing.currency })
-                    }
-                    positive={shippingMinor === 0}
-                  />
-                </div>
+                {quote ? (
+                  <div className="mt-5 space-y-3">
+                    <SummaryRow label="Subtotal" value={formatQuoteMoney(quote.summary.subtotalMinor, quote.currency)} />
+                    <SummaryRow
+                      label="Shipping"
+                      value={quote.summary.shippingMinor === 0 ? "FREE" : formatQuoteMoney(quote.summary.shippingMinor, quote.currency)}
+                      positive={quote.summary.shippingMinor === 0}
+                    />
+                    {quote.summary.discountMinor > 0 ? (
+                      <SummaryRow label="Discount" value={`-${formatQuoteMoney(quote.summary.discountMinor, quote.currency)}`} positive />
+                    ) : null}
+                    {quote.summary.taxMinor > 0 ? (
+                      <SummaryRow label="Tax" value={formatQuoteMoney(quote.summary.taxMinor, quote.currency)} />
+                    ) : null}
+                  </div>
+                ) : null}
 
                 <div className="mt-5 flex items-end justify-between border-t border-white/[0.07] pt-5">
                   <div>
                     <p className="text-[9px] uppercase tracking-[0.16em] text-muted">Total</p>
                     <p className="mt-1 text-2xl font-semibold tracking-[-0.03em] text-foreground">
-                      {formatMoney(total)}
+                      {total ? formatQuoteMoney(total.amountMinor, total.currency) : "—"}
                     </p>
                   </div>
                   <span className="text-right text-[9px] leading-4 text-muted">
@@ -319,8 +327,8 @@ export default function PaymentPage() {
                 <Button
                   type="button"
                   size="lg"
-                  disabled={processing || pricing.unavailableProductIds.length > 0}
-                  onClick={handlePay}
+                  disabled={processing || !quote || Boolean(quoteError)}
+                  onClick={() => void handlePay()}
                   className="mt-6 w-full"
                 >
                   {processing ? (
@@ -328,7 +336,7 @@ export default function PaymentPage() {
                   ) : (
                     <>
                       <IconLock size={16} />
-                      Pay {formatMoney(total)}
+                      Pay {total ? formatQuoteMoney(total.amountMinor, total.currency) : "Pay"}
                     </>
                   )}
                 </Button>
