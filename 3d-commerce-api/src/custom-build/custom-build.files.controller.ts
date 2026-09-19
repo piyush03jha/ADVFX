@@ -38,7 +38,7 @@ export class CustomBuildFilesController {
     });
     if (!request) throw new BadRequestException('Custom request not found');
 
-    const uploaded = await this.readMultipart(req, 50 * 1024 * 1024);
+    const uploaded = await this.readMultipart(req, 15 * 1024 * 1024);
     if (!REFERENCE_MIME_TYPES.has(uploaded.mimetype)) {
       throw new BadRequestException('Only JPG and PNG references are supported');
     }
