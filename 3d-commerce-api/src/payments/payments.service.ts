@@ -57,14 +57,26 @@ export class PaymentsService {
       throw new ConflictException('Razorpay order total mismatch');
     }
 
-    await this.prisma.payment.update({
-      where: { id: order.payment.id },
-      data: {
-        providerOrderId: providerOrder.id,
-        status: PaymentStatus.PENDING,
-        providerPaymentId: null,
-        paidAt: null,
-      },
+    await this.prisma.$transaction(async (tx) => {
+      await tx.paymentAttempt.create({
+        data: {
+          paymentId: order.payment.id,
+          providerOrderId: providerOrder.id,
+          amountMinor: providerOrder.amount,
+          currency: providerOrder.currency,
+          status: PaymentStatus.PENDING,
+        },
+      });
+
+      await tx.payment.update({
+        where: { id: order.payment.id },
+        data: {
+          providerOrderId: providerOrder.id,
+          status: PaymentStatus.PENDING,
+          providerPaymentId: null,
+          paidAt: null,
+        },
+      });
     });
 
     return {
@@ -202,13 +214,21 @@ export class PaymentsService {
         };
       }
 
+      const attempt = await tx.paymentAttempt.findUnique({
+        where: { providerOrderId: input.razorpayOrderId },
+      });
+
+      if (!attempt || attempt.paymentId !== payment.id) {
+        throw new BadRequestException('Razorpay payment attempt does not match this order');
+      }
+
       const claimed = await tx.payment.updateMany({
         where: {
           id: payment.id,
           status: PaymentStatus.PENDING,
+          providerOrderId: input.razorpayOrderId,
         },
         data: {
-          providerOrderId: input.razorpayOrderId,
           providerPaymentId: input.razorpayPaymentId,
           status: PaymentStatus.CAPTURED,
           paidAt: new Date(),
@@ -232,6 +252,14 @@ export class PaymentsService {
           captured: false,
         };
       }
+
+      await tx.paymentAttempt.update({
+        where: { providerOrderId: input.razorpayOrderId },
+        data: {
+          providerPaymentId: input.razorpayPaymentId,
+          status: PaymentStatus.CAPTURED,
+        },
+      });
 
       const savedPayment = await tx.payment.findUniqueOrThrow({
         where: { id: payment.id },
