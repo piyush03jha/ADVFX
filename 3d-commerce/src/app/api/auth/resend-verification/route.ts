@@ -35,7 +35,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       message: message ?? "If the account exists and is not verified, a verification email has been sent.",
-      developmentOnly: data.developmentOnly,
+      ...(process.env.NODE_ENV !== "production" && data.developmentOnly ? { developmentOnly: data.developmentOnly } : {}),
       emailDeliveryPending: data.emailDeliveryPending ?? false,
     });
   } catch {
