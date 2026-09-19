@@ -260,8 +260,9 @@ model Product {
   media      ProductMedia[]
   files      ProductFile[]
   tags       ProductTag[]
-  cartItems  CartItem[]
-  orderItems OrderItem[]
+  cartItems      CartItem[]
+  orderItems     OrderItem[]
+  wishlistItems  WishlistItem[]
 
   inventoryReservations InventoryReservation[]
 
