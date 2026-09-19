@@ -8,17 +8,14 @@ import {
   IconTruck,
 } from "@tabler/icons-react";
 
-import { orders } from "@/config/orders";
-import { OrderCard } from "./OrderCard";
 
 const stats = [
-  { label: "Orders", value: "12", icon: IconPackage, href: "/account/orders" },
-  { label: "In transit", value: "2", icon: IconTruck, href: "/account/orders" },
-  { label: "Addresses", value: "2", icon: IconMapPin, href: "/account/addresses" },
+  { label: "Orders", value: "—", icon: IconPackage, href: "/account/orders" },
+  { label: "In transit", value: "—", icon: IconTruck, href: "/account/orders" },
+  { label: "Addresses", value: "—", icon: IconMapPin, href: "/account/addresses" },
 ];
 
 export function AccountOverview() {
-  const activeOrders = orders.slice(0, 2);
 
   return (
     <div className="space-y-6 sm:space-y-8">
@@ -85,10 +82,8 @@ export function AccountOverview() {
           </Link>
         </div>
 
-        <div className="relative space-y-3">
-          {activeOrders.map((order) => (
-            <OrderCard key={order.id} order={order} />
-          ))}
+        <div className="relative rounded-2xl border border-border bg-surface/45 p-5 text-sm text-muted">
+          Your live orders are available from the Orders section.
         </div>
       </section>
 
