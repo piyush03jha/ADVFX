@@ -312,7 +312,7 @@ export function CartProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const [items, setItems] = useState<CartItem[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -398,7 +398,7 @@ export function CartProvider({
   useEffect(() => {
     if (isAuthLoading) return;
     void refreshCart();
-  }, [isAuthLoading, refreshCart]);
+  }, [isAuthLoading, user?.id, refreshCart]);
 
   const addItem = useCallback(
     async (
