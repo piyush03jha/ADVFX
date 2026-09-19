@@ -34,6 +34,15 @@ export class OrdersController {
       req.user.id,
       dto.shippingAddressId,
       dto.couponCode,
+      dto.idempotencyKey,
+      {
+        subtotalMinor: dto.quotedSubtotalMinor,
+        shippingMinor: dto.quotedShippingMinor,
+        discountMinor: dto.quotedDiscountMinor,
+        taxMinor: dto.quotedTaxMinor,
+        totalMinor: dto.quotedTotalMinor,
+        currency: dto.quotedCurrency,
+      },
     );
   }
 
