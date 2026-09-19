@@ -1,7 +1,6 @@
-import { IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Max, Min } from "class-validator";
-import { CreateCustomRequestDto } from "./create-custom-request.dto";
+import { IsNotEmpty, IsOptional, IsString } from "class-validator";
 
-export class CreateCustomCheckoutDto extends CreateCustomRequestDto {
+export class CreateCustomCheckoutDto {
   @IsString()
   @IsNotEmpty()
   shippingAddressId: string;
