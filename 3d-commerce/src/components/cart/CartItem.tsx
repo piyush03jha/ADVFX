@@ -65,7 +65,7 @@ export function CartItem({ item }: CartItemProps) {
       const alreadySaved = isInWishlist(item.product.id);
 
       if (!alreadySaved) {
-        await addToWishlist({
+        const added = await addToWishlist({
           id: item.product.id,
           name: item.product.name,
           category: item.product.category,
@@ -78,17 +78,18 @@ export function CartItem({ item }: CartItemProps) {
           discount: item.product.discount,
           model: item.product.model,
         });
+        if (!added) return;
       }
 
-      try {
-        await removeItem(item.key);
-      } catch (cause) {
+      const removed = await removeItem(item.key);
+      if (!removed) {
         if (!alreadySaved) {
           await removeFromWishlist(item.product.id);
         }
-        throw cause;
+        return;
       }
-    } finally {
+
+          } finally {
       setIsMoving(false);
     }
   }
