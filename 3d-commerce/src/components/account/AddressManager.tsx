@@ -55,6 +55,8 @@ export function AddressManager({
     updateAddress,
     deleteAddress,
     setDefaultAddress,
+    isSyncing,
+    error,
   } = useAddresses();
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -97,16 +99,14 @@ export function AddressManager({
     setForm((current) => ({ ...current, [field]: value }));
   };
 
-  const submit = (event: React.FormEvent<HTMLFormElement>) => {
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (editingId) {
-      updateAddress(editingId, form);
-    } else {
-      addAddress(form);
-    }
+    const result = editingId
+      ? await updateAddress(editingId, form)
+      : await addAddress(form);
 
-    closeForm();
+    if (result) closeForm();
   };
 
   const hasForm = isAdding || editingId !== null;
@@ -121,6 +121,11 @@ export function AddressManager({
           <p className="mt-1 text-xs text-muted">
             Use a default address for faster checkout.
           </p>
+          {error && (
+            <p className="mt-2 text-xs text-red-300" role="alert">
+              {error}
+            </p>
+          )}
         </div>
 
         {!hasForm && (
@@ -204,7 +209,7 @@ export function AddressManager({
                       <button type="button" onClick={() => openEdit(address)} aria-label={`Edit ${address.fullName} address`} className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-surface-elevated hover:text-foreground">
                         <IconPencil size={14} />
                       </button>
-                      <button type="button" onClick={() => deleteAddress(address.id)} aria-label={`Delete ${address.fullName} address`} disabled={address.isDefault && addresses.length === 1} className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-red-500/10 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-30">
+                      <button type="button" onClick={() => void deleteAddress(address.id)} aria-label={`Delete ${address.fullName} address`} disabled={address.isDefault && addresses.length === 1} className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-red-500/10 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-30">
                         <IconTrash size={14} />
                       </button>
                     </div>
@@ -224,7 +229,7 @@ export function AddressManager({
                   ) : (
                     <button
                       type="button"
-                      onClick={() => setDefaultAddress(address.id)}
+                      onClick={() => void setDefaultAddress(address.id)}
                       disabled={address.isDefault}
                       className="text-[10px] font-medium uppercase tracking-[0.08em] text-muted hover:text-primary disabled:cursor-default disabled:text-primary/70"
                     >
