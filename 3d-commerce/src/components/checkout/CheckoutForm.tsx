@@ -9,6 +9,7 @@ import { COUNTRIES, type CountryCode } from "@/config/countries";
 import { SavedAddressSelector } from "@/components/checkout/SavedAddressSelector";
 import { Button } from "@/components/ui/Button";
 import { useAddresses, type Address } from "@/context/AddressContext";
+import type { CartItem } from "@/context/CartContext";
 import {
   getCheckoutQuote,
   type CheckoutQuote,
@@ -32,6 +33,7 @@ export interface CheckoutDraft {
   country: CountryCode;
   couponCode?: string;
   checkoutItems?: CheckoutSelectionItem[];
+  checkoutDisplayItems?: CartItem[];
 }
 
 const INITIAL_FORM: FormState = { email: "", phone: "" };
@@ -145,6 +147,9 @@ export function CheckoutForm({
       country,
       couponCode: couponCode.trim() || undefined,
       checkoutItems: selectedItems,
+      checkoutDisplayItems: selectedItems
+        ? undefined
+        : undefined,
     };
 
     window.localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
