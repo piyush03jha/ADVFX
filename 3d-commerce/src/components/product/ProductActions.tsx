@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -12,58 +12,33 @@ import {
 } from "@tabler/icons-react";
 
 import { Button } from "@/components/ui/Button";
-import {
-  useCart,
-  type CartSize,
-} from "@/context/CartContext";
-
-import type { StorefrontProduct } from "@/lib/catalog-api";
+import { useCart } from "@/context/CartContext";
+import type { StorefrontProduct, StorefrontVariant } from "@/lib/catalog-api";
 
 interface ProductActionsProps {
   product: StorefrontProduct;
 }
 
-const SIZES: Array<{
-  id: CartSize;
-  title: string;
-}> = [
-  {
-    id: "small",
-    title: "Small",
-  },
-  {
-    id: "medium",
-    title: "Medium",
-  },
-  {
-    id: "large",
-    title: "Large",
-  },
-];
-
-export function ProductActions({
-  product,
-}: ProductActionsProps) {
+export function ProductActions({ product }: ProductActionsProps) {
   const router = useRouter();
-
-  const [size, setSize] =
-    useState<CartSize>("medium");
-
-  const [quantity, setQuantity] =
-    useState(1);
-
-  const [added, setAdded] =
-    useState(false);
-
+  const variants = product.variants ?? [];
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(
+    variants[0]?.id ?? null,
+  );
+  const [quantity, setQuantity] = useState(1);
+  const [added, setAdded] = useState(false);
   const { addItem } = useCart();
 
-  const addToCart = async () => {
-    await addItem(
-      product,
-      size,
-      quantity,
-    );
+  const selectedVariant = useMemo<StorefrontVariant | null>(
+    () =>
+      variants.find((variant) => variant.id === selectedVariantId) ?? null,
+    [selectedVariantId, variants],
+  );
 
+  const displayPrice = selectedVariant?.price ?? product.price;
+
+  const addToCart = async () => {
+    await addItem(product, selectedVariant, quantity);
     setAdded(true);
 
     window.setTimeout(() => {
@@ -72,209 +47,108 @@ export function ProductActions({
   };
 
   const buyNow = async () => {
-    addItem(
-      product,
-      size,
-      quantity,
-    );
-
+    await addItem(product, selectedVariant, quantity);
     router.push("/cart");
   };
 
   return (
     <div className="mt-7 w-full">
-      {/* ==================================================
-          SIZE
-      ================================================== */}
+      {variants.length > 0 ? (
+        <div>
+          <p className="mb-3 text-[9px] font-medium uppercase tracking-[0.18em] text-primary">
+            Options
+          </p>
 
-      <div>
-        <p
-          className="
-            mb-3
-            text-[9px]
-            font-medium
-            uppercase
-            tracking-[0.18em]
-            text-primary
-          "
-        >
-          Size
-        </p>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {variants.map((variant) => {
+              const selected = variant.id === selectedVariantId;
+              const label = variant.size ?? variant.name;
+              const priceLabel =
+                variant.price !== undefined
+                  ? "₹" + variant.price.toLocaleString("en-IN")
+                  : "Price available in checkout";
 
-        <div
-          className="
-            grid
-            grid-cols-3
-            gap-2
-          "
-        >
-          {SIZES.map((item) => {
-            const selected =
-              size === item.id;
-
-            return (
-              <button
-                key={item.id}
-                type="button"
-                aria-pressed={selected}
-                onClick={() =>
-                  setSize(item.id)
-                }
-                className={`
-                  relative
-                  min-h-11
-                  min-w-0
-                  border
-                  px-3
-                  text-xs
-                  font-medium
-                  transition-all
-                  duration-200
-                  ${
-                    selected
+              return (
+                <button
+                  key={variant.id}
+                  type="button"
+                  aria-pressed={selected}
+                  onClick={() => setSelectedVariantId(variant.id)}
+                  className={
+                    "relative min-h-12 rounded-xl border px-3 text-left transition-all duration-200 " +
+                    (selected
                       ? "border-primary bg-primary/8 text-primary"
-                      : "border-white/[0.08] bg-white/[0.015] text-foreground hover:border-primary/40"
+                      : "border-white/[0.08] bg-white/[0.015] text-foreground hover:border-primary/40")
                   }
-                `}
-              >
-                {selected && (
-                  <span
-                    className="
-                      absolute
-                      right-2
-                      top-2
-                      flex
-                      h-4
-                      w-4
-                      items-center
-                      justify-center
-                      rounded-full
-                      bg-primary
-                      text-white
-                    "
-                  >
-                    <IconCheck size={9} />
+                >
+                  {selected && (
+                    <span className="absolute right-2 top-2 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-white">
+                      <IconCheck size={9} />
+                    </span>
+                  )}
+                  <span className="block pr-6 text-xs font-medium">
+                    {label}
                   </span>
-                )}
-
-                {item.title}
-              </button>
-            );
-          })}
+                  <span className="mt-1 block text-[10px] text-muted">
+                    {priceLabel}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
-
-      {/* ==================================================
-          QUANTITY
-      ================================================== */}
+      ) : (
+        <div className="rounded-xl border border-white/[0.07] bg-white/[0.015] px-4 py-3 text-[10px] uppercase tracking-[0.14em] text-muted">
+          Standard size
+        </div>
+      )}
 
       <div className="mt-5">
-        <p
-          className="
-            mb-2
-            text-[9px]
-            font-medium
-            uppercase
-            tracking-[0.18em]
-            text-primary
-          "
-        >
+        <p className="mb-2 text-[9px] font-medium uppercase tracking-[0.18em] text-primary">
           Quantity
         </p>
 
-        <div
-          className="
-            flex
-            h-10
-            w-28
-            items-center
-            justify-between
-            border
-            border-white/[0.08]
-            bg-white/[0.015]
-          "
-        >
+        <div className="flex h-10 w-28 items-center justify-between border border-white/[0.08] bg-white/[0.015]">
           <button
             type="button"
             aria-label="Decrease quantity"
-            onClick={() =>
-              setQuantity((value) =>
-                Math.max(1, value - 1),
-              )
-            }
-            className="
-              flex
-              h-full
-              w-9
-              items-center
-              justify-center
-              text-muted
-              transition-colors
-              hover:text-foreground
-            "
+            onClick={() => setQuantity((value) => Math.max(1, value - 1))}
+            className="flex h-full w-9 items-center justify-center text-muted transition-colors hover:text-foreground"
           >
             <IconMinus size={13} />
           </button>
 
-          <span
-            className="
-              min-w-4
-              text-center
-              text-xs
-              font-medium
-              text-foreground
-            "
-          >
+          <span className="min-w-4 text-center text-xs font-medium text-foreground">
             {quantity}
           </span>
 
           <button
             type="button"
             aria-label="Increase quantity"
-            onClick={() =>
-              setQuantity(
-                (value) => value + 1,
-              )
-            }
-            className="
-              flex
-              h-full
-              w-9
-              items-center
-              justify-center
-              text-muted
-              transition-colors
-              hover:text-foreground
-            "
+            onClick={() => setQuantity((value) => value + 1)}
+            className="flex h-full w-9 items-center justify-center text-muted transition-colors hover:text-foreground"
           >
             <IconPlus size={13} />
           </button>
         </div>
       </div>
 
-      {/* ==================================================
-          BUY BUTTONS
-      ================================================== */}
+      <div className="mt-5 flex items-baseline gap-3">
+        <p className="text-lg font-semibold text-foreground">
+          ₹{displayPrice.toLocaleString("en-IN")}
+        </p>
+        {selectedVariant?.oldPrice !== undefined ? (
+          <span className="text-sm text-muted line-through">
+            ₹{selectedVariant.oldPrice.toLocaleString("en-IN")}
+          </span>
+        ) : null}
+      </div>
 
-      <div
-        className="
-          mt-5
-          grid
-          grid-cols-1
-          gap-2
-          sm:grid-cols-2
-        "
-      >
+      <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
         <Button
           type="button"
-          onClick={addToCart}
-          className="
-            min-h-12
-            bg-primary
-            text-white
-            shadow-[0_0_30px_var(--glow-primary)]
-            hover:bg-primary-hover
-          "
+          onClick={() => void addToCart()}
+          className="min-h-12 bg-primary text-white shadow-[0_0_30px_var(--glow-primary)] hover:bg-primary-hover"
         >
           {added ? (
             <>
@@ -283,9 +157,7 @@ export function ProductActions({
             </>
           ) : (
             <>
-              <IconShoppingCart
-                size={17}
-              />
+              <IconShoppingCart size={17} />
               Add to Cart
             </>
           )}
@@ -293,26 +165,8 @@ export function ProductActions({
 
         <button
           type="button"
-          onClick={buyNow}
-          className="
-            flex
-            min-h-12
-            items-center
-            justify-center
-            gap-2
-            rounded-full
-            border
-            border-primary/60
-            bg-transparent
-            px-5
-            text-xs
-            font-medium
-            uppercase
-            tracking-[0.14em]
-            text-primary
-            transition-all
-            hover:bg-primary/8
-          "
+          onClick={() => void buyNow()}
+          className="flex min-h-12 items-center justify-center gap-2 rounded-full border border-primary/60 bg-transparent px-5 text-xs font-medium uppercase tracking-[0.14em] text-primary transition-all hover:bg-primary/8"
         >
           <IconSparkles size={15} />
           Buy Now
