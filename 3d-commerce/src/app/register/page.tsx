@@ -218,7 +218,14 @@ export default function RegisterPage() {
 }
 
 function getSafeReturnPath(value: string | null) {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) return "/account";
+  if (
+    !value ||
+    !value.startsWith("/") ||
+    value.startsWith("//") ||
+    value.startsWith("/\\")
+  ) {
+    return "/account";
+  }
   return value;
 }
 
