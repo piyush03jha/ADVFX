@@ -12,7 +12,6 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { OrdersService } from '../orders/orders.service';
 import { RazorpayService } from './razorpay.service';
 
 type WebhookPayload = {
@@ -28,7 +27,6 @@ export class PaymentsService {
     private readonly prisma: PrismaService,
     private readonly razorpay: RazorpayService,
     private readonly notifications: NotificationsService,
-    private readonly orders: OrdersService,
   ) {}
 
   async createRazorpayOrder(userId: string, orderId: string) {
