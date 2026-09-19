@@ -27,8 +27,8 @@ export function ShopProductCard({ product }: ShopProductCardProps) {
   const [added, setAdded] = useState(false);
   const [buying, setBuying] = useState(false);
 
-  const handleAddToCart = () => {
-    addItem(product, "medium", 1);
+  const handleAddToCart = async () => {
+    await addItem(product, "medium", 1);
     setAdded(true);
 
     window.setTimeout(() => {
@@ -36,9 +36,9 @@ export function ShopProductCard({ product }: ShopProductCardProps) {
     }, 1600);
   };
 
-  const handleBuyNow = () => {
+  const handleBuyNow = async () => {
     setBuying(true);
-    addItem(product, "medium", 1);
+    await addItem(product, "medium", 1);
     router.push("/checkout");
   };
 
