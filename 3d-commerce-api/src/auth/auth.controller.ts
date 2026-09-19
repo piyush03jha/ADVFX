@@ -64,7 +64,7 @@ export class AuthController {
 
   @Post('admin/login')
   login(@Body() dto: LoginDto) {
-    return this.authService.login(dto.email, dto.secret);
+    return this.authService.login(dto.email, dto.password);
   }
 
   @UseGuards(AuthGuard)
