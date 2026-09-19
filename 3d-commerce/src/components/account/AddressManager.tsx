@@ -110,6 +110,7 @@ export function AddressManager({
   };
 
   const hasForm = isAdding || editingId !== null;
+  const mutationDisabled = isSyncing;
 
   return (
     <div className="space-y-4">
@@ -131,7 +132,7 @@ export function AddressManager({
         {!hasForm && (
           <button
             type="button"
-            onClick={openAdd}
+            onClick={openAdd} disabled={mutationDisabled}
             className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full bg-primary px-3 text-[10px] font-medium uppercase tracking-[0.08em] text-white hover:bg-primary-hover"
           >
             <IconPlus size={14} />
@@ -206,10 +207,10 @@ export function AddressManager({
 
                   {!selectMode && (
                     <div className="flex shrink-0 items-center gap-1">
-                      <button type="button" onClick={() => openEdit(address)} aria-label={`Edit ${address.fullName} address`} className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-surface-elevated hover:text-foreground">
+                      <button type="button" onClick={() => openEdit(address)} disabled={mutationDisabled} aria-label={`Edit ${address.fullName} address`} className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-surface-elevated hover:text-foreground">
                         <IconPencil size={14} />
                       </button>
-                      <button type="button" onClick={() => void deleteAddress(address.id)} aria-label={`Delete ${address.fullName} address`} disabled={address.isDefault && addresses.length === 1} className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-red-500/10 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-30">
+                      <button type="button" onClick={() => void deleteAddress(address.id)} disabled={mutationDisabled || (address.isDefault && addresses.length === 1)} aria-label={`Delete ${address.fullName} address`} disabled={mutationDisabled || (address.isDefault && addresses.length === 1)} className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-red-500/10 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-30">
                         <IconTrash size={14} />
                       </button>
                     </div>
@@ -230,7 +231,7 @@ export function AddressManager({
                     <button
                       type="button"
                       onClick={() => void setDefaultAddress(address.id)}
-                      disabled={address.isDefault}
+                      disabled={mutationDisabled || address.isDefault}
                       className="text-[10px] font-medium uppercase tracking-[0.08em] text-muted hover:text-primary disabled:cursor-default disabled:text-primary/70"
                     >
                       {address.isDefault ? "Default shipping address" : "Make default"}
@@ -293,7 +294,7 @@ function AddressForm({
 
       <div className="mt-4 grid gap-2 sm:grid-cols-2">
         <button type="button" onClick={onCancel} className="min-h-10 rounded-full border border-border text-xs font-medium text-foreground hover:bg-surface-elevated">Cancel</button>
-        <button type="submit" className="min-h-10 rounded-full bg-primary text-xs font-medium text-white hover:bg-primary-hover">{editing ? "Save changes" : "Add address"}</button>
+        <button type="submit" disabled={mutationDisabled} className="min-h-10 rounded-full bg-primary text-xs font-medium text-white hover:bg-primary-hover">{editing ? "Save changes" : "Add address"}</button>
       </div>
     </form>
   );
