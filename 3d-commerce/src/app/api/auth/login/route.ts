@@ -3,7 +3,22 @@ import { NextResponse } from "next/server";
 import { AUTH_COOKIE_NAME } from "@/lib/auth";
 import { getBackendApiUrl } from "@/lib/backend-api";
 
+function isSafeRequestOrigin(request: Request) {
+  const origin = request.headers.get("origin");
+  if (!origin) return true;
+  try {
+    const requestOrigin = new URL(request.url).origin;
+    return origin === requestOrigin;
+  } catch {
+    return false;
+  }
+}
+
+
 export async function POST(request: Request) {
+  if (!isSafeRequestOrigin(request)) {
+    return NextResponse.json({ error: "Invalid request origin." }, { status: 403 });
+  }
   try {
     const body = (await request.json()) as { email?: string; password?: string; captchaToken?: string; captchaAnswer?: string };
     const email = body.email?.trim().toLowerCase();
