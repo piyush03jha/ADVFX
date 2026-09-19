@@ -80,11 +80,22 @@ export class PaymentsService {
   async retryRazorpayPayment(userId: string, orderId: string) {
     const order = await this.getPayableOrder(userId, orderId);
 
+    // A retry gets a fresh provider order, but we retain the previous provider
+    // identifiers for reconciliation/audit instead of overwriting them.
     const refreshed = await this.prisma.$transaction(async (tx) => {
-      await tx.payment.update({
+      const payment = await tx.payment.findUniqueOrThrow({
         where: { id: order.payment.id },
+      });
+
+      if (payment.status === PaymentStatus.PENDING && payment.providerOrderId) {
+        throw new ConflictException(
+          'A payment attempt is already active. Complete it or wait for its webhook before retrying.',
+        );
+      }
+
+      await tx.payment.update({
+        where: { id: payment.id },
         data: {
-          providerOrderId: null,
           providerPaymentId: null,
           status: PaymentStatus.PENDING,
           paidAt: null,
