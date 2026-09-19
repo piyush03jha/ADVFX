@@ -70,7 +70,10 @@ export class AuthCaptchaService {
   }
 
   private secret() {
-    if (process.env.AUTH_CAPTCHA_SECRET) return process.env.AUTH_CAPTCHA_SECRET;
-    return process.env.NODE_ENV === 'production' ? '' : 'development-only-captcha-secret';
+    const secret = process.env.AUTH_CAPTCHA_SECRET;
+    if (!secret) {
+      throw new Error('AUTH_CAPTCHA_SECRET is not configured');
+    }
+    return secret;
   }
 }
