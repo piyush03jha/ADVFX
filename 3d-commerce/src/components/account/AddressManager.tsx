@@ -150,6 +150,7 @@ export function AddressManager({
           onSubmit={submit}
           onCancel={closeForm}
           mutationDisabled={mutationDisabled}
+          embedded={selectMode}
         />
       )}
 
@@ -259,16 +260,44 @@ function AddressForm({
   onSubmit,
   onCancel,
   mutationDisabled,
+  embedded = false,
 }: {
   form: FormState;
   editing: boolean;
   onChange: (field: keyof FormState, value: string | boolean) => void;
-  onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+  onSubmit: () => void;
   onCancel: () => void;
   mutationDisabled: boolean;
+  embedded?: boolean;
 }) {
-  return (
-    <form onSubmit={onSubmit} className="rounded-xl border border-border bg-surface/50 p-4 sm:p-5">
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  const submitEmbedded = () => {
+    const requiredFields: Array<keyof FormState> = [
+      "fullName",
+      "phone",
+      "addressLine1",
+      "city",
+      "state",
+      "postalCode",
+      "country",
+    ];
+
+    const missing = requiredFields.find(
+      (field) => typeof form[field] === "string" && !form[field].trim(),
+    );
+
+    if (missing) {
+      setValidationError("Please complete all required address fields.");
+      return;
+    }
+
+    setValidationError(null);
+    onSubmit();
+  };
+
+  const content = (
+    <div className="rounded-xl border border-border bg-surface/50 p-4 sm:p-5">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
           <h2 className="text-sm font-medium text-foreground">{editing ? "Edit address" : "Add address"}</h2>
@@ -295,12 +324,31 @@ function AddressForm({
         </label>
       </div>
 
+      {validationError && (
+        <p role="alert" className="mt-3 text-xs text-red-300">
+          {validationError}
+        </p>
+      )}
+
       <div className="mt-4 grid gap-2 sm:grid-cols-2">
         <button type="button" onClick={onCancel} className="min-h-10 rounded-full border border-border text-xs font-medium text-foreground hover:bg-surface-elevated">Cancel</button>
-        <button type="submit" disabled={mutationDisabled} className="min-h-10 rounded-full bg-primary text-xs font-medium text-white hover:bg-primary-hover">{editing ? "Save changes" : "Add address"}</button>
+        <button
+          type={embedded ? "button" : "submit"}
+          onClick={embedded ? submitEmbedded : undefined}
+          disabled={mutationDisabled}
+          className="min-h-10 rounded-full bg-primary text-xs font-medium text-white hover:bg-primary-hover"
+        >
+          {editing ? "Save changes" : "Add address"}
+        </button>
       </div>
-    </form>
+    </div>
   );
+
+  if (embedded) {
+    return content;
+  }
+
+  return <form onSubmit={(event) => { event.preventDefault(); onSubmit(); }}>{content}</form>;
 }
 
 function Input({
