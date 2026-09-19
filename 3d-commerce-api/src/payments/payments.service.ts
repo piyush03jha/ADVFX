@@ -173,7 +173,7 @@ export class PaymentsService {
       },
     });
 
-    if (!activeReservation) {
+    if (!activeReservation && order.checkoutSource !== 'CUSTOM') {
       throw new ConflictException('This payment session has expired. Please create a new order from your cart.');
     }
 
@@ -294,7 +294,7 @@ export class PaymentsService {
       if (updatedOrder.checkoutSource === 'CUSTOM') {
         await tx.customRequest.updateMany({
           where: { orderId: updatedOrder.id },
-          data: { status: 'SUBMITTED' },
+          data: { status: 'IN_PRODUCTION' },
         });
       }
 
