@@ -288,6 +288,8 @@ export class PaymentsService {
         },
       });
 
+      await this.clearCapturedCartLines(tx, updatedOrder);
+
       return {
         order: updatedOrder,
         payment: savedPayment,
@@ -538,12 +540,50 @@ export class PaymentsService {
         data: { status: OrderStatus.CONFIRMED },
       });
 
+      await this.clearCapturedCartLines(tx, updatedOrder);
+
       return { order: updatedOrder, payment: savedPayment };
     });
 
     if (!updated?.order || !('id' in updated.order)) return;
 
   }
+
+  private async clearCapturedCartLines(
+    tx: Prisma.TransactionClient,
+    order: { id: string; userId: string | null; checkoutSource: string; items: Array<{ productId: string; variantId: string | null; quantity: number }> },
+  ) {
+    if (order.checkoutSource !== "CART" || !order.userId) return;
+
+    const cart = await tx.cart.findUnique({
+      where: { userId: order.userId },
+    });
+    if (!cart) return;
+
+    for (const item of order.items) {
+      const cartItem = await tx.cartItem.findFirst({
+        where: {
+          cartId: cart.id,
+          productId: item.productId,
+          variantId: item.variantId,
+        },
+      });
+
+      if (!cartItem) continue;
+
+      if (cartItem.quantity > item.quantity) {
+        await tx.cartItem.update({
+          where: { id: cartItem.id },
+          data: { quantity: { decrement: item.quantity } },
+        });
+      } else {
+        await tx.cartItem.delete({
+          where: { id: cartItem.id },
+        });
+      }
+    }
+  }
+
 
   private async recordPurchaseMetricsInTransaction(
     tx: Prisma.TransactionClient,
