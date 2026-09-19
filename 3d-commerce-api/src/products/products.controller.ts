@@ -45,7 +45,6 @@ export class ProductsController {
   }
 
   @UseGuards(AuthGuard, AdminGuard)
-  @UseGuards(AuthGuard, AdminGuard)
   @Get(':id/metrics')
   getMetrics(@Param('id') id: string) {
     return this.productsService.getMetrics(id);
