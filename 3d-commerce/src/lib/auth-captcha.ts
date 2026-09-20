@@ -18,12 +18,14 @@ export function useAuthCaptcha(purpose: CaptchaPurpose) {
   const [answer, setAnswer] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [version, setVersion] = useState(0);
 
   const refresh = useCallback(async () => {
     setIsLoading(true);
     setError("");
     setAnswer("");
     setToken("");
+    setVersion((value) => value + 1);
     try {
       const response = await fetch(`/api/auth/captcha?purpose=${purpose}`, { cache: "no-store" });
       const data = (await response.json()) as {
@@ -70,6 +72,7 @@ export function useAuthCaptcha(purpose: CaptchaPurpose) {
     setAnswer,
     isLoading,
     error,
+    version,
     refresh,
   };
 }
