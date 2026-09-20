@@ -1,18 +1,65 @@
 "use client";
+
 import { useEffect, useState } from "react";
 import { IconMapPin, IconPlus, IconRefresh, IconTrash, IconTruck } from "@tabler/icons-react";
+
 type Zone={id:string;postalCode:string;coverage:"DELIVERED"|"NOT_DELIVERED";active:boolean;label:string|null};
 type Rule={id:string;name:string;type:string;amountMinor:number|null;freeAboveMinor:number|null;priority:number;isActive:boolean};
+
 export default function ShippingAdmin(){
-const [zones,setZones]=useState<Zone[]>([]); const [rules,setRules]=useState<Rule[]>([]); const [zip,setZip]=useState(""); const [coverage,setCoverage]=useState<Zone["coverage"]>("DELIVERED"); const [name,setName]=useState("Standard shipping"); const [amount,setAmount]=useState(""); const [busy,setBusy]=useState(false); const [message,setMessage]=useState("");
-async function load(){const [z,r]=await Promise.all([fetch("/api/admin/delivery-zones?includeInactive=true",{cache:"no-store"}),fetch("/api/shipping/rules",{cache:"no-store"})]);if(z.ok)setZones(await z.json());if(r.ok)setRules(await r.json())}
-useEffect(()=>{void load()},[]);
-async function addZone(e:React.FormEvent){e.preventDefault();setBusy(true);try{const r=await fetch("/api/admin/delivery-zones",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({postalCode:zip,coverage})});if(!r.ok)throw new Error("Unable to save delivery coverage.");setZip("");setMessage("Delivery coverage updated.");await load()}catch(e){setMessage(e instanceof Error?e.message:"Unable to save delivery coverage.")}finally{setBusy(false)}}
-async function deactivateZone(id:string){setBusy(true);try{const r=await fetch("/api/admin/delivery-zones/"+id,{method:"POST"});if(!r.ok)throw new Error();await load()}catch{setMessage("Unable to disable postal code.")}finally{setBusy(false)}}
-async function addRule(e:React.FormEvent){e.preventDefault();setBusy(true);try{const r=await fetch("/api/shipping/rules",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name,type:"FLAT_RATE",amountMinor:Math.round(Number(amount||0)*100),priority:10})});if(!r.ok)throw new Error("Unable to create shipping rule.");setAmount("");setMessage("Shipping rule added.");await load()}catch(e){setMessage(e instanceof Error?e.message:"Unable to create shipping rule.")}finally{setBusy(false)}}
-return <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8"><div><p className="text-[9px] uppercase tracking-[0.2em] text-primary">Logistics</p><h1 className="mt-2 font-serif text-4xl">Shipping & delivery</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-muted">Set shipping prices and publish explicit postal-code coverage. Customers can check a pincode before ordering.</p></div>
-<div className="mt-7 grid gap-5 lg:grid-cols-2">
-<section className="rounded-2xl border border-border bg-surface p-5"><div className="flex items-center gap-2 text-xs font-semibold"><IconMapPin size={16} className="text-primary"/> Delivery coverage</div><form onSubmit={addZone} className="mt-4 grid gap-2 sm:grid-cols-[1fr_auto_auto]"><input required value={zip} onChange={e=>setZip(e.target.value)} placeholder="Postal / PIN code" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/><select value={coverage} onChange={e=>setCoverage(e.target.value as Zone["coverage"])} className="h-10 rounded-xl border border-border bg-background px-3 text-xs"><option value="DELIVERED">Deliver</option><option value="NOT_DELIVERED">Do not deliver</option></select><button disabled={busy} className="h-10 rounded-xl bg-foreground px-3 text-xs font-semibold text-background"><IconPlus size={14}/></button></form><div className="mt-5 max-h-[380px] space-y-2 overflow-auto">{zones.map(z=><div key={z.id} className="flex items-center justify-between gap-3 rounded-xl border border-border p-3"><div><p className="text-xs font-medium">{z.postalCode}</p><p className="mt-1 text-[10px] text-muted">{z.active?(z.coverage==="DELIVERED"?"Delivering here":"Not delivering here"):"Disabled"}</p></div><button onClick={()=>void deactivateZone(z.id)} disabled={!z.active||busy} className="rounded-lg p-2 text-muted hover:text-red-300 disabled:opacity-40"><IconTrash size={14}/></button></div>)}{!zones.length&&<p className="py-6 text-xs text-muted">No explicit pincode rules yet. Unlisted codes remain available by default.</p>}</div></section>
-<section className="rounded-2xl border border-border bg-surface p-5"><div className="flex items-center gap-2 text-xs font-semibold"><IconTruck size={16} className="text-primary"/> Shipping price rules</div><form onSubmit={addRule} className="mt-4 grid gap-2 sm:grid-cols-[1fr_150px_auto]"><input required value={name} onChange={e=>setName(e.target.value)} placeholder="Rule name" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/><input required value={amount} onChange={e=>setAmount(e.target.value)} placeholder="Flat rate ₹" type="number" min="0" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/><button disabled={busy} className="h-10 rounded-xl bg-foreground px-4 text-xs font-semibold text-background">Add</button></form><div className="mt-5 space-y-2">{rules.map(r=><div key={r.id} className="flex items-center justify-between rounded-xl border border-border p-3"><div><p className="text-xs font-medium">{r.name}</p><p className="mt-1 text-[10px] text-muted">{r.type} · priority {r.priority}</p></div><p className="text-xs font-semibold">{r.amountMinor===0?"Free":"₹"+((r.amountMinor||0)/100)}</p></div>)}</div></section>
-</div>{message&&<p className="mt-4 text-xs text-muted">{message}</p>}<button onClick={()=>void load()} className="mt-5 inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.12em] text-muted"><IconRefresh size={14}/> Refresh</button></main>
+  const [zones,setZones]=useState<Zone[]>([]); const [rules,setRules]=useState<Rule[]>([]);
+  const [zip,setZip]=useState(""); const [coverage,setCoverage]=useState<Zone["coverage"]>("DELIVERED");
+  const [name,setName]=useState("Standard shipping"); const [amount,setAmount]=useState("");
+  const [busy,setBusy]=useState(false); const [message,setMessage]=useState("");
+
+  async function load(){
+    const [z,r]=await Promise.all([
+      fetch("/api/admin/delivery-zones?includeInactive=true",{cache:"no-store"}),
+      fetch("/api/shipping/rules",{cache:"no-store"})
+    ]);
+    if(z.ok)setZones(await z.json()); if(r.ok)setRules(await r.json());
+  }
+  useEffect(()=>{void load()},[]);
+
+  async function addZone(e:React.FormEvent){
+    e.preventDefault();setBusy(true);
+    try{const r=await fetch("/api/admin/delivery-zones",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({postalCode:zip,coverage})});if(!r.ok)throw new Error("Unable to save delivery coverage.");setZip("");setMessage("Delivery coverage updated.");await load()}
+    catch(e){setMessage(e instanceof Error?e.message:"Unable to save delivery coverage.")}finally{setBusy(false)}
+  }
+  async function deactivateZone(id:string){
+    setBusy(true);try{const r=await fetch("/api/admin/delivery-zones/"+id,{method:"POST"});if(!r.ok)throw new Error();setMessage("Postal code disabled.");await load()}catch{setMessage("Unable to disable postal code.")}finally{setBusy(false)}
+  }
+  async function addRule(e:React.FormEvent){
+    e.preventDefault();setBusy(true);
+    try{const r=await fetch("/api/shipping/rules",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name,type:"FLAT_RATE",amountMinor:Math.round(Number(amount||0)*100),priority:10})});if(!r.ok)throw new Error("Unable to create shipping rule.");setAmount("");setMessage("Shipping rule added.");await load()}
+    catch(e){setMessage(e instanceof Error?e.message:"Unable to create shipping rule.")}finally{setBusy(false)}
+  }
+  async function editRule(rule:Rule){
+    const nextName=window.prompt("Shipping rule name",rule.name); if(nextName===null)return;
+    const nextAmount=window.prompt("Flat rate in ₹",String((rule.amountMinor||0)/100)); if(nextAmount===null)return;
+    const amountMinor=Math.round(Number(nextAmount)*100); if(!Number.isFinite(amountMinor)||amountMinor<0){setMessage("Enter a valid shipping amount.");return}
+    setBusy(true);try{const r=await fetch("/api/shipping/rules/"+rule.id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:nextName.trim()||rule.name,amountMinor})});if(!r.ok)throw new Error();setMessage("Shipping rule updated.");await load()}catch{setMessage("Unable to update shipping rule.")}finally{setBusy(false)}
+  }
+  async function deactivateRule(id:string){
+    if(!window.confirm("Deactivate this shipping rule?"))return;
+    setBusy(true);try{const r=await fetch("/api/shipping/rules/"+id+"/deactivate",{method:"POST"});if(!r.ok)throw new Error();setMessage("Shipping rule deactivated.");await load()}catch{setMessage("Unable to deactivate shipping rule.")}finally{setBusy(false)}
+  }
+
+  return <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div><p className="text-[9px] uppercase tracking-[0.2em] text-primary">Logistics</p><h1 className="mt-2 font-serif text-4xl">Shipping & delivery</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-muted">Set shipping prices and publish explicit postal-code coverage. Customers can check a PIN before ordering.</p></div>
+    <div className="mt-7 grid gap-5 lg:grid-cols-2">
+      <section className="rounded-2xl border border-border bg-surface p-5">
+        <div className="flex items-center gap-2 text-xs font-semibold"><IconMapPin size={16} className="text-primary"/> Delivery coverage</div>
+        <form onSubmit={addZone} className="mt-4 grid gap-2 sm:grid-cols-[1fr_auto_auto]"><input required value={zip} onChange={e=>setZip(e.target.value)} placeholder="Postal / PIN code" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/><select value={coverage} onChange={e=>setCoverage(e.target.value as Zone["coverage"])} className="h-10 rounded-xl border border-border bg-background px-3 text-xs"><option value="DELIVERED">Deliver</option><option value="NOT_DELIVERED">Do not deliver</option></select><button disabled={busy} className="h-10 rounded-xl bg-foreground px-3 text-xs font-semibold text-background"><IconPlus size={14}/></button></form>
+        <div className="mt-5 max-h-[380px] space-y-2 overflow-auto">{zones.map(z=><div key={z.id} className="flex items-center justify-between gap-3 rounded-xl border border-border p-3"><div><p className="text-xs font-medium">{z.postalCode}</p><p className="mt-1 text-[10px] text-muted">{z.active?(z.coverage==="DELIVERED"?"Delivering here":"Not delivering here"):"Disabled"}</p></div><button onClick={()=>void deactivateZone(z.id)} disabled={!z.active||busy} className="rounded-lg p-2 text-muted hover:text-red-300 disabled:opacity-40" title="Disable postal code"><IconTrash size={14}/></button></div>)}{!zones.length&&<p className="py-6 text-xs text-muted">No explicit PIN rules yet. Unlisted codes remain available by default.</p>}</div>
+      </section>
+      <section className="rounded-2xl border border-border bg-surface p-5">
+        <div className="flex items-center gap-2 text-xs font-semibold"><IconTruck size={16} className="text-primary"/> Shipping price rules</div>
+        <form onSubmit={addRule} className="mt-4 grid gap-2 sm:grid-cols-[1fr_150px_auto]"><input required value={name} onChange={e=>setName(e.target.value)} placeholder="Rule name" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/><input required value={amount} onChange={e=>setAmount(e.target.value)} placeholder="Flat rate ₹" type="number" min="0" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/><button disabled={busy} className="h-10 rounded-xl bg-foreground px-4 text-xs font-semibold text-background">Add</button></form>
+        <div className="mt-5 space-y-2">{rules.map(r=><div key={r.id} className={`flex items-center justify-between gap-3 rounded-xl border border-border p-3 ${r.isActive?"":"opacity-50"}`}><div><p className="text-xs font-medium">{r.name}</p><p className="mt-1 text-[10px] text-muted">{r.type} · priority {r.priority} · {r.isActive?"Active":"Inactive"}</p></div><div className="flex items-center gap-2"><p className="text-xs font-semibold">{r.amountMinor===0?"Free":"₹"+((r.amountMinor||0)/100)}</p>{r.isActive&&<><button onClick={()=>void editRule(r)} disabled={busy} className="rounded-lg border border-border px-2 py-1.5 text-[9px]">Edit</button><button onClick={()=>void deactivateRule(r.id)} disabled={busy} className="rounded-lg border border-red-400/20 px-2 py-1.5 text-[9px] text-red-300">Disable</button></>}</div></div>)}</div>
+      </section>
+    </div>
+    {message&&<p className="mt-4 text-xs text-muted">{message}</p>}
+    <button onClick={()=>void load()} className="mt-5 inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.12em] text-muted"><IconRefresh size={14}/> Refresh</button>
+  </main>
 }
