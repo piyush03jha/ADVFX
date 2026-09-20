@@ -89,6 +89,72 @@ export class PaymentsService {
     };
   }
 
+  async cancelRazorpayPayment(userId: string, orderId: string) {
+    const order = await this.prisma.order.findFirst({
+      where: { id: orderId, userId },
+      include: { payment: true },
+    });
+
+    if (!order) throw new NotFoundException('Order not found');
+    if (order.status !== OrderStatus.PENDING_PAYMENT) {
+      return { orderId: order.id, status: order.status, released: false };
+    }
+
+    let providerPaymentId = order.payment?.providerPaymentId ?? null;
+
+    if (order.payment?.providerOrderId && !providerPaymentId) {
+      try {
+        const providerOrder = await this.razorpay.fetchOrder(order.payment.providerOrderId);
+        providerPaymentId = typeof providerOrder?.payment_id === 'string' ? providerOrder.payment_id : null;
+      } catch {
+        // Keep the local cancellation safe; the webhook remains the source
+        // of truth if Razorpay confirms a late capture.
+      }
+    }
+
+    if (providerPaymentId) {
+      await this.razorpay.refundPayment(providerPaymentId, order.payment?.amountMinor ?? order.totalMinor);
+      return { orderId: order.id, status: 'REFUNDED', refunded: true };
+    }
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const current = await tx.order.findUnique({
+        where: { id: order.id },
+        include: { payment: true },
+      });
+      if (!current || current.status !== OrderStatus.PENDING_PAYMENT) {
+        return current;
+      }
+
+      await this.releaseReservationsInTransaction(tx, current.id);
+      if (current.promotionId) {
+        const count = await tx.$executeRaw(
+          Prisma.sql`UPDATE "Promotion" SET "usageCount" = GREATEST("usageCount" - 1, 0), "updatedAt" = CURRENT_TIMESTAMP WHERE "id" = ${current.promotionId} AND "usageCount" > 0`,
+        );
+        if (Number(count) !== 1) throw new ConflictException('Unable to release coupon reservation');
+      }
+
+      await tx.order.update({
+        where: { id: current.id },
+        data: { status: OrderStatus.CANCELLED },
+      });
+
+      if (current.payment) {
+        await tx.payment.update({
+          where: { id: current.payment.id },
+          data: { status: PaymentStatus.FAILED },
+        });
+      }
+
+      return tx.order.findUniqueOrThrow({
+        where: { id: current.id },
+        include: { payment: true, shipment: true, inventoryReservations: true },
+      });
+    });
+
+    return { orderId: updated?.id ?? order.id, status: updated?.status ?? 'CANCELLED', refunded: false };
+  }
+
   async retryRazorpayPayment(userId: string, orderId: string) {
     const order = await this.getPayableOrder(userId, orderId);
 
