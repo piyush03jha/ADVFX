@@ -457,24 +457,27 @@ export class OrdersService {
 
         const order = await tx.order.findUnique({
           where: { id: reservation.orderId },
-          select: { status: true, payment: { select: { status: true } } },
+          select: {
+            status: true,
+            promotionId: true,
+            payment: { select: { status: true } },
+          },
         });
 
-        if (order?.status !== 'PENDING_PAYMENT') return;
+        if (order?.status !== OrderStatus.PENDING_PAYMENT) return;
 
         await tx.order.update({
           where: { id: reservation.orderId },
-          data: { status: 'CANCELLED' },
+          data: { status: OrderStatus.CANCELLED },
         });
 
-        if (order.payment?.status === 'PENDING' || order.payment?.status === 'FAILED') {
-          await this.releasePromotionUsage(tx, (await tx.order.findUniqueOrThrow({
-            where: { id: reservation.orderId },
-            select: { promotionId: true },
-          })).promotionId);
+        if (order.payment?.status === PaymentStatus.PENDING || order.payment?.status === PaymentStatus.FAILED) {
+          if (order.promotionId) {
+            await this.releasePromotionUsage(tx, order.promotionId);
+          }
           await tx.payment.update({
             where: { orderId: reservation.orderId },
-            data: { status: 'FAILED' },
+            data: { status: PaymentStatus.FAILED },
           });
         }
       });
