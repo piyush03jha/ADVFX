@@ -21,11 +21,12 @@ export default function AdminLayout({children}:{children:React.ReactNode}){
   const router=useRouter(); const pathname=usePathname();
   const [loading,setLoading]=useState(true); const [user,setUser]=useState<AdminUser|null>(null); const [open,setOpen]=useState(false);
 
-  useEffect(()=>{fetch("/api/auth/admin/session",{cache:"no-store"}).then(r=>r.ok?r.json():{user:null}).then(d=>{if(d.user)setUser(d.user);else router.replace("/admin/login");}).catch(()=>router.replace("/admin/login")).finally(()=>setLoading(false));},[router]);
+  useEffect(()=>{if(pathname === "/admin/login"){setLoading(false);return;}fetch("/api/auth/admin/session",{cache:"no-store"}).then(r=>r.ok?r.json():{user:null}).then(d=>{if(d.user)setUser(d.user);else router.replace("/admin/login");}).catch(()=>router.replace("/admin/login")).finally(()=>setLoading(false));},[pathname,router]);
 
   const activeLabel=useMemo(()=>nav.find(item=>item.href==="/admin" ? pathname==="/admin" : pathname.startsWith(item.href))?.label ?? "Admin",[pathname]);
   const logout=async()=>{await fetch("/api/auth/admin/logout",{method:"POST"});router.replace("/admin/login");};
 
+  if(pathname === "/admin/login") return <main className="min-h-screen bg-background text-foreground">{children}</main>;
   if(loading)return <main className="min-h-screen bg-background flex items-center justify-center text-xs text-muted">Loading admin workspace…</main>;
   if(!user)return null;
 
