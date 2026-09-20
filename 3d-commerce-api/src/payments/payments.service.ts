@@ -105,7 +105,9 @@ export class PaymentsService {
     if (order.payment?.providerOrderId && !providerPaymentId) {
       try {
         const providerOrder = await this.razorpay.fetchOrder(order.payment.providerOrderId);
-        providerPaymentId = typeof providerOrder?.payment_id === 'string' ? providerOrder.payment_id : null;
+        const payments = (providerOrder as unknown as { payments?: { items?: Array<{ id?: unknown; status?: unknown }> } }).payments?.items ?? [];
+        const captured = payments.find((payment) => payment.status === 'captured' && typeof payment.id === 'string');
+        providerPaymentId = typeof captured?.id === 'string' ? captured.id : null;
       } catch {
         // Keep the local cancellation safe; the webhook remains the source
         // of truth if Razorpay confirms a late capture.
