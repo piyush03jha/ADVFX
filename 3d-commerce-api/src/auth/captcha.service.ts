@@ -2,9 +2,10 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { createHmac, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
 
 const CAPTCHA_TTL_MS = 5 * 60 * 1000;
-const PURPOSES = new Set(['login', 'register']);
+const PURPOSES = new Set(['login', 'register', 'forgot-password']);
+const TURNSTILE_VERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
 
-export type CaptchaPurpose = 'login' | 'register';
+export type CaptchaPurpose = 'login' | 'register' | 'forgot-password';
 
 type CaptchaPayload = {
   nonce: string;
@@ -41,6 +42,36 @@ export class AuthCaptchaService {
     };
   }
 
+  async verifyForAuth(token: string, answer: string | undefined, purpose: CaptchaPurpose) {
+    if (this.provider() === 'turnstile') {
+      await this.verifyTurnstile(token, purpose);
+      return;
+    }
+    this.verify(token, answer ?? '', purpose);
+  }
+
+  private async verifyTurnstile(token: string, purpose: CaptchaPurpose) {
+    if (!token || token.length > 4096) throw new BadRequestException('Security check is invalid. Please try again.');
+    const secret = process.env.TURNSTILE_SECRET_KEY;
+    if (!secret) throw new Error('TURNSTILE_SECRET_KEY is not configured');
+
+    const response = await fetch(TURNSTILE_VERIFY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ secret, response: token }).toString(),
+    });
+
+    if (!response.ok) throw new BadRequestException('Security check could not be verified. Please try again.');
+    const result = (await response.json()) as { success?: boolean; action?: string };
+    if (!result.success || (result.action && result.action !== purpose)) {
+      throw new BadRequestException('Security check failed. Please try again.');
+    }
+  }
+
+  provider(): 'math' | 'turnstile' {
+    return process.env.AUTH_CAPTCHA_PROVIDER === 'turnstile' ? 'turnstile' : 'math';
+  }
+
   verify(token: string, answer: string, purpose: CaptchaPurpose) {
     const payload = this.decode(token);
     if (!payload || payload.purpose !== purpose || payload.expiresAt <= Date.now()) {
@@ -63,9 +94,7 @@ export class AuthCaptchaService {
 
     this.usedNonces.add(payload.nonce);
     if (this.usedNonces.size > 10_000) {
-      // Keep the in-memory replay cache bounded. Expired nonces are harmless after
-      // the five-minute token TTL and can be pruned opportunistically.
-      const cutoff = Date.now() - CAPTCHA_TTL_MS;
+      // Keep the in-memory replay cache bounded.
       for (const nonce of this.usedNonces) {
         // Nonces do not encode creation time, so cap size rather than attempting
         // inaccurate age-based pruning.
