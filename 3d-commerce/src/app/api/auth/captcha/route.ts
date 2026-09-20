@@ -4,7 +4,7 @@ import { getBackendApiUrl } from "@/lib/backend-api";
 
 export async function GET(request: Request) {
   const purpose = new URL(request.url).searchParams.get("purpose");
-  if (purpose !== "login" && purpose !== "register") {
+  if (purpose !== "login" && purpose !== "register" && purpose !== "forgot-password") {
     return NextResponse.json({ error: "A valid CAPTCHA purpose is required." }, { status: 400 });
   }
 
