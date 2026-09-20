@@ -17,17 +17,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid request origin." }, { status: 403 });
   }
   try {
-    const body = (await request.json()) as { email?: string };
+    const body = (await request.json()) as { email?: string; captchaToken?: string; captchaAnswer?: string };
     const email = body.email?.trim().toLowerCase();
+    const captchaToken = body.captchaToken?.trim() ?? "";
+    const captchaAnswer = body.captchaAnswer?.trim() ?? "";
 
-    if (!email) {
-      return NextResponse.json({ error: "Email address is required." }, { status: 400 });
+    if (!email || !captchaToken) {
+      return NextResponse.json({ error: "Email address and security verification are required." }, { status: 400 });
     }
 
     const backendResponse = await fetch(getBackendApiUrl("auth/forgot-password"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, captchaToken, captchaAnswer }),
       cache: "no-store",
     });
 
