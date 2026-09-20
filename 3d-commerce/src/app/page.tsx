@@ -7,6 +7,7 @@ import { TrendingNow } from "@/components/home/TrendingNow";
 import { NewArrivals } from "@/components/home/NewArrivals";
 import { Reviews } from "@/components/home/Reviews";
 import { FAQ } from "@/components/home/FAQ";
+import { DeliveryAvailability } from "@/components/home/DeliveryAvailability";
 
 export default function Home() {
   return (
@@ -16,6 +17,7 @@ export default function Home() {
       <main>
         <Hero />
 
+        <DeliveryAvailability />
         <MostPurchased />
         <CustomBuild />
         <ShopByCategory />
