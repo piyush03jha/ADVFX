@@ -355,24 +355,6 @@ export class AuthService {
 
     // Diagnostic state is logged without ever logging the plaintext reset token.
     // This lets us distinguish a hash mismatch from an expired/used token.
-    const tokenState = await this.prisma.$queryRaw<Array<{
-      id: string;
-      userId: string;
-      usedAt: Date | null;
-      expiresAt: Date;
-      createdAt: Date;
-    }>>`
-      SELECT "id", "userId", "usedAt", "expiresAt", "createdAt"
-      FROM "AuthPasswordResetToken"
-      WHERE "tokenHash" = ${tokenHash}
-      LIMIT 1
-    `;
-
-    const state = tokenState[0];
-    this.logger.debug?.(
-      `Password reset token check: hashPrefix=${tokenHash.slice(0, 12)}, found=${Boolean(state)}, used=${Boolean(state?.usedAt)}, expiresAt=${state?.expiresAt?.toISOString() ?? 'none'}, createdAt=${state?.createdAt?.toISOString() ?? 'none'}`,
-    );
-
     const rows = await this.prisma.$queryRaw<Array<{ id: string; userId: string }>>`
       SELECT "id", "userId"
       FROM "AuthPasswordResetToken"
