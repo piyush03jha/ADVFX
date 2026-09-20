@@ -45,7 +45,7 @@ export class AuthService {
     private readonly captchaService: AuthCaptchaService,
   ) {}
 
-  async registerCustomer(name: string, email: string, password: string, captchaToken: string, captchaAnswer: string) {
+  async registerCustomer(name: string, email: string, password: string, captchaToken: string, captchaAnswer?: string) {
     await this.captchaService.verifyForAuth(captchaToken, captchaAnswer, 'register');
     const normalizedEmail = email.trim().toLowerCase();
     const normalizedName = name.trim();
@@ -108,7 +108,7 @@ export class AuthService {
     };
   }
 
-  async customerLogin(email: string, password: string, captchaToken: string, captchaAnswer: string) {
+  async customerLogin(email: string, password: string, captchaToken: string, captchaAnswer?: string) {
     await this.captchaService.verifyForAuth(captchaToken, captchaAnswer, 'login');
     const normalizedEmail = email.trim().toLowerCase();
 
