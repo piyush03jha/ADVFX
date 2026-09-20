@@ -25,6 +25,12 @@ export class PaymentsController {
   }
 
   @UseGuards(CustomerAuthGuard)
+  @Post('razorpay/cancel')
+  cancel(@Req() req: any, @Body() dto: CreateRazorpayOrderDto) {
+    return this.payments.cancelRazorpayPayment(req.user.id, dto.orderId);
+  }
+
+  @UseGuards(CustomerAuthGuard)
   @Post('razorpay/retry')
   retryOrder(@Req() req: any, @Body() dto: CreateRazorpayOrderDto) {
     return this.payments.retryRazorpayPayment(req.user.id, dto.orderId);
