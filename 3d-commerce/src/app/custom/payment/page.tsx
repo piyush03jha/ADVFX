@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import Script from "next/script";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { IconArrowLeft, IconCheck, IconLock, IconMapPin, IconShieldCheck } from "@tabler/icons-react";
 
@@ -30,7 +30,7 @@ type CustomRequest = {
   status: string;
 };
 
-export default function CustomPaymentPage() {
+function CustomPaymentPageContent() {
   const router = useRouter();
   const params = useSearchParams();
   const requestId = params.get("request");
@@ -314,6 +314,27 @@ export default function CustomPaymentPage() {
         </section>
       </main>
     </>
+  );
+}
+
+export default function CustomPaymentPage() {
+  return (
+    <Suspense
+      fallback={
+        <>
+          <Navbar />
+          <main className="min-h-screen">
+            <Container>
+              <div className="flex min-h-[70vh] items-center justify-center text-[10px] uppercase tracking-[0.18em] text-muted">
+                Loading custom payment…
+              </div>
+            </Container>
+          </main>
+        </>
+      }
+    >
+      <CustomPaymentPageContent />
+    </Suspense>
   );
 }
 
