@@ -1,12 +1,31 @@
 import { Controller, Get } from '@nestjs/common';
-import { AppService } from './app.service';
 
 @Controller()
 export class AppController {
-  constructor(private readonly appService: AppService) {}
-
   @Get()
-  getHello(): string {
-    return this.appService.getHello();
+  getStatus() {
+    return {
+      status: 'ok',
+      service: 'advfx-api',
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  @Get('health')
+  health() {
+    return {
+      status: 'ok',
+      service: 'advfx-api',
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  @Get('ready')
+  ready() {
+    return {
+      status: 'ready',
+      service: 'advfx-api',
+      timestamp: new Date().toISOString(),
+    };
   }
 }
