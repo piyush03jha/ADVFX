@@ -68,6 +68,13 @@ export class AuthController {
   }
 
   @UseGuards(AuthGuard)
+  @Get('admin/session')
+  adminSession(@Headers('authorization') authorization?: string) {
+    const token = this.extractBearerToken(authorization);
+    return this.authService.authenticate(token);
+  }
+
+  @UseGuards(AuthGuard)
   @Post('logout')
   logout(@Headers('authorization') authorization?: string) {
     const token = this.extractBearerToken(authorization);
