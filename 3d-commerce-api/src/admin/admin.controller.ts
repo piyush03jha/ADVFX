@@ -1,93 +1,75 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
-
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { AdminGuard } from '../auth/guards/admin.guard';
 import { PrismaService } from '../prisma/prisma.service';
+import { AdminService } from './admin.service';
 
 @UseGuards(AuthGuard, AdminGuard)
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly adminService: AdminService,
+  ) {}
 
   @Get('dashboard')
-  async dashboard() {
-    const [
-      products,
-      activeProducts,
-      archivedProducts,
-      categories,
-      inventories,
-      orders,
-      pendingOrders,
-      processingOrders,
-      shipmentsToDispatch,
-      customRequests,
-      pendingCustomRequests,
-    ] = await Promise.all([
-      this.prisma.product.count(),
-      this.prisma.product.count({ where: { status: 'ACTIVE' } }),
-      this.prisma.product.count({ where: { status: 'ARCHIVED' } }),
-      this.prisma.category.count({ where: { isActive: true } }),
-      this.prisma.productInventory.findMany({
-        where: {
-          product: { status: 'ACTIVE' },
-          trackStock: true,
-        },
-        select: { stock: true, reserved: true, lowStockAt: true },
-      }),
-      this.prisma.order.count(),
-      this.prisma.order.count({ where: { status: 'PENDING_PAYMENT' } }),
-      this.prisma.order.count({ where: { status: 'PROCESSING' } }),
-      this.prisma.order.count({
-        where: {
-          status: 'READY_TO_SHIP',
-        },
-      }),
-      this.prisma.customRequest.count(),
-      this.prisma.customRequest.count({
-        where: {
-          status: { in: ['SUBMITTED', 'UNDER_REVIEW', 'CUSTOMER_REVIEW'] },
-        },
-      }),
-    ]);
+  dashboard() {
+    return this.adminService.dashboard();
+  }
 
-    const lowStockProducts = inventories.filter(
-      (inventory) => inventory.stock - inventory.reserved <= inventory.lowStockAt,
-    ).length;
+  @Get('settings')
+  settings() {
+    return this.adminService.settings();
+  }
 
-    const reservedUnits = inventories.reduce(
-      (total, inventory) => total + inventory.reserved,
-      0,
-    );
+  @Patch('settings')
+  updateSettings(@Body() body: { hero?: unknown; storefront?: unknown }) {
+    return this.adminService.updateSettings(body);
+  }
 
-    const availableUnits = inventories.reduce(
-      (total, inventory) =>
-        total + Math.max(0, inventory.stock - inventory.reserved),
-      0,
-    );
+  @Get('delivery-zones')
+  deliveryZones(@Query('includeInactive') includeInactive?: string) {
+    return this.adminService.deliveryZones(includeInactive !== 'false');
+  }
 
-    return {
-      products: {
-        total: products,
-        active: activeProducts,
-        archived: archivedProducts,
-      },
-      categories,
-      lowStockProducts,
-      inventory: {
-        availableUnits,
-        reservedUnits,
-      },
-      orders: {
-        total: orders,
-        pendingPayment: pendingOrders,
-        processing: processingOrders,
-        readyToShip: shipmentsToDispatch,
-      },
-      customBuilds: {
-        total: customRequests,
-        needsAttention: pendingCustomRequests,
-      },
-    };
+  @Post('delivery-zones')
+  upsertDeliveryZone(@Body() body: { postalCode?: string; coverage?: 'DELIVERED' | 'NOT_DELIVERED'; label?: string; active?: boolean }) {
+    if (!body.postalCode || !body.coverage) throw new Error('postalCode and coverage are required');
+    return this.adminService.upsertDeliveryZone(body.postalCode, body.coverage, body.label, body.active !== false);
+  }
+
+  @Patch('delivery-zones/:id')
+  updateDeliveryZone(@Param('id') id: string, @Body() body: { postalCode?: string; coverage?: 'DELIVERED' | 'NOT_DELIVERED'; label?: string; active?: boolean }) {
+    return this.adminService.deliveryZones(true).then(async (zones) => {
+      const current = zones.find((zone) => zone.id === id);
+      if (!current) throw new Error('Delivery zone not found');
+      return this.adminService.upsertDeliveryZone(body.postalCode ?? current.postalCode, body.coverage ?? current.coverage, body.label ?? current.label ?? undefined, body.active ?? current.active);
+    });
+  }
+
+  @Post('delivery-zones/:id/deactivate')
+  deactivateDeliveryZone(@Param('id') id: string) {
+    return this.adminService.removeDeliveryZone(id);
+  }
+
+  @Get('customers')
+  customers(@Query('search') search?: string) {
+    return this.adminService.customers(search);
+  }
+
+  @Patch('customers/:id/status')
+  setCustomerActive(@Param('id') id: string, @Body('isActive') isActive: boolean) {
+    return this.adminService.setCustomerActive(id, isActive);
+  }
+
+  @Get('catalog')
+  catalog() {
+    return this.adminService.catalog();
+  }
+
+  @Get('merchandising')
+  merchandising(@Query('limit') limit?: string) {
+    const parsed = Number(limit ?? 8);
+    return this.adminService.merchandising(Number.isFinite(parsed) ? Math.min(Math.max(parsed, 1), 20) : 8);
   }
 }
