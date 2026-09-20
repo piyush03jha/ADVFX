@@ -18,12 +18,13 @@ describe('OrdersService', () => {
 
   const pricing = { calculate: jest.fn() } as any;
   const razorpay = { refundPayment: jest.fn() } as any;
+  const observability = { captureException: jest.fn() } as any;
 
   let service: OrdersService;
 
   beforeEach(() => {
     jest.resetAllMocks();
-    service = new OrdersService(prisma, notifications, pricing, razorpay);
+    service = new OrdersService(prisma, notifications, pricing, razorpay, observability);
   });
 
   it('rejects invalid order status transitions', async () => {
