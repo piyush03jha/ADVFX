@@ -17,11 +17,11 @@ export class CustomerRegisterDto {
 
   @IsString()
   @MinLength(1)
-  @MaxLength(1024)
+  @MaxLength(4096)
   captchaToken!: string;
 
+  @IsOptional()
   @IsString()
-  @MinLength(1)
   @MaxLength(2)
-  captchaAnswer!: string;
+  captchaAnswer?: string;
 }
