@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { IconArrowRight, IconX } from "@tabler/icons-react";
 
 import { MathCaptcha } from "@/components/auth/MathCaptcha";
+import { AuthCaptcha } from "@/components/auth/AuthCaptcha";
 import { useAuth } from "@/context/AuthContext";
 import { loginUser, registerUser } from "@/lib/auth-client";
 import { useAuthCaptcha } from "@/lib/auth-captcha";
@@ -20,11 +21,15 @@ export function AuthPrompt() {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const {
+    provider,
     challenge,
+    token: turnstileToken,
+    setTurnstileToken,
     answer: captchaAnswer,
     setAnswer: setCaptchaAnswer,
     isLoading: isCaptchaLoading,
     error: captchaError,
+    version: captchaVersion,
     refresh: refreshCaptcha,
   } = useAuthCaptcha(mode === "signup" ? "register" : "login");
 
@@ -84,8 +89,9 @@ export function AuthPrompt() {
 
     setError("");
 
-    if (!challenge) {
-      setError(captchaError || "Security check is still loading.");
+    const authCaptchaToken = provider === "turnstile" ? turnstileToken : challenge?.token ?? "";
+    if (!authCaptchaToken || (provider === "math" && !captchaAnswer)) {
+      setError(captchaError || "Please complete the security check.");
       return;
     }
 
@@ -98,7 +104,7 @@ export function AuthPrompt() {
 
     try {
       if (mode === "login") {
-        await loginUser(email, password, challenge.token, captchaAnswer);
+        await loginUser(email, password, authCaptchaToken, provider === "math" ? captchaAnswer : "");
 
         const sessionUser = await refreshSession();
         if (!sessionUser) {
@@ -115,8 +121,8 @@ export function AuthPrompt() {
         name,
         email,
         password,
-        challenge.token,
-        captchaAnswer,
+        authCaptchaToken,
+        provider === "math" ? captchaAnswer : "",
       );
 
       const params = new URLSearchParams({
@@ -268,7 +274,14 @@ export function AuthPrompt() {
             </label>
           )}
 
-          {challenge ? (
+          {provider === "turnstile" ? (
+            <AuthCaptcha
+              key={captchaVersion}
+              purpose={mode === "signup" ? "register" : "login"}
+              onTokenChange={setTurnstileToken}
+              siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
+            />
+          ) : challenge ? (
             <MathCaptcha
               {...challenge}
               answer={captchaAnswer}
@@ -305,7 +318,7 @@ export function AuthPrompt() {
 
             <button
               type="submit"
-              disabled={isSubmitting || isCaptchaLoading || !challenge}
+              disabled={isSubmitting || isCaptchaLoading || !provider || (provider === "turnstile" ? !turnstileToken : !challenge || !captchaAnswer)}
               className="flex h-12 items-center justify-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSubmitting
