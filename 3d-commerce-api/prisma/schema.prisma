@@ -828,6 +828,30 @@ enum ShippingRuleType {
   WEIGHT_BASED
 }
 
+model SiteSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model DeliveryZone {
+  id         String           @id @default(cuid())
+  postalCode String           @unique
+  coverage   DeliveryCoverage @default(DELIVERED)
+  label      String?
+  active     Boolean          @default(true)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  @@index([coverage, active])
+}
+
+enum DeliveryCoverage {
+  DELIVERED
+  NOT_DELIVERED
+}
+
 /**
  * ============================================================
  * TAX RULE
