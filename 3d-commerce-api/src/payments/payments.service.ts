@@ -371,27 +371,19 @@ export class PaymentsService {
       }
       case 'payment.failed': {
         const entity = payload.payload?.payment?.entity;
-        const paymentId =
-          typeof entity?.id === 'string' ? entity.id : undefined;
-        const razorpayOrderId =
-          typeof entity?.order_id === 'string' ? entity.order_id : undefined;
+        const paymentId = typeof entity?.id === 'string' ? entity.id : undefined;
+        const razorpayOrderId = typeof entity?.order_id === 'string' ? entity.order_id : undefined;
 
         const payment = razorpayOrderId
-          ? await this.prisma.payment.findFirst({
-              where: { providerOrderId: razorpayOrderId },
-            })
+          ? await this.prisma.payment.findFirst({ where: { providerOrderId: razorpayOrderId } })
           : paymentId
-            ? await this.prisma.payment.findFirst({
-                where: { providerPaymentId: paymentId },
-              })
+            ? await this.prisma.payment.findFirst({ where: { providerPaymentId: paymentId } })
             : null;
 
         if (!payment || payment.status === PaymentStatus.CAPTURED) break;
 
         await this.prisma.$transaction(async (tx) => {
-          const current = await tx.payment.findUnique({
-            where: { id: payment.id },
-          });
+          const current = await tx.payment.findUnique({ where: { id: payment.id } });
           if (!current || current.status === PaymentStatus.CAPTURED) return;
 
           await tx.payment.update({
@@ -402,37 +394,23 @@ export class PaymentsService {
             },
           });
 
-          const order = await tx.order.findUnique({
-            where: { id: current.orderId },
-            select: { status: true },
-          });
+          const attempt = razorpayOrderId
+            ? await tx.paymentAttempt.findUnique({ where: { providerOrderId: razorpayOrderId } })
+            : null;
 
-          if (order?.status === OrderStatus.PENDING_PAYMENT) {
-            await this.releaseReservationsInTransaction(tx, current.orderId);
-
-            const orderDetails = await tx.order.findUnique({
-              where: { id: current.orderId },
-              select: { promotionId: true },
-            });
-
-            if (orderDetails?.promotionId) {
-              await tx.$executeRaw(
-                Prisma.sql`
-                  UPDATE "Promotion"
-                  SET "usageCount" = GREATEST("usageCount" - 1, 0),
-                      "updatedAt" = CURRENT_TIMESTAMP
-                  WHERE "id" = ${orderDetails.promotionId}
-                    AND "usageCount" > 0
-                `,
-              );
-            }
-
-            await tx.order.update({
-              where: { id: current.orderId },
-              data: { status: OrderStatus.CANCELLED },
+          if (attempt && attempt.status === PaymentStatus.PENDING) {
+            await tx.paymentAttempt.update({
+              where: { id: attempt.id },
+              data: {
+                providerPaymentId: paymentId ?? attempt.providerPaymentId,
+                status: PaymentStatus.FAILED,
+              },
             });
           }
         });
+
+        // A failed attempt is not an order cancellation. The customer may
+        // legitimately retry another payment method during the same checkout.
         break;
       }
       default:
