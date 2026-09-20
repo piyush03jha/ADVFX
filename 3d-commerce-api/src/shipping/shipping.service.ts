@@ -36,6 +36,22 @@ export class ShippingService {
     return this.prisma.shippingRule.update({ where: { id }, data: { isActive: false } });
   }
 
+  async deliveryCheck(postalCode: string) {
+    const normalized = postalCode.trim().toUpperCase();
+    const rule = await this.prisma.deliveryZone.findUnique({
+      where: { postalCode: normalized },
+    });
+
+    return {
+      postalCode: normalized,
+      deliverable: rule ? rule.active && rule.coverage === 'DELIVERED' : true,
+      rule: rule?.coverage ?? 'DEFAULT',
+      message: rule?.active && rule.coverage === 'NOT_DELIVERED'
+        ? 'We currently do not deliver to this postal code.'
+        : 'Delivery is available to this postal code.',
+    };
+  }
+
   async quote(context: ShippingQuoteContext): Promise<ShippingQuote> {
     const rules = await this.prisma.shippingRule.findMany({
       where: { isActive: true },
