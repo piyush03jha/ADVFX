@@ -7,6 +7,7 @@ import { FormEvent, useState } from "react";
 import { IconArrowRight, IconEye, IconEyeOff, IconLock, IconMail, IconShieldCheck, IconSparkles } from "@tabler/icons-react";
 import { Navbar } from "@/components/layout/SiteNavbar";
 import { MathCaptcha } from "@/components/auth/MathCaptcha";
+import { AuthCaptcha } from "@/components/auth/AuthCaptcha";
 import { loginUser } from "@/lib/auth-client";
 import { useAuth } from "@/context/AuthContext";
 import { useAuthCaptcha } from "@/lib/auth-captcha";
@@ -20,7 +21,7 @@ function LoginPageContent() {
   const [remember, setRemember] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const { challenge, answer: captchaAnswer, setAnswer: setCaptchaAnswer, isLoading: isCaptchaLoading, error: captchaError, refresh: refreshCaptcha } = useAuthCaptcha("login");
+  const { provider, challenge, token: turnstileToken, setTurnstileToken, answer: captchaAnswer, setAnswer: setCaptchaAnswer, isLoading: isCaptchaLoading, error: captchaError, version: captchaVersion, refresh: refreshCaptcha } = useAuthCaptcha("login");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -30,8 +31,9 @@ function LoginPageContent() {
 
     setError("");
 
-    if (!challenge) {
-      setError(captchaError || "Security check is still loading.");
+    const authCaptchaToken = provider === "turnstile" ? turnstileToken : challenge?.token ?? "";
+    if (!authCaptchaToken || (provider === "math" && !captchaAnswer)) {
+      setError(captchaError || "Please complete the security check.");
       return;
     }
 
@@ -40,7 +42,7 @@ function LoginPageContent() {
     try {
       // loginUser validates the BFF response and only resolves after the
       // authentication cookie has been issued successfully.
-      await loginUser(email, password, challenge.token, captchaAnswer);
+      await loginUser(email, password, authCaptchaToken, provider === "math" ? captchaAnswer : "");
 
       // Update the in-memory auth state first, then navigate. Awaiting this
       // avoids leaving the login screen while the provider still sees the user
@@ -75,10 +77,10 @@ function LoginPageContent() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <label className="block"><span className="mb-2 block text-[9px] font-medium uppercase tracking-[0.15em] text-muted">Email address</span><div className="relative"><IconMail size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" /><input value={email} onChange={(event) => setEmail(event.target.value)} type="email" required autoComplete="email" placeholder="you@example.com" className="h-12 w-full rounded-xl border border-white/[0.1] bg-white/[0.025] pl-10 pr-4 text-sm text-foreground outline-none focus:border-primary/40" /></div></label>
               <label className="block"><div className="mb-2 flex items-center justify-between"><span className="text-[9px] font-medium uppercase tracking-[0.15em] text-muted">Password</span><Link href="/forgot-password" className="text-[10px] text-muted hover:text-primary">Forgot password?</Link></div><div className="relative"><IconLock size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" /><input value={password} onChange={(event) => setPassword(event.target.value)} type={showPassword ? "text" : "password"} required autoComplete={remember ? "current-password" : "off"} placeholder="Enter your password" className="h-12 w-full rounded-xl border border-white/[0.1] bg-white/[0.025] pl-10 pr-11 text-sm text-foreground outline-none focus:border-primary/40" /><button type="button" aria-label={showPassword ? "Hide password" : "Show password"} onClick={() => setShowPassword((value) => !value)} className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center text-muted">{showPassword ? <IconEyeOff size={16} /> : <IconEye size={16} />}</button></div></label>
-              {challenge ? <MathCaptcha {...challenge} answer={captchaAnswer} onAnswerChange={setCaptchaAnswer} onRefresh={() => void refreshCaptcha()} /> : <CaptchaLoading error={captchaError} />}
+              {provider === "turnstile" ? <AuthCaptcha key={captchaVersion} purpose="login" onTokenChange={setTurnstileToken} siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY} /> : challenge ? <MathCaptcha {...challenge} answer={captchaAnswer} onAnswerChange={setCaptchaAnswer} onRefresh={() => void refreshCaptcha()} /> : <CaptchaLoading error={captchaError} />}
               <label className="flex cursor-pointer items-center gap-3 pt-1 text-xs text-muted"><input type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} className="h-4 w-4 accent-[hsl(var(--primary))]" />Keep me signed in on this device</label>
               {error && <div role="alert" className="rounded-xl border border-red-400/15 bg-red-400/[0.06] px-3.5 py-3 text-xs text-red-200">{error}</div>}
-              <button type="submit" disabled={isSubmitting || isCaptchaLoading || !challenge} className="mt-2 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 text-[10px] font-semibold uppercase tracking-[0.16em] text-primary-foreground disabled:opacity-60">{isSubmitting ? "Signing in…" : "Sign in"}{!isSubmitting && <IconArrowRight size={15} />}</button>
+              <button type="submit" disabled={isSubmitting || isCaptchaLoading || !provider || (provider === "turnstile" ? !turnstileToken : !challenge || !captchaAnswer)} className="mt-2 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 text-[10px] font-semibold uppercase tracking-[0.16em] text-primary-foreground disabled:opacity-60">{isSubmitting ? "Signing in…" : "Sign in"}{!isSubmitting && <IconArrowRight size={15} />}</button>
             </form>
             <p className="mt-7 text-center text-xs text-muted">New to the studio? <Link href={`/register?returnTo=${encodeURIComponent(returnTo)}`} className="font-medium text-primary hover:text-foreground">Create an account</Link></p>
             <p className="mt-6 text-center text-[9px] leading-5 text-muted/70">By continuing, you agree to our Terms of Service and Privacy Policy.</p>
