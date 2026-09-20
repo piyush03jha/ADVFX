@@ -19,6 +19,7 @@ import { CheckoutModule } from "./checkout/checkout.module";
 import { ShippingModule } from "./shipping/shipping.module";
 import { PricingModule } from "./pricing/pricing.module";
 import { WishlistModule } from "./wishlist/wishlist.module";
+import { ObservabilityModule } from "./observability/observability.module";
 import { ScheduleModule } from "@nestjs/schedule";
 
 @Module({
@@ -42,6 +43,7 @@ import { ScheduleModule } from "@nestjs/schedule";
     PricingModule,
     CheckoutModule,
     WishlistModule,
+    ObservabilityModule,
   ],
   controllers: [AppController],
   providers: [AppService],
