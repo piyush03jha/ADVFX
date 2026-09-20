@@ -1,5 +1,9 @@
 export function validateEnvironment() {
-  const nodeEnv = process.env.NODE_ENV ?? 'development';
+  const nodeEnv = process.env.NODE_ENV?.trim();
+
+  if (!nodeEnv || !['development', 'test', 'production'].includes(nodeEnv)) {
+    throw new Error('NODE_ENV must be explicitly set to development, test, or production');
+  }
 
   if (!process.env.DATABASE_URL) {
     throw new Error('DATABASE_URL is not configured');
