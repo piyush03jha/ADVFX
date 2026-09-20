@@ -41,38 +41,22 @@ async function hashAdminPassword(password: string) {
   });
 }
 
-async function main() {
-  const email = process.env.ADMIN_EMAIL?.toLowerCase().trim();
+async function seedAdmin(email: string, name: string, password: string) {
+  const normalizedEmail = email.toLowerCase().trim();
 
-  if (!email) {
-    throw new Error('ADMIN_EMAIL is not configured');
-  }
-
-  await prisma.user.upsert({
-    where: { email },
-    update: {
-      role: UserRole.ADMIN,
-      isActive: true,
-    },
+  const admin = await prisma.user.upsert({
+    where: { email: normalizedEmail },
+    update: { role: UserRole.ADMIN, isActive: true, name },
     create: {
-      email,
-      name: process.env.ADMIN_NAME ?? 'Administrator',
+      email: normalizedEmail,
+      name,
       role: UserRole.ADMIN,
       isActive: true,
     },
-  });
-
-  const admin = await prisma.user.findUniqueOrThrow({
-    where: { email },
     select: { id: true },
   });
 
-  const adminPassword = process.env.ADMIN_PASSWORD;
-  if (!adminPassword || adminPassword.length < 12) {
-    throw new Error('ADMIN_PASSWORD must be configured with at least 12 characters');
-  }
-
-  const adminPasswordHash = await hashAdminPassword(adminPassword);
+  const adminPasswordHash = await hashAdminPassword(password);
   await prisma.$executeRaw`
     INSERT INTO "AdminCredential" ("id","userId","passwordHash","createdAt","updatedAt")
     VALUES (${randomUUID()}, ${admin.id}, ${adminPasswordHash}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
@@ -80,7 +64,56 @@ async function main() {
     DO UPDATE SET "passwordHash" = EXCLUDED."passwordHash", "updatedAt" = CURRENT_TIMESTAMP
   `;
 
-  console.log(`Admin user seeded: ${email}`);
+  console.log(`Admin user seeded: ${normalizedEmail}`);
+}
+
+async function main() {
+  const adminConfigs = [
+    {
+      email: process.env.ADMIN_EMAIL,
+      name: process.env.ADMIN_NAME ?? 'Administrator',
+      password: process.env.ADMIN_PASSWORD,
+    },
+    {
+      email: process.env.ADMIN_EMAIL_2,
+      name: process.env.ADMIN_NAME_2 ?? 'Administrator 2',
+      password: process.env.ADMIN_PASSWORD_2,
+    },
+  ];
+
+  const configuredAdmins = adminConfigs.filter((admin) => admin.email || admin.password);
+  if (configuredAdmins.length === 0) {
+    throw new Error('ADMIN_EMAIL and ADMIN_PASSWORD are not configured');
+  }
+
+  if (configuredAdmins.some((admin) => !admin.email || !admin.password)) {
+    throw new Error('Each configured admin must have both an email and password');
+  }
+
+  if (configuredAdmins.some((admin) => (admin.password?.length ?? 0) < 12)) {
+    throw new Error('Every admin password must be at least 12 characters');
+  }
+
+  const existingAdminCount = await prisma.user.count({ where: { role: UserRole.ADMIN } });
+  const configuredEmails = new Set(configuredAdmins.map((admin) => admin.email!.toLowerCase().trim()));
+  const existingUnconfiguredAdmins = await prisma.user.count({
+    where: {
+      role: UserRole.ADMIN,
+      email: { notIn: [...configuredEmails] },
+    },
+  });
+
+  if (existingUnconfiguredAdmins > 2 - configuredAdmins.length) {
+    throw new Error('The application supports a maximum of 2 admin users. Remove extra admin accounts before seeding.');
+  }
+
+  if (existingAdminCount > 2) {
+    throw new Error('The application supports a maximum of 2 admin users. Remove extra admin accounts before seeding.');
+  }
+
+  for (const admin of configuredAdmins) {
+    await seedAdmin(admin.email!, admin.name, admin.password!);
+  }
 
   // Development storefront fixture: one real catalog product powers the
   // home hero. The GLB is served by the frontend public directory until
