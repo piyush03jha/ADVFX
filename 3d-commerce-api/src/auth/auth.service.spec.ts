@@ -50,16 +50,26 @@ describe('AuthService', () => {
   });
 
   it('resets a customer password with a valid reset token', async () => {
-    prisma.$queryRaw.mockResolvedValueOnce([
-      { id: 'reset-1', userId: 'customer-1' },
-    ]);
+    prisma.$queryRaw
+      .mockResolvedValueOnce([
+        {
+          id: 'reset-1',
+          userId: 'customer-1',
+          usedAt: null,
+          expiresAt: new Date(Date.now() + 30 * 60_000),
+          createdAt: new Date(),
+        },
+      ])
+      .mockResolvedValueOnce([
+        { id: 'reset-1', userId: 'customer-1' },
+      ]);
     prisma.$transaction.mockImplementation(async (callback: any) => callback(prisma));
 
     await expect(
       service.resetCustomerPassword('a'.repeat(43), 'new-password-123'),
     ).resolves.toEqual({ message: 'Password reset successfully.' });
 
-    expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(2);
     expect(prisma.$executeRaw).toHaveBeenCalledTimes(3);
   });
 
