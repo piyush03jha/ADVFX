@@ -19,6 +19,7 @@ import {
 import { Navbar } from "@/components/layout/SiteNavbar";
 import { registerUser } from "@/lib/auth-client";
 import { MathCaptcha } from "@/components/auth/MathCaptcha";
+import { AuthCaptcha } from "@/components/auth/AuthCaptcha";
 import { useAuthCaptcha } from "@/lib/auth-captcha";
 
 function RegisterPageContent() {
@@ -34,7 +35,7 @@ function RegisterPageContent() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { challenge, answer: captchaAnswer, setAnswer: setCaptchaAnswer, isLoading: isCaptchaLoading, error: captchaError, refresh: refreshCaptcha } = useAuthCaptcha("register");
+  const { provider, challenge, token: turnstileToken, setTurnstileToken, answer: captchaAnswer, setAnswer: setCaptchaAnswer, isLoading: isCaptchaLoading, error: captchaError, version: captchaVersion, refresh: refreshCaptcha } = useAuthCaptcha("register");
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -50,15 +51,16 @@ function RegisterPageContent() {
       return;
     }
 
-    if (!challenge) {
-      setError(captchaError || "Security check is still loading.");
+    const authCaptchaToken = provider === "turnstile" ? turnstileToken : challenge?.token ?? "";
+    if (!authCaptchaToken || (provider === "math" && !captchaAnswer)) {
+      setError(captchaError || "Please complete the security check.");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      const result = await registerUser(name, email, password, challenge.token, captchaAnswer);
+      const result = await registerUser(name, email, password, authCaptchaToken, provider === "math" ? captchaAnswer : "");
       const params = new URLSearchParams({ email: email.trim().toLowerCase() });
       if (result.emailDeliveryPending) params.set("delivery", "pending");
       router.replace(`/verify-email?${params.toString()}`);
@@ -181,7 +183,7 @@ function RegisterPageContent() {
                   </label>
                 </div>
 
-                {challenge ? <MathCaptcha {...challenge} answer={captchaAnswer} onAnswerChange={setCaptchaAnswer} onRefresh={() => void refreshCaptcha()} /> : <CaptchaLoading error={captchaError} />}
+                {provider === "turnstile" ? <AuthCaptcha key={captchaVersion} purpose="register" onTokenChange={setTurnstileToken} siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY} /> : challenge ? <MathCaptcha {...challenge} answer={captchaAnswer} onAnswerChange={setCaptchaAnswer} onRefresh={() => void refreshCaptcha()} /> : <CaptchaLoading error={captchaError} />}
 
                 <label className="flex cursor-pointer gap-3 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3.5 text-xs leading-5 text-muted">
                   <input type="checkbox" checked={acceptTerms} onChange={(event) => setAcceptTerms(event.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/20 bg-transparent accent-[hsl(var(--primary))]" />
@@ -194,7 +196,7 @@ function RegisterPageContent() {
                   <div role="alert" className="rounded-xl border border-red-400/15 bg-red-400/[0.06] px-3.5 py-3 text-xs leading-5 text-red-200">{error}</div>
                 )}
 
-                <button type="submit" disabled={isSubmitting || !acceptTerms || isCaptchaLoading || !challenge} className="mt-2 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 text-[10px] font-semibold uppercase tracking-[0.16em] text-primary-foreground shadow-[0_16px_42px_hsl(var(--primary)/0.18)] transition-all hover:-translate-y-0.5 hover:shadow-[0_20px_52px_hsl(var(--primary)/0.25)] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0">
+                <button type="submit" disabled={isSubmitting || !acceptTerms || isCaptchaLoading || !provider || (provider === "turnstile" ? !turnstileToken : !challenge || !captchaAnswer)} className="mt-2 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 text-[10px] font-semibold uppercase tracking-[0.16em] text-primary-foreground shadow-[0_16px_42px_hsl(var(--primary)/0.18)] transition-all hover:-translate-y-0.5 hover:shadow-[0_20px_52px_hsl(var(--primary)/0.25)] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0">
                   {isSubmitting ? "Creating account…" : "Create account"}
                   {!isSubmitting && <IconArrowRight size={15} />}
                 </button>
