@@ -95,6 +95,9 @@ async function bootstrap() {
     .getHttpAdapter()
     .getInstance()
     .addHook("onRequest", async (request, reply) => {
+      const requestId = String(request.id);
+      reply.header("X-Request-ID", requestId);
+      request.log.info({ requestId, method: request.method, url: request.url }, "request.started");
       const now = Date.now();
 
       // Razorpay webhooks are already authenticated with their HMAC signature
@@ -141,6 +144,16 @@ async function bootstrap() {
           .header("Retry-After", "60")
           .send({ message: "Too many requests" });
       }
+    });
+
+  app
+    .getHttpAdapter()
+    .getInstance()
+    .addHook("onResponse", async (request, reply) => {
+      request.log.info(
+        { requestId: String(request.id), method: request.method, url: request.url, statusCode: reply.statusCode },
+        "request.completed",
+      );
     });
 
   app
