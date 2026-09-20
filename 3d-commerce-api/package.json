@@ -19,7 +19,9 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "db:seed-admin": "tsx src/prisma/seeds.ts",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:release": "prisma migrate deploy && npm run db:seed-admin"
   },
   "dependencies": {
     "@fastify/multipart": "^10.1.1",
