@@ -25,6 +25,7 @@ import {
   type CheckoutSelectionItem,
 } from "@/lib/checkout-api";
 import {
+  cancelRazorpayPayment,
   createRazorpayOrder,
   verifyRazorpayPayment,
   type RazorpayOrder,
@@ -183,10 +184,20 @@ export default function PaymentPage() {
           theme: { color: "#c9a86a" },
           modal: {
             ondismiss: () => {
-              setQuoteError(
-                "Payment was not completed. Your items are still available for checkout.",
-              );
-              finish();
+              void cancelRazorpayPayment(order.id)
+                .then((result) => {
+                  setQuoteError(
+                    result.refunded
+                      ? "Payment was cancelled and refunded."
+                      : "Payment was cancelled. Your items are available for checkout again.",
+                  );
+                })
+                .catch(() => {
+                  setQuoteError(
+                    "Payment was cancelled. We are reconciling the payment status in the background.",
+                  );
+                })
+                .finally(finish);
             },
           },
           handler: (response) => {
