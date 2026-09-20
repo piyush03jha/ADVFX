@@ -16,8 +16,9 @@ export class AuthController {
 
   @Get('captcha')
   captcha(@Query('purpose') purpose?: string) {
-    if (purpose !== 'login' && purpose !== 'register') throw new BadRequestException('A valid CAPTCHA purpose is required.');
-    return this.captchaService.issue(purpose);
+    if (purpose !== 'login' && purpose !== 'register' && purpose !== 'forgot-password') throw new BadRequestException('A valid CAPTCHA purpose is required.');
+    if (this.captchaService.provider() === 'turnstile') return { provider: 'turnstile' as const };
+    return { provider: 'math' as const, ...this.captchaService.issue(purpose) };
   }
 
   @Post('register')
@@ -54,7 +55,7 @@ export class AuthController {
 
   @Post('forgot-password')
   forgotPassword(@Body() dto: ForgotPasswordDto) {
-    return this.authService.forgotCustomerPassword(dto.email);
+    return this.authService.forgotCustomerPassword(dto.email, dto.captchaToken, dto.captchaAnswer);
   }
 
   @Post('reset-password')
