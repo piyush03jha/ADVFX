@@ -55,3 +55,25 @@ Prefer GLB over OBJ/GLTF. Optimize with meshopt or Draco before publishing. Most
 
 ## Scaling rule
 Keep one API instance until shared state is introduced. Before multiple instances, move rate limiting and CAPTCHA nonces to Redis and put expiry/reconciliation jobs behind a distributed lock or queue.
+
+
+## Sentry alerts
+
+Set `SENTRY_DSN` on the Oracle API. The application emits structured Sentry events for:
+- refund failures (`alert=refund_failure`)
+- pending payments older than 35 minutes (`alert=stuck_pending_orders`)
+
+Create Sentry alert rules for those event attributes and route them to the team's notification channel. The application deliberately does not contain provider-specific alert credentials.
+
+## Request correlation
+
+Every API response includes `X-Request-ID`. Fastify emits JSON request-start/request-completed logs containing the same request ID. Include that ID when investigating checkout, webhook or refund incidents.
+
+## 3D asset migration checklist
+
+1. Optimize the existing GLB/GLTF assets with a pinned meshopt or Draco pipeline.
+2. Upload the optimized GLBs to R2.
+3. Put Cloudflare CDN/custom-domain URL in `STORAGE_PUBLIC_BASE_URL`.
+4. Update product file/media records to the CDN URLs.
+5. Verify every model on desktop and low-end mobile.
+6. Only after verification, remove the corresponding binaries from `3d-commerce/public/models` so the frontend image/container build no longer carries 100+ MB of model data.
