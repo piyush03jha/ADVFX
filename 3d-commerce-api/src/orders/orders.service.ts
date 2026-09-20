@@ -17,7 +17,28 @@ const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   REFUNDED: [],
 };
 
+// Orders in these statuses have already had stock *consumed* (decremented
+// via consumeReservations), not just reserved. Cancelling/refunding from
+// here must put that stock back - releaseReservations only finds
+// still-ACTIVE reservations and is a no-op for these.
+const STOCK_CONSUMED_STATUSES: OrderStatus[] = [
+  OrderStatus.CONFIRMED,
+  OrderStatus.PROCESSING,
+  OrderStatus.READY_TO_SHIP,
+  OrderStatus.SHIPPED,
+  OrderStatus.DELIVERED,
+];
+
 const RESERVATION_MINUTES = 30;
+// findAllAdmin was previously fully unbounded (no take/skip at all), which
+// fetches every order with deep includes on every admin page load - a
+// growing perf/DoS risk. This caps it instead of paginating so the
+// existing admin UI (which currently loads everything into the browser
+// for client-side search/filtering) doesn't silently start hiding older
+// orders from search. Raise this if you expect to exceed it, or switch
+// the admin orders page to real server-side pagination.
+const ADMIN_ORDERS_PAGE_SIZE_DEFAULT = 500;
+const ADMIN_ORDERS_PAGE_SIZE_MAX = 500;
 
 @Injectable()
 export class OrdersService {
@@ -303,8 +324,24 @@ export class OrdersService {
     return order;
   }
 
-  async findAllAdmin(status?: OrderStatus) {
-    return this.prisma.order.findMany({ where: status ? { status } : undefined, include: { items: true, shippingAddress: true, payment: true, shipment: true, inventoryReservations: true, user: true, promotion: true, shippingRule: true }, orderBy: { createdAt: 'desc' } });
+  async findAllAdmin(status?: OrderStatus, page = 1, pageSize = ADMIN_ORDERS_PAGE_SIZE_DEFAULT) {
+    const safePage = Number.isInteger(page) && page > 0 ? page : 1;
+    const safePageSize =
+      Number.isInteger(pageSize) && pageSize > 0
+        ? Math.min(pageSize, ADMIN_ORDERS_PAGE_SIZE_MAX)
+        : ADMIN_ORDERS_PAGE_SIZE_DEFAULT;
+
+    // Previously unbounded (`findMany` with no take/skip): as the order
+    // table grows this fetches every order with deep includes on every
+    // admin page load. Keeps the existing array response shape (so the
+    // frontend doesn't need to change) but now always bounded.
+    return this.prisma.order.findMany({
+      where: status ? { status } : undefined,
+      include: { items: true, shippingAddress: true, payment: true, shipment: true, inventoryReservations: true, user: true, promotion: true, shippingRule: true },
+      orderBy: { createdAt: 'desc' },
+      skip: (safePage - 1) * safePageSize,
+      take: safePageSize,
+    });
   }
 
   async findOneAdmin(id: string) {
@@ -317,6 +354,18 @@ export class OrdersService {
     const order = await this.findOneAdmin(id);
     const allowed = ORDER_TRANSITIONS[order.status];
     if (!allowed.includes(status)) throw new BadRequestException(`Cannot change order from ${order.status} to ${status}`);
+
+    const wasStockConsumed = STOCK_CONSUMED_STATUSES.includes(order.status);
+    const hasCapturedPayment = order.payment?.status === 'CAPTURED';
+
+    if (status === 'CANCELLED' && wasStockConsumed && hasCapturedPayment) {
+      // Cancelling here would leave a paid customer with no refund and no
+      // order. Route through REFUNDED instead, which actually returns the
+      // money (below) as well as restocking.
+      throw new BadRequestException(
+        'This order has a captured payment. Use REFUNDED to cancel and refund it.',
+      );
+    }
 
     if (status === 'REFUNDED') {
       if (
@@ -340,6 +389,8 @@ export class OrdersService {
           if (order.promotionId) {
             await this.releasePromotionUsage(tx, order.promotionId);
           }
+        } else if (wasStockConsumed) {
+          await this.restockConsumedReservations(tx, id);
         }
       }
 
@@ -356,6 +407,10 @@ export class OrdersService {
           where: { orderId: id },
           data: { status: 'REFUNDED' },
         });
+
+        if (wasStockConsumed) {
+          await this.restockConsumedReservations(tx, id);
+        }
       }
       if (status === 'CONFIRMED' && order.status === 'PENDING_PAYMENT') await this.consumeReservations(tx, id);
 
@@ -435,6 +490,28 @@ export class OrdersService {
       const updated = await tx.productInventory.updateMany({ where: { id: reservation.productInventoryId, reserved: { gte: reservation.quantity } }, data: { reserved: { decrement: reservation.quantity } } });
       if (updated.count !== 1) throw new BadRequestException(`Unable to release inventory reservation for product ${reservation.productId}`);
       await tx.inventoryReservation.update({ where: { id: reservation.id }, data: { status, releasedAt: new Date() } });
+    }
+  }
+
+  /**
+   * Puts stock back for an order that had already reached a
+   * STOCK_CONSUMED_STATUSES status (its reservations are CONSUMED, not
+   * ACTIVE, so releaseReservations is a no-op for it) and is now being
+   * cancelled or refunded. Without this, stock decremented at CONFIRMED
+   * time was never returned on cancel/refund.
+   */
+  private async restockConsumedReservations(tx: Prisma.TransactionClient, orderId: string) {
+    const reservations = await tx.inventoryReservation.findMany({ where: { orderId, status: 'CONSUMED' } });
+    for (const reservation of reservations) {
+      if (!reservation.productInventoryId) continue;
+      await tx.productInventory.update({
+        where: { id: reservation.productInventoryId },
+        data: { stock: { increment: reservation.quantity } },
+      });
+      await tx.inventoryReservation.update({
+        where: { id: reservation.id },
+        data: { status: InventoryReservationStatus.RELEASED, releasedAt: new Date() },
+      });
     }
   }
 

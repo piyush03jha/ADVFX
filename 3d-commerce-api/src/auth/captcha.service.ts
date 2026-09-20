@@ -23,7 +23,7 @@ export class AuthCaptchaService {
 
     const first = randomInt(1, 10);
     const second = randomInt(1, 10);
-    const subtract = randomInt(0, 1) === 1;
+    const subtract = randomInt(0, 2) === 1;
     const left = subtract ? Math.max(first, second) : first;
     const right = subtract ? Math.min(first, second) : second;
     const answer = subtract ? left - right : left + right;
