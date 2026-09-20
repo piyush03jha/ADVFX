@@ -98,9 +98,26 @@ export class AdminService {
         { email: { contains: term, mode: 'insensitive' } },
         { phone: { contains: term, mode: 'insensitive' } },
       ] } : {}) },
-      select: { id: true, name: true, email: true, phone: true, isActive: true, createdAt: true, _count: { select: { orders: true, customRequests: true, wishlist: true } } },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        isActive: true,
+        createdAt: true,
+        _count: { select: { orders: true, customRequests: true } },
+        wishlist: { select: { _count: { select: { items: true } } } },
+      },
       orderBy: { createdAt: 'desc' }, take: 200,
-    });
+    }).then((customers) =>
+      customers.map(({ wishlist, ...customer }) => ({
+        ...customer,
+        _count: {
+          ...customer._count,
+          wishlist: wishlist?._count.items ?? 0,
+        },
+      })),
+    );
   }
 
   async setCustomerActive(id: string, isActive: boolean) {
