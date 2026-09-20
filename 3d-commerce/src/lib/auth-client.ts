@@ -63,7 +63,7 @@ export async function resendVerificationEmail(email: string) {
   const response = await fetch("/api/auth/resend-verification", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email }),
+    body: JSON.stringify({ email, captchaToken, captchaAnswer }),
   });
 
   const data = (await response.json()) as {
@@ -84,7 +84,7 @@ export async function resendVerificationEmail(email: string) {
   };
 }
 
-export async function requestPasswordReset(email: string) {
+export async function requestPasswordReset(email: string, captchaToken: string, captchaAnswer?: string) {
   const response = await fetch("/api/auth/forgot-password", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
