@@ -37,16 +37,33 @@ export class ProductsService {
   }
 
   async findAll() {
-    return this.prisma.product.findMany({
+    const products = await this.prisma.product.findMany({
       where: { status: 'ACTIVE' },
-      include: this.publicProductInclude(),
-      orderBy: [
-        { isFeatured: 'desc' },
-        { isBestseller: 'desc' },
-        { isTrending: 'desc' },
-        { createdAt: 'desc' },
-      ],
+      include: {
+        ...this.publicProductInclude(),
+        metrics: true,
+      },
+      orderBy: [{ isFeatured: 'desc' }, { isTrending: 'desc' }, { createdAt: 'desc' }],
     });
+
+    const bestsellerScores = products
+      .map((product) => ({
+        id: product.id,
+        score:
+          (product.metrics?.unitsSold ?? 0) * 8 +
+          (product.metrics?.purchaseCount ?? 0) * 4 +
+          (product.metrics?.cartAddCount ?? 0) +
+          (product.metrics?.viewCount ?? 0) * 0.1,
+      }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 8);
+
+    const bestsellerIds = new Set(bestsellerScores.map((item) => item.id));
+
+    return products.map((product) => ({
+      ...product,
+      isBestseller: bestsellerIds.has(product.id),
+    }));
   }
 
   /**
@@ -64,12 +81,24 @@ export class ProductsService {
       },
       include: this.heroProductInclude(),
       orderBy: { createdAt: 'desc' },
-      take: 10,
+      take: await this.heroLimit(),
     });
 
     return products
       .map((product) => this.toHeroProduct(product))
       .filter((product) => product.model);
+  }
+
+  private async heroLimit() {
+    const setting = await this.prisma.siteSetting.findUnique({ where: { key: 'hero' } });
+    if (!setting) return 10;
+    try {
+      const value = JSON.parse(setting.value) as { maxItems?: number };
+      const limit = Number(value.maxItems);
+      return Number.isFinite(limit) ? Math.min(Math.max(Math.floor(limit), 1), 12) : 10;
+    } catch {
+      return 10;
+    }
   }
 
   async recordView(id: string) {
