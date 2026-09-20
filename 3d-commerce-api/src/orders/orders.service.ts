@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PricingService } from '../pricing/pricing.service';
 import { RazorpayService } from '../payments/razorpay.service';
+import { ObservabilityService } from '../observability/observability.service';
 
 const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   PENDING_PAYMENT: ['CONFIRMED', 'CANCELLED'],
@@ -47,6 +48,7 @@ export class OrdersService {
     private readonly notifications: NotificationsService,
     private readonly pricing: PricingService,
     private readonly razorpay: RazorpayService,
+    private readonly observability: ObservabilityService,
   ) {}
 
   async createFromCart(
@@ -376,10 +378,20 @@ export class OrdersService {
         throw new BadRequestException('Only captured Razorpay payments can be refunded.');
       }
 
-      await this.razorpay.refundPayment(
-        order.payment.providerPaymentId,
-        order.payment.amountMinor,
-      );
+      try {
+        await this.razorpay.refundPayment(
+          order.payment.providerPaymentId,
+          order.payment.amountMinor,
+        );
+      } catch (error) {
+        await this.observability.captureException(error, {
+          alert: "refund_failure",
+          orderId: id,
+          providerPaymentId: order.payment.providerPaymentId,
+          amountMinor: order.payment.amountMinor,
+        });
+        throw error;
+      }
     }
 
     const updated = await this.prisma.$transaction(async (tx) => {
@@ -483,7 +495,21 @@ export class OrdersService {
       });
     }
 
-    return { expiredOrders: expired.length };
+    const stuckPending = await this.prisma.order.count({
+      where: {
+        status: OrderStatus.PENDING_PAYMENT,
+        createdAt: { lt: new Date(Date.now() - 35 * 60_000) },
+      },
+    });
+
+    if (stuckPending > 0) {
+      await this.observability.captureMessage("Pending payment orders exceeded the expected reservation window", {
+        alert: "stuck_pending_orders",
+        count: stuckPending,
+      });
+    }
+
+    return { expiredOrders: expired.length, stuckPending };
   }
 
   private async releaseReservations(tx: Prisma.TransactionClient, orderId: string, status: InventoryReservationStatus) {
