@@ -13,13 +13,33 @@ type CustomRequest = {
   user?: { name?: string | null; email?: string };
 };
 
+const STATUSES = [
+  "SUBMITTED",
+  "UNDER_REVIEW",
+  "IN_PRODUCTION",
+  "PREVIEW_READY",
+  "CUSTOMER_REVIEW",
+  "REVISION_REQUESTED",
+  "APPROVED",
+  "ORDERABLE",
+  "CANCELLED",
+] as const;
+
 const NEXT: Record<string, string[]> = {
   SUBMITTED: ["UNDER_REVIEW", "CANCELLED"],
   UNDER_REVIEW: ["IN_PRODUCTION", "CANCELLED"],
-  IN_PRODUCTION: ["ORDERABLE", "CANCELLED"],
+  IN_PRODUCTION: ["PREVIEW_READY", "CANCELLED"],
+  PREVIEW_READY: ["CUSTOMER_REVIEW", "CANCELLED"],
+  CUSTOMER_REVIEW: ["REVISION_REQUESTED", "APPROVED", "CANCELLED"],
+  REVISION_REQUESTED: ["IN_PRODUCTION", "CANCELLED"],
+  APPROVED: ["ORDERABLE", "CANCELLED"],
   ORDERABLE: [],
   CANCELLED: [],
 };
+
+function label(value: string) {
+  return value.replaceAll("_", " ").toLowerCase().replace(/(^|\\s)\\S/g, (match) => match.toUpperCase());
+}
 
 export default function AdminCustomRequestsPage() {
   const [requests, setRequests] = useState<CustomRequest[]>([]);
@@ -52,10 +72,11 @@ export default function AdminCustomRequestsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, status: nextStatus }),
       });
-      if (!response.ok) throw new Error();
+      const data = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(data?.error ?? "Unable to update custom request.");
       await load();
-    } catch {
-      setError("Unable to update custom request.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to update custom request.");
     }
   }
 
@@ -70,6 +91,9 @@ export default function AdminCustomRequestsPage() {
         <div>
           <p className="text-[9px] uppercase tracking-[0.2em] text-primary">Custom production</p>
           <h1 className="mt-2 font-serif text-4xl">Requests</h1>
+          <p className="mt-2 max-w-2xl text-xs leading-5 text-muted">
+            Review custom requests, move builds through production, and handle customer review or revision stages.
+          </p>
         </div>
         <select
           value={status}
@@ -77,11 +101,7 @@ export default function AdminCustomRequestsPage() {
           className="h-10 rounded-xl border border-border bg-background px-3 text-xs"
         >
           <option value="">All statuses</option>
-          <option value="SUBMITTED">SUBMITTED</option>
-          <option value="UNDER_REVIEW">UNDER_REVIEW</option>
-          <option value="IN_PRODUCTION">IN_PRODUCTION</option>
-          <option value="ORDERABLE">ORDERABLE</option>
-          <option value="CANCELLED">CANCELLED</option>
+          {STATUSES.map((value) => <option key={value} value={value}>{label(value)}</option>)}
         </select>
       </div>
 
@@ -99,7 +119,9 @@ export default function AdminCustomRequestsPage() {
                     {request.user?.email ?? request.user?.name ?? "Customer"} · {new Date(request.createdAt).toLocaleString("en-IN")}
                   </p>
                 </div>
-                <span className="text-xs text-primary">{request.status}</span>
+                <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[9px] uppercase tracking-[0.08em] text-primary">
+                  {label(request.status)}
+                </span>
               </div>
               <p className="mt-4 whitespace-pre-line text-sm leading-6 text-muted">{request.requirements}</p>
               <p className="mt-2 text-xs text-muted">
@@ -110,9 +132,9 @@ export default function AdminCustomRequestsPage() {
                 onChange={(event) => void updateStatus(request.id, event.target.value)}
                 className="mt-4 h-10 rounded-xl border border-border bg-background px-3 text-xs"
               >
-                <option value={request.status}>{request.status}</option>
+                <option value={request.status}>{label(request.status)}</option>
                 {(NEXT[request.status] ?? []).map((nextStatus) => (
-                  <option key={nextStatus} value={nextStatus}>{nextStatus}</option>
+                  <option key={nextStatus} value={nextStatus}>{label(nextStatus)}</option>
                 ))}
               </select>
             </article>
