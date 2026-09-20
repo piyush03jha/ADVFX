@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { InventoryReservationStatus, OrderStatus, Prisma, NotificationType } from '@prisma/client';
+import { InventoryReservationStatus, OrderStatus, Prisma, NotificationType, PaymentStatus } from '@prisma/client';
 import { randomBytes } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
