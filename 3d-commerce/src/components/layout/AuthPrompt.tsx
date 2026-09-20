@@ -30,12 +30,13 @@ export function AuthPrompt() {
 
   useEffect(() => {
     const pathname = window.location.pathname;
+    const isAdminRoute = pathname === "/admin" || pathname.startsWith("/admin/");
     const isAuthPage =
       pathname === "/login" ||
       pathname === "/register" ||
       pathname.startsWith("/auth/");
 
-    if (isAuthPage || isAuthenticated || isAuthLoading) {
+    if (isAdminRoute || isAuthPage || isAuthenticated || isAuthLoading) {
       setIsOpen(false);
       return;
     }
@@ -142,7 +143,7 @@ export function AuthPrompt() {
     }
   }
 
-  if (!isOpen || isAuthenticated || isAuthLoading) return null;
+  if (!isOpen || isAuthenticated || isAuthLoading || window.location.pathname === "/admin" || window.location.pathname.startsWith("/admin/")) return null;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/55 px-4 backdrop-blur-sm">
