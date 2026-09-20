@@ -4,7 +4,15 @@ import { CustomBuildService } from './custom-build.service';
 describe('CustomBuildService', () => {
   const prisma = {
     user: { findUnique: jest.fn() },
-    customRequest: { create: jest.fn(), findMany: jest.fn(), findFirst: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+    customRequest: {
+      create: jest.fn(),
+      findMany: jest.fn(),
+      findFirst: jest.fn(),
+      findUnique: jest.fn(),
+      findUniqueOrThrow: jest.fn(),
+      update: jest.fn(),
+    },
+    customRequestQuote: { upsert: jest.fn() },
   } as any;
   const notifications = { create: jest.fn() } as any;
   let service: CustomBuildService;
@@ -18,11 +26,19 @@ describe('CustomBuildService', () => {
     prisma.user.findUnique.mockResolvedValue({ id: 'u1' });
     const request = { id: 'r1', userId: 'u1', title: 'Custom Person', media: [], quote: null };
     prisma.customRequest.create.mockResolvedValue(request);
+    prisma.customRequestQuote.upsert.mockResolvedValue({});
+    prisma.customRequest.findUniqueOrThrow.mockResolvedValue(request);
+    notifications.create.mockResolvedValue(undefined);
 
     await expect(service.create('u1', {
       title: ' Custom Person ',
       requirements: '  Person, full body  ',
       dimensions: '15 cm',
+      category: 'person',
+      bodyType: 'full',
+      headType: 'stationary',
+      subjectType: 'single',
+      sizeCm: 15,
     })).resolves.toBe(request);
 
     expect(prisma.customRequest.create).toHaveBeenCalledWith(expect.objectContaining({
