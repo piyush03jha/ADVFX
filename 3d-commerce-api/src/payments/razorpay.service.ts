@@ -74,6 +74,16 @@ export class RazorpayService {
     return this.safeEqual(expected, input.razorpaySignature);
   }
 
+  async fetchOrder(orderId: string) {
+    try {
+      return await this.client.orders.fetch(orderId);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unable to fetch Razorpay order";
+      throw new ServiceUnavailableException(message);
+    }
+  }
+
   async refundPayment(paymentId: string, amountMinor?: number) {
     try {
       const refund = await this.client.payments.refund(paymentId, amountMinor != null
