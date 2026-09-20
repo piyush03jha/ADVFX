@@ -12,6 +12,9 @@ import {
 } from "@tabler/icons-react";
 
 import { Navbar } from "@/components/layout/SiteNavbar";
+import { AuthCaptcha } from "@/components/auth/AuthCaptcha";
+import { MathCaptcha } from "@/components/auth/MathCaptcha";
+import { useAuthCaptcha } from "@/lib/auth-captcha";
 import { requestPasswordReset } from "@/lib/auth-client";
 
 export default function ForgotPasswordPage() {
@@ -20,18 +23,25 @@ export default function ForgotPasswordPage() {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [developmentToken, setDevelopmentToken] = useState("");
+  const { provider, challenge, token: turnstileToken, setTurnstileToken, answer: captchaAnswer, setAnswer: setCaptchaAnswer, isLoading: isCaptchaLoading, error: captchaError, version: captchaVersion, refresh: refreshCaptcha } = useAuthCaptcha("forgot-password");
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+    const authCaptchaToken = provider === "turnstile" ? turnstileToken : challenge?.token ?? "";
+    if (!authCaptchaToken || (provider === "math" && !captchaAnswer)) {
+      setError(captchaError || "Please complete the security check.");
+      return;
+    }
     setIsSubmitting(true);
 
     try {
-      const result = await requestPasswordReset(email);
+      const result = await requestPasswordReset(email, authCaptchaToken, provider === "math" ? captchaAnswer : "");
       setDevelopmentToken(result.developmentToken ?? "");
       setSent(true);
     } catch (submissionError) {
       setError(submissionError instanceof Error ? submissionError.message : "Unable to request a password reset.");
+      await refreshCaptcha();
     } finally {
       setIsSubmitting(false);
     }
@@ -80,8 +90,9 @@ export default function ForgotPasswordPage() {
                       <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" required autoComplete="email" placeholder="you@example.com" className="h-12 w-full rounded-xl border border-white/[0.1] bg-white/[0.025] pl-10 pr-4 text-sm text-foreground outline-none transition-all placeholder:text-muted/50 focus:border-primary/40 focus:bg-white/[0.04] focus:shadow-[0_0_0_4px_hsl(var(--primary)/0.05)]" />
                     </div>
                   </label>
+                  {provider === "turnstile" ? <AuthCaptcha key={captchaVersion} purpose="forgot-password" onTokenChange={setTurnstileToken} siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY} /> : challenge ? <MathCaptcha {...challenge} answer={captchaAnswer} onAnswerChange={setCaptchaAnswer} onRefresh={() => void refreshCaptcha()} /> : <div className="rounded-xl border border-border bg-surface p-3 text-xs text-muted">{captchaError || "Preparing security check…"}</div>}
                   {error && <div role="alert" className="rounded-xl border border-red-400/15 bg-red-400/[0.06] px-3.5 py-3 text-xs leading-5 text-red-200">{error}</div>}
-                  <button type="submit" disabled={isSubmitting} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-[10px] font-semibold uppercase tracking-[0.16em] text-primary-foreground shadow-[0_16px_42px_hsl(var(--primary)/0.18)] transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50">{isSubmitting ? "Sending…" : "Send reset link"} {!isSubmitting && <IconArrowRight size={15} />}</button>
+                  <button type="submit" disabled={isSubmitting || isCaptchaLoading || !provider || (provider === "turnstile" ? !turnstileToken : !challenge || !captchaAnswer)} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-[10px] font-semibold uppercase tracking-[0.16em] text-primary-foreground shadow-[0_16px_42px_hsl(var(--primary)/0.18)] transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50">{isSubmitting ? "Sending…" : "Send reset link"} {!isSubmitting && <IconArrowRight size={15} />}</button>
                 </form>
               ) : (
                 <div className="mt-8 rounded-2xl border border-primary/15 bg-primary/[0.05] p-5">
