@@ -160,6 +160,18 @@ export class PricingService {
       };
     });
 
+    const postalCode = address.postalCode.trim().toUpperCase();
+    const deliveryZone = await this.prisma.deliveryZone.findUnique({
+      where: { postalCode },
+      select: { active: true, coverage: true },
+    });
+
+    if (deliveryZone?.active && deliveryZone.coverage === 'NOT_DELIVERED') {
+      throw new BadRequestException(
+        'We currently do not deliver to postal code ' + postalCode,
+      );
+    }
+
     const shipping = await this.prisma.shippingRule.findFirst({
       where: {
         isActive: true,
