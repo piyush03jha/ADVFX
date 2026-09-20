@@ -46,7 +46,7 @@ export class AuthService {
   ) {}
 
   async registerCustomer(name: string, email: string, password: string, captchaToken: string, captchaAnswer: string) {
-    this.captchaService.verify(captchaToken, captchaAnswer, 'register');
+    await this.captchaService.verifyForAuth(captchaToken, captchaAnswer, 'register');
     const normalizedEmail = email.trim().toLowerCase();
     const normalizedName = name.trim();
     const passwordHash = await hashPassword(password);
@@ -109,7 +109,7 @@ export class AuthService {
   }
 
   async customerLogin(email: string, password: string, captchaToken: string, captchaAnswer: string) {
-    this.captchaService.verify(captchaToken, captchaAnswer, 'login');
+    await this.captchaService.verifyForAuth(captchaToken, captchaAnswer, 'login');
     const normalizedEmail = email.trim().toLowerCase();
 
     const user = await this.prisma.user.findUnique({
@@ -289,7 +289,8 @@ export class AuthService {
     };
   }
 
-  async forgotCustomerPassword(email: string) {
+  async forgotCustomerPassword(email: string, captchaToken: string, captchaAnswer?: string) {
+    await this.captchaService.verifyForAuth(captchaToken, captchaAnswer, 'forgot-password');
     const normalizedEmail = email.trim().toLowerCase();
     const user = await this.prisma.user.findUnique({
       where: { email: normalizedEmail },
