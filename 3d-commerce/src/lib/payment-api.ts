@@ -67,6 +67,20 @@ export function retryRazorpayPayment(orderId: string) {
   });
 }
 
+export type RazorpayCancelResult = {
+  orderId: string;
+  status: string;
+  refunded?: boolean;
+  released?: boolean;
+};
+
+export function cancelRazorpayPayment(orderId: string) {
+  return request<RazorpayCancelResult>("/api/payments/razorpay/cancel", {
+    method: "POST",
+    body: JSON.stringify({ orderId }),
+  });
+}
+
 export function verifyRazorpayPayment(input: {
   orderId: string;
   razorpayOrderId: string;
