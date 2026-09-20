@@ -1,4 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { randomUUID } from "node:crypto";
 
 @Injectable()
 export class ObservabilityService {
@@ -25,7 +26,7 @@ export class ObservabilityService {
       if (!projectId || !publicKey) return;
 
       const payload = {
-        event_id: crypto.randomUUID().replace(/-/g, ""),
+        event_id: randomUUID().replace(/-/g, ""),
         timestamp: Date.now() / 1000,
         platform: "node",
         level,
