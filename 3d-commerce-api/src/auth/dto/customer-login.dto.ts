@@ -1,4 +1,4 @@
-import { IsEmail, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsEmail, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class CustomerLoginDto {
   @IsEmail()
@@ -12,11 +12,11 @@ export class CustomerLoginDto {
 
   @IsString()
   @MinLength(1)
-  @MaxLength(1024)
+  @MaxLength(4096)
   captchaToken!: string;
 
+  @IsOptional()
   @IsString()
-  @MinLength(1)
   @MaxLength(2)
-  captchaAnswer!: string;
+  captchaAnswer?: string;
 }
