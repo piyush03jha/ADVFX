@@ -36,9 +36,16 @@ npm run db:seed-admin
 ```
 Do not run the admin seed on every deployment unless the admin environment variables are intentionally supplied. It is idempotent and supports at most two admins.
 
+Build:
+```sh
+npm run build
+```
+
+The NestJS build currently outputs the application entrypoint at `dist/main.js`.
+
 Start one API instance:
 ```sh
-NODE_ENV=production node dist/src/main.js
+NODE_ENV=production node dist/main.js
 ```
 
 Health checks:
@@ -55,7 +62,6 @@ Prefer GLB over OBJ/GLTF. Optimize with meshopt or Draco before publishing. Most
 
 ## Scaling rule
 Keep one API instance until shared state is introduced. Before multiple instances, move rate limiting and CAPTCHA nonces to Redis and put expiry/reconciliation jobs behind a distributed lock or queue.
-
 
 ## Sentry alerts
 
