@@ -41,6 +41,13 @@ export function validateEnvironment() {
   }
 
   if (nodeEnv === 'production') {
+    if (process.env.AUTH_CAPTCHA_PROVIDER !== 'turnstile') {
+      throw new Error('AUTH_CAPTCHA_PROVIDER must be turnstile in production');
+    }
+    if (!process.env.TURNSTILE_SECRET_KEY) {
+      throw new Error('TURNSTILE_SECRET_KEY must be configured in production');
+    }
+
     if (!process.env.CORS_ORIGINS) {
       throw new Error('CORS_ORIGINS must be configured in production');
     }
