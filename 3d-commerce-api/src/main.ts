@@ -15,8 +15,6 @@ interface RateLimitState {
 }
 
 const rateLimitState = new Map<string, RateLimitState>();
-const RATE_LIMIT_PRODUCTION_WARNING =
-  "API_RATE_LIMIT_PER_MINUTE uses process-local memory; production should also enforce shared edge/API rate limiting. Auth endpoints have stricter local limits below.";
 const AUTH_RATE_LIMITS: Record<string, number> = {
   "/auth/login": 10,
   "/auth/register": 6,
@@ -38,7 +36,7 @@ async function bootstrap() {
 
   app.enableShutdownHooks();
 
-  const maxUploadSizeMb = Number(process.env.MAX_UPLOAD_SIZE_MB ?? 50);
+  const maxUploadSizeMb = Number(process.env.MAX_UPLOAD_SIZE_MB ?? 100);
 
   if (
     !Number.isFinite(maxUploadSizeMb) ||
@@ -96,8 +94,32 @@ async function bootstrap() {
     .getInstance()
     .addHook("onRequest", async (request, reply) => {
       const requestId = String(request.id);
-      reply.header("X-Request-ID", requestId);
-      request.log.info({ requestId, method: request.method, url: request.url }, "request.started");
+
+      // API security headers. The storefront has its own browser policy;
+      // these headers protect API responses independently.
+      reply
+        .header("X-Content-Type-Options", "nosniff")
+        .header("X-Frame-Options", "DENY")
+        .header("Referrer-Policy", "strict-origin-when-cross-origin")
+        .header(
+          "Permissions-Policy",
+          "camera=(), microphone=(), geolocation=(), payment=()",
+        )
+        .header("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
+        .header("X-Request-ID", requestId);
+
+      if (env.nodeEnv === "production") {
+        reply.header(
+          "Strict-Transport-Security",
+          "max-age=31536000; includeSubDomains",
+        );
+      }
+
+      request.log.info(
+        { requestId, method: request.method, url: request.url },
+        "request.started",
+      );
+
       const now = Date.now();
 
       // Razorpay webhooks are already authenticated with their HMAC signature
@@ -132,7 +154,6 @@ async function bootstrap() {
       }
 
       reply.header("X-RateLimit-Limit", limit);
-
       reply.header(
         "X-RateLimit-Remaining",
         Math.max(0, limit - next.count),
@@ -151,7 +172,12 @@ async function bootstrap() {
     .getInstance()
     .addHook("onResponse", async (request, reply) => {
       request.log.info(
-        { requestId: String(request.id), method: request.method, url: request.url, statusCode: reply.statusCode },
+        {
+          requestId: String(request.id),
+          method: request.method,
+          url: request.url,
+          statusCode: reply.statusCode,
+        },
         "request.completed",
       );
     });
