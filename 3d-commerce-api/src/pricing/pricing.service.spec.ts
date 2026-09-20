@@ -37,6 +37,7 @@ describe('PricingService', () => {
       isActive: true,
     });
     prisma.taxRule.findFirst.mockResolvedValue(null);
+    prisma.deliveryZone = { findUnique: jest.fn().mockResolvedValue(null) };
   });
 
   it('calculates discount, shipping, and tax from server-side rules', async () => {
