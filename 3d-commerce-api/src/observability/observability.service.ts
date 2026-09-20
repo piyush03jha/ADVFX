@@ -37,10 +37,20 @@ export class ObservabilityService {
         server_name: "advfx-api",
       };
 
-      await fetch(`${url.protocol}//${url.host}/api/${projectId}/store/?sentry_version=7&sentry_key=${encodeURIComponent(publicKey)}`, {
+      const envelopeHeader = JSON.stringify({
+        event_id: payload.event_id,
+        sent_at: new Date().toISOString(),
+      });
+      const itemHeader = JSON.stringify({
+        type: "event",
+        length: Buffer.byteLength(JSON.stringify(payload)),
+      });
+      const envelope = `${envelopeHeader}\n${itemHeader}\n${JSON.stringify(payload)}`;
+
+      await fetch(`${url.protocol}//${url.host}/api/${projectId}/envelope/?sentry_version=7&sentry_key=${encodeURIComponent(publicKey)}`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(payload),
+        headers: { "content-type": "application/x-sentry-envelope" },
+        body: envelope,
       });
     } catch (sendError) {
       this.logger.warn(JSON.stringify({
