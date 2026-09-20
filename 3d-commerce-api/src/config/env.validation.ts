@@ -19,6 +19,27 @@ export function validateEnvironment() {
     throw new Error('AUTH_EXPOSE_DEV_TOKENS must not be enabled in production');
   }
 
+  const storageProvider = (process.env.STORAGE_PROVIDER ?? 'local').toLowerCase();
+  if (!['local', 's3', 'r2'].includes(storageProvider)) {
+    throw new Error('STORAGE_PROVIDER must be local, s3, or r2');
+  }
+
+  if (nodeEnv === 'production' && storageProvider === 'local') {
+    throw new Error('Local filesystem storage is not allowed in production');
+  }
+
+  if (storageProvider !== 'local') {
+    for (const key of [
+      'STORAGE_BUCKET',
+      'STORAGE_ENDPOINT',
+      'STORAGE_ACCESS_KEY_ID',
+      'STORAGE_SECRET_ACCESS_KEY',
+      'STORAGE_PUBLIC_BASE_URL',
+    ]) {
+      if (!process.env[key]) throw new Error(`${key} must be configured for remote storage`);
+    }
+  }
+
   if (nodeEnv === 'production') {
     if (!process.env.CORS_ORIGINS) {
       throw new Error('CORS_ORIGINS must be configured in production');
