@@ -460,6 +460,53 @@ export class OrdersService {
     });
 
     for (const reservation of expired) {
+      const order = await this.prisma.order.findUnique({
+        where: { id: reservation.orderId },
+        select: {
+          status: true,
+          payment: {
+            select: {
+              provider: true,
+              providerOrderId: true,
+              status: true,
+            },
+          },
+        },
+      });
+
+      if (!order || order.status !== OrderStatus.PENDING_PAYMENT) continue;
+
+      if (
+        order.payment?.provider === 'RAZORPAY' &&
+        order.payment.providerOrderId
+      ) {
+        // Expiry must not race a provider capture. Reconcile through the same
+        // payment webhook path before releasing inventory.
+        const providerPayments = await this.razorpay.fetchPayments(
+          order.payment.providerOrderId,
+        );
+
+        const captured = providerPayments.find(
+          (payment) =>
+            payment.status === 'captured' &&
+            payment.amount !== undefined &&
+            payment.currency !== undefined,
+        );
+
+        if (captured) {
+          // The payment webhook/verify endpoint will reconcile the capture.
+          // Leave the reservation untouched for this scheduler cycle.
+          continue;
+        }
+
+        const authorized = providerPayments.some(
+          (payment) => payment.status === 'authorized',
+        );
+
+        // Authorization/provider state is not safe to treat as abandoned.
+        if (authorized) continue;
+      }
+
       await this.prisma.$transaction(async (tx) => {
         await this.releaseReservations(
           tx,
@@ -467,7 +514,7 @@ export class OrdersService {
           InventoryReservationStatus.EXPIRED,
         );
 
-        const order = await tx.order.findUnique({
+        const current = await tx.order.findUnique({
           where: { id: reservation.orderId },
           select: {
             status: true,
@@ -476,17 +523,21 @@ export class OrdersService {
           },
         });
 
-        if (order?.status !== OrderStatus.PENDING_PAYMENT) return;
+        if (current?.status !== OrderStatus.PENDING_PAYMENT) return;
 
         await tx.order.update({
           where: { id: reservation.orderId },
           data: { status: OrderStatus.CANCELLED },
         });
 
-        if (order.payment?.status === PaymentStatus.PENDING || order.payment?.status === PaymentStatus.FAILED) {
-          if (order.promotionId) {
-            await this.releasePromotionUsage(tx, order.promotionId);
+        if (
+          current.payment?.status === PaymentStatus.PENDING ||
+          current.payment?.status === PaymentStatus.FAILED
+        ) {
+          if (current.promotionId) {
+            await this.releasePromotionUsage(tx, current.promotionId);
           }
+
           await tx.payment.update({
             where: { orderId: reservation.orderId },
             data: { status: PaymentStatus.FAILED },
@@ -503,10 +554,13 @@ export class OrdersService {
     });
 
     if (stuckPending > 0) {
-      await this.observability.captureMessage("Pending payment orders exceeded the expected reservation window", {
-        alert: "stuck_pending_orders",
-        count: stuckPending,
-      });
+      await this.observability.captureMessage(
+        "Pending payment orders exceeded the expected reservation window",
+        {
+          alert: "stuck_pending_orders",
+          count: stuckPending,
+        },
+      );
     }
 
     return { expiredOrders: expired.length, stuckPending };
