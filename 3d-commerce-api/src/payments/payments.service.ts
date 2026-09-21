@@ -269,46 +269,9 @@ export class PaymentsService {
       include: { payment: true },
     });
 
-    if (!order) throw new NotFoundException('Order not found');
-    if (!order.payment || order.payment.provider !== 'RAZORPAY') {
-      throw new BadRequestException('Razorpay payment is not configured');
-    }
-
-    if (order.payment.status === PaymentStatus.CAPTURED) {
-      if (
-        order.payment.providerPaymentId === input.razorpayPaymentId &&
-        order.payment.providerOrderId === input.razorpayOrderId
-      ) {
-        return this.getVerifiedOrder(order.id);
-      }
-      throw new ConflictException('Order has already been paid');
-    }
-
-    if (order.status !== OrderStatus.PENDING_PAYMENT) {
-      throw new ConflictException('Order is no longer awaiting payment');
-    }
-
-    const activeReservation = await this.prisma.inventoryReservation.findFirst({
-      where: {
-        orderId: order.id,
-        status: 'ACTIVE',
-        expiresAt: { gt: new Date() },
-      },
-    });
-
-    if (!activeReservation && order.checkoutSource !== 'CUSTOM') {
-      throw new ConflictException('This payment session has expired. Please create a new order from your cart.');
-    }
-
-    if (order.payment.providerOrderId !== input.razorpayOrderId) {
-      throw new BadRequestException('Razorpay order does not match this order');
-    }
-
-    if (
-      order.payment.amountMinor !== order.totalMinor ||
-      order.payment.currency !== order.currency
-    ) {
-      throw new BadRequestException('Payment total does not match order total');
+    if (!order) throw new NotFoundException("Order not found");
+    if (!order.payment || order.payment.provider !== "RAZORPAY") {
+      throw new BadRequestException("Razorpay payment is not configured");
     }
 
     if (
@@ -318,134 +281,49 @@ export class PaymentsService {
         razorpaySignature: input.razorpaySignature,
       })
     ) {
-      throw new BadRequestException('Invalid Razorpay payment signature');
+      throw new BadRequestException("Invalid Razorpay payment signature");
     }
 
-    const updated = await this.prisma.$transaction(async (tx) => {
-      const payment = await tx.payment.findUnique({
-        where: { orderId: order.id },
-      });
+    if (
+      order.payment.amountMinor !== order.totalMinor ||
+      order.payment.currency !== order.currency
+    ) {
+      throw new BadRequestException("Payment total does not match order total");
+    }
 
-      if (!payment) throw new NotFoundException('Payment not found');
-
-      if (payment.status === PaymentStatus.CAPTURED) {
-        const existingOrder = await tx.order.findUniqueOrThrow({
-          where: { id: order.id },
-          include: {
-            items: true,
-            shippingAddress: true,
-            payment: true,
-            shipment: true,
-          },
-        });
-
-        return {
-          order: existingOrder,
-          payment: existingOrder.payment,
-          captured: false,
-        };
-      }
-
-      const attempt = await tx.paymentAttempt.findUnique({
-        where: { providerOrderId: input.razorpayOrderId },
-      });
-
-      if (!attempt || attempt.paymentId !== payment.id) {
-        throw new BadRequestException('Razorpay payment attempt does not match this order');
-      }
-
-      const claimed = await tx.payment.updateMany({
-        where: {
-          id: payment.id,
-          status: PaymentStatus.PENDING,
-          providerOrderId: input.razorpayOrderId,
-        },
-        data: {
-          providerPaymentId: input.razorpayPaymentId,
-          status: PaymentStatus.CAPTURED,
-          paidAt: new Date(),
-        },
-      });
-
-      if (claimed.count !== 1) {
-        const existingOrder = await tx.order.findUniqueOrThrow({
-          where: { id: order.id },
-          include: {
-            items: true,
-            shippingAddress: true,
-            payment: true,
-            shipment: true,
-          },
-        });
-
-        return {
-          order: existingOrder,
-          payment: existingOrder.payment,
-          captured: false,
-        };
-      }
-
-      await tx.paymentAttempt.update({
-        where: { providerOrderId: input.razorpayOrderId },
-        data: {
-          providerPaymentId: input.razorpayPaymentId,
-          status: PaymentStatus.CAPTURED,
-        },
-      });
-
-      const savedPayment = await tx.payment.findUniqueOrThrow({
-        where: { id: payment.id },
-      });
-
-      if (order.checkoutSource !== 'CUSTOM') {
-        await this.consumeReservationsInTransaction(tx, order.id);
-        await this.recordPurchaseMetricsInTransaction(tx, order.id);
-      }
-
-      const updatedOrder = await tx.order.update({
-        where: { id: order.id },
-        data: { status: OrderStatus.CONFIRMED },
-        include: {
-          items: true,
-          shippingAddress: true,
-          payment: true,
-          shipment: true,
-        },
-      });
-
-      await this.clearCapturedCartLines(tx, updatedOrder);
-      if (updatedOrder.checkoutSource === 'CUSTOM') {
-        await tx.customRequest.updateMany({
-          where: { orderId: updatedOrder.id },
-          data: { status: 'IN_PRODUCTION' },
-        });
-      }
-
-      return {
-        order: updatedOrder,
-        payment: savedPayment,
-        captured: true,
-      };
+    const attempt = await this.prisma.paymentAttempt.findUnique({
+      where: { providerOrderId: input.razorpayOrderId },
     });
 
-    if (updated.order.userId && updated.captured) {
-      await this.notifications.create(updated.order.userId, {
-        type: NotificationType.ORDER_CONFIRMED,
-        title: 'Payment confirmed',
-        message: `Order ${updated.order.orderNumber} has been paid and confirmed.`,
-        entityType: 'ORDER',
-        entityId: updated.order.id,
-      });
+    if (!attempt || attempt.paymentId !== order.payment.id) {
+      throw new BadRequestException(
+        "Razorpay payment attempt does not match this order",
+      );
     }
 
-    return {
-      orderId: updated.order.id,
-      orderNumber: updated.order.orderNumber,
-      orderStatus: updated.order.status,
-      payment: updated.payment,
-      totalMinor: updated.order.totalMinor,
-      currency: updated.order.currency,
-    };
+    if (
+      attempt.amountMinor !== order.payment.amountMinor ||
+      attempt.currency !== order.payment.currency
+    ) {
+      throw new BadRequestException(
+        "Payment attempt total does not match order total",
+      );
+    }
+
+    const result = await this.applyCapturedPayment(
+      order.id,
+      input.razorpayPaymentId,
+      input.razorpayPaymentId,
+      input.razorpayOrderId,
+      order.payment.amountMinor,
+      order.payment.currency,
+    );
+
+    if (result.kind === "NONE") {
+      throw new ConflictException("Unable to reconcile this payment");
+    }
+
+    return this.getVerifiedOrder(order.id);
   }
 
   async handleWebhook(rawBody: string, signature: string) {
