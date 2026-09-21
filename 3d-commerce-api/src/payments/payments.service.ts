@@ -313,17 +313,31 @@ export class PaymentsService {
     const result = await this.applyCapturedPayment(
       order.id,
       input.razorpayPaymentId,
-      input.razorpayPaymentId,
       input.razorpayOrderId,
-      order.payment.amountMinor,
-      order.payment.currency,
+      attempt.amountMinor,
+      attempt.currency,
     );
+
+    if (result.kind === "REFUND_REQUIRED") {
+      await this.razorpay.refundPayment(
+        result.providerPaymentId,
+        attempt.amountMinor,
+      );
+    }
 
     if (result.kind === "NONE") {
       throw new ConflictException("Unable to reconcile this payment");
     }
 
-    return this.getVerifiedOrder(order.id);
+    const verified = await this.getVerifiedOrder(order.id);
+    return {
+      orderId: verified.id,
+      orderNumber: verified.orderNumber,
+      orderStatus: verified.status,
+      payment: verified.payment,
+      totalMinor: verified.totalMinor,
+      currency: verified.currency,
+    };
   }
 
   async handleWebhook(rawBody: string, signature: string) {
@@ -423,44 +437,61 @@ export class PaymentsService {
 
   private async applyCapturedPayment(
     orderId: string,
-    paymentId: string,
     providerPaymentId: string,
     providerOrderId: string,
     amount: number,
     currency: string,
   ) {
-    const updated = await this.prisma.$transaction(async (tx) => {
-      const currentPayment = await tx.payment.findUnique({
+    const result = await this.prisma.$transaction(async (tx) => {
+      const payment = await tx.payment.findUnique({
         where: { orderId },
       });
-      if (!currentPayment) return { kind: 'NONE' as const };
+      if (!payment) return { kind: "NONE" as const };
 
       if (
-        amount !== currentPayment.amountMinor ||
-        currency !== currentPayment.currency
+        amount !== payment.amountMinor ||
+        currency !== payment.currency
       ) {
-        return { kind: 'NONE' as const };
+        return { kind: "NONE" as const };
       }
 
       const order = await tx.order.findUnique({
         where: { id: orderId },
         include: { items: true },
       });
-      if (!order) return { kind: 'NONE' as const };
+      if (!order) return { kind: "NONE" as const };
+
+      if (
+        payment.status === PaymentStatus.CAPTURED &&
+        payment.providerPaymentId === providerPaymentId
+      ) {
+        return {
+          kind: "ALREADY_CAPTURED" as const,
+          orderStatus: order.status,
+          providerPaymentId,
+        };
+      }
+
+      if (
+        payment.status === PaymentStatus.CAPTURED &&
+        payment.providerPaymentId !== providerPaymentId
+      ) {
+        return {
+          kind: "REFUND_REQUIRED" as const,
+          orderStatus: order.status,
+          providerPaymentId,
+        };
+      }
 
       const attempt = await tx.paymentAttempt.findUnique({
         where: { providerOrderId },
       });
 
-      if (order.status === OrderStatus.CONFIRMED && currentPayment.status === PaymentStatus.CAPTURED) {
-        return { kind: 'ALREADY_CAPTURED' as const, orderStatus: order.status, paymentId };
-      }
-
       await tx.payment.update({
-        where: { id: currentPayment.id },
+        where: { id: payment.id },
         data: {
-          providerPaymentId,
           providerOrderId,
+          providerPaymentId,
           status: PaymentStatus.CAPTURED,
           paidAt: new Date(),
         },
@@ -474,41 +505,33 @@ export class PaymentsService {
             status: PaymentStatus.CAPTURED,
           },
         });
-      } else {
-        await tx.paymentAttempt.create({
-          data: {
-            paymentId: currentPayment.id,
-            providerOrderId,
-            providerPaymentId,
-            status: PaymentStatus.CAPTURED,
-            amountMinor: amount,
-            currency,
-          },
-        });
       }
 
       if (order.status !== OrderStatus.PENDING_PAYMENT) {
-        return { kind: 'CAPTURED' as const, orderStatus: order.status, paymentId };
+        return {
+          kind: "REFUND_REQUIRED" as const,
+          orderStatus: order.status,
+          providerPaymentId,
+        };
       }
 
-      const activeReservation =
-        order.checkoutSource === 'CUSTOM'
-          ? true
-          : Boolean(
-              await tx.inventoryReservation.findFirst({
-                where: {
-                  orderId,
-                  status: 'ACTIVE',
-                  expiresAt: { gt: new Date() },
-                },
-              }),
-            );
+      const reservation = await tx.inventoryReservation.findFirst({
+        where: {
+          orderId,
+          status: "ACTIVE",
+          expiresAt: { gt: new Date() },
+        },
+      });
 
-      if (!activeReservation) {
-        return { kind: 'CAPTURED' as const, orderStatus: order.status, paymentId };
+      if (!reservation && order.checkoutSource !== "CUSTOM") {
+        return {
+          kind: "REFUND_REQUIRED" as const,
+          orderStatus: order.status,
+          providerPaymentId,
+        };
       }
 
-      if (order.checkoutSource !== 'CUSTOM') {
+      if (order.checkoutSource !== "CUSTOM") {
         await this.consumeReservationsInTransaction(tx, orderId);
         await this.recordPurchaseMetricsInTransaction(tx, orderId);
       }
@@ -521,30 +544,37 @@ export class PaymentsService {
 
       await this.clearCapturedCartLines(tx, updatedOrder);
 
-      if (updatedOrder.checkoutSource === 'CUSTOM') {
+      if (updatedOrder.checkoutSource === "CUSTOM") {
         await tx.customRequest.updateMany({
           where: { orderId },
-          data: { status: 'IN_PRODUCTION' },
+          data: { status: "IN_PRODUCTION" },
         });
       }
 
-      return { kind: 'CAPTURED' as const, orderStatus: updatedOrder.status, paymentId };
+      return {
+        kind: "CAPTURED" as const,
+        orderStatus: updatedOrder.status,
+        providerPaymentId,
+      };
     });
 
-    if (updated.kind === 'CAPTURED' && updated.orderStatus === OrderStatus.CONFIRMED) {
-      const order = await this.prisma.order.findUnique({ where: { id: orderId } });
-      if (order?.userId) {
-        await this.notifications.create(order.userId, {
+    if (result.kind === "CAPTURED" && result.orderStatus === OrderStatus.CONFIRMED) {
+      const confirmedOrder = await this.prisma.order.findUnique({
+        where: { id: orderId },
+      });
+
+      if (confirmedOrder?.userId) {
+        await this.notifications.create(confirmedOrder.userId, {
           type: NotificationType.ORDER_CONFIRMED,
-          title: 'Payment confirmed',
-          message: `Order ${order.orderNumber} has been paid and confirmed.`,
-          entityType: 'ORDER',
-          entityId: order.id,
+          title: "Payment confirmed",
+          message: `Order ${confirmedOrder.orderNumber} has been paid and confirmed.`,
+          entityType: "ORDER",
+          entityId: confirmedOrder.id,
         });
       }
     }
 
-    return updated;
+    return result;
   }
 
   private async captureFromWebhook(
@@ -568,7 +598,8 @@ export class PaymentsService {
 
     if (!attempt) return;
 
-    const resolvedAmount = typeof amount === "number" ? amount : attempt.amountMinor;
+    const resolvedAmount =
+      typeof amount === "number" ? amount : attempt.amountMinor;
     const resolvedCurrency = currency ?? attempt.currency;
 
     if (
@@ -578,14 +609,24 @@ export class PaymentsService {
       return;
     }
 
-    return this.applyCapturedPayment(
+    const result = await this.applyCapturedPayment(
       attempt.paymentId,
-      paymentId ?? attempt.providerPaymentId ?? "",
       paymentId ?? attempt.providerPaymentId ?? "",
       attempt.providerOrderId,
       resolvedAmount,
       resolvedCurrency,
     );
+
+    if (result.kind === "REFUND_REQUIRED") {
+      try {
+        await this.razorpay.refundPayment(
+          result.providerPaymentId,
+          resolvedAmount,
+        );
+      } catch {
+        // Observability for refund failures is handled by the Razorpay service layer.
+      }
+    }
   }
 
   private async clearCapturedCartLines(
