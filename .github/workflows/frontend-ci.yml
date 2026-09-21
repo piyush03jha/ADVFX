@@ -22,7 +22,6 @@ jobs:
       run:
         working-directory: 3d-commerce
     env:
-      NODE_ENV: production
       BACKEND_API_URL: http://127.0.0.1:3001
       NEXT_TELEMETRY_DISABLED: "1"
 
