@@ -462,16 +462,7 @@ export class OrdersService {
     for (const reservation of expired) {
       const order = await this.prisma.order.findUnique({
         where: { id: reservation.orderId },
-        select: {
-          status: true,
-          payment: {
-            select: {
-              provider: true,
-              providerOrderId: true,
-              status: true,
-            },
-          },
-        },
+        include: { payment: true },
       });
 
       if (!order || order.status !== OrderStatus.PENDING_PAYMENT) continue;
@@ -480,31 +471,37 @@ export class OrdersService {
         order.payment?.provider === 'RAZORPAY' &&
         order.payment.providerOrderId
       ) {
-        // Expiry must not race a provider capture. Reconcile through the same
-        // payment webhook path before releasing inventory.
-        const providerPayments = await this.razorpay.fetchPayments(
-          order.payment.providerOrderId,
-        );
+        let providerPayments;
+        try {
+          providerPayments = await this.razorpay.fetchPayments(
+            order.payment.providerOrderId,
+          );
+        } catch {
+          await this.observability.captureMessage(
+            'Unable to reconcile Razorpay payment before reservation expiry',
+            { alert: 'payment_reconciliation_pending', orderId: order.id },
+          );
+          continue;
+        }
 
         const captured = providerPayments.find(
           (payment) =>
             payment.status === 'captured' &&
-            payment.amount !== undefined &&
-            payment.currency !== undefined,
+            payment.amount === order.payment!.amountMinor &&
+            payment.currency === order.payment!.currency,
         );
 
-        if (captured) {
-          // The payment webhook/verify endpoint will reconcile the capture.
-          // Leave the reservation untouched for this scheduler cycle.
+        if (captured?.id) {
+          await this.observability.captureMessage(
+            'Captured Razorpay payment found during reservation expiry; awaiting capture reconciliation',
+            { alert: 'captured_payment_during_expiry', orderId: order.id },
+          );
           continue;
         }
 
-        const authorized = providerPayments.some(
-          (payment) => payment.status === 'authorized',
-        );
-
-        // Authorization/provider state is not safe to treat as abandoned.
-        if (authorized) continue;
+        if (providerPayments.some((payment) => payment.status === 'authorized')) {
+          continue;
+        }
       }
 
       await this.prisma.$transaction(async (tx) => {
@@ -555,9 +552,9 @@ export class OrdersService {
 
     if (stuckPending > 0) {
       await this.observability.captureMessage(
-        "Pending payment orders exceeded the expected reservation window",
+        'Pending payment orders exceeded the expected reservation window',
         {
-          alert: "stuck_pending_orders",
+          alert: 'stuck_pending_orders',
           count: stuckPending,
         },
       );
