@@ -555,121 +555,37 @@ export class PaymentsService {
   ) {
     if (!paymentId && !razorpayOrderId) return;
 
-    const payment = razorpayOrderId
-      ? await this.prisma.payment.findFirst({
+    const attempt = razorpayOrderId
+      ? await this.prisma.paymentAttempt.findUnique({
           where: { providerOrderId: razorpayOrderId },
         })
       : paymentId
-        ? await this.prisma.payment.findFirst({
+        ? await this.prisma.paymentAttempt.findFirst({
             where: { providerPaymentId: paymentId },
+            orderBy: { createdAt: "desc" },
           })
         : null;
 
-    if (!payment) return;
-    if (payment.status === PaymentStatus.CAPTURED) return;
+    if (!attempt) return;
+
+    const resolvedAmount = typeof amount === "number" ? amount : attempt.amountMinor;
+    const resolvedCurrency = currency ?? attempt.currency;
 
     if (
-      (typeof amount === 'number' && amount !== payment.amountMinor) ||
-      (currency && currency !== payment.currency)
+      resolvedAmount !== attempt.amountMinor ||
+      resolvedCurrency !== attempt.currency
     ) {
       return;
     }
 
-    const updated = await this.prisma.$transaction(async (tx) => {
-      const current = await tx.payment.findUnique({
-        where: { id: payment.id },
-      });
-      if (!current || current.status === PaymentStatus.CAPTURED) return null;
-
-      const attempt = razorpayOrderId
-        ? await tx.paymentAttempt.findUnique({
-            where: { providerOrderId: razorpayOrderId },
-          })
-        : null;
-
-      if (
-        !attempt ||
-        attempt.paymentId !== current.id ||
-        attempt.providerOrderId !== current.providerOrderId
-      ) {
-        return null;
-      }
-
-      const order = await tx.order.findUnique({
-        where: { id: current.orderId },
-      });
-
-      if (!order || order.status !== OrderStatus.PENDING_PAYMENT) return null;
-
-      const activeReservation = await tx.inventoryReservation.findFirst({
-        where: {
-          orderId: order.id,
-          status: 'ACTIVE',
-          expiresAt: { gt: new Date() },
-        },
-      });
-
-      if (!activeReservation && order.checkoutSource !== 'CUSTOM') return null;
-
-      if (
-        (typeof amount === 'number' && amount !== current.amountMinor) ||
-        (currency && currency !== current.currency)
-      ) {
-        return null;
-      }
-
-      const claimed = await tx.payment.updateMany({
-        where: {
-          id: current.id,
-          status: PaymentStatus.PENDING,
-          providerOrderId: attempt.providerOrderId,
-        },
-        data: {
-          providerPaymentId: paymentId ?? current.providerPaymentId,
-          status: PaymentStatus.CAPTURED,
-          paidAt: new Date(),
-        },
-      });
-
-      if (claimed.count !== 1) return null;
-
-      await tx.paymentAttempt.update({
-        where: { id: attempt.id },
-        data: {
-          providerPaymentId: paymentId ?? attempt.providerPaymentId,
-          status: PaymentStatus.CAPTURED,
-        },
-      });
-
-      const savedPayment = await tx.payment.findUniqueOrThrow({
-        where: { id: current.id },
-      });
-
-      if (order.checkoutSource !== 'CUSTOM') {
-        await this.consumeReservationsInTransaction(tx, order.id);
-        await this.recordPurchaseMetricsInTransaction(tx, order.id);
-      }
-
-      const updatedOrder = await tx.order.update({
-        where: { id: order.id },
-        data: { status: OrderStatus.CONFIRMED },
-        include: { items: true },
-      });
-
-      await this.clearCapturedCartLines(tx, updatedOrder);
-
-      if (updatedOrder.checkoutSource === "CUSTOM") {
-        await tx.customRequest.updateMany({
-          where: { orderId: updatedOrder.id },
-          data: { status: "IN_PRODUCTION" },
-        });
-      }
-
-      return { order: updatedOrder, payment: savedPayment };
-    });
-
-    if (!updated?.order || !('id' in updated.order)) return;
-
+    return this.applyCapturedPayment(
+      attempt.paymentId,
+      paymentId ?? attempt.providerPaymentId ?? "",
+      paymentId ?? attempt.providerPaymentId ?? "",
+      attempt.providerOrderId,
+      resolvedAmount,
+      resolvedCurrency,
+    );
   }
 
   private async clearCapturedCartLines(
