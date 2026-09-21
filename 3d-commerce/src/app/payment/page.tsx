@@ -197,7 +197,15 @@ export default function PaymentPage() {
                     "Payment was cancelled. We are reconciling the payment status in the background.",
                   );
                 })
-                .finally(finish);
+                .finally(() => {
+                  try {
+                    window.localStorage.removeItem(DRAFT_KEY);
+                    window.localStorage.removeItem("forma-buy-now");
+                  } catch {
+                    // Ignore local storage cleanup failures.
+                  }
+                  finish();
+                });
             },
           },
           handler: (response) => {
@@ -207,13 +215,22 @@ export default function PaymentPage() {
               razorpayPaymentId: response.razorpay_payment_id,
               razorpaySignature: response.razorpay_signature,
             })
-              .then(() => {
+              .then((result) => {
+                if (result.orderStatus !== "CONFIRMED") {
+                  setQuoteError(
+                    "Payment was received but the order is not yet confirmed. We are reconciling it now; please check My Orders shortly.",
+                  );
+                  finish();
+                  return;
+                }
+
                 try {
                   window.localStorage.removeItem(DRAFT_KEY);
                   window.localStorage.removeItem("forma-buy-now");
                 } catch {
                   // Ignore storage failures after a successful payment.
                 }
+
                 finish();
                 router.push(
                   "/order/confirmation?order=" + encodeURIComponent(order.id),
