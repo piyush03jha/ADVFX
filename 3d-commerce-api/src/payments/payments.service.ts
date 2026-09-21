@@ -125,7 +125,6 @@ export class PaymentsService {
         const result = await this.applyCapturedPayment(
           order.id,
           captured.id,
-          captured.id,
           order.payment.providerOrderId,
           captured.amount,
           captured.currency,
