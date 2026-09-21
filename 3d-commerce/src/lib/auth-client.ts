@@ -63,7 +63,7 @@ export async function resendVerificationEmail(email: string) {
   const response = await fetch("/api/auth/resend-verification", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, captchaToken, captchaAnswer }),
+    body: JSON.stringify({ email }),
   });
 
   const data = (await response.json()) as {
