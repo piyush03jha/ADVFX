@@ -13,6 +13,9 @@ export function validateEnvironment() {
     if (!process.env.RAZORPAY_KEY_ID) throw new Error('RAZORPAY_KEY_ID is not configured');
     if (!process.env.RAZORPAY_KEY_SECRET) throw new Error('RAZORPAY_KEY_SECRET is not configured');
     if (!process.env.RAZORPAY_WEBHOOK_SECRET) throw new Error('RAZORPAY_WEBHOOK_SECRET is not configured');
+    if (nodeEnv === 'production' && !process.env.RAZORPAY_KEY_ID.startsWith('rzp_live_')) {
+      throw new Error('RAZORPAY_KEY_ID must be a live key (rzp_live_) in production');
+    }
   }
 
   if (process.env.AUTH_EXPOSE_DEV_TOKENS === 'true' && nodeEnv === 'production') {
