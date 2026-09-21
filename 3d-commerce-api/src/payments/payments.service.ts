@@ -95,28 +95,76 @@ export class PaymentsService {
       include: { payment: true },
     });
 
-    if (!order) throw new NotFoundException('Order not found');
+    if (!order) throw new NotFoundException("Order not found");
     if (order.status !== OrderStatus.PENDING_PAYMENT) {
       return { orderId: order.id, status: order.status, released: false };
     }
 
-    let providerPaymentId = order.payment?.providerPaymentId ?? null;
-
-    if (order.payment?.providerOrderId && !providerPaymentId) {
+    if (order.payment?.provider === "RAZORPAY" && order.payment.providerOrderId) {
+      let providerPayments;
       try {
-        const providerOrder = await this.razorpay.fetchOrder(order.payment.providerOrderId);
-        const payments = (providerOrder as unknown as { payments?: { items?: Array<{ id?: unknown; status?: unknown }> } }).payments?.items ?? [];
-        const captured = payments.find((payment) => payment.status === 'captured' && typeof payment.id === 'string');
-        providerPaymentId = typeof captured?.id === 'string' ? captured.id : null;
+        providerPayments = await this.razorpay.fetchPayments(order.payment.providerOrderId);
       } catch {
-        // Keep the local cancellation safe; the webhook remains the source
-        // of truth if Razorpay confirms a late capture.
+        return {
+          orderId: order.id,
+          status: order.status,
+          refunded: false,
+          released: false,
+          reconciliationPending: true,
+        };
       }
-    }
 
-    if (providerPaymentId) {
-      await this.razorpay.refundPayment(providerPaymentId, order.payment?.amountMinor ?? order.totalMinor);
-      return { orderId: order.id, status: 'REFUNDED', refunded: true };
+      const captured = providerPayments.find(
+        (payment) =>
+          payment.status === "captured" &&
+          payment.amount === order.payment?.amountMinor &&
+          payment.currency === order.payment?.currency,
+      );
+
+      if (captured) {
+        const result = await this.applyCapturedPayment(
+          order.id,
+          captured.id,
+          captured.id,
+          order.payment.providerOrderId,
+          captured.amount,
+          captured.currency,
+        );
+
+        if (result.kind === "CAPTURED" && result.orderStatus === OrderStatus.CONFIRMED) {
+          return {
+            orderId: order.id,
+            status: OrderStatus.CONFIRMED,
+            refunded: false,
+            released: false,
+          };
+        }
+
+        await this.razorpay.refundPayment(captured.id, order.payment.amountMinor);
+        return {
+          orderId: order.id,
+          status: OrderStatus.REFUNDED,
+          refunded: true,
+          released: false,
+        };
+      }
+
+      const hasAuthorized = providerPayments.some(
+        (payment) =>
+          payment.status === "authorized" &&
+          payment.amount === order.payment?.amountMinor &&
+          payment.currency === order.payment?.currency,
+      );
+
+      if (hasAuthorized) {
+        return {
+          orderId: order.id,
+          status: order.status,
+          refunded: false,
+          released: false,
+          reconciliationPending: true,
+        };
+      }
     }
 
     const updated = await this.prisma.$transaction(async (tx) => {
@@ -133,7 +181,9 @@ export class PaymentsService {
         const count = await tx.$executeRaw(
           Prisma.sql`UPDATE "Promotion" SET "usageCount" = GREATEST("usageCount" - 1, 0), "updatedAt" = CURRENT_TIMESTAMP WHERE "id" = ${current.promotionId} AND "usageCount" > 0`,
         );
-        if (Number(count) !== 1) throw new ConflictException('Unable to release coupon reservation');
+        if (Number(count) !== 1) {
+          throw new ConflictException("Unable to release coupon reservation");
+        }
       }
 
       await tx.order.update({
@@ -154,7 +204,12 @@ export class PaymentsService {
       });
     });
 
-    return { orderId: updated?.id ?? order.id, status: updated?.status ?? 'CANCELLED', refunded: false };
+    return {
+      orderId: updated?.id ?? order.id,
+      status: updated?.status ?? "CANCELLED",
+      refunded: false,
+      released: true,
+    };
   }
 
   async retryRazorpayPayment(userId: string, orderId: string) {
