@@ -42,6 +42,11 @@ export interface CatalogVariant {
   size?: string | null;
   sku?: string | null;
   isActive: boolean;
+  stock?: number;
+  reserved?: number;
+  lowStockAt?: number;
+  trackStock?: boolean;
+  allowBackorder?: boolean;
   price?: CatalogVariantPrice | null;
 }
 
@@ -147,6 +152,11 @@ function mapVariant(variant: CatalogVariant): StorefrontVariant | null {
     name: variant.name,
     size: variant.size,
     sku: variant.sku,
+    stock: variant.stock ?? 0,
+    reserved: variant.reserved ?? 0,
+    lowStockAt: variant.lowStockAt ?? 5,
+    trackStock: variant.trackStock ?? false,
+    allowBackorder: variant.allowBackorder ?? false,
     price: price ? price.amountMinor / 100 : undefined,
     oldPrice:
       price?.compareAtMinor != null
