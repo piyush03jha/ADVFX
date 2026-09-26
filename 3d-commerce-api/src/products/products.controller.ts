@@ -10,6 +10,7 @@ import {
   Patch,
   Post,
   UseGuards,
+  StreamableFile,
 } from '@nestjs/common';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { CustomerAuthGuard } from '../auth/guards/customer-auth.guard';
@@ -138,6 +139,21 @@ export class ProductsController {
   @Post(':id/media')
   addMedia(@Param('id') id: string, @Body() dto: CreateMediaDto) {
     return this.productsService.addMedia(id, dto);
+  }
+
+  @Get(':id/media/:mediaId/file')
+  async getMediaFile(@Param('id') id: string, @Param('mediaId') mediaId: string, @Res() reply: FastifyReply) {
+    const media = await this.productsService.getMediaFile(id, mediaId);
+
+    if (/^https?:\\/\\//i.test(media.url)) {
+      return reply.redirect(media.url);
+    }
+
+    const storageKey = media.url.replace(/^\\/storage\\//, '');
+    const absolutePath = this.productsService.getMediaAbsolutePath(storageKey);
+    const { createReadStream } = await import('node:fs');
+    const stream = createReadStream(absolutePath);
+    return new StreamableFile(stream, { type: 'application/octet-stream' });
   }
 
   @UseGuards(AuthGuard, AdminGuard)
