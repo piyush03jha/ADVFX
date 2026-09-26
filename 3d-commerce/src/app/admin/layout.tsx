@@ -3,13 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { IconChartBar, IconChevronRight, IconLayoutDashboard, IconLogout, IconMapPin, IconPackage, IconSettings, IconShoppingBag, IconUsers, IconX } from "@tabler/icons-react";
+import { IconChartBar, IconChevronRight, IconLayoutDashboard, IconLogout, IconMapPin, IconPackage, IconSettings, IconShoppingBag, IconUsers, IconX, IconCategory } from "@tabler/icons-react";
 
 type AdminUser={id:string;name:string|null;email:string;role:string};
 
 const nav=[
   {href:"/admin",label:"Overview",icon:IconLayoutDashboard},
   {href:"/admin/products",label:"Catalog",icon:IconPackage},
+  {href:"/admin/categories",label:"Categories",icon:IconCategory},
   {href:"/admin/orders",label:"Orders",icon:IconShoppingBag},
   {href:"/admin/custom-requests",label:"Custom requests",icon:IconChartBar},
   {href:"/admin/customers",label:"Customers",icon:IconUsers},
