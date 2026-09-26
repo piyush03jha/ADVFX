@@ -128,7 +128,7 @@ export class OrdersService {
             include: {
               items: {
                 include: {
-                  variant: { include: { price: true } },
+                  variant: { include: { price: true, inventory: true } },
                   product: {
                     include: {
                       inventory: true,
@@ -261,24 +261,41 @@ export class OrdersService {
       });
 
       for (const item of quote.items) {
-        const inventory = await tx.productInventory.findFirst({
-          where: { productId: item.productId },
-        });
+        const inventory = item.variantId
+          ? await tx.productVariant.findFirst({
+              where: { id: item.variantId, productId: item.productId, isActive: true },
+              select: { id: true, stock: true, reserved: true, trackStock: true, allowBackorder: true },
+            })
+          : await tx.productInventory.findFirst({
+              where: { productId: item.productId },
+            });
 
         if (!inventory || !inventory.trackStock || inventory.allowBackorder) {
           continue;
         }
 
-        const updated = await tx.$executeRaw(
-          Prisma.sql`
-            UPDATE "ProductInventory"
-            SET "reserved" = "reserved" + ${item.quantity}
-            WHERE "id" = ${inventory.id}
-              AND "trackStock" = true
-              AND "allowBackorder" = false
-              AND ("stock" - "reserved") >= ${item.quantity}
-          `,
-        );
+        const updated = item.variantId
+          ? await tx.$executeRaw(
+              Prisma.sql`
+                UPDATE "ProductVariant"
+                SET "reserved" = "reserved" + ${item.quantity}
+                WHERE "id" = ${item.variantId}
+                  AND "isActive" = true
+                  AND "trackStock" = true
+                  AND "allowBackorder" = false
+                  AND ("stock" - "reserved") >= ${item.quantity}
+              `,
+            )
+          : await tx.$executeRaw(
+              Prisma.sql`
+                UPDATE "ProductInventory"
+                SET "reserved" = "reserved" + ${item.quantity}
+                WHERE "id" = ${inventory.id}
+                  AND "trackStock" = true
+                  AND "allowBackorder" = false
+                  AND ("stock" - "reserved") >= ${item.quantity}
+              `,
+            );
 
         if (Number(updated) !== 1) {
           throw new BadRequestException(
@@ -289,7 +306,8 @@ export class OrdersService {
         await tx.inventoryReservation.create({
           data: {
             productId: item.productId,
-            productInventoryId: inventory.id,
+            productVariantId: item.variantId ?? null,
+            productInventoryId: item.variantId ? null : inventory.id,
             orderId: order.id,
             quantity: item.quantity,
             status: "ACTIVE",
@@ -566,9 +584,13 @@ export class OrdersService {
   private async releaseReservations(tx: Prisma.TransactionClient, orderId: string, status: InventoryReservationStatus) {
     const reservations = await tx.inventoryReservation.findMany({ where: { orderId, status: 'ACTIVE' } });
     for (const reservation of reservations) {
-      if (!reservation.productInventoryId) continue;
-      const updated = await tx.productInventory.updateMany({ where: { id: reservation.productInventoryId, reserved: { gte: reservation.quantity } }, data: { reserved: { decrement: reservation.quantity } } });
-      if (updated.count !== 1) throw new BadRequestException(`Unable to release inventory reservation for product ${reservation.productId}`);
+      if (reservation.productVariantId) {
+        const updated = await tx.productVariant.updateMany({ where: { id: reservation.productVariantId, reserved: { gte: reservation.quantity } }, data: { reserved: { decrement: reservation.quantity } } });
+        if (updated.count !== 1) throw new BadRequestException(`Unable to release inventory reservation for product ${reservation.productId}`);
+      } else if (reservation.productInventoryId) {
+        const updated = await tx.productInventory.updateMany({ where: { id: reservation.productInventoryId, reserved: { gte: reservation.quantity } }, data: { reserved: { decrement: reservation.quantity } } });
+        if (updated.count !== 1) throw new BadRequestException(`Unable to release inventory reservation for product ${reservation.productId}`);
+      } else continue;
       await tx.inventoryReservation.update({ where: { id: reservation.id }, data: { status, releasedAt: new Date() } });
     }
   }
@@ -583,11 +605,17 @@ export class OrdersService {
   private async restockConsumedReservations(tx: Prisma.TransactionClient, orderId: string) {
     const reservations = await tx.inventoryReservation.findMany({ where: { orderId, status: 'CONSUMED' } });
     for (const reservation of reservations) {
-      if (!reservation.productInventoryId) continue;
-      await tx.productInventory.update({
-        where: { id: reservation.productInventoryId },
-        data: { stock: { increment: reservation.quantity } },
-      });
+      if (reservation.productVariantId) {
+        await tx.productVariant.update({
+          where: { id: reservation.productVariantId },
+          data: { stock: { increment: reservation.quantity } },
+        });
+      } else if (reservation.productInventoryId) {
+        await tx.productInventory.update({
+          where: { id: reservation.productInventoryId },
+          data: { stock: { increment: reservation.quantity } },
+        });
+      } else continue;
       await tx.inventoryReservation.update({
         where: { id: reservation.id },
         data: { status: InventoryReservationStatus.RELEASED, releasedAt: new Date() },
@@ -616,9 +644,13 @@ export class OrdersService {
   private async consumeReservations(tx: Prisma.TransactionClient, orderId: string) {
     const reservations = await tx.inventoryReservation.findMany({ where: { orderId, status: 'ACTIVE' } });
     for (const reservation of reservations) {
-      if (!reservation.productInventoryId) continue;
-      const updated = await tx.productInventory.updateMany({ where: { id: reservation.productInventoryId, stock: { gte: reservation.quantity }, reserved: { gte: reservation.quantity } }, data: { stock: { decrement: reservation.quantity }, reserved: { decrement: reservation.quantity } } });
-      if (updated.count !== 1) throw new BadRequestException(`Unable to finalize inventory for product ${reservation.productId}`);
+      if (reservation.productVariantId) {
+        const updated = await tx.productVariant.updateMany({ where: { id: reservation.productVariantId, stock: { gte: reservation.quantity }, reserved: { gte: reservation.quantity } }, data: { stock: { decrement: reservation.quantity }, reserved: { decrement: reservation.quantity } } });
+        if (updated.count !== 1) throw new BadRequestException(`Unable to finalize inventory for product ${reservation.productId}`);
+      } else if (reservation.productInventoryId) {
+        const updated = await tx.productInventory.updateMany({ where: { id: reservation.productInventoryId, stock: { gte: reservation.quantity }, reserved: { gte: reservation.quantity } }, data: { stock: { decrement: reservation.quantity }, reserved: { decrement: reservation.quantity } } });
+        if (updated.count !== 1) throw new BadRequestException(`Unable to finalize inventory for product ${reservation.productId}`);
+      } else continue;
       await tx.inventoryReservation.update({ where: { id: reservation.id }, data: { status: 'CONSUMED', consumedAt: new Date(), releasedAt: null } });
     }
   }
