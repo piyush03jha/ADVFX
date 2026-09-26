@@ -21,6 +21,7 @@ import { CreateProductReviewDto } from './dto/create-product-review.dto';
 import { UpdateInventoryDto } from './dto/update-inventory.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { UpsertPriceDto } from './dto/upsert-price.dto';
+import { UpsertVariantDto } from './dto/upsert-variant.dto';
 import { ProductsService } from './products.service';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
@@ -101,6 +102,28 @@ export class ProductsController {
   @Post(':id/pricing')
   setPrice(@Param('id') id: string, @Body() dto: UpsertPriceDto) {
     return this.productsService.setPrice(id, dto);
+  }
+
+  @UseGuards(AuthGuard, AdminGuard)
+  @Post(':id/variants')
+  createVariant(@Param('id') id: string, @Body() dto: UpsertVariantDto) {
+    return this.productsService.createVariant(id, dto);
+  }
+
+  @UseGuards(AuthGuard, AdminGuard)
+  @Patch(':id/variants/:variantId')
+  updateVariant(
+    @Param('id') id: string,
+    @Param('variantId') variantId: string,
+    @Body() dto: UpsertVariantDto,
+  ) {
+    return this.productsService.updateVariant(id, variantId, dto);
+  }
+
+  @UseGuards(AuthGuard, AdminGuard)
+  @Delete(':id/variants/:variantId')
+  removeVariant(@Param('id') id: string, @Param('variantId') variantId: string) {
+    return this.productsService.removeVariant(id, variantId);
   }
 
   @UseGuards(AuthGuard, AdminGuard)
