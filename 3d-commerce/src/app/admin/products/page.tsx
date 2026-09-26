@@ -22,6 +22,7 @@ export default function AdminProducts(){
   const [editingProduct,setEditingProduct]=useState<string|null>(null);
   const [uploadProgress,setUploadProgress]=useState<Record<string,number>>({});
   const [editForm,setEditForm]=useState<Record<string,string|boolean>>({});
+  const [createVariantPrices,setCreateVariantPrices]=useState({small:"",medium:"",large:""});
 
   async function load(){setLoading(true);try{const r=await fetch("/api/admin/catalog",{cache:"no-store"});if(!r.ok)throw new Error();setData(await r.json());setMessage("")}catch{setMessage("Unable to load catalog.")}finally{setLoading(false)}}
   useEffect(()=>{void load()},[]);
@@ -52,11 +53,22 @@ export default function AdminProducts(){
       if(form.price){
         const amount=Number(form.price);
         const pr=await fetch("/api/products/"+p.id+"/pricing",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({currency:"INR",amountMinor:Math.round(amount*100)})});
-        if(!pr.ok)throw new Error("Product created but price was not saved.");
-        for(const variant of (p.variants||[])){
-          const vr=await fetch("/api/products/"+p.id+"/variants/"+variant.id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({price:amount})});
-          if(!vr.ok)throw new Error("Product created, but a size price could not be saved.");
-        }
+        if(!pr.ok)throw new Error("Product created but base price was not saved.");
+      }
+
+      const sizePrices = [
+        { name: "Small", price: createVariantPrices.small },
+        { name: "Medium", price: createVariantPrices.medium },
+        { name: "Large", price: createVariantPrices.large },
+      ];
+      for(const sizePrice of sizePrices){
+        if(!sizePrice.price) continue;
+        const amount = Number(sizePrice.price);
+        if(!Number.isFinite(amount) || amount < 0) throw new Error(`${sizePrice.name} price must be a valid number.`);
+        const variant = (p.variants || []).find((item: ProductVariant) => item.name === sizePrice.name);
+        if(!variant) throw new Error(`${sizePrice.name} size variant was not created.`);
+        const vr=await fetch("/api/products/"+p.id+"/variants/"+variant.id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({price:amount})});
+        if(!vr.ok) throw new Error(`${sizePrice.name} price could not be saved.`);
       }
 
       if(productImages.length){
@@ -84,6 +96,7 @@ export default function AdminProducts(){
       setForm({name:"",slug:"",description:"",categoryId:"",status:"ACTIVE",price:"",stock:"0",isFeatured:false,material:"",scale:"",dimensions:"",height:"",base:"",packaging:"",weight:""});
       setProductImages([]);
       setProductGlb(null);
+      setCreateVariantPrices({small:"",medium:"",large:""});
       setMessage("Product created with assets.");
       await load();
     }catch(e){setMessage(e instanceof Error?e.message:"Unable to create product.")}finally{setSaving(false)}
@@ -155,7 +168,16 @@ export default function AdminProducts(){
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <input required value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Product name" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
       <input value={form.slug} onChange={e=>setForm({...form,slug:e.target.value})} placeholder="Slug (optional)" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
-      <input value={form.price} onChange={e=>setForm({...form,price:e.target.value})} type="number" min="0" placeholder="Price ₹" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
+      <input value={form.price} onChange={e=>setForm({...form,price:e.target.value})} type="number" min="0" placeholder="Price ₹" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/><div className="sm:col-span-2 lg:col-span-4 rounded-xl border border-primary/15 bg-primary/5 p-3">
+        <div className="flex items-center justify-between gap-3">
+          <div><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">Size-specific pricing</p><p className="mt-1 text-[9px] text-muted">Set a different customer price for each physical size. Leave a field empty to use the base product price.</p></div>
+        </div>
+        <div className="mt-3 grid gap-2 sm:grid-cols-3">
+          <input value={createVariantPrices.small} onChange={e=>setCreateVariantPrices({...createVariantPrices,small:e.target.value})} type="number" min="0" step="1" placeholder="Small · 15 cm · ₹" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
+          <input value={createVariantPrices.medium} onChange={e=>setCreateVariantPrices({...createVariantPrices,medium:e.target.value})} type="number" min="0" step="1" placeholder="Medium · 20 cm · ₹" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
+          <input value={createVariantPrices.large} onChange={e=>setCreateVariantPrices({...createVariantPrices,large:e.target.value})} type="number" min="0" step="1" placeholder="Large · 25 cm · ₹" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
+        </div>
+      </div>
       <input value={form.stock} onChange={e=>setForm({...form,stock:e.target.value})} type="number" min="0" placeholder="Stock" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
       <select value={form.categoryId} onChange={e=>setForm({...form,categoryId:e.target.value})} className="h-10 rounded-xl border border-border bg-background px-3 text-xs"><option value="">No category</option>{data.categories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>
       <select value={form.status} onChange={e=>setForm({...form,status:e.target.value})} className="h-10 rounded-xl border border-border bg-background px-3 text-xs"><option value="ACTIVE">Active</option><option value="DRAFT">Draft</option></select>
