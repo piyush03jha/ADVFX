@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { IconArchive, IconPlus, IconRefresh, IconSearch, IconTrash, IconUpload, IconBox, IconX, IconEdit } from "@tabler/icons-react";
 
-type ProductVariant={id:string;name:string;size?:string|null;sku?:string|null;isActive:boolean;price?:{amountMinor:number;compareAtMinor?:number|null;isActive:boolean}|null};
+type ProductVariant={id:string;name:string;size?:string|null;sku?:string|null;isActive:boolean;stock?:number;reserved?:number;lowStockAt?:number;trackStock?:boolean;allowBackorder?:boolean;price?:{amountMinor:number;compareAtMinor?:number|null;isActive:boolean}|null};
 type Product={id:string;name:string;slug:string;status:string;isFeatured:boolean;isTrending:boolean;isBestseller:boolean;category?:{id:string;name:string}|null;prices:any[];variants?:ProductVariant[];material?:string|null;scale?:string|null;dimensions?:string|null;height?:string|null;base?:string|null;packaging?:string|null;weight?:string|null;inventory?:{stock:number;reserved:number;lowStockAt:number}|null;media?:Array<{id:string;type:string;url:string;altText?:string|null;isPrimary:boolean;sortOrder:number}>};
 type ProductFile={id:string;originalName:string;storageUrl:string;format:string;fileType:string;mimeType:string;fileSize:string|number;processingStatus:string};
 type Category={id:string;name:string};
@@ -23,6 +23,7 @@ export default function AdminProducts(){
   const [uploadProgress,setUploadProgress]=useState<Record<string,number>>({});
   const [editForm,setEditForm]=useState<Record<string,string|boolean>>({});
   const [createVariantPrices,setCreateVariantPrices]=useState({small:"",medium:"",large:""});
+  const [createVariantStock,setCreateVariantStock]=useState({small:"",medium:"",large:""});
 
   async function load(){setLoading(true);try{const r=await fetch("/api/admin/catalog",{cache:"no-store"});if(!r.ok)throw new Error();setData(await r.json());setMessage("")}catch{setMessage("Unable to load catalog.")}finally{setLoading(false)}}
   useEffect(()=>{void load()},[]);
@@ -56,19 +57,24 @@ export default function AdminProducts(){
         if(!pr.ok)throw new Error("Product created but base price was not saved.");
       }
 
-      const sizePrices = [
-        { name: "Small", price: createVariantPrices.small },
-        { name: "Medium", price: createVariantPrices.medium },
-        { name: "Large", price: createVariantPrices.large },
+      const sizeOptions = [
+        { name: "Small", price: createVariantPrices.small, stock: createVariantStock.small },
+        { name: "Medium", price: createVariantPrices.medium, stock: createVariantStock.medium },
+        { name: "Large", price: createVariantPrices.large, stock: createVariantStock.large },
       ];
-      for(const sizePrice of sizePrices){
-        if(!sizePrice.price) continue;
-        const amount = Number(sizePrice.price);
-        if(!Number.isFinite(amount) || amount < 0) throw new Error(`${sizePrice.name} price must be a valid number.`);
-        const variant = (p.variants || []).find((item: ProductVariant) => item.name === sizePrice.name);
-        if(!variant) throw new Error(`${sizePrice.name} size variant was not created.`);
-        const vr=await fetch("/api/products/"+p.id+"/variants/"+variant.id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({price:amount})});
-        if(!vr.ok) throw new Error(`${sizePrice.name} price could not be saved.`);
+      for(const sizeOption of sizeOptions){
+        const hasPrice = sizeOption.price !== "";
+        const hasStock = sizeOption.stock !== "";
+        if(!hasPrice && !hasStock) continue;
+        const amount = hasPrice ? Number(sizeOption.price) : undefined;
+        const stock = hasStock ? Number(sizeOption.stock) : undefined;
+        if(amount !== undefined && (!Number.isFinite(amount) || amount < 0)) throw new Error(`${sizeOption.name} price must be a valid number.`);
+        if(stock !== undefined && (!Number.isInteger(stock) || stock < 0)) throw new Error(`${sizeOption.name} stock must be a whole number.`);
+        const variant = (p.variants || []).find((item: ProductVariant) => item.name === sizeOption.name);
+        if(!variant) throw new Error(`${sizeOption.name} size variant was not created.`);
+        const payload = { ...(amount !== undefined ? { price: amount } : {}), ...(stock !== undefined ? { stock } : {}) };
+        const vr=await fetch("/api/products/"+p.id+"/variants/"+variant.id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+        if(!vr.ok) throw new Error(`${sizeOption.name} settings could not be saved.`);
       }
 
       if(productImages.length){
@@ -97,6 +103,7 @@ export default function AdminProducts(){
       setProductImages([]);
       setProductGlb(null);
       setCreateVariantPrices({small:"",medium:"",large:""});
+      setCreateVariantStock({small:"",medium:"",large:""});
       setMessage("Product created with assets.");
       await load();
     }catch(e){setMessage(e instanceof Error?e.message:"Unable to create product.")}finally{setSaving(false)}
@@ -177,6 +184,12 @@ export default function AdminProducts(){
           <input value={createVariantPrices.medium} onChange={e=>setCreateVariantPrices({...createVariantPrices,medium:e.target.value})} type="number" min="0" step="1" placeholder="Medium · 20 cm · ₹" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
           <input value={createVariantPrices.large} onChange={e=>setCreateVariantPrices({...createVariantPrices,large:e.target.value})} type="number" min="0" step="1" placeholder="Large · 25 cm · ₹" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
         </div>
+        <div className="mt-3 grid gap-2 sm:grid-cols-3">
+          <input value={createVariantStock.small} onChange={e=>setCreateVariantStock({...createVariantStock,small:e.target.value})} type="number" min="0" step="1" placeholder="Small stock · units" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
+          <input value={createVariantStock.medium} onChange={e=>setCreateVariantStock({...createVariantStock,medium:e.target.value})} type="number" min="0" step="1" placeholder="Medium stock · units" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
+          <input value={createVariantStock.large} onChange={e=>setCreateVariantStock({...createVariantStock,large:e.target.value})} type="number" min="0" step="1" placeholder="Large stock · units" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
+
+        </div>
       </div>
       <input value={form.stock} onChange={e=>setForm({...form,stock:e.target.value})} type="number" min="0" placeholder="Stock" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
       <select value={form.categoryId} onChange={e=>setForm({...form,categoryId:e.target.value})} className="h-10 rounded-xl border border-border bg-background px-3 text-xs"><option value="">No category</option>{data.categories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>
@@ -225,10 +238,11 @@ export default function AdminProducts(){
               <input name="name" defaultValue={v.name} placeholder="Name" className="h-8 rounded-lg border border-border bg-background px-2 text-[10px]"/>
               <input name="size" defaultValue={v.size||""} placeholder="Size e.g. 15 cm" className="h-8 rounded-lg border border-border bg-background px-2 text-[10px]"/>
               <input name="price" defaultValue={((v.price?.amountMinor||0)/100).toString()} type="number" min="0" step="1" placeholder="Price ₹" className="h-8 rounded-lg border border-border bg-background px-2 text-[10px]"/>
+              <input name="stock" defaultValue={String(v.stock ?? 0)} type="number" min="0" step="1" placeholder="Stock units" className="h-8 rounded-lg border border-border bg-background px-2 text-[10px]"/>
               <input name="compareAtPrice" defaultValue={v.price?.compareAtMinor!=null?((v.price.compareAtMinor)/100).toString():""} type="number" min="0" step="1" placeholder="MRP ₹ (optional)" className="h-8 rounded-lg border border-border bg-background px-2 text-[10px]"/>
             </div>
             <div className="mt-2 flex items-center justify-between gap-2">
-              <span className="text-[9px] text-muted">{v.isActive?"Active":"Inactive"}</span>
+              <span className="text-[9px] text-muted">{v.isActive?"Active":"Inactive"} · {Math.max(0,(v.stock||0)-(v.reserved||0))} available</span>
               <button disabled={saving} className="rounded-lg bg-foreground px-2.5 py-1.5 text-[9px] font-semibold text-background">Save size</button>
             </div>
           </form>)}
