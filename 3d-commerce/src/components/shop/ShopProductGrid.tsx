@@ -126,11 +126,6 @@ export function ShopProductGrid({
     });
   }, [sourceProducts]);
 
-  const categoryIds = useMemo(
-    () => new Set(categories.map((category) => category.id)),
-    [categories],
-  );
-
   const categoryNameToId = useMemo(
     () =>
       new Map(
