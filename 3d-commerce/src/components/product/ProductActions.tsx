@@ -120,30 +120,22 @@ export function ProductActions({ product }: ProductActionsProps) {
                   : "Price available in checkout";
 
               return (
-                <button
+                <Button
                   key={variant.id}
                   type="button"
-                  aria-pressed={selected}
+                  variant={selected ? "primary" : "outline"}
+                  size="md"
+                  ariaLabel={`Select ${label}`}
+                  ariaPressed={selected}
                   onClick={() => setSelectedVariantId(variant.id)}
-                  className={
-                    "relative min-h-12 w-full rounded-xl border px-3 text-left transition-all duration-200 " +
-                    (selected
-                      ? "border-primary bg-primary/10 text-primary shadow-[0_0_24px_var(--glow-primary)]"
-                      : "border-border bg-surface text-foreground hover:border-primary/50 hover:bg-primary/[0.04]")
-                  }
+                  className="relative min-h-14 w-full justify-between rounded-xl px-4 text-left"
                 >
-                  {selected && (
-                    <span className="absolute right-2 top-2 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-white">
-                      <IconCheck size={9} />
-                    </span>
-                  )}
-                  <span className="block pr-6 text-xs font-medium">
-                    {label}
+                  <span>
+                    <span className="block text-xs font-semibold">{label}</span>
+                    <span className="mt-1 block text-[10px] opacity-70">{priceLabel}</span>
                   </span>
-                  <span className="mt-1 block text-[10px] text-muted">
-                    {priceLabel}
-                  </span>
-                </button>
+                  {selected ? <IconCheck size={16} /> : null}
+                </Button>
               );
             })}
           </div>
