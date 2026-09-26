@@ -11,6 +11,8 @@ export default function AdminProducts(){
   const [data,setData]=useState<{products:Product[];categories:Category[]}>({products:[],categories:[]});
   const [search,setSearch]=useState(""); const [loading,setLoading]=useState(true); const [saving,setSaving]=useState(false); const [message,setMessage]=useState("");
   const [form,setForm]=useState({name:"",slug:"",description:"",categoryId:"",status:"ACTIVE",price:"",stock:"0",isFeatured:false});
+  const [productImages,setProductImages]=useState<File[]>([]);
+  const [productGlb,setProductGlb]=useState<File|null>(null);
   const [assetProductId,setAssetProductId]=useState<string|null>(null);
   const [assetFiles,setAssetFiles]=useState<ProductFile[]>([]);
   const [assetLoading,setAssetLoading]=useState(false);
@@ -34,8 +36,39 @@ export default function AdminProducts(){
       const r=await fetch("/api/products",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:form.name,slug,description:form.description||undefined,categoryId:form.categoryId||undefined,status:form.status,stock:Number(form.stock)||0,isFeatured:form.isFeatured})});
       if(!r.ok){const d=await r.json().catch(()=>null);throw new Error(d?.message||"Create failed")}
       const p=await r.json();
-      if(form.price){const pr=await fetch("/api/products/"+p.id+"/pricing",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({currency:"INR",amountMinor:Math.round(Number(form.price)*100)})});if(!pr.ok)throw new Error("Product created but price was not saved.")}
-      setForm({name:"",slug:"",description:"",categoryId:"",status:"ACTIVE",price:"",stock:"0",isFeatured:false});setMessage("Product created.");await load()
+
+      if(form.price){
+        const pr=await fetch("/api/products/"+p.id+"/pricing",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({currency:"INR",amountMinor:Math.round(Number(form.price)*100)})});
+        if(!pr.ok)throw new Error("Product created but price was not saved.");
+      }
+
+      if(productImages.length){
+        for(const file of productImages){
+          const fd=new FormData();fd.append("file",file);
+          const ir=await fetch("/api/products/"+p.id+"/media/upload",{method:"POST",body:fd});
+          const id=await ir.json().catch(()=>null);
+          if(!ir.ok)throw new Error(id?.message||id?.error||("Product created, but image upload failed for "+file.name));
+        }
+      }
+
+      if(productGlb){
+        const fd=new FormData();fd.append("file",productGlb);
+        const gr=await fetch("/api/products/"+p.id+"/files",{method:"POST",body:fd});
+        const gd=await gr.json().catch(()=>null);
+        if(!gr.ok)throw new Error(gd?.message||gd?.error||"Product created, but GLB upload failed.");
+
+        const mr=await fetch("/api/products/"+p.id+"/media",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({type:"MODEL_PREVIEW",url:gd.storageUrl,isPrimary:true,altText:productGlb.name})});
+        if(!mr.ok){
+          const md=await mr.json().catch(()=>null);
+          throw new Error(md?.message||"GLB uploaded, but model preview could not be linked.");
+        }
+      }
+
+      setForm({name:"",slug:"",description:"",categoryId:"",status:"ACTIVE",price:"",stock:"0",isFeatured:false});
+      setProductImages([]);
+      setProductGlb(null);
+      setMessage("Product created with assets.");
+      await load();
     }catch(e){setMessage(e instanceof Error?e.message:"Unable to create product.")}finally{setSaving(false)}
   }
 
@@ -86,7 +119,29 @@ export default function AdminProducts(){
       <select value={form.status} onChange={e=>setForm({...form,status:e.target.value})} className="h-10 rounded-xl border border-border bg-background px-3 text-xs"><option value="ACTIVE">Active</option><option value="DRAFT">Draft</option></select>
       <textarea value={form.description} onChange={e=>setForm({...form,description:e.target.value})} placeholder="Description" className="min-h-10 rounded-xl border border-border bg-background px-3 py-2 text-xs sm:col-span-2"/>
       <label className="flex items-center gap-2 text-xs text-muted"><input type="checkbox" checked={form.isFeatured} onChange={e=>setForm({...form,isFeatured:e.target.checked})}/> Show in hero</label>
-    </div><button disabled={saving} className="mt-4 rounded-xl bg-foreground px-4 py-2.5 text-xs font-semibold text-background">{saving?"Saving…":"Create product"}</button></form>
+
+      <div className="rounded-xl border border-dashed border-border bg-background p-3 sm:col-span-2 lg:col-span-2">
+        <div className="flex items-center justify-between gap-3">
+          <div><p className="text-xs font-medium">Product images</p><p className="mt-1 text-[9px] text-muted">JPG, PNG or WebP · multiple images allowed</p></div>
+          <label className="cursor-pointer rounded-lg border border-border px-3 py-2 text-[10px] font-semibold">
+            <IconUpload size={13} className="mr-1 inline"/> Add images
+            <input type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" disabled={saving} onChange={e=>setProductImages(Array.from(e.target.files||[]))}/>
+          </label>
+        </div>
+        {productImages.length>0&&<p className="mt-2 truncate text-[9px] text-muted">{productImages.length} image{productImages.length>1?"s":""} selected · {productImages.map(f=>f.name).join(", ")}</p>}
+      </div>
+
+      <div className="rounded-xl border border-dashed border-border bg-background p-3 sm:col-span-2 lg:col-span-2">
+        <div className="flex items-center justify-between gap-3">
+          <div><p className="text-xs font-medium">3D model</p><p className="mt-1 text-[9px] text-muted">GLB · web-ready 3D model for the product viewer</p></div>
+          <label className="cursor-pointer rounded-lg border border-border px-3 py-2 text-[10px] font-semibold">
+            <IconBox size={13} className="mr-1 inline"/> Add GLB
+            <input type="file" accept=".glb,model/gltf-binary" className="hidden" disabled={saving} onChange={e=>setProductGlb(e.target.files?.[0]||null)}/>
+          </label>
+        </div>
+        {productGlb&&<p className="mt-2 truncate text-[9px] text-muted">Selected: {productGlb.name}</p>}
+      </div>
+    </div><button disabled={saving} className="mt-4 rounded-xl bg-foreground px-4 py-2.5 text-xs font-semibold text-background">{saving?"Creating product…":"Create product"}</button></form>
     <div className="mt-6 flex items-center gap-2 rounded-xl border border-border bg-surface px-3"><IconSearch size={15} className="text-muted"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search products…" className="h-10 flex-1 bg-transparent text-xs outline-none"/></div>
     <div className="mt-5 space-y-3">{loading?[1,2,3].map(i=><div key={i} className="h-28 animate-pulse rounded-2xl bg-surface"/>):rows.map(p=><article key={p.id} className="rounded-2xl border border-border bg-surface p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-sm font-medium">{p.name}</p><p className="mt-1 text-[10px] text-muted">{p.slug} · {p.category?.name||"Uncategorized"}</p></div><span className="rounded-full bg-primary/10 px-2.5 py-1 text-[9px] text-primary">{p.status}</span></div>
