@@ -9,9 +9,12 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   const { id } = await context.params;
 
   try {
+    const headers: Record<string,string> = { Authorization: "Bearer " + token };
+    const contentType = request.headers.get("content-type");
+    if (contentType) headers["Content-Type"] = contentType;
     const response = await fetch(getBackendApiUrl("products/" + encodeURIComponent(id) + "/media/upload"), {
       method: "POST",
-      headers: { Authorization: "Bearer " + token },
+      headers,
       body: await request.arrayBuffer(),
       cache: "no-store",
     });
