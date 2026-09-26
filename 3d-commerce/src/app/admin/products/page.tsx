@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { IconArchive, IconPlus, IconRefresh, IconSearch, IconTrash, IconUpload, IconBox, IconX, IconEdit } from "@tabler/icons-react";
 
-type Product={id:string;name:string;slug:string;status:string;isFeatured:boolean;isTrending:boolean;isBestseller:boolean;category?:{id:string;name:string}|null;prices:any[];material?:string|null;scale?:string|null;dimensions?:string|null;height?:string|null;base?:string|null;packaging?:string|null;weight?:string|null;inventory?:{stock:number;reserved:number;lowStockAt:number}|null;media?:Array<{id:string;type:string;url:string;altText?:string|null;isPrimary:boolean;sortOrder:number}>};
+type ProductVariant={id:string;name:string;size?:string|null;sku?:string|null;isActive:boolean;price?:{amountMinor:number;compareAtMinor?:number|null;isActive:boolean}|null};
+type Product={id:string;name:string;slug:string;status:string;isFeatured:boolean;isTrending:boolean;isBestseller:boolean;category?:{id:string;name:string}|null;prices:any[];variants?:ProductVariant[];material?:string|null;scale?:string|null;dimensions?:string|null;height?:string|null;base?:string|null;packaging?:string|null;weight?:string|null;inventory?:{stock:number;reserved:number;lowStockAt:number}|null;media?:Array<{id:string;type:string;url:string;altText?:string|null;isPrimary:boolean;sortOrder:number}>};
 type ProductFile={id:string;originalName:string;storageUrl:string;format:string;fileType:string;mimeType:string;fileSize:string|number;processingStatus:string};
 type Category={id:string;name:string};
 
@@ -28,6 +29,16 @@ export default function AdminProducts(){
 
   async function updatePrice(id:string,value:string){const amount=Number(value);if(!Number.isFinite(amount)||amount<0)return;setSaving(true);try{const r=await fetch("/api/products/"+id+"/pricing",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({currency:"INR",amountMinor:Math.round(amount*100)})});if(!r.ok)throw new Error();setMessage("Price updated.");await load()}catch{setMessage("Unable to update price.")}finally{setSaving(false)}}
   async function updateProduct(id:string,patch:Record<string,unknown>){setSaving(true);try{const r=await fetch("/api/products/"+id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(patch)});if(!r.ok)throw new Error();setMessage("Product updated.");await load()}catch{setMessage("Unable to update product.")}finally{setSaving(false)}}
+  async function updateVariant(productId:string,variantId:string,payload:Record<string,unknown>){
+    setSaving(true);setMessage("");
+    try{
+      const r=await fetch("/api/products/"+productId+"/variants/"+variantId,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+      const d=await r.json().catch(()=>null);
+      if(!r.ok)throw new Error(d?.message||"Unable to update size.");
+      setMessage("Size and price updated.");
+      await load();
+    }catch(e){setMessage(e instanceof Error?e.message:"Unable to update size.")}finally{setSaving(false)}
+  }
   async function deleteProduct(id:string,name:string){if(!window.confirm('Permanently delete "'+name+'"? Use Archive instead when the product has historical orders.'))return;setSaving(true);try{const r=await fetch("/api/products/"+id,{method:"DELETE"});const d=await r.json().catch(()=>null);if(!r.ok)throw new Error(d?.message||"Unable to delete product.");setMessage("Product deleted.");await load()}catch(e){setMessage(e instanceof Error?e.message:"Unable to delete product.")}finally{setSaving(false)}}
 
   async function createProduct(e:React.FormEvent){
@@ -39,8 +50,13 @@ export default function AdminProducts(){
       const p=await r.json();
 
       if(form.price){
-        const pr=await fetch("/api/products/"+p.id+"/pricing",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({currency:"INR",amountMinor:Math.round(Number(form.price)*100)})});
+        const amount=Number(form.price);
+        const pr=await fetch("/api/products/"+p.id+"/pricing",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({currency:"INR",amountMinor:Math.round(amount*100)})});
         if(!pr.ok)throw new Error("Product created but price was not saved.");
+        for(const variant of (p.variants||[])){
+          const vr=await fetch("/api/products/"+p.id+"/variants/"+variant.id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({price:amount})});
+          if(!vr.ok)throw new Error("Product created, but a size price could not be saved.");
+        }
       }
 
       if(productImages.length){
@@ -176,6 +192,25 @@ export default function AdminProducts(){
         <div><p className="text-[9px] uppercase tracking-[0.12em] text-muted">Stock</p><p className="mt-1 text-sm">{p.inventory?Math.max(0,p.inventory.stock-p.inventory.reserved):0}</p></div>
         <div><p className="text-[9px] uppercase tracking-[0.12em] text-muted">Hero</p><button onClick={()=>void updateProduct(p.id,{isFeatured:!p.isFeatured})} disabled={saving} className="mt-1 rounded-lg border border-border px-2.5 py-1.5 text-[9px]">{p.isFeatured?"Remove from hero":"Feature in hero"}</button></div>
         <div className="flex items-end justify-end gap-2"><button onClick={()=>startProductEdit(p)} disabled={saving} title="Edit product" className="rounded-lg border border-border p-2 text-muted"><IconEdit size={14}/></button><button onClick={()=>void updateProduct(p.id,{status:"ARCHIVED"})} disabled={saving||p.status==="ARCHIVED"} title="Archive product" className="rounded-lg border border-border p-2 text-muted"><IconArchive size={14}/></button><button onClick={()=>void deleteProduct(p.id,p.name)} disabled={saving} title="Permanently delete product" className="rounded-lg border border-red-400/20 p-2 text-red-300"><IconTrash size={14}/></button></div>
+      </div>
+      <div className="mt-4 border-t border-border pt-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div><p className="text-[9px] uppercase tracking-[0.12em] text-muted">Sizes & variant pricing</p><p className="mt-1 text-[10px] text-muted">Customer selection and cart price come from these admin values.</p></div>
+        </div>
+        <div className="mt-3 grid gap-2 lg:grid-cols-3">
+          {(p.variants||[]).map(v=><form key={v.id} onSubmit={e=>{e.preventDefault();const fd=new FormData(e.currentTarget);void updateVariant(p.id,v.id,{name:String(fd.get("name")||""),size:String(fd.get("size")||""),price:Number(fd.get("price")||0),compareAtPrice:String(fd.get("compareAtPrice")||"")===""?null:Number(fd.get("compareAtPrice"))})}} className="rounded-xl border border-border bg-background/50 p-3">
+            <div className="grid grid-cols-2 gap-2">
+              <input name="name" defaultValue={v.name} placeholder="Name" className="h-8 rounded-lg border border-border bg-background px-2 text-[10px]"/>
+              <input name="size" defaultValue={v.size||""} placeholder="Size e.g. 15 cm" className="h-8 rounded-lg border border-border bg-background px-2 text-[10px]"/>
+              <input name="price" defaultValue={((v.price?.amountMinor||0)/100).toString()} type="number" min="0" step="1" placeholder="Price ₹" className="h-8 rounded-lg border border-border bg-background px-2 text-[10px]"/>
+              <input name="compareAtPrice" defaultValue={v.price?.compareAtMinor!=null?((v.price.compareAtMinor)/100).toString():""} type="number" min="0" step="1" placeholder="MRP ₹ (optional)" className="h-8 rounded-lg border border-border bg-background px-2 text-[10px]"/>
+            </div>
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <span className="text-[9px] text-muted">{v.isActive?"Active":"Inactive"}</span>
+              <button disabled={saving} className="rounded-lg bg-foreground px-2.5 py-1.5 text-[9px] font-semibold text-background">Save size</button>
+            </div>
+          </form>)}
+        </div>
       </div>
       <div className="mt-4 border-t border-border pt-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
