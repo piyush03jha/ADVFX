@@ -5,14 +5,14 @@ import { getBackendApiUrl } from "@/lib/backend-api";
 
 async function proxy(
   request: Request,
-  params: Promise<{ id: string; variantId?: string[] }>,
-  method: "POST" | "PATCH" | "DELETE",
+  params: Promise<{ id: string }>,
+  method: "POST",
 ) {
   const token = (await cookies()).get(ADMIN_COOKIE)?.value;
   if (!token) return NextResponse.json({ error: "Authentication is required." }, { status: 401 });
 
-  const { id, variantId } = await params;
-  const suffix = variantId?.length ? "/variants/" + encodeURIComponent(variantId[0]) : "/variants";
+  const { id } = await params;
+  const suffix = "/variants";
 
   try {
     const response = await fetch(getBackendApiUrl("products/" + encodeURIComponent(id) + suffix), {
@@ -35,10 +35,3 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   return proxy(request, context.params, "POST");
 }
 
-export async function PATCH(request: Request, context: { params: Promise<{ id: string; variantId: string }> }) {
-  return proxy(request, context.params, "PATCH");
-}
-
-export async function DELETE(request: Request, context: { params: Promise<{ id: string; variantId: string }> }) {
-  return proxy(request, context.params, "DELETE");
-}
