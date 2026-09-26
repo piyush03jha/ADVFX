@@ -26,4 +26,22 @@ export class UpsertVariantDto {
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  stock?: number;
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  lowStockAt?: number;
+
+  @IsBoolean()
+  @IsOptional()
+  trackStock?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  allowBackorder?: boolean;
 }
