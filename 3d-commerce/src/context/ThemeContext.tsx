@@ -20,16 +20,20 @@ const STORAGE_KEY = "advfx-theme";
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-function getInitialTheme(): Theme {
-  if (typeof window === "undefined") {
-    return "light";
-  }
+function getStoredTheme(): Theme | null {
+  if (typeof window === "undefined") return null;
 
   const storedTheme = window.localStorage.getItem(STORAGE_KEY);
 
   if (storedTheme === "light" || storedTheme === "dark") {
     return storedTheme;
   }
+
+  return null;
+}
+
+function getSystemTheme(): Theme {
+  if (typeof window === "undefined") return "light";
 
   return window.matchMedia("(prefers-color-scheme: dark)").matches
     ? "dark"
@@ -48,11 +52,20 @@ export function ThemeProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const [theme, setThemeState] = useState<Theme>(getInitialTheme);
+  // Keep the first server and client render identical.
+  // The persisted/system theme is restored after hydration.
+  const [theme, setThemeState] = useState<Theme>("light");
+
+  useEffect(() => {
+    const resolvedTheme = getStoredTheme() ?? getSystemTheme();
+
+    setThemeState(resolvedTheme);
+    applyTheme(resolvedTheme);
+    window.localStorage.setItem(STORAGE_KEY, resolvedTheme);
+  }, []);
 
   useEffect(() => {
     applyTheme(theme);
-    window.localStorage.setItem(STORAGE_KEY, theme);
   }, [theme]);
 
   useEffect(() => {
@@ -63,7 +76,9 @@ export function ThemeProvider({
         return;
       }
 
-      setThemeState(event.matches ? "dark" : "light");
+      const nextTheme: Theme = event.matches ? "dark" : "light";
+      setThemeState(nextTheme);
+      applyTheme(nextTheme);
     };
 
     mediaQuery.addEventListener("change", handleSystemThemeChange);
@@ -75,12 +90,15 @@ export function ThemeProvider({
 
   const setTheme = useCallback((nextTheme: Theme) => {
     setThemeState(nextTheme);
+    window.localStorage.setItem(STORAGE_KEY, nextTheme);
   }, []);
 
   const toggleTheme = useCallback(() => {
-    setThemeState((currentTheme) =>
-      currentTheme === "dark" ? "light" : "dark",
-    );
+    setThemeState((currentTheme) => {
+      const nextTheme = currentTheme === "dark" ? "light" : "dark";
+      window.localStorage.setItem(STORAGE_KEY, nextTheme);
+      return nextTheme;
+    });
   }, []);
 
   return (
