@@ -38,7 +38,9 @@ export default function AdminCategories() {
   const [saving, setSaving] = useState(false);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
+  const [createImageFile, setCreateImageFile] = useState<File | null>(null);
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const createImageRef = useRef<HTMLInputElement | null>(null);
 
   async function load() {
     setLoading(true);
@@ -103,7 +105,16 @@ export default function AdminCategories() {
         throw new Error(d?.message || d?.error || "Category save failed");
       }
 
+      let savedCategoryId = editing;
+      if (!editing && d?.id) savedCategoryId = d.id;
+
+      if (createImageFile && savedCategoryId) {
+        await uploadImage(savedCategoryId, createImageFile);
+      }
+
       setMessage(editing ? "Category updated." : "Category created.");
+      setCreateImageFile(null);
+      if (createImageRef.current) createImageRef.current.value = "";
       reset();
       await load();
     } catch (e) {
@@ -264,6 +275,48 @@ export default function AdminCategories() {
             placeholder="Description (optional)"
             className="min-h-10 rounded-xl border border-border bg-background px-3 py-2 text-xs"
           />
+
+          {!editing && (
+            <div className="rounded-xl border border-border bg-background p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-medium">Category image</p>
+                  <p className="mt-1 text-[10px] text-muted">
+                    JPG, PNG or WebP · max 5 MB
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => createImageRef.current?.click()}
+                  className="rounded-lg border border-border px-3 py-2 text-[10px] font-medium"
+                >
+                  {createImageFile ? "Change image" : "Choose image"}
+                </button>
+              </div>
+              <input
+                ref={createImageRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] ?? null;
+                  setCreateImageFile(file);
+                }}
+              />
+              {createImageFile && (
+                <div className="mt-3 flex items-center gap-3">
+                  <img
+                    src={URL.createObjectURL(createImageFile)}
+                    alt="Selected category"
+                    className="h-16 w-16 rounded-lg object-cover"
+                  />
+                  <p className="truncate text-[10px] text-muted">
+                    {createImageFile.name}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <label className="mt-3 flex items-center gap-2 text-xs text-muted">
