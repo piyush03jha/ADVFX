@@ -13,6 +13,7 @@ type ButtonProps = {
   type?: ButtonHTMLAttributes<HTMLButtonElement>["type"];
   disabled?: boolean;
   ariaLabel?: string;
+  ariaPressed?: boolean;
   onClick?: () => void;
 };
 
@@ -49,6 +50,7 @@ export function Button({
   type = "button",
   disabled = false,
   ariaLabel,
+  ariaPressed,
   onClick,
 }: ButtonProps) {
   const classes = `
@@ -64,14 +66,14 @@ export function Button({
 
   if (href) {
     return (
-      <Link href={href} className={classes} aria-label={ariaLabel} aria-disabled={disabled || undefined} tabIndex={disabled ? -1 : undefined}>
+      <Link href={href} className={classes} aria-label={ariaLabel} aria-pressed={ariaPressed} aria-disabled={disabled || undefined} tabIndex={disabled ? -1 : undefined}>
         {children}
       </Link>
     );
   }
 
   return (
-    <button type={type} className={classes} disabled={disabled} aria-label={ariaLabel} onClick={onClick}>
+    <button type={type} className={classes} disabled={disabled} aria-label={ariaLabel} aria-pressed={ariaPressed} onClick={onClick}>
       {children}
     </button>
   );
