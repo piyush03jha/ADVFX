@@ -25,8 +25,14 @@ export class StorageController {
       throw new NotFoundException("Local storage is not available");
     }
 
+    // Fastify wildcard route parameter.
     const params = request.params as Record<string, string | undefined>;
-    const storageKey = params["*"] ?? params["0"] ?? "";
+
+    const storageKey =
+      params["*"] ??
+      params["0"] ??
+      "";
+
     const normalizedKey = decodeURIComponent(storageKey).replace(/^\/+/, "");
 
     if (!normalizedKey) {
@@ -36,6 +42,7 @@ export class StorageController {
     const filePath = this.storage.getAbsolutePath(normalizedKey);
 
     let fileStat;
+
     try {
       fileStat = await stat(filePath);
     } catch {
@@ -48,7 +55,10 @@ export class StorageController {
 
     reply.header("Content-Type", this.getContentType(extname(filePath)));
     reply.header("Content-Length", fileStat.size);
-    reply.header("Cache-Control", "public, max-age=31536000, immutable");
+    reply.header(
+      "Cache-Control",
+      "public, max-age=31536000, immutable",
+    );
 
     return reply.send(createReadStream(filePath));
   }
@@ -58,13 +68,16 @@ export class StorageController {
       ".glb": "model/gltf-binary",
       ".gltf": "model/gltf+json",
       ".bin": "application/octet-stream",
+
       ".png": "image/png",
       ".jpg": "image/jpeg",
       ".jpeg": "image/jpeg",
       ".webp": "image/webp",
       ".gif": "image/gif",
       ".svg": "image/svg+xml",
+
       ".pdf": "application/pdf",
+
       ".obj": "text/plain",
       ".mtl": "text/plain",
     };
