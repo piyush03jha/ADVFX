@@ -419,6 +419,16 @@ export class ProductsService {
     });
   }
 
+  async getMediaFile(id: string, mediaId: string) {
+    await this.ensureProductExists(id);
+    const media = await this.prisma.productMedia.findFirst({
+      where: { id: mediaId, productId: id },
+      select: { id: true, url: true },
+    });
+    if (!media) throw new NotFoundException(`Product media "${mediaId}" not found`);
+    return media;
+  }
+
   async removeMedia(id: string, mediaId: string) {
     const media = await this.prisma.productMedia.findFirst({
       where: { id: mediaId, productId: id },
