@@ -1,6 +1,8 @@
 import {
   Body,
   Req,
+  BadRequestException,
+  Res,
   Controller,
   Delete,
   Get,
@@ -19,6 +21,7 @@ import { UpdateInventoryDto } from './dto/update-inventory.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { UpsertPriceDto } from './dto/upsert-price.dto';
 import { ProductsService } from './products.service';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 
 @Controller('products')
 export class ProductsController {
@@ -103,6 +106,32 @@ export class ProductsController {
   @Patch(':id/inventory')
   updateInventory(@Param('id') id: string, @Body() dto: UpdateInventoryDto) {
     return this.productsService.updateInventory(id, dto);
+  }
+
+  @UseGuards(AuthGuard, AdminGuard)
+  @Post(':id/media/upload')
+  async uploadMedia(@Param('id') id: string, @Res() reply: FastifyReply) {
+    const request = reply.request as FastifyRequest & {
+      file?: () => Promise<{
+        filename: string;
+        mimetype: string;
+        toBuffer: () => Promise<Buffer>;
+      } | undefined>;
+    };
+
+    if (typeof request.file !== 'function') {
+      throw new BadRequestException('Multipart upload support is not available');
+    }
+
+    const uploadedFile = await request.file();
+    if (!uploadedFile) throw new BadRequestException('Image file is required');
+
+    const buffer = await uploadedFile.toBuffer();
+    return reply.send(await this.productsService.uploadImage(id, {
+      originalname: uploadedFile.filename,
+      mimetype: uploadedFile.mimetype,
+      buffer,
+    }));
   }
 
   @UseGuards(AuthGuard, AdminGuard)
