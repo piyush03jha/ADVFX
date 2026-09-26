@@ -30,3 +30,12 @@ UPDATE "ProductVariant" v
 SET "stock" = allocated.allocated_stock
 FROM allocated
 WHERE v.id = allocated.id;
+
+ALTER TABLE "InventoryReservation"
+  ADD COLUMN "productVariantId" TEXT;
+
+ALTER TABLE "InventoryReservation"
+  ADD CONSTRAINT "InventoryReservation_productVariantId_fkey"
+  FOREIGN KEY ("productVariantId") REFERENCES "ProductVariant"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+CREATE INDEX "InventoryReservation_productVariantId_idx" ON "InventoryReservation"("productVariantId");
