@@ -23,9 +23,7 @@ export class StorageService {
 
   constructor() {
     if (this.provider !== "local" && (!this.bucket || !this.endpoint || !this.accessKey || !this.secretKey || !this.publicBaseUrl)) {
-      throw new Error(
-        "Remote storage requires STORAGE_BUCKET, STORAGE_ENDPOINT, STORAGE_ACCESS_KEY_ID, STORAGE_SECRET_ACCESS_KEY and STORAGE_PUBLIC_BASE_URL",
-      );
+      throw new Error("Remote storage requires STORAGE_BUCKET, STORAGE_ENDPOINT, STORAGE_ACCESS_KEY_ID, STORAGE_SECRET_ACCESS_KEY and STORAGE_PUBLIC_BASE_URL");
     }
   }
 
@@ -33,7 +31,11 @@ export class StorageService {
     return this.saveScopedFile(["products", options.productId.trim()], options.filename.trim(), options.buffer);
   }
 
-  async saveCategoryImage(categoryId: string, filename: string, buffer: Buffer): Promise<StoredFile> {\n    return this.saveScopedFile(["categories", categoryId.trim()], filename.trim(), buffer);\n  }\n\n  async saveCustomRequestFile(requestId: string, originalName: string, buffer: Buffer) {
+  async saveCategoryImage(categoryId: string, filename: string, buffer: Buffer): Promise<StoredFile> {
+    return this.saveScopedFile(["categories", categoryId.trim()], filename.trim(), buffer);
+  }
+
+  async saveCustomRequestFile(requestId: string, originalName: string, buffer: Buffer) {
     return this.saveScopedFile(["custom-requests", requestId.trim()], originalName.trim(), buffer);
   }
 
@@ -104,12 +106,7 @@ export class StorageService {
     if (this.provider === "local") {
       try { await access(this.getAbsolutePath(storageKey)); return true; } catch { return false; }
     }
-    try {
-      await this.requestObject("HEAD", storageKey);
-      return true;
-    } catch {
-      return false;
-    }
+    try { await this.requestObject("HEAD", storageKey); return true; } catch { return false; }
   }
 
   getAbsolutePath(storageKey: string): string {
@@ -145,26 +142,13 @@ export class StorageService {
 
     const canonicalHeaders = Object.keys(headers).sort().map((name) => `${name}:${headers[name].trim()}\n`).join("");
     const signedHeaders = Object.keys(headers).sort().join(";");
-    const canonicalRequest = [
-      method,
-      url.pathname,
-      "",
-      canonicalHeaders,
-      signedHeaders,
-      payloadHash,
-    ].join("\n");
+    const canonicalRequest = [method, url.pathname, "", canonicalHeaders, signedHeaders, payloadHash].join("\n");
     const credentialScope = `${dateStamp}/${this.region}/s3/aws4_request`;
-    const stringToSign = [
-      "AWS4-HMAC-SHA256",
-      amzDate,
-      credentialScope,
-      createHash("sha256").update(canonicalRequest).digest("hex"),
-    ].join("\n");
+    const stringToSign = ["AWS4-HMAC-SHA256", amzDate, credentialScope, createHash("sha256").update(canonicalRequest).digest("hex")].join("\n");
 
     const signingKey = this.deriveSigningKey(dateStamp);
     const signature = createHmac("sha256", signingKey).update(stringToSign).digest("hex");
-    headers.authorization =
-      `AWS4-HMAC-SHA256 Credential=${this.accessKey}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+    headers.authorization = `AWS4-HMAC-SHA256 Credential=${this.accessKey}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
 
     const response = await fetch(url, {
       method,
