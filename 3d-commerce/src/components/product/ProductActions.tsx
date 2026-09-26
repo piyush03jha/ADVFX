@@ -38,10 +38,23 @@ export function ProductActions({ product }: ProductActionsProps) {
     [selectedVariantId, variants],
   );
 
+  const selectedAvailable = selectedVariant
+    ? selectedVariant.trackStock && !selectedVariant.allowBackorder
+      ? Math.max(0, (selectedVariant.stock ?? 0) - (selectedVariant.reserved ?? 0))
+      : null
+    : product.trackStock && !product.allowBackorder
+      ? Math.max(0, product.stock - product.reserved)
+      : null;
+
   const displayPrice = selectedVariant?.price ?? product.price;
 
   const addToCart = async () => {
     if (pending) return;
+    if (selectedAvailable !== null && selectedAvailable < quantity) {
+      setError("The selected size does not have enough stock.");
+      return;
+    }
+
     setPending(true);
     setError(null);
 
@@ -118,6 +131,10 @@ export function ProductActions({ product }: ProductActionsProps) {
                 variant.price !== undefined
                   ? "₹" + variant.price.toLocaleString("en-IN")
                   : "Price available in checkout";
+              const available =
+                variant.trackStock && !variant.allowBackorder
+                  ? Math.max(0, (variant.stock ?? 0) - (variant.reserved ?? 0))
+                  : null;
 
               return (
                 <Button
@@ -128,11 +145,14 @@ export function ProductActions({ product }: ProductActionsProps) {
                   ariaLabel={`Select ${label}`}
                   ariaPressed={selected}
                   onClick={() => setSelectedVariantId(variant.id)}
+                  disabled={available !== null && available <= 0}
                   className="relative min-h-14 w-full justify-between rounded-xl px-4 text-left"
                 >
                   <span>
                     <span className="block text-xs font-semibold">{label}</span>
-                    <span className="mt-1 block text-[10px] opacity-70">{priceLabel}</span>
+                    <span className="mt-1 block text-[10px] opacity-70">
+                      {priceLabel} · {available === null ? "In stock" : available > 0 ? `${available} available` : "Out of stock"}
+                    </span>
                   </span>
                   {selected ? <IconCheck size={16} /> : null}
                 </Button>
@@ -169,8 +189,9 @@ export function ProductActions({ product }: ProductActionsProps) {
           <button
             type="button"
             aria-label="Increase quantity"
-            onClick={() => setQuantity((value) => value + 1)}
-            className="flex h-full w-9 items-center justify-center text-muted transition-colors hover:text-foreground"
+            onClick={() => setQuantity((value) => selectedAvailable === null ? value + 1 : Math.min(selectedAvailable, value + 1))}
+            disabled={selectedAvailable !== null && quantity >= selectedAvailable}
+            className="flex h-full w-9 items-center justify-center text-muted transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
           >
             <IconPlus size={13} />
           </button>
