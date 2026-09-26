@@ -30,7 +30,7 @@ export function ProductActions({ product }: ProductActionsProps) {
   const [pending, setPending] = useState(false);
   const [buying, setBuying] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { addItem } = useCart();
+  const { addItem, error: cartError } = useCart();
 
   const selectedVariant = useMemo<StorefrontVariant | null>(
     () =>
@@ -126,10 +126,10 @@ export function ProductActions({ product }: ProductActionsProps) {
                   aria-pressed={selected}
                   onClick={() => setSelectedVariantId(variant.id)}
                   className={
-                    "relative min-h-12 rounded-xl border px-3 text-left transition-all duration-200 " +
+                    "relative min-h-12 w-full rounded-xl border px-3 text-left transition-all duration-200 " +
                     (selected
-                      ? "border-primary bg-primary/8 text-primary"
-                      : "border-white/[0.08] bg-white/[0.015] text-foreground hover:border-primary/40")
+                      ? "border-primary bg-primary/10 text-primary shadow-[0_0_24px_var(--glow-primary)]"
+                      : "border-border bg-surface text-foreground hover:border-primary/50 hover:bg-primary/[0.04]")
                   }
                 >
                   {selected && (
@@ -196,9 +196,9 @@ export function ProductActions({ product }: ProductActionsProps) {
         ) : null}
       </div>
 
-      {error ? (
+      {(error || cartError) ? (
         <p role="alert" className="mt-3 text-xs text-red-400">
-          {error}
+          {error ?? cartError}
         </p>
       ) : null}
 
