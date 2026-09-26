@@ -94,7 +94,11 @@ export class CartService {
   async removeItem(userId: string, productId: string, variantId?: string) {
     const cart = await this.getOrCreate(userId);
     await this.prisma.cartItem.deleteMany({
-      where: { cartId: cart.id, productId, variantId: variantId ?? null },
+      where: {
+        cartId: cart.id,
+        productId,
+        variantKey: variantId ?? '__base__',
+      },
     });
     return this.getOrCreate(userId);
   }
