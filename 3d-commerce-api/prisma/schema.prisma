@@ -560,6 +560,12 @@ model ProductVariant {
   price    ProductVariantPrice?
   isActive Boolean              @default(true)
 
+  stock          Int     @default(0)
+  reserved       Int     @default(0)
+  lowStockAt     Int     @default(5)
+  trackStock     Boolean @default(true)
+  allowBackorder Boolean @default(false)
+
   cartItems  CartItem[]
   orderItems OrderItem[]
 
