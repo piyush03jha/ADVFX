@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -346,23 +347,23 @@ export class ProductsService {
     await this.ensureProductExists(id);
 
     const maxBytes = Math.min(Number(process.env.MAX_PRODUCT_IMAGE_MB ?? 10), 25) * 1024 * 1024;
-    if (!file.buffer?.length) throw new ConflictException('Uploaded image is empty');
+    if (!file.buffer?.length) throw new BadRequestException('Uploaded image is empty');
     if (file.buffer.length > maxBytes) {
-      throw new ConflictException(`Image exceeds the maximum size of ${Math.round(maxBytes / 1024 / 1024)} MB`);
+      throw new BadRequestException(`Image exceeds the maximum size of ${Math.round(maxBytes / 1024 / 1024)} MB`);
     }
 
     const extension = file.originalname.toLowerCase().split('.').pop() ?? '';
     const allowed = new Set(['jpg', 'jpeg', 'png', 'webp']);
-    if (!allowed.has(extension)) throw new ConflictException('Only JPG, PNG and WebP images are supported');
+    if (!allowed.has(extension)) throw new BadRequestException('Only JPG, PNG and WebP images are supported');
 
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) {
-      throw new ConflictException('Invalid image MIME type');
+      throw new BadRequestException('Invalid image MIME type');
     }
 
     try {
       await sharp(file.buffer).metadata();
     } catch {
-      throw new ConflictException('Uploaded file is not a valid image');
+      throw new BadRequestException('Uploaded file is not a valid image');
     }
 
     const stored = await this.storage.saveProductFile({
