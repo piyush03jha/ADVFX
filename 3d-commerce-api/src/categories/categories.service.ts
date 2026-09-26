@@ -2,10 +2,12 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
+import { StorageService } from '../storage/storage.service';
+import sharp from 'sharp';
 
 @Injectable()
 export class CategoriesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly storage: StorageService) {}
 
   async create(dto: CreateCategoryDto) {
     const existing = await this.prisma.category.findFirst({
@@ -71,6 +73,51 @@ export class CategoriesService {
       where: { id },
       data: dto,
     });
+  }
+
+  async uploadImage(id: string, file: { originalname: string; mimetype: string; buffer: Buffer }) {
+    const category = await this.findOne(id);
+
+    const maxBytes = Math.min(Number(process.env.MAX_CATEGORY_IMAGE_MB ?? 5), 10) * 1024 * 1024;
+    if (!file.buffer?.length) throw new BadRequestException('Uploaded image is empty');
+    if (file.buffer.length > maxBytes) {
+      throw new BadRequestException(`Image exceeds the maximum size of ${Math.round(maxBytes / 1024 / 1024)} MB`);
+    }
+
+    const extension = file.originalname.toLowerCase().split('.').pop() ?? '';
+    const allowed = new Set(['jpg', 'jpeg', 'png', 'webp']);
+    if (!allowed.has(extension)) throw new BadRequestException('Only JPG, PNG and WebP images are supported');
+
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) {
+      throw new BadRequestException('Invalid image MIME type');
+    }
+
+    try {
+      await sharp(file.buffer).metadata();
+    } catch {
+      throw new BadRequestException('Uploaded file is not a valid image');
+    }
+
+    const stored = await this.storage.saveCategoryImage(id, file.originalname, file.buffer);
+
+    try {
+      const updated = await this.prisma.category.update({
+        where: { id },
+        data: { imageUrl: stored.storageUrl },
+      });
+
+      if (category.imageUrl?.startsWith('/storage/')) {
+        const oldKey = category.imageUrl.replace(/^\/storage\//, '');
+        if (oldKey !== stored.storageKey) {
+          try { await this.storage.delete(oldKey); } catch { /* preserve successful update */ }
+        }
+      }
+
+      return updated;
+    } catch (error) {
+      try { await this.storage.delete(stored.storageKey); } catch { /* preserve database error */ }
+      throw error;
+    }
   }
 
   async remove(id: string) {
