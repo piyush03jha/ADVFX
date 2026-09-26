@@ -27,19 +27,192 @@ export class ProductsService {
     await this.ensureSlugAvailable(dto.slug);
 
     const { stock, lowStockAt, ...productData } = dto;
+    const baseAmount = 0;
 
-    return this.prisma.product.create({
-      data: {
-        ...productData,
-        inventory: {
+    return this.prisma.$transaction(async (tx) => {
+      const product = await tx.product.create({
+        data: {
+          ...productData,
+          inventory: {
+            create: {
+              stock: stock ?? 0,
+              lowStockAt: lowStockAt ?? 5,
+            },
+          },
+        },
+      });
+
+      // Every physical product starts with the standard three size options.
+      // Admin can change these names, dimensions and prices from the catalog.
+      for (const item of [
+        { name: 'Small', size: '15 cm' },
+        { name: 'Medium', size: '20 cm' },
+        { name: 'Large', size: '25 cm' },
+      ]) {
+        await tx.productVariant.create({
+          data: {
+            productId: product.id,
+            name: item.name,
+            size: item.size,
+            price: {
+              create: {
+                currency: 'INR',
+                amountMinor: baseAmount,
+                isActive: true,
+              },
+            },
+          },
+        });
+      }
+
+      return tx.product.findUniqueOrThrow({
+        where: { id: product.id },
+        include: this.productInclude(),
+      });
+    });
+  }
+
+  async updateVariant(
+    productId: string,
+    variantId: string,
+    input: {
+      name?: string;
+      size?: string | null;
+      sku?: string | null;
+      price?: number;
+      compareAtPrice?: number | null;
+      isActive?: boolean;
+    },
+  ) {
+    await this.ensureProductExists(productId);
+
+    const variant = await this.prisma.productVariant.findFirst({
+      where: { id: variantId, productId },
+      include: { price: true },
+    });
+
+    if (!variant) throw new NotFoundException('Product variant not found');
+
+    const name = input.name?.trim();
+    const size = input.size?.trim() || null;
+    const sku = input.sku?.trim() || null;
+
+    if (name === '') throw new BadRequestException('Variant name is required');
+    if (input.price !== undefined && (!Number.isFinite(input.price) || input.price < 0)) {
+      throw new BadRequestException('Variant price must be a valid non-negative number');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.productVariant.update({
+        where: { id: variantId },
+        data: {
+          ...(name !== undefined ? { name } : {}),
+          ...(input.size !== undefined ? { size } : {}),
+          ...(input.sku !== undefined ? { sku } : {}),
+          ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
+        },
+      });
+
+      if (
+        input.price !== undefined ||
+        input.compareAtPrice !== undefined
+      ) {
+        const amountMinor = Math.round((input.price ?? ((variant.price?.amountMinor ?? 0) / 100)) * 100);
+        const compareAtMinor =
+          input.compareAtPrice === null
+            ? null
+            : input.compareAtPrice !== undefined
+              ? Math.round(input.compareAtPrice * 100)
+              : variant.price?.compareAtMinor ?? null;
+
+        if (compareAtMinor !== null && compareAtMinor < amountMinor) {
+          throw new ConflictException('Compare-at price cannot be lower than variant price');
+        }
+
+        await tx.productVariantPrice.upsert({
+          where: { variantId },
           create: {
-            stock: stock ?? 0,
-            lowStockAt: lowStockAt ?? 5,
+            variantId,
+            currency: 'INR',
+            amountMinor,
+            compareAtMinor,
+            isActive: true,
+          },
+          update: {
+            amountMinor,
+            compareAtMinor,
+            currency: 'INR',
+            isActive: true,
+          },
+        });
+      }
+
+      return tx.productVariant.findUniqueOrThrow({
+        where: { id: variantId },
+        include: { price: true },
+      });
+    });
+  }
+
+  async createVariant(
+    productId: string,
+    input: {
+      name: string;
+      size?: string | null;
+      sku?: string | null;
+      price?: number;
+      compareAtPrice?: number | null;
+    },
+  ) {
+    await this.ensureProductExists(productId);
+
+    const name = input.name.trim();
+    if (!name) throw new BadRequestException('Variant name is required');
+    if (input.price !== undefined && (!Number.isFinite(input.price) || input.price < 0)) {
+      throw new BadRequestException('Variant price must be a valid non-negative number');
+    }
+
+    const amountMinor = Math.round((input.price ?? 0) * 100);
+    const compareAtMinor =
+      input.compareAtPrice == null ? null : Math.round(input.compareAtPrice * 100);
+
+    if (compareAtMinor !== null && compareAtMinor < amountMinor) {
+      throw new ConflictException('Compare-at price cannot be lower than variant price');
+    }
+
+    return this.prisma.productVariant.create({
+      data: {
+        productId,
+        name,
+        size: input.size?.trim() || null,
+        sku: input.sku?.trim() || null,
+        price: {
+          create: {
+            currency: 'INR',
+            amountMinor,
+            compareAtMinor,
+            isActive: true,
           },
         },
       },
-      include: this.productInclude(),
+      include: { price: true },
     });
+  }
+
+  async removeVariant(productId: string, variantId: string) {
+    await this.ensureProductExists(productId);
+    const variant = await this.prisma.productVariant.findFirst({
+      where: { id: variantId, productId },
+      select: { id: true },
+    });
+    if (!variant) throw new NotFoundException('Product variant not found');
+
+    await this.prisma.productVariant.update({
+      where: { id: variantId },
+      data: { isActive: false },
+    });
+
+    return { message: 'Product variant deactivated successfully' };
   }
 
   async findAll() {
@@ -559,6 +732,10 @@ export class ProductsService {
       media: { orderBy: { sortOrder: 'asc' } },
       tags: { include: { tag: true } },
       files: true,
+      variants: {
+        include: { price: true },
+        orderBy: { createdAt: 'asc' },
+      },
     };
   }
 }
