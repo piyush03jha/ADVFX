@@ -9,9 +9,12 @@ async function proxy(request: Request, context: { params: Promise<{ id: string }
   const { id } = await context.params;
 
   try {
+    const headers: Record<string,string> = { Authorization: "Bearer " + token };
+    const contentType = request.headers.get("content-type");
+    if(method === "POST" && contentType) headers["Content-Type"] = contentType;
     const response = await fetch(getBackendApiUrl("products/" + encodeURIComponent(id) + "/files"), {
       method,
-      headers: { Authorization: "Bearer " + token, ...(method === "POST" ? { "Content-Type": request.headers.get("content-type") ?? "" } : {}) },
+      headers,
       body: method === "POST" ? await request.arrayBuffer() : undefined,
       cache: "no-store",
     });
