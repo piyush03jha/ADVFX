@@ -19,6 +19,7 @@ export default function AdminProducts(){
   const [assetMessage,setAssetMessage]=useState("");
   const [assetBusy,setAssetBusy]=useState(false);
   const [editingProduct,setEditingProduct]=useState<string|null>(null);
+  const [uploadProgress,setUploadProgress]=useState<Record<string,number>>({});
   const [editForm,setEditForm]=useState<Record<string,string|boolean>>({});
 
   async function load(){setLoading(true);try{const r=await fetch("/api/admin/catalog",{cache:"no-store"});if(!r.ok)throw new Error();setData(await r.json());setMessage("")}catch{setMessage("Unable to load catalog.")}finally{setLoading(false)}}
@@ -86,17 +87,42 @@ export default function AdminProducts(){
     try{const r=await fetch("/api/products/"+id+"/files",{cache:"no-store"});if(!r.ok)throw new Error();setAssetFiles(await r.json())}catch{setAssetMessage("Unable to load 3D assets.")}finally{setAssetLoading(false)}
   }
   async function uploadImages(id:string,files:FileList|null){
-    if(!files?.length)return;setAssetBusy(true);setAssetMessage("");
-    try{for(const file of Array.from(files)){const fd=new FormData();fd.append("file",file);const r=await fetch("/api/products/"+id+"/media/upload",{method:"POST",body:fd});const d=await r.json().catch(()=>null);if(!r.ok)throw new Error(d?.message||d?.error||("Unable to upload "+file.name))}setAssetMessage(files.length+" image"+(files.length>1?"s":"")+" uploaded.");await load()}catch(e){setAssetMessage(e instanceof Error?e.message:"Image upload failed.")}finally{setAssetBusy(false)}
+    if(!files?.length)return;
+    setAssetBusy(true);setAssetMessage("");
+    try{
+      const list=Array.from(files);
+      for(let index=0;index<list.length;index++){
+        const file=list[index];
+        const fd=new FormData();fd.append("file",file);
+        const response=await fetch("/api/products/"+id+"/media/upload",{method:"POST",body:fd});
+        const data=await response.json().catch(()=>null);
+        if(!response.ok)throw new Error(data?.message||data?.error||("Unable to upload "+file.name));
+        setUploadProgress(prev=>({...prev,[id]:Math.round(((index+1)/list.length)*100)}));
+      }
+      setAssetMessage(list.length+" image"+(list.length>1?"s":"")+" uploaded successfully.");
+      await load();
+    }catch(e){setAssetMessage(e instanceof Error?e.message:"Image upload failed.")}
+    finally{setAssetBusy(false);setUploadProgress(prev=>{const next={...prev};delete next[id];return next})}
   }
   async function uploadGlb(id:string,file:File|null){
-    if(!file)return;setAssetBusy(true);setAssetMessage("");
-    try{const fd=new FormData();fd.append("file",file);const r=await fetch("/api/products/"+id+"/files",{method:"POST",body:fd});const d=await r.json().catch(()=>null);if(!r.ok)throw new Error(d?.message||d?.error||"GLB upload failed");
-      const media=await fetch("/api/products/"+id+"/media",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({type:"MODEL_PREVIEW",url:d.storageUrl,isPrimary:true,altText:file.name})});
-      if(!media.ok){const md=await media.json().catch(()=>null);throw new Error(md?.message||"GLB uploaded but model preview could not be linked.")}
+    if(!file)return;
+    setAssetBusy(true);setAssetMessage("");
+    try{
+      if(file.size===0)throw new Error("The selected GLB file is empty.");
+      if(!file.name.toLowerCase().endsWith(".glb"))throw new Error("Please select a valid .glb file.");
+      const fd=new FormData();fd.append("file",file);
+      const response=await fetch("/api/products/"+id+"/files",{method:"POST",body:fd});
+      const data=await response.json().catch(()=>null);
+      if(!response.ok)throw new Error(data?.message||data?.error||"GLB upload failed");
+      if(!data?.storageUrl)throw new Error("GLB upload succeeded but no storage URL was returned.");
+      const media=await fetch("/api/products/"+id+"/media",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({type:"MODEL_PREVIEW",url:data.storageUrl,isPrimary:true,altText:file.name})});
+      const mediaData=await media.json().catch(()=>null);
+      if(!media.ok)throw new Error(mediaData?.message||"GLB uploaded but model preview could not be linked.");
       setAssetMessage("3D model uploaded and linked to the product.");
-      const fr=await fetch("/api/products/"+id+"/files",{cache:"no-store"});if(fr.ok)setAssetFiles(await fr.json());await load();
-    }catch(e){setAssetMessage(e instanceof Error?e.message:"GLB upload failed.")}finally{setAssetBusy(false)}
+      const fr=await fetch("/api/products/"+id+"/files",{cache:"no-store"});if(fr.ok)setAssetFiles(await fr.json());
+      await load();
+    }catch(e){setAssetMessage(e instanceof Error?e.message:"GLB upload failed.")}
+    finally{setAssetBusy(false)}
   }
   async function removeMedia(id:string,mediaId:string){
     if(!window.confirm("Remove this product media?"))return;setAssetBusy(true);
@@ -170,6 +196,10 @@ export default function AdminProducts(){
               <div className="mt-3 space-y-2">{assetLoading?<p className="text-[10px] text-muted">Loading 3D assets…</p>:assetFiles.map(f=><div key={f.id} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface px-3 py-2"><div className="min-w-0"><p className="truncate text-[10px] font-medium">{f.originalName}</p><p className="text-[9px] text-muted">{f.format} · {f.processingStatus} · {typeof f.fileSize==="number"?Math.round(f.fileSize/1024/1024*10)/10:f.fileSize} bytes</p></div><button onClick={()=>void removeFile(p.id,f.id)} disabled={assetBusy} className="rounded-lg border border-red-400/20 p-1.5 text-red-300"><IconTrash size={13}/></button></div>)}{!assetLoading&&!assetFiles.length&&<p className="rounded-lg border border-dashed border-border p-6 text-center text-[10px] text-muted">No 3D files uploaded yet.</p>}</div>
             </div>
           </div>
+          {assetBusy&&uploadProgress[p.id]!==undefined&&<div className="mt-3">
+            <div className="mb-1 flex items-center justify-between text-[9px] text-muted"><span>Uploading images…</span><span>{uploadProgress[p.id]}%</span></div>
+            <div className="h-1.5 overflow-hidden rounded-full bg-border"><div className="h-full bg-foreground transition-all" style={{width:uploadProgress[p.id]+"%"}} /></div>
+          </div>}
           {assetMessage&&<p className="mt-3 text-[10px] text-muted">{assetMessage}</p>}
         </div>}
       </div>
