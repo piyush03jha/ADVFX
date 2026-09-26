@@ -203,6 +203,24 @@ export default function AdminProducts(){
           {assetMessage&&<p className="mt-3 text-[10px] text-muted">{assetMessage}</p>}
         </div>}
       </div>
+      {editingProduct===p.id&&(
+        <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div><p className="text-xs font-semibold">Edit product specifications</p><p className="mt-1 text-[9px] text-muted">These values are shown in the customer-facing Specs tab.</p></div>
+            <button type="button" onClick={()=>setEditingProduct(null)} className="rounded-lg border border-border px-2.5 py-1.5 text-[9px]">Cancel</button>
+          </div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <input value={String(editForm.material||"")} onChange={e=>setEditForm({...editForm,material:e.target.value})} placeholder="Material" className="h-9 rounded-lg border border-border bg-background px-2 text-xs"/>
+            <input value={String(editForm.scale||"")} onChange={e=>setEditForm({...editForm,scale:e.target.value})} placeholder="Scale" className="h-9 rounded-lg border border-border bg-background px-2 text-xs"/>
+            <input value={String(editForm.dimensions||"")} onChange={e=>setEditForm({...editForm,dimensions:e.target.value})} placeholder="Dimensions" className="h-9 rounded-lg border border-border bg-background px-2 text-xs"/>
+            <input value={String(editForm.height||"")} onChange={e=>setEditForm({...editForm,height:e.target.value})} placeholder="Height" className="h-9 rounded-lg border border-border bg-background px-2 text-xs"/>
+            <input value={String(editForm.base||"")} onChange={e=>setEditForm({...editForm,base:e.target.value})} placeholder="Base" className="h-9 rounded-lg border border-border bg-background px-2 text-xs"/>
+            <input value={String(editForm.packaging||"")} onChange={e=>setEditForm({...editForm,packaging:e.target.value})} placeholder="Packaging" className="h-9 rounded-lg border border-border bg-background px-2 text-xs"/>
+            <input value={String(editForm.weight||"")} onChange={e=>setEditForm({...editForm,weight:e.target.value})} placeholder="Weight" className="h-9 rounded-lg border border-border bg-background px-2 text-xs"/>
+          </div>
+          <button type="button" onClick={()=>void saveProductEdit(p.id)} disabled={saving} className="mt-3 rounded-lg bg-foreground px-3 py-2 text-[10px] font-semibold text-background">{saving?"Saving…":"Save specifications"}</button>
+        </div>
+      )}
     </article>)}{!loading&&!rows.length&&<div className="rounded-2xl border border-dashed border-border p-10 text-sm text-muted">No products found.</div>}</div>
     {message&&<p className="mt-4 text-xs text-muted">{message}</p>}
   </main>
