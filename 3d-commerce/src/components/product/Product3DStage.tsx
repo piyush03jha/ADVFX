@@ -1,6 +1,7 @@
 "use client";
 
-import { Canvas } from "@react-three/fiber";
+import { Suspense, useEffect } from "react";
+import { Canvas, useThree } from "@react-three/fiber";
 import {
   Bounds,
   Center,
@@ -17,11 +18,60 @@ interface Product3DStageProps {
 
 function ProductModel({ model }: { model: string }) {
   const { scene } = useGLTF(model);
+
   return (
     <Center precise disableZ>
       <primitive object={scene} dispose={null} />
     </Center>
   );
+}
+
+function ModelLoadingFallback() {
+  return (
+    <mesh rotation={[0.35, 0.45, 0]}>
+      <boxGeometry args={[1, 1, 1]} />
+      <meshStandardMaterial transparent opacity={0.08} />
+    </mesh>
+  );
+}
+
+function WebGLContextMonitor() {
+  const { gl } = useThree();
+
+  useEffect(() => {
+    const canvas = gl.domElement;
+
+    const handleContextLost = (event: Event) => {
+      event.preventDefault();
+      console.warn("[3D Viewer] WebGL context lost.");
+    };
+
+    const handleContextRestored = () => {
+      console.info("[3D Viewer] WebGL context restored.");
+    };
+
+    canvas.addEventListener("webglcontextlost", handleContextLost, false);
+    canvas.addEventListener(
+      "webglcontextrestored",
+      handleContextRestored,
+      false,
+    );
+
+    return () => {
+      canvas.removeEventListener(
+        "webglcontextlost",
+        handleContextLost,
+        false,
+      );
+      canvas.removeEventListener(
+        "webglcontextrestored",
+        handleContextRestored,
+        false,
+      );
+    };
+  }, [gl]);
+
+  return null;
 }
 
 export default function Product3DStage({
@@ -34,24 +84,48 @@ export default function Product3DStage({
   return (
     <div className="absolute inset-0 min-h-0 touch-none">
       <Canvas
-        frameloop="always"
-        camera={{ position: [0, 0, 4], fov: 38 }}
-        dpr={[1, 1.25]}
+        camera={{
+          position: [0, 0, 4],
+          fov: 38,
+          near: 0.01,
+          far: 100,
+        }}
+        dpr={1}
         gl={{
           antialias: true,
           powerPreference: "high-performance",
           alpha: true,
         }}
-        performance={{ min: 0.5 }}
+        performance={{ min: 0.5, max: 1 }}
       >
-        <color attach="background" args={[isDark ? "#08080a" : "#f1f1f3"]} />
-        <ambientLight intensity={isDark ? 1.2 : 1.5} />
-        <directionalLight position={[4, 6, 5]} intensity={isDark ? 2.2 : 2.5} />
-        <directionalLight position={[-4, 2, -3]} intensity={isDark ? 1 : 1.25} />
-        <Environment preset="studio" environmentIntensity={isDark ? 0.8 : 0.95} />
-        <Bounds fit clip observe margin={1.1}>
-          <ProductModel model={model} />
+        <WebGLContextMonitor />
+
+        <color
+          attach="background"
+          args={[isDark ? "#08080a" : "#f1f1f3"]}
+        />
+
+        <ambientLight intensity={isDark ? 1.1 : 1.35} />
+        <directionalLight
+          position={[4, 6, 5]}
+          intensity={isDark ? 1.9 : 2.1}
+        />
+        <directionalLight
+          position={[-4, 2, -3]}
+          intensity={isDark ? 0.9 : 1.1}
+        />
+
+        <Environment
+          preset="studio"
+          environmentIntensity={isDark ? 0.7 : 0.85}
+        />
+
+        <Bounds fit clip margin={1.1}>
+          <Suspense fallback={<ModelLoadingFallback />}>
+            <ProductModel model={model} />
+          </Suspense>
         </Bounds>
+
         <OrbitControls
           makeDefault
           enableRotate
@@ -68,8 +142,10 @@ export default function Product3DStage({
           mouseButtons={{ LEFT: 0, MIDDLE: 1, RIGHT: 2 }}
         />
       </Canvas>
+
       <span className="sr-only">
-        Interactive 3D preview of {name}. Drag to rotate and pinch or scroll to zoom.
+        Interactive 3D preview of {name}. Drag to rotate and pinch or scroll
+        to zoom.
       </span>
     </div>
   );
