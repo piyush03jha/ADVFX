@@ -145,11 +145,11 @@ export class ProductsController {
   async getMediaFile(@Param('id') id: string, @Param('mediaId') mediaId: string, @Res() reply: FastifyReply) {
     const media = await this.productsService.getMediaFile(id, mediaId);
 
-    if (/^https?:\\/\\//i.test(media.url)) {
+    if (/^https?:\/\//i.test(media.url)) {
       return reply.redirect(media.url);
     }
 
-    const storageKey = media.url.replace(/^\\/storage\\//, '');
+    const storageKey = media.url.replace(/^\/storage\//, '');
     const absolutePath = this.productsService.getMediaAbsolutePath(storageKey);
     const { createReadStream } = await import('node:fs');
     const stream = createReadStream(absolutePath);
