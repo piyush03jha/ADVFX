@@ -33,7 +33,7 @@ export class StorageService {
     return this.saveScopedFile(["products", options.productId.trim()], options.filename.trim(), options.buffer);
   }
 
-  async saveCustomRequestFile(requestId: string, originalName: string, buffer: Buffer) {
+  async saveCategoryImage(categoryId: string, filename: string, buffer: Buffer): Promise<StoredFile> {\n    return this.saveScopedFile(["categories", categoryId.trim()], filename.trim(), buffer);\n  }\n\n  async saveCustomRequestFile(requestId: string, originalName: string, buffer: Buffer) {
     return this.saveScopedFile(["custom-requests", requestId.trim()], originalName.trim(), buffer);
   }
 
