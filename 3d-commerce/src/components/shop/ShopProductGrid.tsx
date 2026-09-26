@@ -258,7 +258,7 @@ export function ShopProductGrid({
   };
 
   const handleCategoryChange = (categoryId: string) => {
-    if (activeCategory || !categoryIds.has(categoryId)) return;
+    if (activeCategory) return;
 
     setFilters((current) => ({
       ...current,
