@@ -15,19 +15,3 @@ async function proxy(request:Request,context:{params:Promise<{id:string}>},metho
 }
 export async function PATCH(request:Request,context:{params:Promise<{id:string}>}){return proxy(request,context,"PATCH")}
 export async function DELETE(request:Request,context:{params:Promise<{id:string}>}){return proxy(request,context,"DELETE")}
-export async function POST(request:Request,context:{params:Promise<{id:string}>}) {
-  const token=(await cookies()).get(ADMIN_COOKIE)?.value;
-  if(!token)return NextResponse.json({error:"Authentication is required."},{status:401});
-  const {id}=await context.params;
-  try{
-    const formData=await request.formData();
-    const response=await fetch(getBackendApiUrl("categories/"+encodeURIComponent(id)+"/image"),{
-      method:"POST",
-      headers:{Authorization:"Bearer "+token},
-      body:formData,
-      cache:"no-store",
-    });
-    const data=await response.json().catch(()=>null);
-    return NextResponse.json(data??{error:"Category image upload failed."},{status:response.status});
-  }catch{return NextResponse.json({error:"Category service is unavailable."},{status:503});}
-}
