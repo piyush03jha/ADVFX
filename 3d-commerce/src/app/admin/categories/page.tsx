@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { IconEdit, IconPlus, IconRefresh, IconTrash, IconX } from "@tabler/icons-react";
+import { IconEdit, IconPlus, IconRefresh, IconTrash, IconUpload, IconX } from "@tabler/icons-react";
 
 type Category={id:string;name:string;slug:string;description?:string|null;imageUrl?:string|null;sortOrder:number;isActive:boolean};
 
-const empty={name:"",slug:"",description:"",imageUrl:"",sortOrder:"0",isActive:true};
+const empty={name:"",slug:"",description:"",sortOrder:"0",isActive:true};
 
 export default function AdminCategories(){
   const [categories,setCategories]=useState<Category[]>([]);
@@ -14,19 +14,27 @@ export default function AdminCategories(){
   const [loading,setLoading]=useState(true);
   const [saving,setSaving]=useState(false);
   const [message,setMessage]=useState("");
+  const [imageFile,setImageFile]=useState<File|null>(null);
 
   async function load(){setLoading(true);try{const r=await fetch("/api/categories",{cache:"no-store"});const d=await r.json();if(!r.ok)throw new Error(d?.error||"Unable to load categories");setCategories(Array.isArray(d)?d:[]);setMessage("")}catch(e){setMessage(e instanceof Error?e.message:"Unable to load categories")}finally{setLoading(false)}}
   useEffect(()=>{void load()},[]);
 
-  function startEdit(c:Category){setEditing(c.id);setForm({name:c.name,slug:c.slug,description:c.description||"",imageUrl:c.imageUrl||"",sortOrder:String(c.sortOrder??0),isActive:c.isActive})}
-  function reset(){setEditing(null);setForm(empty)}
+  function startEdit(c:Category){setEditing(c.id);setForm({name:c.name,slug:c.slug,description:c.description||"",sortOrder:String(c.sortOrder??0),isActive:c.isActive});setImageFile(null)}
+  function reset(){setEditing(null);setForm(empty);setImageFile(null)}
 
   async function save(e:React.FormEvent){
     e.preventDefault();setSaving(true);setMessage("");
     try{
-      const payload={name:form.name.trim(),slug:form.slug.trim(),description:form.description.trim()||undefined,imageUrl:form.imageUrl.trim()||undefined,sortOrder:Number(form.sortOrder)||0,isActive:form.isActive};
+      const payload={name:form.name.trim(),slug:form.slug.trim(),description:form.description.trim()||undefined,sortOrder:Number(form.sortOrder)||0,isActive:form.isActive};
       const r=await fetch(editing?"/api/categories/"+editing:"/api/categories",{method:editing?"PATCH":"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
       const d=await r.json().catch(()=>null);if(!r.ok)throw new Error(d?.message||d?.error||"Category save failed");
+      const categoryId=editing||d?.id;
+      if(imageFile&&categoryId){
+        const fd=new FormData();fd.append("file",imageFile);
+        const ir=await fetch("/api/categories/"+categoryId,{method:"POST",body:fd});
+        const id=await ir.json().catch(()=>null);
+        if(!ir.ok)throw new Error(id?.message||id?.error||"Category saved, but image upload failed.");
+      }
       setMessage(editing?"Category updated.":"Category created.");reset();await load();
     }catch(e){setMessage(e instanceof Error?e.message:"Category save failed")}finally{setSaving(false)}
   }
@@ -48,7 +56,16 @@ export default function AdminCategories(){
         <input required maxLength={120} value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Category name" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
         <input required maxLength={160} pattern="[a-z0-9]+(?:-[a-z0-9]+)*" value={form.slug} onChange={e=>setForm({...form,slug:e.target.value.toLowerCase()})} placeholder="slug (e.g. ocean-life)" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
         <input type="number" min="0" value={form.sortOrder} onChange={e=>setForm({...form,sortOrder:e.target.value})} placeholder="Sort order" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
-        <input value={form.imageUrl} onChange={e=>setForm({...form,imageUrl:e.target.value})} placeholder="Image URL (optional)" className="h-10 rounded-xl border border-border bg-background px-3 text-xs sm:col-span-2"/>
+        <div className="rounded-xl border border-dashed border-border bg-background p-3 sm:col-span-2">
+          <div className="flex items-center justify-between gap-3">
+            <div><p className="text-xs font-medium">Category image</p><p className="mt-1 text-[9px] text-muted">JPG, PNG or WebP · up to 25 MB</p></div>
+            <label className="cursor-pointer rounded-lg border border-border px-3 py-2 text-[10px] font-semibold">
+              <IconUpload size={13} className="mr-1 inline"/> {imageFile?"Change image":"Add image"}
+              <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" disabled={saving} onChange={e=>setImageFile(e.target.files?.[0]||null)}/>
+            </label>
+          </div>
+          {imageFile&&<p className="mt-2 truncate text-[9px] text-muted">Selected: {imageFile.name}</p>}
+        </div>
         <textarea maxLength={1000} value={form.description} onChange={e=>setForm({...form,description:e.target.value})} placeholder="Description (optional)" className="min-h-10 rounded-xl border border-border bg-background px-3 py-2 text-xs"/>
       </div>
       <label className="mt-3 flex items-center gap-2 text-xs text-muted"><input type="checkbox" checked={form.isActive} onChange={e=>setForm({...form,isActive:e.target.checked})}/> Active category</label>
@@ -58,7 +75,10 @@ export default function AdminCategories(){
 
     <div className="mt-6 space-y-3">
       {loading?[1,2,3].map(i=><div key={i} className="h-20 animate-pulse rounded-2xl bg-surface"/>):categories.map(c=><article key={c.id} className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border bg-surface p-4">
-        <div className="min-w-0"><div className="flex items-center gap-2"><p className="text-sm font-medium">{c.name}</p><span className={c.isActive?"rounded-full bg-primary/10 px-2 py-1 text-[9px] text-primary":"rounded-full bg-muted/10 px-2 py-1 text-[9px] text-muted"}>{c.isActive?"ACTIVE":"INACTIVE"}</span></div><p className="mt-1 text-[10px] text-muted">{c.slug} · order {c.sortOrder}</p>{c.description&&<p className="mt-1 max-w-2xl text-[10px] text-muted">{c.description}</p>}</div>
+        <div className="flex min-w-0 items-center gap-3">
+          {c.imageUrl?<img src={c.imageUrl} alt="" className="h-12 w-12 shrink-0 rounded-lg border border-border object-cover"/>:<div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-dashed border-border text-[9px] text-muted">No image</div>}
+          <div className="min-w-0"><div className="flex items-center gap-2"><p className="text-sm font-medium">{c.name}</p><span className={c.isActive?"rounded-full bg-primary/10 px-2 py-1 text-[9px] text-primary":"rounded-full bg-muted/10 px-2 py-1 text-[9px] text-muted"}>{c.isActive?"ACTIVE":"INACTIVE"}</span></div><p className="mt-1 text-[10px] text-muted">{c.slug} · order {c.sortOrder}</p>{c.description&&<p className="mt-1 max-w-2xl text-[10px] text-muted">{c.description}</p>}</div>
+        </div>
         <div className="flex items-center gap-2"><button onClick={()=>startEdit(c)} disabled={saving} className="rounded-lg border border-border p-2 text-muted" title="Edit category"><IconEdit size={15}/></button>{c.isActive&&<button onClick={()=>void remove(c.id,c.name)} disabled={saving} className="rounded-lg border border-red-400/20 p-2 text-red-300" title="Deactivate category"><IconTrash size={15}/></button>}</div>
       </article>)}{!loading&&!categories.length&&<div className="rounded-2xl border border-dashed border-border p-10 text-sm text-muted">No categories yet.</div>}
     </div>
