@@ -130,7 +130,7 @@ export class AdminService {
     const [products, categories] = await Promise.all([
       this.prisma.product.findMany({
         where: { status: { not: 'ARCHIVED' } },
-        include: { category: true, prices: { where: { isActive: true }, orderBy: { createdAt: 'desc' }, take: 1 }, inventory: true, media: { orderBy: { sortOrder: 'asc' } }, metrics: true },
+        include: { category: true, prices: { where: { isActive: true }, orderBy: { createdAt: 'desc' }, take: 1 }, inventory: true, variants: { include: { price: true }, orderBy: { createdAt: 'asc' } }, media: { orderBy: { sortOrder: 'asc' } }, metrics: true },
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.category.findMany({ where: { isActive: true }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] }),
