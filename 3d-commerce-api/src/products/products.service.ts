@@ -419,6 +419,10 @@ export class ProductsService {
     });
   }
 
+  getMediaAbsolutePath(storageKey: string) {
+    return this.storage.getAbsolutePath(storageKey);
+  }
+
   async getMediaFile(id: string, mediaId: string) {
     await this.ensureProductExists(id);
     const media = await this.prisma.productMedia.findFirst({
