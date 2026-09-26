@@ -22,7 +22,7 @@ export async function POST(
   try {
     const contentType = request.headers.get("content-type");
     const headers: Record<string, string> = {
-      Authorization: \`Bearer \${token}\`,
+      Authorization: `Bearer ${token}`,
     };
 
     if (contentType) {
@@ -30,7 +30,7 @@ export async function POST(
     }
 
     const response = await fetch(
-      getBackendApiUrl(\`categories/\${encodeURIComponent(id)}/image\`),
+      getBackendApiUrl(`categories/${encodeURIComponent(id)}/image`),
       {
         method: "POST",
         headers,
