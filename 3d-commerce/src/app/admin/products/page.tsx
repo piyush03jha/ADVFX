@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { IconArchive, IconPlus, IconRefresh, IconSearch, IconTrash, IconUpload, IconBox, IconX } from "@tabler/icons-react";
+import { IconArchive, IconPlus, IconRefresh, IconSearch, IconTrash, IconUpload, IconBox, IconX, IconEdit } from "@tabler/icons-react";
 
 type Product={id:string;name:string;slug:string;status:string;isFeatured:boolean;isTrending:boolean;isBestseller:boolean;category?:{id:string;name:string}|null;prices:any[];inventory?:{stock:number;reserved:number;lowStockAt:number}|null;media?:Array<{id:string;type:string;url:string;altText?:string|null;isPrimary:boolean;sortOrder:number}>};
 type ProductFile={id:string;originalName:string;storageUrl:string;format:string;fileType:string;mimeType:string;fileSize:string|number;processingStatus:string};
@@ -16,6 +16,8 @@ export default function AdminProducts(){
   const [assetLoading,setAssetLoading]=useState(false);
   const [assetMessage,setAssetMessage]=useState("");
   const [assetBusy,setAssetBusy]=useState(false);
+  const [editingProduct,setEditingProduct]=useState<string|null>(null);
+  const [editForm,setEditForm]=useState<Record<string,string|boolean>>({});
 
   async function load(){setLoading(true);try{const r=await fetch("/api/admin/catalog",{cache:"no-store"});if(!r.ok)throw new Error();setData(await r.json());setMessage("")}catch{setMessage("Unable to load catalog.")}finally{setLoading(false)}}
   useEffect(()=>{void load()},[]);
@@ -35,6 +37,14 @@ export default function AdminProducts(){
       if(form.price){const pr=await fetch("/api/products/"+p.id+"/pricing",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({currency:"INR",amountMinor:Math.round(Number(form.price)*100)})});if(!pr.ok)throw new Error("Product created but price was not saved.")}
       setForm({name:"",slug:"",description:"",categoryId:"",status:"ACTIVE",price:"",stock:"0",isFeatured:false});setMessage("Product created.");await load()
     }catch(e){setMessage(e instanceof Error?e.message:"Unable to create product.")}finally{setSaving(false)}
+  }
+
+  function startProductEdit(p:Product){
+    setEditingProduct(p.id);setEditForm({name:p.name,slug:p.slug,description:"",categoryId:p.category?.id||"",status:p.status,isFeatured:p.isFeatured,isTrending:p.isTrending,isBestseller:p.isBestseller,badge:"",material:"",scale:"",dimensions:"",height:"",base:"",packaging:"",weight:""});
+  }
+  async function saveProductEdit(id:string){
+    setSaving(true);setMessage("");
+    try{const payload={...editForm,name:String(editForm.name).trim(),slug:String(editForm.slug).trim(),description:String(editForm.description||""),categoryId:String(editForm.categoryId||"")||undefined,status:String(editForm.status),isFeatured:Boolean(editForm.isFeatured),isTrending:Boolean(editForm.isTrending),isBestseller:Boolean(editForm.isBestseller),badge:String(editForm.badge||"")||undefined,material:String(editForm.material||"")||undefined,scale:String(editForm.scale||"")||undefined,dimensions:String(editForm.dimensions||"")||undefined,height:String(editForm.height||"")||undefined,base:String(editForm.base||"")||undefined,packaging:String(editForm.packaging||"")||undefined,weight:String(editForm.weight||"")||undefined};const r=await fetch("/api/products/"+id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});const d=await r.json().catch(()=>null);if(!r.ok)throw new Error(d?.message||"Unable to update product");setMessage("Product updated.");setEditingProduct(null);await load()}catch(e){setMessage(e instanceof Error?e.message:"Unable to update product")}finally{setSaving(false)}
   }
 
   async function openAssets(id:string){
@@ -66,7 +76,14 @@ export default function AdminProducts(){
 
   return <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
     <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-[9px] uppercase tracking-[0.2em] text-primary">Catalog</p><h1 className="mt-2 font-serif text-4xl">Products</h1><p className="mt-2 text-sm text-muted">Create, archive or permanently delete products, feature hero items, change prices and review stock.</p></div><button onClick={()=>void load()} className="rounded-xl border border-border p-2 text-muted"><IconRefresh size={16}/></button></div>
-    <form onSubmit={createProduct} className="mt-7 rounded-2xl border border-border bg-surface p-5"><div className="flex items-center gap-2 text-xs font-semibold"><IconPlus size={16} className="text-primary"/> Add product</div><div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <form onSubmit={createProduct} className="mt-7 rounded-2xl border border-border bg-surface p-5"><div className="flex items-center gap-2 text-xs font-semibold"><IconPlus size={16} className="text-primary"/> Add product</div><div className="mt-4 flex justify-end"><button onClick={()=>editingProduct===p.id?setEditingProduct(null):startProductEdit(p)} disabled={saving} className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-[10px] font-semibold"><IconEdit size={13}/>{editingProduct===p.id?"Close editor":"Edit product"}</button></div>
+      {editingProduct===p.id&&<div className="mt-3 rounded-xl border border-primary/20 bg-background p-4"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {([["name","Name"],["slug","Slug"],["badge","Badge"],["material","Material"],["scale","Scale"],["dimensions","Dimensions"],["height","Height"],["base","Base"],["packaging","Packaging"],["weight","Weight"]] as const).map(([key,label])=><input key={key} value={String(editForm[key]??"")} onChange={e=>setEditForm({...editForm,[key]:e.target.value})} placeholder={label} className="h-9 rounded-lg border border-border bg-surface px-3 text-[10px]"/>) }
+        <select value={String(editForm.status||"ACTIVE")} onChange={e=>setEditForm({...editForm,status:e.target.value})} className="h-9 rounded-lg border border-border bg-surface px-3 text-[10px]"><option value="ACTIVE">Active</option><option value="DRAFT">Draft</option><option value="ARCHIVED">Archived</option></select>
+        <select value={String(editForm.categoryId||"")} onChange={e=>setEditForm({...editForm,categoryId:e.target.value})} className="h-9 rounded-lg border border-border bg-surface px-3 text-[10px]"><option value="">No category</option>{data.categories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>
+        <textarea value={String(editForm.description||"")} onChange={e=>setEditForm({...editForm,description:e.target.value})} placeholder="Description" className="min-h-16 rounded-lg border border-border bg-surface px-3 py-2 text-[10px] sm:col-span-2 lg:col-span-3"/>
+      </div><div className="mt-3 flex flex-wrap gap-4 text-[10px] text-muted">{(["isFeatured","isTrending","isBestseller"] as const).map(k=><label key={k} className="flex items-center gap-2"><input type="checkbox" checked={Boolean(editForm[k])} onChange={e=>setEditForm({...editForm,[k]:e.target.checked})}/>{k.replace("is","")}</label>)}</div><button onClick={()=>void saveProductEdit(p.id)} disabled={saving} className="mt-3 rounded-lg bg-foreground px-3 py-2 text-[10px] font-semibold text-background">{saving?"Saving…":"Save product changes"}</button></div>}
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <input required value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Product name" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
       <input value={form.slug} onChange={e=>setForm({...form,slug:e.target.value})} placeholder="Slug (optional)" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
       <input value={form.price} onChange={e=>setForm({...form,price:e.target.value})} type="number" min="0" placeholder="Price ₹" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
