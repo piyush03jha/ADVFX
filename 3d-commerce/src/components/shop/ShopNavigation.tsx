@@ -1,8 +1,19 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import type { ShopCategory } from "@/config/shop-categories";
+
+type ApiCategory = {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  imageUrl?: string | null;
+  isActive: boolean;
+  sortOrder: number;
+  _count?: { products: number };
+};
 
 interface ShopNavigationProps {
   categories: ShopCategory[];
@@ -12,23 +23,66 @@ interface ShopNavigationProps {
   activeCategory?: string;
 }
 
+type DisplayCategory = ShopCategory & {
+  backendId: string;
+};
+
 export function ShopNavigation({
   categories,
   selectedCategories,
   onCategoryChange,
   onShowAll,
 }: ShopNavigationProps) {
-  const router = useRouter();
-  const isAllActive = selectedCategories.length === 0;
+  const [dynamicCategories, setDynamicCategories] = useState<DisplayCategory[]>(
+    [],
+  );
 
-  const handleCategoryClick = (category: ShopCategory) => {
-    if (category.id === "custom") {
-      router.push("/custom");
-      return;
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      try {
+        const response = await fetch("/api/categories", {
+          cache: "no-store",
+        });
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+
+        if (!cancelled) {
+          const mapped = (Array.isArray(data) ? data : [])
+            .filter((category: ApiCategory) => category.isActive)
+            .map((category: ApiCategory) => ({
+              id: category.name,
+              backendId: category.id,
+              name: category.name,
+              slug: category.slug,
+              description:
+                category.description || "Explore this collection.",
+              image:
+                category.imageUrl ||
+                "/catogeries/1.jpg",
+            }));
+
+          setDynamicCategories(mapped);
+        }
+      } catch {
+        // Fall back to the catalog-derived categories supplied by ShopProductGrid.
+      }
     }
 
-    onCategoryChange(category.id);
-  };
+    void load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const displayCategories =
+    dynamicCategories.length > 0
+      ? dynamicCategories
+      : categories;
 
   return (
     <section
@@ -36,7 +90,7 @@ export function ShopNavigation({
       className="relative overflow-hidden rounded-[28px] border border-border bg-surface/40 p-2 sm:p-3"
     >
       <div className="flex gap-2 overflow-x-auto pb-1 sm:gap-3 xl:grid xl:grid-cols-8 xl:overflow-visible">
-        <CategoryCard active={isAllActive} onClick={onShowAll}>
+        <CategoryCard active={selectedCategories.length === 0} onClick={onShowAll}>
           <div className="relative aspect-[3/4] min-w-[112px] overflow-hidden rounded-2xl bg-background sm:min-w-[132px] xl:min-w-0">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_20%,rgba(139,92,246,0.22),transparent_46%),radial-gradient(circle_at_80%_85%,rgba(139,92,246,0.14),transparent_48%)]" />
             <div className="absolute inset-0 flex items-center justify-center">
@@ -46,16 +100,18 @@ export function ShopNavigation({
             </div>
             <div className="absolute inset-x-0 bottom-0 p-3">
               <p className="text-sm font-medium text-foreground">All Models</p>
-              <p className="mt-0.5 text-[10px] uppercase tracking-[0.12em] text-muted">Full collection</p>
+              <p className="mt-0.5 text-[10px] uppercase tracking-[0.12em] text-muted">
+                Full collection
+              </p>
             </div>
           </div>
         </CategoryCard>
 
-        {categories.map((category) => (
+        {displayCategories.map((category) => (
           <CategoryCard
             key={category.id}
             active={selectedCategories.includes(category.id)}
-            onClick={() => handleCategoryClick(category)}
+            onClick={() => onCategoryChange(category.id)}
           >
             <div className="relative aspect-[3/4] min-w-[112px] overflow-hidden rounded-2xl bg-background sm:min-w-[132px] xl:min-w-0">
               <img
@@ -67,7 +123,9 @@ export function ShopNavigation({
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/5" />
               <div className="absolute inset-x-0 bottom-0 p-3 text-left">
                 <p className="text-sm font-medium text-white">{category.name}</p>
-                <p className="mt-1 line-clamp-2 text-[10px] leading-4 text-white/70">{category.description}</p>
+                <p className="mt-1 line-clamp-2 text-[10px] leading-4 text-white/70">
+                  {category.description}
+                </p>
               </div>
             </div>
           </CategoryCard>
