@@ -101,14 +101,19 @@ export function ProductActions({ product }: ProductActionsProps) {
     <div className="mt-7 w-full">
       {variants.length > 0 ? (
         <div>
-          <p className="mb-3 text-[9px] font-medium uppercase tracking-[0.18em] text-primary">
-            Options
-          </p>
+          <div className="mb-3 flex items-baseline justify-between gap-3">
+            <p className="text-[9px] font-medium uppercase tracking-[0.18em] text-primary">
+              Select size
+            </p>
+            <span className="text-[9px] text-muted">
+              Choose your physical model size
+            </span>
+          </div>
 
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {variants.map((variant) => {
               const selected = variant.id === selectedVariantId;
-              const label = variant.size ?? variant.name;
+              const label = variant.name + (variant.size ? " · " + variant.size : "");
               const priceLabel =
                 variant.price !== undefined
                   ? "₹" + variant.price.toLocaleString("en-IN")
@@ -144,8 +149,9 @@ export function ProductActions({ product }: ProductActionsProps) {
           </div>
         </div>
       ) : (
-        <div className="rounded-xl border border-white/[0.07] bg-white/[0.015] px-4 py-3 text-[10px] uppercase tracking-[0.14em] text-muted">
-          Standard size
+        <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-[10px] uppercase tracking-[0.12em] text-muted">
+          <span className="text-foreground">Size</span>
+          <span className="ml-2">Small · 15 cm · Medium · 20 cm · Large · 25 cm</span>
         </div>
       )}
 
