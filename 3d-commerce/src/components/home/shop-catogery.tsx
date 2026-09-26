@@ -128,7 +128,7 @@ function CategoryCard({
 }) {
   return (
     <Link
-      href={\`/shop?category=\${encodeURIComponent(category.name)}\`}
+      href={`/shop?category=${encodeURIComponent(category.name)}`}
       className="group block"
     >
       <Card
@@ -151,7 +151,7 @@ function CategoryCard({
 
         <div className="absolute right-2.5 top-2.5 sm:right-3 sm:top-3">
           <IconButton
-            label={\`Open \${category.name}\`}
+            label={`Open ${category.name}`}
             size="sm"
             variant="default"
             tabIndex={-1}
