@@ -6,9 +6,14 @@ import { getBackendApiUrl } from "@/lib/backend-api";
 export async function GET(request: Request) {
   const token = (await cookies()).get(ADMIN_COOKIE)?.value;
   if (!token) return NextResponse.json({ error: "Authentication is required." }, { status: 401 });
-  const status = new URL(request.url).searchParams.get("status");
+  const params = new URL(request.url).searchParams;
+  const status = params.get("status");
+  const page = params.get("page") ?? "1";
+  const pageSize = params.get("pageSize") ?? "25";
   try {
-    const suffix = status ? "?status=" + encodeURIComponent(status) : "";
+    const search = new URLSearchParams({ page, pageSize });
+    if (status) search.set("status", status);
+    const suffix = "?" + search.toString();
     const response = await fetch(getBackendApiUrl("orders/admin/list" + suffix), {
       headers: { Authorization: "Bearer " + token },
       cache: "no-store",
