@@ -1,7 +1,7 @@
 "use client";
 
-import { ChangeEvent, DragEvent, useEffect, useRef, useState } from "react";
-import { IconPhoto, IconX } from "@tabler/icons-react";\nimport { useMemo } from "react";
+import { ChangeEvent, DragEvent, useEffect, useMemo, useRef, useState } from "react";
+import { IconPhoto, IconX } from "@tabler/icons-react";
 
 const IMAGE_TYPES = ["image/jpeg", "image/png"];
 
@@ -17,7 +17,18 @@ export function CustomUploadZone({
   onErrorChange: (error: string) => void;
 }) {
   const photoInputRef = useRef<HTMLInputElement>(null);
-  const [dragActive, setDragActive] = useState(false);\n\n  const previews = useMemo(() => files.map((file) => ({ file, url: URL.createObjectURL(file) })), [files]);\n\n  useEffect(() => () => { previews.forEach((preview) => URL.revokeObjectURL(preview.url)); }, [previews]);
+  const [dragActive, setDragActive] = useState(false);
+
+  const previews = useMemo(
+    () => files.map((file) => ({ file, url: URL.createObjectURL(file) })),
+    [files],
+  );
+
+  useEffect(() => {
+    return () => {
+      previews.forEach((preview) => URL.revokeObjectURL(preview.url));
+    };
+  }, [previews]);
 
   function acceptFiles(incoming: File[]) {
     const accepted = incoming.filter((file) => IMAGE_TYPES.includes(file.type));
@@ -87,23 +98,27 @@ export function CustomUploadZone({
 
       {error && <p className="mt-2 text-xs text-error">{error}</p>}
 
-      {files.length > 0 && (
-        <div className="mt-4 grid gap-2 sm:grid-cols-2">
-          {files.map((file, index) => (
+      {previews.length > 0 && (
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {previews.map(({ file, url }, index) => (
             <div
               key={`${file.name}-${index}`}
-              className="flex items-center justify-between gap-2 rounded-xl border border-border bg-background/40 px-3 py-2.5"
+              className="group relative overflow-hidden rounded-2xl border border-border bg-surface"
             >
-              <div className="flex min-w-0 items-center gap-2">
-                <span className="shrink-0 text-primary">
-                  <IconPhoto size={15} />
-                </span>
-                <span className="truncate text-xs text-muted">{file.name}</span>
+              <div className="aspect-square overflow-hidden bg-surface-elevated">
+                <img
+                  src={url}
+                  alt={`Uploaded reference ${index + 1}`}
+                  className="h-full w-full object-cover"
+                />
+              </div>
+              <div className="flex items-center justify-between gap-2 px-3 py-2">
+                <span className="truncate text-[10px] text-muted">{file.name}</span>
               </div>
               <button
                 type="button"
                 onClick={() =>
-                  onFilesChange(files.filter((_, i) => i !== index))
+                  onFilesChange(files.filter((_, fileIndex) => fileIndex !== index))
                 }
                 aria-label={`Remove ${file.name}`}
                 className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full border border-white/20 bg-black/60 text-white backdrop-blur-md hover:bg-black/75"
