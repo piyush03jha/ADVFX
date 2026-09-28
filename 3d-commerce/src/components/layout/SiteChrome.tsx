@@ -1,7 +1,6 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { AuthPrompt } from "@/components/layout/AuthPrompt";
 import { Footer } from "@/components/layout/Footer";
 import { WhatsAppBot } from "@/components/layout/WhatsAppBot";
 
@@ -12,7 +11,6 @@ export function SiteChrome() {
 
   return (
     <>
-      <AuthPrompt />
       <WhatsAppBot />
       <Footer />
     </>
