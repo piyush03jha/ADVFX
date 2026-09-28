@@ -638,10 +638,10 @@ export class ProductsService {
 
     try {
       return await this.prisma.$transaction(async (tx) => {
-        await tx.productMedia.updateMany({
-          where: { productId: id, type: 'IMAGE', isPrimary: true },
-          data: { isPrimary: false },
+        const imageCount = await tx.productMedia.count({
+          where: { productId: id, type: 'IMAGE' },
         });
+        const isFirstImage = imageCount === 0;
 
         return tx.productMedia.create({
           data: {
@@ -649,8 +649,8 @@ export class ProductsService {
             type: 'IMAGE',
             url: stored.storageUrl,
             altText: file.originalname,
-            sortOrder: await tx.productMedia.count({ where: { productId: id, type: 'IMAGE' } }),
-            isPrimary: true,
+            sortOrder: imageCount,
+            isPrimary: isFirstImage,
           },
         });
       });
