@@ -27,26 +27,26 @@
    ========================================================= */
 
 :root {
-  --background: #f7f7f8;
+  --background: #eceef3;
   --surface: #ffffff;
-  --surface-elevated: #f1f1f3;
-  --surface-hover: #e8e8eb;
+  --surface-elevated: #f4f5f8;
+  --surface-hover: #e8eaf0;
 
-  --foreground: #18181b;
-  --muted: #52525b;
-  --muted-foreground: #71717a;
+  --foreground: #14151a;
+  --muted: #4b5262;
+  --muted-foreground: #5c6373;
 
-  --border: #e4e4e7;
-  --border-subtle: rgba(24, 24, 27, 0.08);
-  --border-strong: rgba(24, 24, 27, 0.16);
+  --border: #c9ced9;
+  --border-subtle: rgba(20, 21, 26, 0.12);
+  --border-strong: rgba(20, 21, 26, 0.20);
 
-  --primary: #8b5cf6;
+  --primary: #6d28d9;
   --primary-hover: #7c3aed;
-  --primary-dark: #6d28d9;
+  --primary-dark: #5b21b6;
 
-  --success: #16a34a;
-  --error: #dc2626;
-  --warning: #d97706;
+  --success: #15803d;
+  --error: #b91c1c;
+  --warning: #b45309;
 
   --gradient-primary: linear-gradient(
     135deg,
@@ -95,25 +95,25 @@
    ========================================================= */
 
 .dark {
-  --background: #080808;
-  --surface: #111111;
-  --surface-elevated: #181818;
-  --surface-hover: #1d1d1d;
+  --background: #0a0b0f;
+  --surface: #14161c;
+  --surface-elevated: #1c1f27;
+  --surface-hover: #222631;
 
-  --foreground: #f5f5f5;
-  --muted: #a3a3a3;
-  --muted-foreground: #737373;
+  --foreground: #f4f5f7;
+  --muted: #a1a7b5;
+  --muted-foreground: #8a91a1;
 
-  --border: #262626;
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.14);
+  --border: #2f3441;
+  --border-subtle: rgba(255, 255, 255, 0.10);
+  --border-strong: rgba(255, 255, 255, 0.18);
 
-  --primary: #8b5cf6;
-  --primary-hover: #a78bfa;
-  --primary-dark: #6d28d9;
+  --primary: #a78bfa;
+  --primary-hover: #c4b5fd;
+  --primary-dark: #8b5cf6;
 
-  --success: #22c55e;
-  --error: #ef4444;
+  --success: #4ade80;
+  --error: #f87171;
   --warning: #f59e0b;
 
   --gradient-primary: linear-gradient(
@@ -545,4 +545,33 @@ a {
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
   }
+}
+
+/* Shared accessible surfaces and fields */
+.surface {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 2px rgb(20 21 26 / 0.06), 0 8px 24px rgb(20 21 26 / 0.06);
+}
+
+.dark .surface {
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.04) inset, 0 8px 24px rgb(0 0 0 / 0.35);
+}
+
+.surface-inset {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
+}
+
+.field {
+  background: var(--surface);
+  border: 1px solid var(--input-border);
+}
+
+:root { --input-border: #8a91a1; }
+.dark { --input-border: #666d7f; }
+
+@media (max-width: 640px) {
+  .surface { box-shadow: 0 1px 2px rgb(20 21 26 / 0.05), 0 6px 18px rgb(20 21 26 / 0.05); }
+  .dark .surface { box-shadow: 0 1px 0 rgb(255 255 255 / 0.04) inset, 0 6px 18px rgb(0 0 0 / 0.3); }
 }
