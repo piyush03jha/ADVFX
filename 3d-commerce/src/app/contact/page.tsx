@@ -28,7 +28,7 @@ export default function ContactPage() {
 
         <div className="mt-14 grid gap-4 md:grid-cols-2">
           <a
-            href={`mailto:${contactEmail}`
+            href={`mailto:${contactEmail}`}
             className="group rounded-3xl border border-border bg-surface p-7 transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:bg-surface-elevated"
           >
             <div className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background text-primary">
