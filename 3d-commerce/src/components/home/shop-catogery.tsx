@@ -54,7 +54,11 @@ export function ShopByCategory() {
   }, []);
 
   return (
-    <Section glow className="overflow-hidden py-12 sm:py-20 lg:py-28">
+    <Section
+      id="categories"
+      glow
+      className="scroll-mt-28 overflow-hidden py-12 sm:py-20 lg:py-28"
+    >
       <div className="mb-6 flex items-end justify-between gap-4 sm:mb-9 sm:gap-6">
         <motion.div
           initial={shouldReduceMotion ? false : { opacity: 0, y: 18 }}
