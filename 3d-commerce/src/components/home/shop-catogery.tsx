@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { IconButton } from "@/components/ui/IconButton";
 import { Section } from "@/components/ui/Section";
+import { resolveMediaUrl } from "@/lib/media-url";
 
 type Category = {
   id: string;
