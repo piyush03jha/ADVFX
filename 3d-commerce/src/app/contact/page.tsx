@@ -8,6 +8,7 @@ import {
 } from "@tabler/icons-react";
 
 const whatsappUrl = process.env.NEXT_PUBLIC_WHATSAPP_URL || "/contact";
+const contactEmail = process.env.NEXT_PUBLIC_CONTACT_EMAIL || "contact@advfx.in";
 
 export default function ContactPage() {
   return (
@@ -27,7 +28,7 @@ export default function ContactPage() {
 
         <div className="mt-14 grid gap-4 md:grid-cols-2">
           <a
-            href="mailto:contact@advfx.in"
+            href={`mailto:${contactEmail}`
             className="group rounded-3xl border border-border bg-surface p-7 transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:bg-surface-elevated"
           >
             <div className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background text-primary">
@@ -36,7 +37,7 @@ export default function ContactPage() {
             <h2 className="mt-6 text-xl font-semibold">Email our team</h2>
             <p className="mt-2 text-sm leading-6 text-muted">For custom requests, product questions, and order assistance.</p>
             <span className="mt-7 inline-flex items-center gap-2 text-sm font-medium text-foreground">
-              contact@advfx.in <IconArrowRight size={16} />
+              {contactEmail} <IconArrowRight size={16} />
             </span>
           </a>
 
