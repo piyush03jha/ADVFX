@@ -11,6 +11,7 @@ import { Price } from "@/components/ui/Price";
 import { Rating } from "@/components/ui/Rating";
 import { WishlistButton } from "@/components/ui/WishlistButton";
 import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
 
 import type { StorefrontProduct } from "@/lib/catalog-api";
 
@@ -20,6 +21,7 @@ interface ShopProductCardProps {
 
 export function ShopProductCard({ product }: ShopProductCardProps) {
   const router = useRouter();
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const { addItem } = useCart();
   const [added, setAdded] = useState(false);
   const [buying, setBuying] = useState(false);
