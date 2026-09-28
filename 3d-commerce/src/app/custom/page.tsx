@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
   IconArrowRight,
   IconBrandWhatsapp,
-  IconCheck,
   IconPackage,
   IconMessageCircle,
 } from "@tabler/icons-react";
