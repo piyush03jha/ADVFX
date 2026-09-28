@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Req, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { AdminGuard } from '../auth/guards/admin.guard';
 import { AdminService } from './admin.service';
@@ -76,6 +76,12 @@ export class AdminController {
 
   @Get('catalog')
   catalog() { return this.adminService.catalog(); }
+
+  @Get('notifications/audience')
+  notificationAudience(@Query('search') search?: string) { return this.adminService.notificationAudience(search); }
+
+  @Post('notifications/broadcast')
+  sendAnnouncement(@Req() req: any, @Body() body: { userIds?: string[]; title?: string; message?: string }) { return this.adminService.sendAnnouncement({ userIds: body.userIds, title: body.title ?? '', message: body.message ?? '', actorId: req.user?.id }); }
 
   @Get('analytics')
   analytics(@Query('days') days?: string) { return this.adminService.analytics(Number(days) || 30); }
