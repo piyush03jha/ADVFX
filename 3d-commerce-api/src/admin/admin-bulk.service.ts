@@ -51,6 +51,6 @@ export class AdminBulkService {
 
   private parseCsv(csv:string): string[][] {
     const rows:string[][]=[]; let row:string[]=[]; let cell=''; let quoted=false;
-    for(let i=0;i<csv.length;i++){const c=csv[i]; if(c==='"' && csv[i+1]==='"' && quoted){cell+='"';i++;continue;} if(c==='"'){quoted=!quoted;continue;} if(c===','&&!quoted){row.push(cell);cell='';continue;} if((c==='\\n'||c==='\\r')&&!quoted){if(c==='\r'&&csv[i+1]==='\n')i++;row.push(cell);if(row.some(Boolean))rows.push(row);row=[];cell='';continue;} cell+=c;} row.push(cell);if(row.some(Boolean))rows.push(row);return rows;
+    for(let i=0;i<csv.length;i++){const c=csv[i]; if(c==='"' && csv[i+1]==='"' && quoted){cell+='"';i++;continue;} if(c==='"'){quoted=!quoted;continue;} if(c===','&&!quoted){row.push(cell);cell='';continue;} if((c==='\n'||c==='\r')&&!quoted){if(c==='\r'&&csv[i+1]==='\n')i++;row.push(cell);if(row.some(Boolean))rows.push(row);row=[];cell='';continue;} cell+=c;} row.push(cell);if(row.some(Boolean))rows.push(row);return rows;
   }
 }
