@@ -162,7 +162,7 @@ export function Navbar() {
         <NavItems items={navItems} />
 
         <div className="pointer-events-auto ml-auto flex min-w-0 items-center gap-1 xl:gap-2">
-          <div className="relative hidden min-[1600px]:block">
+          <div className="relative hidden xl:block">
             <form
               onSubmit={handleSearchSubmit}
               className="flex w-[190px] items-center rounded-full border border-border bg-surface/80 px-3"
@@ -235,88 +235,6 @@ export function Navbar() {
           <CartLink itemCount={itemCount} isLoaded={isLoaded} />
         </div>
       </NavBody>
-
-      <div className="pointer-events-auto absolute right-4 top-1/2 z-[70] hidden -translate-y-1/2 lg:block min-[1600px]:hidden">
-        <div className="relative flex items-center">
-          {!isDesktopSearchOpen ? (
-            <button
-              type="button"
-              onClick={() => setIsDesktopSearchOpen(true)}
-              aria-label="Open search"
-              className="flex h-9 w-9 items-center justify-center rounded-full text-muted transition-all duration-300 hover:bg-surface-elevated hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            >
-              <IconSearch size={18} stroke={1.8} />
-            </button>
-          ) : (
-            <form
-              onSubmit={(event) => {
-                handleSearchSubmit(event);
-                setIsDesktopSearchOpen(false);
-              }}
-              role="search"
-              className="flex h-9 w-[min(300px,35vw)] items-center rounded-full border border-border/80 bg-background/95 px-3 shadow-lg backdrop-blur-xl"
-            >
-              <IconSearch
-                size={16}
-                stroke={1.8}
-                className="shrink-0 text-muted"
-              />
-
-              <input
-                id="desktop-collapsed-search"
-                type="search"
-                autoFocus
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Search products"
-                aria-label="Search products"
-                className="h-8 w-full appearance-none bg-transparent px-2 text-xs text-foreground outline-none placeholder:text-muted focus:outline-none focus:ring-0"
-              />
-
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchQuery("");
-                  setIsDesktopSearchOpen(false);
-                }}
-                aria-label="Close search"
-                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-muted hover:bg-surface-elevated hover:text-foreground"
-              >
-                ×
-              </button>
-            </form>
-          )}
-
-          {isDesktopSearchOpen && searchQuery.trim().length >= 3 && (
-            <div className="absolute right-0 top-11 z-[100] w-[min(360px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-border bg-surface-elevated shadow-xl">
-              {suggestions.length > 0 ? (
-                suggestions.map((product) => (
-                  <Link
-                    key={product.id}
-                    href={`/shop?search=${encodeURIComponent(product.name)}`}
-                    onClick={() => {
-                      setSearchQuery("");
-                      setIsDesktopSearchOpen(false);
-                    }}
-                    className="block border-b border-border/60 px-4 py-3 last:border-0 hover:bg-surface"
-                  >
-                    <p className="text-sm font-medium text-foreground">
-                      {product.name}
-                    </p>
-                    <p className="mt-0.5 text-xs text-muted">
-                      {product.category}
-                    </p>
-                  </Link>
-                ))
-              ) : (
-                <p className="px-4 py-3 text-sm text-muted">
-                  No related products found.
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
 
       <MobileNav>
         <MobileNavHeader>
