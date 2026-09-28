@@ -14,7 +14,7 @@ interface Review {
   verifiedPurchase: boolean;
   createdAt: string;
   user: { name?: string | null };
-  product: { id: string; name: string; slug: string };
+  product: { id: string; name: string; slug: string; media?: Array<{ url: string; altText?: string | null }> };
 }
 
 function Stars({ rating }: { rating: number }) {
@@ -73,9 +73,9 @@ function ReviewCard({ review, index }: { review: Review; index: number }) {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.2 }}
       transition={{ duration: 0.6, delay: index * 0.08 }}
-      className="group flex h-full min-h-[320px] min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-surface/60 p-6 transition-all duration-500 hover:border-primary/25 hover:bg-surface sm:min-h-[340px] lg:min-h-[360px]"
+      className="group flex h-full min-h-[390px] min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-surface/60 p-6 transition-all duration-500 hover:border-primary/25 hover:bg-surface sm:min-h-[410px] lg:min-h-[420px]"
     >
-      <div className="flex shrink-0 items-center justify-between">
+      <div className="relative mb-5 aspect-[16/9] overflow-hidden rounded-xl border border-border bg-surface-elevated">\n        {review.product.media?.[0]?.url ? <img src={review.product.media[0].url} alt={review.product.media[0].altText || review.product.name} className="h-full w-full object-cover" loading="lazy" /> : <div className="flex h-full items-center justify-center text-[9px] uppercase tracking-[0.14em] text-muted">Customer review</div>}\n      </div>\n\n      <div className="flex shrink-0 items-center justify-between">
         <Stars rating={review.rating} />
         <IconArrowUpRight
           size={17}
