@@ -62,7 +62,7 @@ export function ShopNavigation({
               description:
                 category.description || "Explore this collection.",
               image:
-                category.imageUrl ||
+                resolveMediaUrl(category.imageUrl) ||
                 "/catogeries/1.jpg",
               matchTerms: [category.name, category.slug],
             }));
