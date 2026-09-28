@@ -62,7 +62,7 @@ export function Footer() {
               </Link>
 
               <p className="mt-4 max-w-xs text-xs leading-5 text-muted sm:mt-5 sm:text-sm sm:leading-6">
-                Premium 3D models, digital collectibles, and custom creations built with obsessive attention to detail.
+                Premium physical 3D models, collectibles, and custom creations built with obsessive attention to detail.
               </p>
 
               <Link
