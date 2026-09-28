@@ -55,11 +55,6 @@ export class ProductsController {
     return this.productsService.getMetrics(id);
   }
 
-  @Get(':id/reviews')
-  getReviews(@Param('id') id: string) {
-    return this.productsService.getReviews(id);
-  }
-
   @UseGuards(AuthGuard, AdminGuard)
   @Get('admin/reviews')
   findAllAdminReviews() {
@@ -73,6 +68,11 @@ export class ProductsController {
     @Body('isPublished') isPublished: boolean,
   ) {
     return this.productsService.setReviewPublished(reviewId, isPublished);
+  }
+
+  @Get(':id/reviews')
+  getReviews(@Param('id') id: string) {
+    return this.productsService.getReviews(id);
   }
 
   @UseGuards(CustomerAuthGuard)
