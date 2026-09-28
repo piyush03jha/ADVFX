@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 const fraunces = Fraunces({ variable: "--font-fraunces", subsets: ["latin"], axes: ["opsz"] });
 
 export const metadata: Metadata = {
-  title: "FORMA — Premium 3D Models & Collectibles",
+  title: "Voxel3D — Premium 3D Models & Collectibles",
   description: "Premium physical 3D models, custom 3D creations, and collectibles built with obsessive attention to detail.",
 };
 
