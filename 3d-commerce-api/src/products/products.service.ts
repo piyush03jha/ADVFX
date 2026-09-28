@@ -331,7 +331,6 @@ export class ProductsService {
         comment: true,
         photoUrl: true,
         verifiedPurchase: true,
-        photoUrl: true,
         createdAt: true,
         user: { select: { name: true } },
         product: { select: { id: true, name: true, slug: true, media: { where: { type: 'IMAGE' }, orderBy: { sortOrder: 'asc' }, take: 1, select: { url: true, altText: true } } } },
