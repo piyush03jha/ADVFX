@@ -60,6 +60,21 @@ export class ProductsController {
     return this.productsService.getReviews(id);
   }
 
+  @UseGuards(AuthGuard, AdminGuard)
+  @Get('admin/reviews')
+  findAllAdminReviews() {
+    return this.productsService.findAllAdminReviews();
+  }
+
+  @UseGuards(AuthGuard, AdminGuard)
+  @Patch('admin/reviews/:reviewId')
+  setReviewPublished(
+    @Param('reviewId') reviewId: string,
+    @Body('isPublished') isPublished: boolean,
+  ) {
+    return this.productsService.setReviewPublished(reviewId, isPublished);
+  }
+
   @UseGuards(CustomerAuthGuard)
   @Post(':id/reviews')
   createReview(
