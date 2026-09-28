@@ -15,7 +15,7 @@ export class AdminBulkService {
   }
 
   async duplicate(actorId: string|undefined, productId: string) {
-    const source = await this.prisma.product.findUnique({ where:{id:productId}, include:{variants:{include:{price:true}}, prices:{where:{isActive:true}}, media:{orderBy:{sortOrder:'asc'}}} });
+    const source = await this.prisma.product.findUnique({ where:{id:productId}, include:{inventory:true,variants:{include:{price:true}}, prices:{where:{isActive:true}}, media:{orderBy:{sortOrder:'asc'}}} });
     if (!source) throw new NotFoundException('Product not found');
     const baseSlug = source.slug+'-copy';
     let slug=baseSlug; let suffix=2;
@@ -51,6 +51,6 @@ export class AdminBulkService {
 
   private parseCsv(csv:string): string[][] {
     const rows:string[][]=[]; let row:string[]=[]; let cell=''; let quoted=false;
-    for(let i=0;i<csv.length;i++){const c=csv[i]; if(c==='"' && csv[i+1]==='"' && quoted){cell+='"';i++;continue;} if(c==='"'){quoted=!quoted;continue;} if(c===','&&!quoted){row.push(cell);cell='';continue;} if((c==='\\n'||c==='\\r')&&!quoted){if(c==='\\r'&&csv[i+1]==='\\n')i++;row.push(cell);if(row.some(Boolean))rows.push(row);row=[];cell='';continue;} cell+=c;} row.push(cell);if(row.some(Boolean))rows.push(row);return rows;
+    for(let i=0;i<csv.length;i++){const c=csv[i]; if(c==='"' && csv[i+1]==='"' && quoted){cell+='"';i++;continue;} if(c==='"'){quoted=!quoted;continue;} if(c===','&&!quoted){row.push(cell);cell='';continue;} if((c==='\\n'||c==='\\r')&&!quoted){if(c==='\r'&&csv[i+1]==='\n')i++;row.push(cell);if(row.some(Boolean))rows.push(row);row=[];cell='';continue;} cell+=c;} row.push(cell);if(row.some(Boolean))rows.push(row);return rows;
   }
 }
