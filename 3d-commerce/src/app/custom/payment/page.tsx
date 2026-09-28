@@ -94,6 +94,8 @@ function CustomPaymentPageContent() {
     setProcessing(true);
     setPaymentState("creating");
     setError(null);
+    const attemptKey = idempotencyKey ?? window.crypto.randomUUID();
+    setIdempotencyKey(attemptKey);
 
     try {
       const checkout = await fetch(
@@ -103,7 +105,7 @@ function CustomPaymentPageContent() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             shippingAddressId: selectedAddressId,
-            idempotencyKey: idempotencyKey ?? window.crypto.randomUUID(),
+            idempotencyKey: attemptKey,
           }),
           cache: "no-store",
         },
@@ -122,7 +124,6 @@ function CustomPaymentPageContent() {
       }
 
       const order = checkoutBody.order;
-      if (!idempotencyKey) setIdempotencyKey(idempotencyKey ?? window.crypto.randomUUID());
       setPaymentOrderId(order.id);
       if (order.totalMinor !== amountMinor || order.currency !== currency) {
         throw new Error("The custom price changed. Please return to the custom builder and refresh.");
