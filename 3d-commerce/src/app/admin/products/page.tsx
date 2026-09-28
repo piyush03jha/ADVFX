@@ -12,7 +12,7 @@ type Category={id:string;name:string};
 export default function AdminProducts(){
   const [data,setData]=useState<{products:Product[];categories:Category[]}>({products:[],categories:[]});
   const [search,setSearch]=useState(""); const [loading,setLoading]=useState(true); const [saving,setSaving]=useState(false); const [message,setMessage]=useState("");
-  const [form,setForm]=useState({name:"",slug:"",description:"",categoryId:"",status:"ACTIVE",price:"",stock:"0",isFeatured:false,material:"",scale:"",dimensions:"",height:"",base:"",packaging:"",weight:""});
+  const [form,setForm]=useState({name:"",slug:"",description:"",categoryId:"",status:"ACTIVE",stock:"0",isFeatured:false,material:"",scale:"",dimensions:"",height:"",base:"",packaging:"",weight:""});
   const [productImages,setProductImages]=useState<File[]>([]);
   const [productGlb,setProductGlb]=useState<File|null>(null);
   const [assetProductId,setAssetProductId]=useState<string|null>(null);
@@ -30,7 +30,6 @@ export default function AdminProducts(){
   useEffect(()=>{void load()},[]);
   const rows=useMemo(()=>data.products.filter(p=>[p.name,p.slug,p.category?.name||""].join(" ").toLowerCase().includes(search.trim().toLowerCase())),[data.products,search]);
 
-  async function updatePrice(id:string,value:string){const amount=Number(value);if(!Number.isFinite(amount)||amount<0)return;setSaving(true);try{const r=await fetch("/api/products/"+id+"/pricing",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({currency:"INR",amountMinor:Math.round(amount*100)})});if(!r.ok)throw new Error();setMessage("Price updated.");await load()}catch{setMessage("Unable to update price.")}finally{setSaving(false)}}
   async function updateProduct(id:string,patch:Record<string,unknown>){setSaving(true);try{const r=await fetch("/api/products/"+id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(patch)});if(!r.ok)throw new Error();setMessage("Product updated.");await load()}catch{setMessage("Unable to update product.")}finally{setSaving(false)}}
   async function updateVariant(productId:string,variantId:string,payload:Record<string,unknown>){
     setSaving(true);setMessage("");
@@ -52,11 +51,6 @@ export default function AdminProducts(){
       if(!r.ok){const d=await r.json().catch(()=>null);throw new Error(d?.message||"Create failed")}
       const p=await r.json();
 
-      if(form.price){
-        const amount=Number(form.price);
-        const pr=await fetch("/api/products/"+p.id+"/pricing",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({currency:"INR",amountMinor:Math.round(amount*100)})});
-        if(!pr.ok)throw new Error("Product created but base price was not saved.");
-      }
 
       const sizeOptions = [
         { name: "Small", price: createVariantPrices.small, stock: createVariantStock.small },
@@ -99,7 +93,7 @@ export default function AdminProducts(){
           throw new Error(md?.message||"GLB uploaded, but model preview could not be linked.");
         }
       }
-      setForm({name:"",slug:"",description:"",categoryId:"",status:"ACTIVE",price:"",stock:"0",isFeatured:false,material:"",scale:"",dimensions:"",height:"",base:"",packaging:"",weight:""});
+      setForm({name:"",slug:"",description:"",categoryId:"",status:"ACTIVE",stock:"0",isFeatured:false,material:"",scale:"",dimensions:"",height:"",base:"",packaging:"",weight:""});
       setProductImages([]);
       setProductGlb(null);
       setCreateVariantPrices({small:"",medium:"",large:""});
@@ -175,9 +169,9 @@ export default function AdminProducts(){
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <input required value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Product name" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
       <input value={form.slug} onChange={e=>setForm({...form,slug:e.target.value})} placeholder="Slug (optional)" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
-      <input value={form.price} onChange={e=>setForm({...form,price:e.target.value})} type="number" min="0" placeholder="Price ₹" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/><div className="sm:col-span-2 lg:col-span-4 rounded-xl border border-primary/15 bg-primary/5 p-3">
+      <div className="sm:col-span-2 lg:col-span-4 rounded-xl border border-primary/15 bg-primary/5 p-3">
         <div className="flex items-center justify-between gap-3">
-          <div><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">Size-specific pricing</p><p className="mt-1 text-[9px] text-muted">Set a different customer price for each physical size. Leave a field empty to use the base product price.</p></div>
+          <div><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">Size-specific pricing</p><p className="mt-1 text-[9px] text-muted">Set the customer price for each physical size.</p></div>
         </div>
         <div className="mt-3 grid gap-2 sm:grid-cols-3">
           <input value={createVariantPrices.small} onChange={e=>setCreateVariantPrices({...createVariantPrices,small:e.target.value})} type="number" min="0" step="1" placeholder="Small · 15 cm · ₹" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
@@ -219,7 +213,7 @@ export default function AdminProducts(){
       </div>
     </div><button disabled={saving} className="mt-4 rounded-xl bg-foreground px-4 py-2.5 text-xs font-semibold text-background">{saving?"Creating product…":"Create product"}</button></form>
     <div className="mt-6 flex items-center gap-2 rounded-xl border border-border bg-surface px-3"><IconSearch size={15} className="text-muted"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search products…" className="h-10 flex-1 bg-transparent text-xs outline-none"/></div>
-    <div className="mt-5 space-y-3">{loading?[1,2,3].map(i=><div key={i} className="h-28 animate-pulse rounded-2xl bg-surface"/>):rows.map(p=><AdminProductCard key={p.id} product={p} saving={saving} editingProduct={editingProduct} assetProductId={assetProductId} assetFiles={assetFiles} assetLoading={assetLoading} assetBusy={assetBusy} assetMessage={assetMessage} uploadProgress={uploadProgress} editForm={editForm} updatePrice={updatePrice} updateProduct={updateProduct} updateVariant={updateVariant} deleteProduct={deleteProduct} startProductEdit={startProductEdit} openAssets={openAssets} uploadImages={uploadImages} uploadGlb={uploadGlb} removeMedia={removeMedia} removeFile={removeFile} setEditingProduct={setEditingProduct} setEditForm={setEditForm} saveProductEdit={saveProductEdit}/>)}{!loading&&!rows.length&&<div className="rounded-2xl border border-dashed border-border p-10 text-sm text-muted">No products found.</div>}</div>
+    <div className="mt-5 space-y-3">{loading?[1,2,3].map(i=><div key={i} className="h-28 animate-pulse rounded-2xl bg-surface"/>):rows.map(p=><AdminProductCard key={p.id} product={p} saving={saving} editingProduct={editingProduct} assetProductId={assetProductId} assetFiles={assetFiles} assetLoading={assetLoading} assetBusy={assetBusy} assetMessage={assetMessage} uploadProgress={uploadProgress} editForm={editForm} updateProduct={updateProduct} updateVariant={updateVariant} deleteProduct={deleteProduct} startProductEdit={startProductEdit} openAssets={openAssets} uploadImages={uploadImages} uploadGlb={uploadGlb} removeMedia={removeMedia} removeFile={removeFile} setEditingProduct={setEditingProduct} setEditForm={setEditForm} saveProductEdit={saveProductEdit}/>)}{!loading&&!rows.length&&<div className="rounded-2xl border border-dashed border-border p-10 text-sm text-muted">No products found.</div>}</div>
     {message&&<p className="mt-4 text-xs text-muted">{message}</p>}
   </main>
 }
