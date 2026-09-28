@@ -107,7 +107,10 @@ export class ProductsController {
   @UseGuards(AuthGuard, AdminGuard)
   @Post(':id/variants')
   createVariant(@Param('id') id: string, @Body() dto: UpsertVariantDto) {
-    return this.productsService.createVariant(id, dto);
+    if (!dto.name?.trim()) {
+      throw new BadRequestException('Variant name is required');
+    }
+    return this.productsService.createVariant(id, { ...dto, name: dto.name });
   }
 
   @UseGuards(AuthGuard, AdminGuard)
