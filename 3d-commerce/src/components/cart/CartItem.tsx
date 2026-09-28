@@ -95,8 +95,8 @@ export function CartItem({ item }: CartItemProps) {
   }
 
   return (
-    <article className="group relative my-2 grid min-w-0 grid-cols-[88px_minmax(0,1fr)] gap-4 overflow-hidden rounded-2xl border border-white/[0.08] bg-[linear-gradient(135deg,hsl(var(--foreground)/0.045),hsl(var(--background)/0.018)_55%,hsl(var(--primary)/0.055))] px-3 py-4 shadow-[0_14px_45px_rgba(0,0,0,0.1)] transition-all hover:border-primary/20 hover:shadow-[0_18px_55px_rgba(0,0,0,0.15)] sm:grid-cols-[116px_minmax(0,1fr)_auto] sm:gap-5 sm:px-4 sm:py-5">
-      <div className="relative aspect-square overflow-hidden rounded-xl border border-white/[0.07] bg-[linear-gradient(145deg,hsl(var(--foreground)/0.06),hsl(var(--background)/0.02))]">
+    <article className="group relative my-2 grid min-w-0 grid-cols-[88px_minmax(0,1fr)] gap-4 overflow-hidden rounded-2xl border border-border bg-[linear-gradient(135deg,rgb(from var(--foreground) r g b / 0.045),rgb(from var(--background) r g b / 0.018)_55%,rgb(from var(--primary) r g b / 0.055))] px-3 py-4 shadow-[0_14px_45px_rgba(0,0,0,0.1)] transition-all hover:border-primary/20 hover:shadow-[0_18px_55px_rgba(0,0,0,0.15)] sm:grid-cols-[116px_minmax(0,1fr)_auto] sm:gap-5 sm:px-4 sm:py-5">
+      <div className="relative aspect-square overflow-hidden rounded-xl border border-border bg-[linear-gradient(145deg,rgb(from var(--foreground) r g b / 0.06),rgb(from var(--background) r g b / 0.02))]">
         <Image
           src={imageSrc}
           alt={item.product.name}
@@ -109,7 +109,7 @@ export function CartItem({ item }: CartItemProps) {
       <div className="min-w-0 py-0.5">
         <div className="flex min-w-0 items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="truncate text-[9px] uppercase tracking-[0.16em] text-primary">
+            <p className="truncate text-[11px] uppercase tracking-[0.16em] text-primary">
               {item.product.category}
             </p>
             <h3 className="mt-1.5 truncate text-sm font-medium text-foreground sm:text-base">
@@ -127,14 +127,14 @@ export function CartItem({ item }: CartItemProps) {
           </button>
         </div>
 
-        <div className="mt-2 flex items-center gap-2 text-[10px] text-muted">
+        <div className="mt-2 flex items-center gap-2 text-[11px] text-muted">
           <span>Size: {getSizeLabel(item.size)}</span>
           <span className="h-1 w-1 rounded-full bg-muted/35" />
           <span>₹{item.product.price.toLocaleString("en-IN")} each</span>
         </div>
 
         <div className="mt-5 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex h-9 items-center rounded-full border border-white/[0.08] bg-white/[0.025]">
+          <div className="flex h-9 items-center rounded-full border border-border bg-surface">
             <button
               type="button"
               disabled={isSyncing || isMoving || isWishlistSyncing}
@@ -176,7 +176,7 @@ export function CartItem({ item }: CartItemProps) {
             type="button"
             onClick={() => void removeItem(item.key)}
             disabled={isSyncing || isMoving || isWishlistSyncing}
-            className="inline-flex items-center gap-1.5 text-[9px] uppercase tracking-[0.13em] text-muted transition-colors hover:text-red-400 disabled:pointer-events-none disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.13em] text-muted transition-colors hover:text-red-400 disabled:pointer-events-none disabled:opacity-50"
           >
             <IconTrash size={13} stroke={1.5} />
             Remove
@@ -185,7 +185,7 @@ export function CartItem({ item }: CartItemProps) {
           type="button"
           onClick={() => void moveToWishlist()}
           disabled={isSyncing || isMoving || isWishlistSyncing}
-          className="mt-3 inline-flex items-center gap-1.5 text-[9px] uppercase tracking-[0.13em] text-muted transition-colors hover:text-primary disabled:pointer-events-none disabled:opacity-50"
+          className="mt-3 inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.13em] text-muted transition-colors hover:text-primary disabled:pointer-events-none disabled:opacity-50"
         >
           <IconHeart size={13} stroke={1.5} />
           {isMoving ? "Moving..." : "Move to wishlist"}
