@@ -3,13 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { IconChartBar, IconChevronRight, IconLayoutDashboard, IconLogout, IconMapPin, IconPackage, IconSettings, IconShoppingBag, IconSearch, IconMessageCircle, IconRotate2, IconTags, IconUsers, IconX, IconCategory } from "@tabler/icons-react";
+import { IconChartBar, IconChevronRight, IconLayoutDashboard, IconLogout, IconMapPin, IconPackage, IconSettings, IconShoppingBag, IconSearch, IconMessageCircle, IconRotate2, IconTags, IconUsers, IconX, IconCategory, IconClipboardList, IconHistory, IconCpu } from "@tabler/icons-react";
 
 type AdminUser={id:string;name:string|null;email:string;role:string};
 
 const nav=[
   {href:"/admin",label:"Overview",icon:IconLayoutDashboard},
   {href:"/admin/products",label:"Catalog",icon:IconPackage},
+  {href:"/admin/catalog-tools",label:"Catalog operations",icon:IconClipboardList},
   {href:"/admin/categories",label:"Categories",icon:IconCategory},
   {href:"/admin/orders",label:"Orders",icon:IconShoppingBag},
   {href:"/admin/custom-requests",label:"Custom requests",icon:IconChartBar},
@@ -20,6 +21,8 @@ const nav=[
   {href:"/admin/reviews",label:"Reviews",icon:IconMessageCircle},
   {href:"/admin/returns",label:"Returns",icon:IconRotate2},
   {href:"/admin/commerce",label:"Promotions & tax",icon:IconTags},
+  {href:"/admin/processing",label:"3D processing",icon:IconCpu},
+  {href:"/admin/audit",label:"Audit log",icon:IconHistory},
 ];
 
 export default function AdminLayout({children}:{children:React.ReactNode}){
