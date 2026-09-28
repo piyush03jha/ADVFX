@@ -427,6 +427,9 @@ function CartLink({
   itemCount: number;
   isLoaded: boolean;
 }) {
+  const { isAuthenticated } = useAuth();
+  const href = isAuthenticated ? "/cart" : "/login?returnTo=%2Fcart";
+
   return (
     <Link
       href={href}
