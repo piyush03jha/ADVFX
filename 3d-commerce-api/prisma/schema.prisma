@@ -224,7 +224,8 @@ model Category {
  */
 
 model Wishlist {
-  id String @id @default(cuid())  userId String @unique
+  id String @id @default(cuid())
+  userId String @unique
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   items WishlistItem[]
@@ -621,9 +622,11 @@ model ProductVariantPrice {
   variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
 
   currency       String @default("INR")
-  amountMinor    Int  compareAtMinor Int?
+  amountMinor    Int
+  compareAtMinor Int?
 
-  isActive  Boolean  @default(true)  createdAt DateTime @default(now())
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([currency, isActive])
@@ -819,7 +822,8 @@ enum ShipmentStatus {
   LABEL_CREATED
   SHIPPED
   IN_TRANSIT
-  DELIVERED  EXCEPTION
+  DELIVERED
+  EXCEPTION
 }
 
 /** * ============================================================
@@ -1017,7 +1021,8 @@ model ProductFile {
   imageWidth      Int?
   imageHeight     Int?
   imageChannels   Int?
-  imageHasAlpha   Boolean?  imageColorSpace String?
+  imageHasAlpha   Boolean?
+  imageColorSpace String?
 
   convertedFromId String?
   convertedFrom   ProductFile? @relation("ConvertedFiles", fields: [convertedFromId], references: [id])
@@ -1220,7 +1225,8 @@ enum ProcessingStatus {
   PENDING
   PROCESSING
   COMPLETED
-  FAILED}
+  FAILED
+}
 
 /**
  * ============================================================
@@ -1419,7 +1425,8 @@ model Notification {
 }
 
 enum NotificationType {
-  ORDER_CREATED  ORDER_CONFIRMED
+  ORDER_CREATED
+  ORDER_CONFIRMED
   ORDER_PROCESSING
   ORDER_SHIPPED
   ORDER_DELIVERED
