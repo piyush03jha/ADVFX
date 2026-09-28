@@ -1,0 +1,2 @@
+import { NextRequest, NextResponse } from 'next/server';
+export async function POST(request:NextRequest){const api=process.env.BACKEND_API_URL||'http://localhost:4000';const r=await fetch(api+'/admin/products/bulk',{method:'POST',headers:{'Content-Type':'application/json',cookie:request.headers.get('cookie')||''},body:await request.text()});return new NextResponse(await r.text(),{status:r.status,headers:{'Content-Type':r.headers.get('content-type')||'application/json'}})}
