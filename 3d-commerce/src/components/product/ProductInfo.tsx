@@ -116,7 +116,7 @@ export function ProductInfo({
 
       <div className="mt-7 flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3">
-          <div className="rounded-full bg-yellow-400 px-5 py-2 text-2xl font-bold tracking-tight text-black shadow-[0_8px_24px_rgba(250,204,21,0.16)]">
+          <div className="text-2xl font-bold tracking-tight text-foreground">
             ₹{selectedPrice.toLocaleString("en-IN")}
           </div>
 
