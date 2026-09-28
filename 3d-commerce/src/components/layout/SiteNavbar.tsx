@@ -236,71 +236,84 @@ export function Navbar() {
         </div>
       </NavBody>
 
-      <div className="pointer-events-none hidden lg:flex min-[1600px]:hidden absolute right-4 top-1/2 -translate-y-1/2 z-[70]">
-        <div className="pointer-events-auto relative">
-          <button
-            type="button"
-            onClick={() => {
-              setIsDesktopSearchOpen((open) => !open);
-            }}
-            aria-label="Open search"
-            className="flex h-9 w-9 items-center justify-center rounded-full text-muted transition-all duration-300 hover:bg-surface-elevated hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          >
-            <IconSearch size={18} stroke={1.8} />
-          </button>
-
-          {isDesktopSearchOpen && (
+      <div className="pointer-events-auto absolute right-4 top-1/2 z-[70] hidden -translate-y-1/2 lg:block min-[1600px]:hidden">
+        <div className="relative flex items-center">
+          {!isDesktopSearchOpen ? (
+            <button
+              type="button"
+              onClick={() => setIsDesktopSearchOpen(true)}
+              aria-label="Open search"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-muted transition-all duration-300 hover:bg-surface-elevated hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <IconSearch size={18} stroke={1.8} />
+            </button>
+          ) : (
             <form
               onSubmit={(event) => {
                 handleSearchSubmit(event);
                 setIsDesktopSearchOpen(false);
               }}
               role="search"
-              className="absolute right-0 top-11 w-[min(360px,calc(100vw-2rem))] overflow-hidden rounded-full border border-border/80 bg-background/95 px-3 shadow-xl backdrop-blur-xl"
+              className="flex h-9 w-[min(300px,35vw)] items-center rounded-full border border-border/80 bg-background/95 px-3 shadow-lg backdrop-blur-xl"
             >
-            <div className="flex h-10 items-center">
               <IconSearch
                 size={16}
                 stroke={1.8}
                 className="shrink-0 text-muted"
               />
+
               <input
                 id="desktop-collapsed-search"
                 type="search"
+                autoFocus
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="Search products"
                 aria-label="Search products"
                 className="h-8 w-full appearance-none bg-transparent px-2 text-xs text-foreground outline-none placeholder:text-muted focus:outline-none focus:ring-0"
               />
-            </div>
 
-            {searchQuery.trim().length >= 3 && (
-              <div className="absolute left-0 right-0 top-12 overflow-hidden rounded-2xl border border-border bg-surface-elevated shadow-xl">
-                {suggestions.length > 0 ? (
-                  suggestions.map((product) => (
-                    <Link
-                      key={product.id}
-                      href={`/shop?search=${encodeURIComponent(product.name)}`}
-                      onClick={() => setSearchQuery("")}
-                      className="block border-b border-border/60 px-4 py-3 last:border-0 hover:bg-surface"
-                    >
-                      <p className="text-sm font-medium text-foreground">
-                        {product.name}
-                      </p>
-                      <p className="mt-0.5 text-xs text-muted">
-                        {product.category}
-                      </p>
-                    </Link>
-                  ))
-                ) : (
-                  <p className="px-4 py-3 text-sm text-muted">
-                    No related products found.
-                  </p>
-                )}
-              </div>
-            )}
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery("");
+                  setIsDesktopSearchOpen(false);
+                }}
+                aria-label="Close search"
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-muted hover:bg-surface-elevated hover:text-foreground"
+              >
+                ×
+              </button>
             </form>
+          )}
+
+          {isDesktopSearchOpen && searchQuery.trim().length >= 3 && (
+            <div className="absolute right-0 top-11 z-[100] w-[min(360px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-border bg-surface-elevated shadow-xl">
+              {suggestions.length > 0 ? (
+                suggestions.map((product) => (
+                  <Link
+                    key={product.id}
+                    href={`/shop?search=${encodeURIComponent(product.name)}`}
+                    onClick={() => {
+                      setSearchQuery("");
+                      setIsDesktopSearchOpen(false);
+                    }}
+                    className="block border-b border-border/60 px-4 py-3 last:border-0 hover:bg-surface"
+                  >
+                    <p className="text-sm font-medium text-foreground">
+                      {product.name}
+                    </p>
+                    <p className="mt-0.5 text-xs text-muted">
+                      {product.category}
+                    </p>
+                  </Link>
+                ))
+              ) : (
+                <p className="px-4 py-3 text-sm text-muted">
+                  No related products found.
+                </p>
+              )}
+            </div>
           )}
         </div>
       </div>
