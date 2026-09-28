@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import type { ShopCategory } from "@/config/shop-categories";
+import { resolveMediaUrl } from "@/lib/media-url";
 
 type ApiCategory = {
   id: string;
