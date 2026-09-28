@@ -79,7 +79,7 @@ export class AdminService {
     return { settings, featured };
   }
 
-  async updateSettings(input: { hero?: unknown; storefront?: unknown }) {
+  async updateSettings(input: { hero?: unknown; storefront?: unknown; siteContent?: unknown; privacy?: unknown; terms?: unknown; refund?: unknown; shipping?: unknown; faq?: unknown }) {
     const updates = Object.entries(input).filter(([, value]) => value !== undefined).map(([key, value]) => ({ key, value: JSON.stringify(value) }));
     if (updates.length) {
       await this.prisma.$transaction(updates.map((item) => this.prisma.siteSetting.upsert({
