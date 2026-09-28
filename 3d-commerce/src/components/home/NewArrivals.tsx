@@ -9,7 +9,7 @@ import { Section } from "@/components/ui/Section";
 
 import { useEffect, useState } from "react";
 import { mapCatalogProducts, type CatalogProduct, type StorefrontProduct } from "@/lib/catalog-api";
-import { ProductCard } from "./MostPurchased";
+import { ProductCard } from "./ProductCard";
 
 export function NewArrivals() {
   const shouldReduceMotion = useReducedMotion();
