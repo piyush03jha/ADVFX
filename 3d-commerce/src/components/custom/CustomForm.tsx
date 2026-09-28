@@ -307,12 +307,12 @@ export function CustomForm({
         <span className="text-foreground">Custom</span>
       </div>
 
-      <div className="grid overflow-hidden rounded-[24px] border border-border bg-surface/55 shadow-[0_30px_100px_rgba(0,0,0,0.24)] backdrop-blur-xl lg:grid-cols-[minmax(0,1.08fr)_minmax(440px,0.92fr)]">
-        <div className="relative flex min-h-0 flex-col bg-[#0b0b0c] p-3 sm:p-4 lg:h-[calc(100svh-120px)] lg:max-h-[820px] lg:min-h-[620px]">
-          <div className="relative min-h-0 flex-1 overflow-hidden rounded-[18px] border border-white/10 bg-[#151516]">
+      <div className="grid overflow-hidden rounded-[24px] border border-border bg-surface/80 shadow-[0_30px_100px_rgba(0,0,0,0.12)] backdrop-blur-xl lg:grid-cols-[minmax(0,1.08fr)_minmax(440px,0.92fr)]">
+        <div className="relative flex min-h-0 flex-col bg-surface p-3 sm:p-4 lg:h-[calc(100svh-120px)] lg:max-h-[820px] lg:min-h-[620px]">
+          <div className="relative min-h-0 flex-1 overflow-hidden rounded-[18px] border border-border bg-surface-elevated">
             <img src={activeGallery.image} alt={activeGallery.label} className="absolute inset-0 h-full w-full object-contain transition duration-500" />
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-black/10" />
-            <div className="absolute left-4 top-4 rounded-full border border-white/15 bg-black/35 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-white/80 backdrop-blur-md">
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-foreground/35 via-transparent to-foreground/5" />
+            <div className="absolute left-4 top-4 rounded-full border border-white/15 bg-foreground/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-foreground/80 backdrop-blur-md">
               Custom 3D Studio
             </div>
             <button type="button" onClick={previousImage} aria-label="Previous product example" className="absolute left-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl border border-white/15 bg-black/35 text-white backdrop-blur-md sm:left-5">
@@ -322,10 +322,10 @@ export function CustomForm({
               <span className="text-xl">›</span>
             </button>
             <div className="absolute bottom-4 left-4 right-4 sm:bottom-5 sm:left-5 sm:right-5">
-              <p className="text-[10px] uppercase tracking-[0.16em] text-white/55">
+              <p className="text-[10px] uppercase tracking-[0.16em] text-muted">
                 Example product
               </p>
-              <h2 className="mt-1 text-xl font-semibold text-white sm:text-2xl">
+              <h2 className="mt-1 text-xl font-semibold text-foreground sm:text-2xl">
                 {activeGallery.label}
               </h2>
             </div>
@@ -351,13 +351,13 @@ export function CustomForm({
           </div>
         </div>
 
-        <div className="flex flex-col bg-background/80 p-5 sm:p-7 lg:max-h-[calc(100svh-120px)] lg:overflow-y-auto lg:p-9">
+        <div className="flex flex-col bg-surface/80 p-5 sm:p-7 lg:max-h-[calc(100svh-120px)] lg:overflow-y-auto lg:p-9">
           <div className="border-b border-border pb-5">
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
               Custom creation studio
             </p>
             <h1 className="mt-2 text-3xl font-semibold tracking-[-0.045em] sm:text-4xl">
-              Create almost anything in 3D.
+              Your idea. Our craft.
             </h1>
             <div className="mt-3 flex items-center gap-2 text-xs">
               <span className="flex items-center gap-0.5 text-primary">
@@ -368,7 +368,7 @@ export function CustomForm({
               <span className="font-medium">Custom service</span>
             </div>
             <p className="mt-4 text-sm leading-6 text-muted">
-              Share your idea and reference photos. Our team will review the request and create the physical piece.
+              Upload your reference photos, choose the size, and tell us what you need. We review it, prepare the model, make the physical piece, and arrange delivery.
             </p>
           </div>
 
@@ -382,7 +382,7 @@ export function CustomForm({
                     onClick={() => selectCategory(option.id)}
                     className={`group overflow-hidden rounded-2xl border text-left transition ${category === option.id ? "border-primary/70 bg-primary/[0.07]" : "border-border bg-surface hover:border-primary/35 hover:bg-surface-hover"}`}
                   >
-                    <div className="relative aspect-[4/3] overflow-hidden bg-black/20">
+                    <div className="relative aspect-[4/3] overflow-hidden bg-surface-elevated">
                       <img src={option.image} alt="" className="h-full w-full object-cover opacity-80 transition duration-500 group-hover:scale-105" />
                       {category === option.id && (
                         <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-white">
