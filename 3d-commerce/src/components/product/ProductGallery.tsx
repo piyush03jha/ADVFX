@@ -12,6 +12,7 @@ import {
 } from "@tabler/icons-react";
 
 import type { StorefrontProduct } from "@/lib/catalog-api";
+import { resolveMediaUrl } from "@/lib/media-url";
 import { useTheme } from "@/context/ThemeContext";
 import { IconButton } from "@/components/ui/IconButton";
 
@@ -42,16 +43,21 @@ export function ProductGallery({ product }: ProductGalleryProps) {
   const isDark = theme === "dark";
 
   const [activeIndex, setActiveIndex] = useState(0);
-  const [imageSrc, setImageSrc] = useState(product.image);
   const fallbackImage = "/catogeries/1.jpg";
 
   useEffect(() => {
     setActiveIndex(0);
-    setImageSrc(product.image || fallbackImage);
-  }, [product.id, product.image]);
+  }, [product.id]);
+
+  const imageItems: MediaItem[] = (product.images?.length ? product.images : [product.image])
+    .map((src, index) => ({
+      type: "image" as const,
+      src: resolveMediaUrl(src) ?? fallbackImage,
+      label: index === 0 ? "Preview" : `Image ${index + 1}`,
+    }));
 
   const media: MediaItem[] = [
-    { type: "image", src: imageSrc, label: "Preview" },
+    ...imageItems,
     ...(product.model.trim()
       ? [{
           type: "model" as const,
@@ -140,9 +146,7 @@ export function ProductGallery({ product }: ProductGalleryProps) {
               priority={activeIndex === 0}
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 100vw, 60vw"
               className="object-contain p-5 sm:p-10 lg:p-16"
-              onError={() => {
-                if (imageSrc !== fallbackImage) setImageSrc(fallbackImage);
-              }}
+              onError={() => undefined}
             />
           </div>
         )}
@@ -207,9 +211,7 @@ export function ProductGallery({ product }: ProductGalleryProps) {
                   fill
                   sizes="(max-width: 640px) 50vw, 15vw"
                   className="object-cover opacity-80 transition duration-300 group-hover:scale-105 group-hover:opacity-100"
-                  onError={() => {
-                    if (imageSrc !== fallbackImage) setImageSrc(fallbackImage);
-                  }}
+                  onError={() => undefined}
                 />
               ) : (
                 <div
