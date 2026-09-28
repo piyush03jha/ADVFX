@@ -19,6 +19,28 @@ export class AdminController {
     return this.adminService.updateSettings(body);
   }
 
+  @Get('promotions')
+  promotions() { return this.adminService.promotions(); }
+
+  @Post('promotions')
+  upsertPromotion(@Body() body: any) { return this.adminService.upsertPromotion(body); }
+
+  @Patch('promotions/:id/status')
+  setPromotionActive(@Param('id') id: string, @Body('isActive') isActive: boolean) {
+    return this.adminService.setPromotionActive(id, Boolean(isActive));
+  }
+
+  @Get('tax-rules')
+  taxRules() { return this.adminService.taxRules(); }
+
+  @Post('tax-rules')
+  upsertTaxRule(@Body() body: any) { return this.adminService.upsertTaxRule(body); }
+
+  @Patch('tax-rules/:id/status')
+  setTaxRuleActive(@Param('id') id: string, @Body('isActive') isActive: boolean) {
+    return this.adminService.setTaxRuleActive(id, Boolean(isActive));
+  }
+
   @Get('delivery-zones')
   deliveryZones(@Query('includeInactive') includeInactive?: string) {
     return this.adminService.deliveryZones(includeInactive !== 'false');
