@@ -128,7 +128,7 @@ export class OrdersService {
             include: {
               items: {
                 include: {
-                  variant: { include: { price: true, inventory: true } },
+                  variant: { include: { price: true } },
                   product: {
                     include: {
                       inventory: true,
