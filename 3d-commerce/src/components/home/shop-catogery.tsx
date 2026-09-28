@@ -140,9 +140,9 @@ function CategoryCard({
         interactive
         className="relative aspect-[1/1.28] rounded-2xl sm:aspect-[1/1.38] lg:aspect-[1/1.32]"
       >
-        {category.imageUrl ? (
+        {resolveMediaUrl(category.imageUrl) ? (
           <img
-            src={category.imageUrl}
+            src={resolveMediaUrl(category.imageUrl) ?? undefined}
             alt={category.name}
             loading={index < 4 ? "eager" : "lazy"}
             className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-105"
