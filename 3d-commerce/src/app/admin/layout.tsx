@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { IconChartBar, IconChevronRight, IconLayoutDashboard, IconLogout, IconMapPin, IconPackage, IconSettings, IconShoppingBag, IconUsers, IconX, IconCategory } from "@tabler/icons-react";
+import { IconChartBar, IconChevronRight, IconLayoutDashboard, IconLogout, IconMapPin, IconPackage, IconSettings, IconShoppingBag, IconSearch, IconUsers, IconX, IconCategory } from "@tabler/icons-react";
 
 type AdminUser={id:string;name:string|null;email:string;role:string};
 
@@ -16,6 +16,7 @@ const nav=[
   {href:"/admin/customers",label:"Customers",icon:IconUsers},
   {href:"/admin/shipping",label:"Shipping & delivery",icon:IconMapPin},
   {href:"/admin/settings",label:"Store controls",icon:IconSettings},
+  {href:"/admin/seo",label:"Product SEO",icon:IconSearch},
 ];
 
 export default function AdminLayout({children}:{children:React.ReactNode}){
