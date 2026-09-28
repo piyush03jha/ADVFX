@@ -1,7 +1,7 @@
 "use client";
 
-import { ChangeEvent, DragEvent, useRef, useState } from "react";
-import { IconPhoto, IconX } from "@tabler/icons-react";
+import { ChangeEvent, DragEvent, useEffect, useRef, useState } from "react";
+import { IconPhoto, IconX } from "@tabler/icons-react";\nimport { useMemo } from "react";
 
 const IMAGE_TYPES = ["image/jpeg", "image/png"];
 
@@ -17,7 +17,7 @@ export function CustomUploadZone({
   onErrorChange: (error: string) => void;
 }) {
   const photoInputRef = useRef<HTMLInputElement>(null);
-  const [dragActive, setDragActive] = useState(false);
+  const [dragActive, setDragActive] = useState(false);\n\n  const previews = useMemo(() => files.map((file) => ({ file, url: URL.createObjectURL(file) })), [files]);\n\n  useEffect(() => () => { previews.forEach((preview) => URL.revokeObjectURL(preview.url)); }, [previews]);
 
   function acceptFiles(incoming: File[]) {
     const accepted = incoming.filter((file) => IMAGE_TYPES.includes(file.type));
@@ -106,7 +106,7 @@ export function CustomUploadZone({
                   onFilesChange(files.filter((_, i) => i !== index))
                 }
                 aria-label={`Remove ${file.name}`}
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted hover:bg-surface-elevated"
+                className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full border border-white/20 bg-black/60 text-white backdrop-blur-md hover:bg-black/75"
               >
                 <IconX size={14} />
               </button>
