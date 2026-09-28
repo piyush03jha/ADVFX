@@ -16,6 +16,8 @@ export default function WishlistPage() {
     removeFromWishlist,
     clearWishlist,
     isSyncing,
+    error,
+    refreshWishlist,
   } = useWishlist();
   const { items: cartItems, addItem, removeItem, updateQuantity, isSyncing: isCartSyncing } = useCart();
 
@@ -56,6 +58,15 @@ export default function WishlistPage() {
       <Navbar />
       <main className="min-h-screen bg-background">
         <div className="mx-auto w-full max-w-[1440px] px-4 pb-6 pt-24 sm:px-6 sm:pb-8 lg:px-8 lg:pb-12">
+          {error && (
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-400/20 bg-amber-400/[0.06] px-4 py-3 text-xs text-amber-200">
+              <span>{error}</span>
+              <Button type="button" variant="outline" size="sm" onClick={() => void refreshWishlist()}>
+                Retry
+              </Button>
+            </div>
+          )}
+
           <div className="flex items-center justify-between gap-3">
             <div>
               <h1 className="text-2xl font-medium tracking-tight text-foreground sm:text-3xl lg:text-4xl">Wishlist</h1>
