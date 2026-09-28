@@ -198,7 +198,6 @@ model Category {
 
 model Wishlist {
   id String @id @default(cuid())
-
   userId String @unique
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -397,8 +396,7 @@ model ProductInventory {
   reservations InventoryReservation[]
 }
 
-/**
- * ============================================================
+/** * ============================================================
  * INVENTORY RESERVATION
  * ============================================================
  */
@@ -597,8 +595,7 @@ model ProductVariantPrice {
   variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
 
   currency       String @default("INR")
-  amountMinor    Int
-  compareAtMinor Int?
+  amountMinor    Int  compareAtMinor Int?
 
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
@@ -797,8 +794,7 @@ enum ShipmentStatus {
   LABEL_CREATED
   SHIPPED
   IN_TRANSIT
-  DELIVERED
-  EXCEPTION
+  DELIVERED  EXCEPTION
 }
 
 /**
@@ -997,8 +993,7 @@ model ProductFile {
   imageWidth      Int?
   imageHeight     Int?
   imageChannels   Int?
-  imageHasAlpha   Boolean?
-  imageColorSpace String?
+  imageHasAlpha   Boolean?  imageColorSpace String?
 
   convertedFromId String?
   convertedFrom   ProductFile? @relation("ConvertedFiles", fields: [convertedFromId], references: [id])
@@ -1198,7 +1193,6 @@ enum ProductFileFormat {
  * PROCESSING STATUS
  * ============================================================
  */
-
 enum ProcessingStatus {
   PENDING
   PROCESSING
@@ -1398,7 +1392,6 @@ model Notification {
   readAt DateTime?
 
   createdAt DateTime @default(now())
-
   @@index([userId, createdAt])
   @@index([userId, readAt])
 }
@@ -1417,4 +1410,23 @@ enum NotificationType {
   CUSTOM_REVISION_REQUESTED
   CUSTOM_APPROVED
   CUSTOM_ORDERABLE
+}
+
+/**
+ * ADMIN AUDIT LOG
+ */
+model AdminAuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actorEmail String?
+  action     String
+  entityType String
+  entityId   String?
+  summary    String
+  metadata   String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([entityType, entityId])
+  @@index([action, createdAt])
 }
