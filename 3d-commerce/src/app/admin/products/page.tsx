@@ -233,7 +233,7 @@ export default function AdminProducts(){
           <div><p className="text-[9px] uppercase tracking-[0.12em] text-muted">Size-specific pricing</p><p className="mt-1 text-[10px] text-muted">Set the exact selling price for Small, Medium and Large. The selected price is used on the product page and in the cart.</p></div>
         </div>
         <div className="mt-3 grid gap-2 lg:grid-cols-3">
-          {(p.variants||[]).map(v=><form key={v.id} onSubmit={e=>{e.preventDefault();const fd=new FormData(e.currentTarget);void updateVariant(p.id,v.id,{name:String(fd.get("name")||""),size:String(fd.get("size")||""),price:Number(fd.get("price")||0),compareAtPrice:String(fd.get("compareAtPrice")||"")===""?null:Number(fd.get("compareAtPrice"))})}} className="rounded-xl border border-border bg-background/50 p-3">
+          {(p.variants||[]).map(v=><form key={v.id} onSubmit={e=>{e.preventDefault();const fd=new FormData(e.currentTarget);void updateVariant(p.id,v.id,{name:String(fd.get("name")||""),size:String(fd.get("size")||""),stock:Number(fd.get("stock")||0),price:Number(fd.get("price")||0),compareAtPrice:String(fd.get("compareAtPrice")||"")===""?null:Number(fd.get("compareAtPrice"))})}} className="rounded-xl border border-border bg-background/50 p-3">
             <div className="grid grid-cols-2 gap-2">
               <input name="name" defaultValue={v.name} placeholder="Name" className="h-8 rounded-lg border border-border bg-background px-2 text-[10px]"/>
               <input name="size" defaultValue={v.size||""} placeholder="Size e.g. 15 cm" className="h-8 rounded-lg border border-border bg-background px-2 text-[10px]"/>
