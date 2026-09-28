@@ -548,8 +548,8 @@ a {
 }
 
 /* Minimum readable UI text */
-.text-\\[9px\\],
-.text-\\[10px\\] {
+.text-\[9px\],
+.text-\[10px\] {
   font-size: 11px !important;
 }
 
