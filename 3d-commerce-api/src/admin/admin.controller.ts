@@ -77,6 +77,9 @@ export class AdminController {
   @Get('catalog')
   catalog() { return this.adminService.catalog(); }
 
+  @Get('analytics')
+  analytics(@Query('days') days?: string) { return this.adminService.analytics(Number(days) || 30); }
+
   @Get('merchandising')
   merchandising(@Query('limit') limit?: string) {
     const parsed = Number(limit ?? 8);
