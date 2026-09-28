@@ -335,15 +335,22 @@ export function WishlistProvider({
       clearGuestWishlist();
 
       let skipped = 0;
+      const failedProducts: WishlistProduct[] = [];
       for (const product of guestItems) {
         try {
           await addBackendWishlistItem(product.id);
         } catch {
           skipped += 1;
+          failedProducts.push(product);
         }
       }
 
-      setItems(await readBackendWishlist());
+      try {
+        setItems(await readBackendWishlist());
+      } catch (cause) {
+        writeGuestWishlist(failedProducts);
+        throw cause;
+      }
 
       if (skipped > 0) {
         setError(
