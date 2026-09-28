@@ -15,6 +15,8 @@ import { Rating } from "@/components/ui/Rating";
 import { Price } from "@/components/ui/Price";
 import { WishlistButton } from "@/components/ui/WishlistButton";
 import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "next/navigation";
 import type { StorefrontProduct } from "@/lib/catalog-api";
 
 interface TrendingProductCardProps {
@@ -23,6 +25,8 @@ interface TrendingProductCardProps {
 
 export function TrendingProductCard({ product }: TrendingProductCardProps) {
   const { addItem } = useCart();
+  const { isAuthenticated, isLoading } = useAuth();
+  const router = useRouter();
 
   const [added, setAdded] = useState(false);
 
