@@ -7,11 +7,12 @@ import { AuthGuard } from './guards/auth.guard';
 import { AdminGuard } from './guards/admin.guard';
 import { CustomerAuthGuard } from './guards/customer-auth.guard';
 import { AuthCaptchaService } from './captcha.service';
+import { GoogleOAuthService } from './google-oauth.service';
 
 @Module({
   imports: [PrismaModule],
   controllers: [AuthController],
-  providers: [AuthService, AuthEmailService, AuthCaptchaService, AuthGuard, CustomerAuthGuard, AdminGuard],
+  providers: [AuthService, AuthEmailService, AuthCaptchaService, GoogleOAuthService, AuthGuard, CustomerAuthGuard, AdminGuard],
   exports: [AuthService, AuthGuard, CustomerAuthGuard, AdminGuard],
 })
 export class AuthModule {}
