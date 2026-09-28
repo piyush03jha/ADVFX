@@ -376,6 +376,31 @@ export class ProductsService {
     };
   }
 
+  async getReviewEligibility(userId: string, productId: string) {
+    await this.ensureActiveProduct(productId);
+
+    const [purchased, review] = await this.prisma.$transaction([
+      this.prisma.order.findFirst({
+        where: {
+          userId,
+          payment: { status: 'CAPTURED' },
+          items: { some: { productId } },
+        },
+        select: { id: true },
+      }),
+      this.prisma.productReview.findUnique({
+        where: { productId_userId: { productId, userId } },
+        select: { id: true },
+      }),
+    ]);
+
+    return {
+      purchased: Boolean(purchased),
+      alreadyReviewed: Boolean(review),
+      canReview: Boolean(purchased) && !review,
+    };
+  }
+
   async uploadReviewPhoto(
     userId: string,
     productId: string,
