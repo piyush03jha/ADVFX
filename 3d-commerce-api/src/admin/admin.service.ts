@@ -238,6 +238,21 @@ export class AdminService {
     return this.prisma.taxRule.update({ where: { id }, data: { isActive } });
   }
 
+  async analytics(days = 30) {
+    const safeDays = Math.min(90, Math.max(7, Math.floor(days)));
+    const since = new Date(Date.now() - safeDays * 24 * 60 * 60 * 1000);
+    const [orders, topProducts, lowStock] = await Promise.all([
+      this.prisma.order.findMany({ where: { createdAt: { gte: since }, payment: { status: 'CAPTURED' } }, select: { createdAt: true, totalMinor: true, status: true } }),
+      this.prisma.orderItem.groupBy({ by: ['productId'], where: { order: { createdAt: { gte: since }, payment: { status: 'CAPTURED' } } }, _sum: { quantity: true, totalPriceMinor: true }, orderBy: { _sum: { totalPriceMinor: 'desc' } }, take: 10 }),
+      this.prisma.product.findMany({ where: { status: 'ACTIVE' }, select: { id: true, name: true, variants: { where: { isActive: true, trackStock: true }, select: { id: true, name: true, size: true, stock: true, reserved: true, lowStockAt: true } } } }),
+    ]);
+    const byDay = new Map<string,{orders:number;revenueMinor:number}>();
+    for(let i=0;i<safeDays;i++){const d=new Date(Date.now()-(safeDays-1-i)*86400000);byDay.set(d.toISOString().slice(0,10),{orders:0,revenueMinor:0});}
+    for(const order of orders){const key=order.createdAt.toISOString().slice(0,10);const row=byDay.get(key);if(row){row.orders++;row.revenueMinor+=order.totalMinor;}}
+    const ids=topProducts.map(x=>x.productId);const products=await this.prisma.product.findMany({where:{id:{in:ids}},select:{id:true,name:true,slug:true}});const productMap=new Map(products.map(p=>[p.id,p]));
+    return { days:safeDays, summary:{orders:orders.length,revenueMinor:orders.reduce((t,o)=>t+o.totalMinor,0),averageOrderMinor:orders.length?Math.round(orders.reduce((t,o)=>t+o.totalMinor,0)/orders.length):0}, daily:[...byDay.entries()].map(([date,v])=>({date,...v})), topProducts:topProducts.map(x=>({...productMap.get(x.productId),quantity:x._sum.quantity??0,revenueMinor:x._sum.totalPriceMinor??0})), lowStock:lowStock.flatMap(p=>p.variants.map(v=>({...v,productId:p.id,productName:p.name,available:v.stock-v.reserved}))).filter(v=>v.available<=v.lowStockAt).sort((a,b)=>a.available-b.available).slice(0,25) };
+  }
+
   async merchandising(limit = 8) {
     const products = await this.prisma.product.findMany({ where: { status: 'ACTIVE' }, include: { metrics: true } });
     const bestsellers: ProductRank[] = products.map((product) => ({
