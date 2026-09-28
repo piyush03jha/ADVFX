@@ -81,8 +81,18 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
   if (!product) return { title: "Product Not Found" };
 
   return {
-    title: `${product.name} | Forma`,
-    description: product.description ?? "",
+    title: product.seoTitle?.trim() || `${product.name} | Forma`,
+    description:
+      product.seoDescription?.trim() ||
+      product.description?.trim() ||
+      undefined,
+    keywords: product.seoKeywords
+      ?.split(",")
+      .map((keyword) => keyword.trim())
+      .filter(Boolean),
+    alternates: product.canonicalUrl
+      ? { canonical: product.canonicalUrl }
+      : undefined,
   };
 }
 
