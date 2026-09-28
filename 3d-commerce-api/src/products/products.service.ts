@@ -329,6 +329,7 @@ export class ProductsService {
         rating: true,
         title: true,
         comment: true,
+        photoUrl: true,
         verifiedPurchase: true,
         photoUrl: true,
         createdAt: true,
