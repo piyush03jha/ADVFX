@@ -32,7 +32,7 @@ import {
 } from "@/lib/payment-api";
 import { getCountry, type CountryCode } from "@/config/countries";
 
-const DRAFT_KEY = "forma-checkout-draft";
+const DRAFT_KEY = "voxel3d-checkout-draft";
 
 export default function PaymentPage() {
   const router = useRouter();
@@ -177,11 +177,11 @@ export default function PaymentPage() {
           key: razorpayOrder.keyId,
           amount: razorpayOrder.amount,
           currency: razorpayOrder.currency,
-          name: "ADVFX",
+          name: "Voxel3D",
           description: "Physical product order " + razorpayOrder.orderNumber,
           order_id: razorpayOrder.razorpayOrderId,
           notes: { orderId: order.id },
-          theme: { color: "#c9a86a" },
+          theme: { color: "#7c3aed" },
           modal: {
             ondismiss: () => {
               void cancelRazorpayPayment(order.id)
@@ -200,7 +200,7 @@ export default function PaymentPage() {
                 .finally(() => {
                   try {
                     window.localStorage.removeItem(DRAFT_KEY);
-                    window.localStorage.removeItem("forma-buy-now");
+                    window.localStorage.removeItem("voxel3d-buy-now");
                   } catch {
                     // Ignore local storage cleanup failures.
                   }
@@ -226,7 +226,7 @@ export default function PaymentPage() {
 
                 try {
                   window.localStorage.removeItem(DRAFT_KEY);
-                  window.localStorage.removeItem("forma-buy-now");
+                  window.localStorage.removeItem("voxel3d-buy-now");
                 } catch {
                   // Ignore storage failures after a successful payment.
                 }
@@ -375,7 +375,7 @@ export default function PaymentPage() {
                         </p>
                         <p className="mt-1.5 text-xs leading-5 text-muted">
                           Razorpay will securely handle card, UPI, net banking and other
-                          available payment methods. Payment details are not stored by ADVFX.
+                          available payment methods. Payment details are securely handled by Razorpay.
                         </p>
                       </div>
                     </div>
