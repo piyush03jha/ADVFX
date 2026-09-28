@@ -28,6 +28,7 @@ import {
   cancelRazorpayPayment,
   createRazorpayOrder,
   verifyRazorpayPayment,
+  getCheckoutOrderStatus,
   type RazorpayOrder,
 } from "@/lib/payment-api";
 import { getCountry, type CountryCode } from "@/config/countries";
@@ -39,6 +40,9 @@ export default function PaymentPage() {
   const { items: cartItems } = useCart();
   const [country, setCountry] = useState<CountryCode>("IN");
   const [processing, setProcessing] = useState(false);
+  const [paymentState, setPaymentState] = useState<"idle" | "creating" | "awaiting_payment" | "verifying" | "confirmed" | "pending" | "failed">("idle");
+  const [paymentOrderId, setPaymentOrderId] = useState<string | null>(null);
+  const [idempotencyKey, setIdempotencyKey] = useState<string | null>(null);
   const [draftLoaded, setDraftLoaded] = useState(false);
   const [draft, setDraft] = useState<{
     addressId?: string;
@@ -138,14 +142,20 @@ export default function PaymentPage() {
       return;
     }
 
+    if (paymentState === "creating" || paymentState === "awaiting_payment" || paymentState === "verifying" || paymentState === "pending" || paymentState === "confirmed") return;
+
     setProcessing(true);
+    setPaymentState("creating");
     setQuoteError(null);
+
+    const attemptKey = idempotencyKey ?? window.crypto.randomUUID();
+    setIdempotencyKey(attemptKey);
 
     try {
       const order = await createOrder({
         shippingAddressId: draft.addressId,
         couponCode: draft.couponCode,
-        idempotencyKey: window.crypto.randomUUID(),
+        idempotencyKey: attemptKey,
         quotedSubtotalMinor: quote.summary.subtotalMinor,
         quotedShippingMinor: quote.summary.shippingMinor,
         quotedDiscountMinor: quote.summary.discountMinor,
@@ -163,6 +173,9 @@ export default function PaymentPage() {
       ) {
         throw new Error("Payment amount could not be verified.");
       }
+
+      setPaymentOrderId(order.id);
+      setPaymentState("awaiting_payment");
 
       await new Promise<void>((resolve) => {
         let settled = false;
@@ -209,6 +222,7 @@ export default function PaymentPage() {
             },
           },
           handler: (response) => {
+            setPaymentState("verifying");
             void verifyRazorpayPayment({
               orderId: order.id,
               razorpayOrderId: response.razorpay_order_id,
@@ -217,12 +231,12 @@ export default function PaymentPage() {
             })
               .then((result) => {
                 if (result.orderStatus !== "CONFIRMED") {
-                  setQuoteError(
-                    "Payment was received but the order is not yet confirmed. We are reconciling it now; please check My Orders shortly.",
-                  );
+                  setPaymentState("pending");
+                  setQuoteError("Payment received. We are confirming your order. This page will update automatically.");
                   finish();
                   return;
                 }
+                setPaymentState("confirmed");
 
                 try {
                   window.localStorage.removeItem(DRAFT_KEY);
@@ -237,11 +251,8 @@ export default function PaymentPage() {
                 );
               })
               .catch((cause) => {
-                setQuoteError(
-                  cause instanceof Error
-                    ? cause.message
-                    : "Payment verification failed. Your order remains pending.",
-                );
+                setPaymentState("pending");
+                setQuoteError(cause instanceof Error ? cause.message : "Payment verification is still processing. We will keep checking the order status.");
                 finish();
               });
           },
@@ -251,23 +262,64 @@ export default function PaymentPage() {
           const failure = response as {
             error?: { description?: string; reason?: string };
           };
-          setQuoteError(
-            failure.error?.description ||
-              "Payment failed. Your items are still available for checkout.",
-          );
+          setPaymentState("failed");
+          setQuoteError(failure.error?.description || "Payment failed. Your items are still available for checkout.");
           finish();
         });
 
         checkout.open();
       });
     } catch (cause) {
-      setQuoteError(
-        cause instanceof Error ? cause.message : "Unable to start secure payment.",
-      );
+      setPaymentState("failed");
+      setQuoteError(cause instanceof Error ? cause.message : "Unable to start secure payment.");
     } finally {
       setProcessing(false);
     }
   };
+
+
+
+  useEffect(() => {
+    if (!paymentOrderId || paymentState !== "pending") return;
+
+    let cancelled = false;
+    let attempts = 0;
+
+    const poll = async () => {
+      attempts += 1;
+      try {
+        const status = await getCheckoutOrderStatus(paymentOrderId);
+        if (cancelled) return;
+
+        if (status.status === "CONFIRMED") {
+          setPaymentState("confirmed");
+          try {
+            window.localStorage.removeItem(DRAFT_KEY);
+            window.localStorage.removeItem("voxel3d-buy-now");
+          } catch {}
+          router.push("/order/confirmation?order=" + encodeURIComponent(paymentOrderId));
+          return;
+        }
+
+        if (status.status === "CANCELLED" || status.status === "REFUNDED") {
+          setPaymentState("failed");
+          setQuoteError("The payment could not be confirmed. Please start checkout again.");
+          return;
+        }
+
+        if (attempts < 20) {
+          window.setTimeout(() => void poll(), 3000);
+        } else {
+          setQuoteError("Payment received but confirmation is taking longer than expected. Please check My Orders before trying to pay again.");
+        }
+      } catch {
+        if (!cancelled && attempts < 20) window.setTimeout(() => void poll(), 3000);
+      }
+    };
+
+    void poll();
+    return () => { cancelled = true; };
+  }, [paymentOrderId, paymentState, router]);
 
   if (!draftLoaded || (draft?.addressId && !quote && !quoteError)) {
     return (
@@ -478,6 +530,8 @@ export default function PaymentPage() {
                   size="lg"
                   disabled={
                     processing ||
+                    paymentState === "pending" ||
+                    paymentState === "confirmed" ||
                     !quote ||
                     quote.summary.totalMinor <= 0 ||
                     !checkoutReady
@@ -485,11 +539,15 @@ export default function PaymentPage() {
                   onClick={() => void handlePay()}
                   className="mt-6 w-full"
                 >
-                  {processing
-                    ? "Opening secure checkout…"
-                    : !checkoutReady
-                      ? "Loading secure checkout…"
-                      : "Pay " + (total ? formatQuoteMoney(total.amountMinor, total.currency) : "")}
+                  {paymentState === "pending"
+                    ? "Confirming payment…"
+                    : paymentState === "confirmed"
+                      ? "Payment confirmed"
+                      : processing
+                        ? "Opening secure checkout…"
+                        : !checkoutReady
+                          ? "Loading secure checkout…"
+                          : "Pay " + (total ? formatQuoteMoney(total.amountMinor, total.currency) : "")}
                 </Button>
 
                 <p className="mt-3 text-center text-[11px] leading-4 text-muted">
