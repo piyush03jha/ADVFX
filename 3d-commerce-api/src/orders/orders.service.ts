@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PricingService } from '../pricing/pricing.service';
 import { RazorpayService } from '../payments/razorpay.service';
+import { PaymentsService } from '../payments/payments.service';
 import { ObservabilityService } from '../observability/observability.service';
 
 const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
@@ -48,6 +49,7 @@ export class OrdersService {
     private readonly notifications: NotificationsService,
     private readonly pricing: PricingService,
     private readonly razorpay: RazorpayService,
+    private readonly payments: PaymentsService,
     private readonly observability: ObservabilityService,
   ) {}
 
@@ -510,9 +512,25 @@ export class OrdersService {
         );
 
         if (captured?.id) {
+          const result = await this.payments.reconcileCapturedPayment({
+            orderId: order.id,
+            providerPaymentId: captured.id,
+            providerOrderId: order.payment.providerOrderId,
+            amount: captured.amount,
+            currency: captured.currency,
+          });
+
+          if (result.kind === 'CAPTURED' || result.kind === 'ALREADY_CAPTURED') {
+            continue;
+          }
+
+          if (result.kind === 'REFUND_REQUIRED' && result.refunded) {
+            continue;
+          }
+
           await this.observability.captureMessage(
-            'Captured Razorpay payment found during reservation expiry; awaiting capture reconciliation',
-            { alert: 'captured_payment_during_expiry', orderId: order.id },
+            'Captured Razorpay payment requires manual refund reconciliation',
+            { alert: 'refund_reconciliation_pending', orderId: order.id },
           );
           continue;
         }
