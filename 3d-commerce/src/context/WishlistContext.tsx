@@ -330,15 +330,26 @@ export function WishlistProvider({
 
       const guestItems = readGuestWishlist();
 
-      for (const product of guestItems) {
-        await addBackendWishlistItem(product.id);
-      }
+      // Clear first so concurrent refreshes cannot submit the same guest
+      // wishlist entries more than once.
+      clearGuestWishlist();
 
-      if (guestItems.length > 0) {
-        clearGuestWishlist();
+      let skipped = 0;
+      for (const product of guestItems) {
+        try {
+          await addBackendWishlistItem(product.id);
+        } catch {
+          skipped += 1;
+        }
       }
 
       setItems(await readBackendWishlist());
+
+      if (skipped > 0) {
+        setError(
+          `${skipped} item(s) from before you signed in are no longer available.`,
+        );
+      }
     } catch (cause) {
       setError(
         cause instanceof Error
