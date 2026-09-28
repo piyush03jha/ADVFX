@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { ChangeEvent, useEffect, useState } from "react";
 import { IconStar } from "@tabler/icons-react";
 
 import type { StorefrontProduct } from "@/lib/catalog-api";
@@ -10,6 +10,7 @@ interface ProductReview {
   rating: number;
   title?: string | null;
   comment: string;
+  photoUrl?: string | null;
   verifiedPurchase: boolean;
   createdAt: string;
   user: { name?: string | null };
@@ -36,7 +37,7 @@ export function ProductReviews({ product }: ProductReviewsProps) {
   const [comment, setComment] = useState("");
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const [submitting, setSubmitting] = useState(false);\n  const [photo, setPhoto] = useState<File | null>(null);
 
   async function loadReviews() {
     const response = await fetch(
@@ -62,7 +63,7 @@ export function ProductReviews({ product }: ProductReviewsProps) {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ rating, title, comment }),
+          body: JSON.stringify({ rating, title, comment, photoUrl }),
         },
       );
 
@@ -82,6 +83,7 @@ export function ProductReviews({ product }: ProductReviewsProps) {
 
       setComment("");
       setTitle("");
+      setPhoto(null);
       setMessage("Review submitted.");
       await loadReviews();
     } catch {
@@ -142,7 +144,7 @@ export function ProductReviews({ product }: ProductReviewsProps) {
               <p className="mt-3 text-sm font-medium text-foreground">
                 {review.title || "Customer review"}
               </p>
-              <p className="mt-2 text-sm leading-6 text-muted">{review.comment}</p>
+              <p className="mt-2 text-sm leading-6 text-muted">{review.comment}</p>\n              {review.photoUrl ? <img src={review.photoUrl} alt="Customer review" className="mt-4 max-h-64 w-full rounded-xl border border-border object-cover" loading="lazy" /> : null}
               <p className="mt-4 text-[11px] text-muted">
                 {review.user.name || "Customer"} · {new Date(review.createdAt).toLocaleDateString("en-IN")}
               </p>
@@ -188,6 +190,17 @@ export function ProductReviews({ product }: ProductReviewsProps) {
           placeholder="Review title (optional)"
           className="mt-4 w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none"
         />
+
+        <label className="mt-3 block">
+          <span className="mb-2 block text-[10px] font-medium uppercase tracking-[0.14em] text-muted">Add a product photo (optional)</span>
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={(event: ChangeEvent<HTMLInputElement>) => setPhoto(event.target.files?.[0] ?? null)}
+            className="block w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-surface-elevated file:px-3 file:py-2 file:text-xs file:text-foreground"
+          />
+          <span className="mt-1 block text-[10px] text-muted">JPG, PNG or WebP · max 5 MB</span>
+        </label>
 
         <textarea
           required
