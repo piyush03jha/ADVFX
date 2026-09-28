@@ -24,6 +24,7 @@ const nav=[
   {href:"/admin/processing",label:"3D processing",icon:IconCpu},
   {href:"/admin/audit",label:"Audit log",icon:IconHistory},
   {href:"/admin/analytics",label:"Analytics",icon:IconChartBar},
+  {href:"/admin/notifications",label:"Notifications",icon:IconMessageCircle},
 ];
 
 export default function AdminLayout({children}:{children:React.ReactNode}){
