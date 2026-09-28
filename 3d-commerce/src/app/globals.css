@@ -547,6 +547,12 @@ a {
   }
 }
 
+/* Minimum readable UI text */
+.text-\\[9px\\],
+.text-\\[10px\\] {
+  font-size: 11px !important;
+}
+
 /* Shared accessible surfaces and fields */
 .surface {
   background: var(--surface);
