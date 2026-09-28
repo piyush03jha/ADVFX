@@ -111,6 +111,16 @@ export class ProcessingJobsService {
     }
   }
 
+  async retry(id: string) {
+    const job = await this.prisma.productFileProcessingJob.findUnique({ where: { id }, select: { id:true, status:true, attempts:true, maxAttempts:true } });
+    if (!job) throw new NotFoundException(`Processing job "${id}" not found`);
+    if (job.status !== ProcessingJobStatus.FAILED) throw new ConflictException('Only failed processing jobs can be retried');
+    if (job.attempts >= job.maxAttempts) throw new ConflictException('Maximum processing attempts reached');
+    const updated = await this.prisma.productFileProcessingJob.update({ where:{id}, data:{status:ProcessingJobStatus.QUEUED,errorMessage:null,startedAt:null,completedAt:null} });
+    await this.prisma.productFile.update({ where:{id:updated.productFileId}, data:{processingStatus:'PENDING',processingError:null} });
+    return this.serializeJob(updated);
+  }
+
   /**
    * Get all processing jobs.
    */
