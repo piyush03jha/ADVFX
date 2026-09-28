@@ -13,6 +13,7 @@ import {
 
 import { Button } from "@/components/ui/Button";
 import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
 import type { StorefrontProduct, StorefrontVariant } from "@/lib/catalog-api";
 
 interface ProductActionsProps {
@@ -21,6 +22,7 @@ interface ProductActionsProps {
 
 export function ProductActions({ product }: ProductActionsProps) {
   const router = useRouter();
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const variants = product.variants ?? [];
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(
     variants[0]?.id ?? null,
