@@ -33,7 +33,7 @@ export class PricingService {
             orderBy: { createdAt: "desc" },
             take: 1,
           },
-          variants: { include: { price: true, inventory: true } },
+          variants: { include: { price: true } },
         },
       });
 
@@ -131,7 +131,7 @@ export class PricingService {
       totalWeightGrams +=
         this.parseWeightGrams(product.weight) * item.quantity;
 
-      const inventory = variant?.inventory ?? product.inventory;
+      const inventory = variant ?? product.inventory;
       const available =
         inventory?.trackStock && !inventory.allowBackorder
           ? Math.max(0, inventory.stock - inventory.reserved)
