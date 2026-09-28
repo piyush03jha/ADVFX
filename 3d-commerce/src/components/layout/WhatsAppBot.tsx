@@ -8,31 +8,31 @@ const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "";
 const PREDEFINED_QUESTIONS = [
   {
     label: "Help me choose a product",
-    message: "Hi Forma 3D team, please help me choose a product.",
+    message: "Hi Voxel3D team, please help me choose a product.",
   },
   {
     label: "Track my order",
-    message: "Hi Forma 3D team, I want to check my order status.",
+    message: "Hi Voxel3D team, I want to check my order status.",
   },
   {
     label: "Ask about a custom 3D model",
-    message: "Hi Forma 3D team, I want to discuss a custom 3D model.",
+    message: "Hi Voxel3D team, I want to discuss a custom 3D model.",
   },
   {
     label: "Get pricing information",
-    message: "Hi Forma 3D team, I would like pricing information.",
+    message: "Hi Voxel3D team, I would like pricing information.",
   },
   {
     label: "Shipping and delivery",
-    message: "Hi Forma 3D team, I have a question about shipping and delivery.",
+    message: "Hi Voxel3D team, I have a question about shipping and delivery.",
   },
   {
     label: "Returns or refunds",
-    message: "Hi Forma 3D team, I need help with a return or refund.",
+    message: "Hi Voxel3D team, I need help with a return or refund.",
   },
   {
     label: "Talk to support",
-    message: "Hi Forma 3D team, I need to speak with support.",
+    message: "Hi Voxel3D team, I need to speak with support.",
   },
 ] as const;
 
