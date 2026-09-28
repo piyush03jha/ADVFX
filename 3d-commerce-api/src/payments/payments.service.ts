@@ -146,16 +146,11 @@ export class PaymentsService {
             data: { status: PaymentStatus.REFUNDED },
           });
         } catch (error) {
-          await this.notifications.create(
-            order.userId ?? "",
-            {
-              type: NotificationType.PAYMENT_FAILED,
-              title: "Refund requires attention",
-              message: `Payment ${captured.id} was captured but the automatic refund failed.`,
-              entityType: "ORDER",
-              entityId: order.id,
-            },
-          ).catch(() => undefined);
+          console.error("Razorpay refund failed during cancellation", {
+            orderId: order.id,
+            providerPaymentId: captured.id,
+            error,
+          });
           throw error;
         }
         return {
