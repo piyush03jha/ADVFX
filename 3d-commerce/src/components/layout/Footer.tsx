@@ -57,7 +57,7 @@ export function Footer() {
             <div className="max-w-sm sm:col-span-2 lg:col-span-1">
               <Link href="/" className="group inline-flex items-center">
                 <span className="font-serif text-2xl font-semibold tracking-[-0.04em] text-foreground transition-colors duration-300 group-hover:text-primary-hover sm:text-3xl">
-                  FORMA<span className="text-primary">.</span>
+                  Voxel3D<span className="text-primary">.</span>
                 </span>
               </Link>
 
@@ -109,8 +109,8 @@ export function Footer() {
             <div>
               <FooterHeading>Contact</FooterHeading>
               <div className="space-y-3.5">
-                <ContactItem icon={IconMail} href="mailto:hello@forma3d.in">
-                  hello@forma3d.in
+                <ContactItem icon={IconMail} href="mailto:hello@voxel3d.in">
+                  hello@voxel3d.in
                 </ContactItem>
                 <ContactItem icon={IconPhone} href="tel:+919600012345">
                   +91 96000 12345
@@ -127,7 +127,7 @@ export function Footer() {
 
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <p className="max-w-[280px] text-[8px] uppercase leading-4 tracking-[0.1em] text-muted-foreground sm:max-w-none sm:text-[9px]">
-              © {currentYear} Forma 3D Studios Pvt. Ltd. All rights reserved.
+              © {currentYear} Voxel3D Studios Pvt. Ltd. All rights reserved.
             </p>
 
             <div className="flex flex-wrap gap-x-4 gap-y-2 sm:gap-x-5">
@@ -146,7 +146,7 @@ export function Footer() {
 
         <div aria-hidden="true" className="pointer-events-none select-none overflow-hidden px-5 text-center">
           <span className="block translate-y-[18%] whitespace-nowrap font-serif text-[27vw] font-semibold leading-none tracking-[-0.08em] text-foreground/[0.025] sm:text-[18vw]">
-            FORMA
+            Voxel3D
           </span>
         </div>
       </div>
