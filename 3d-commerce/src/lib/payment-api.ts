@@ -92,3 +92,21 @@ export function verifyRazorpayPayment(input: {
     body: JSON.stringify(input),
   });
 }
+
+
+export type CheckoutOrderStatus = {
+  orderId: string;
+  orderNumber: string;
+  status: string;
+  payment?: {
+    status: string;
+    providerPaymentId?: string | null;
+  } | null;
+};
+
+export function getCheckoutOrderStatus(orderId: string) {
+  return request<CheckoutOrderStatus>(
+    "/api/checkout/orders/" + encodeURIComponent(orderId) + "/status",
+    { method: "GET" },
+  );
+}
