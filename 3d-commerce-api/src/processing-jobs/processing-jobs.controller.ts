@@ -29,6 +29,9 @@ export class ProcessingJobsController {
     return this.processingJobsService.findAll();
   }
 
+  @Post(':id/retry')
+  async retry(@Param('id') id: string) { return this.processingJobsService.retry(id); }
+
   @Get(':id')
   async findOne(@Param('id') id: string) {
     return this.processingJobsService.findOne(id);
