@@ -12,7 +12,7 @@ import { SavedAddressSelector } from "@/components/checkout/SavedAddressSelector
 import { Button } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import { useAddresses, type Address } from "@/context/AddressContext";
-import { createRazorpayOrder, verifyRazorpayPayment } from "@/lib/payment-api";
+import { createRazorpayOrder, verifyRazorpayPayment, getCheckoutOrderStatus } from "@/lib/payment-api";
 
 type CustomRequest = {
   id: string;
@@ -40,6 +40,9 @@ function CustomPaymentPageContent() {
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(defaultAddressId);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
+  const [paymentState, setPaymentState] = useState<"idle" | "creating" | "awaiting_payment" | "verifying" | "confirmed" | "pending" | "failed">("idle");
+  const [paymentOrderId, setPaymentOrderId] = useState<string | null>(null);
+  const [idempotencyKey, setIdempotencyKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [checkoutReady, setCheckoutReady] = useState(false);
 
@@ -86,8 +89,10 @@ function CustomPaymentPageContent() {
 
   const handlePay = async () => {
     if (!request || !selectedAddressId || !checkoutReady || amountMinor <= 0) return;
+    if (paymentState === "creating" || paymentState === "awaiting_payment" || paymentState === "verifying" || paymentState === "pending" || paymentState === "confirmed") return;
 
     setProcessing(true);
+    setPaymentState("creating");
     setError(null);
 
     try {
@@ -98,7 +103,7 @@ function CustomPaymentPageContent() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             shippingAddressId: selectedAddressId,
-            idempotencyKey: window.crypto.randomUUID(),
+            idempotencyKey: idempotencyKey ?? window.crypto.randomUUID(),
           }),
           cache: "no-store",
         },
@@ -117,6 +122,8 @@ function CustomPaymentPageContent() {
       }
 
       const order = checkoutBody.order;
+      if (!idempotencyKey) setIdempotencyKey(idempotencyKey ?? window.crypto.randomUUID());
+      setPaymentOrderId(order.id);
       if (order.totalMinor !== amountMinor || order.currency !== currency) {
         throw new Error("The custom price changed. Please return to the custom builder and refresh.");
       }
@@ -126,6 +133,8 @@ function CustomPaymentPageContent() {
       if (razorpayOrder.amount !== order.totalMinor || razorpayOrder.currency !== order.currency) {
         throw new Error("Payment amount could not be verified.");
       }
+
+      setPaymentState("awaiting_payment");
 
       await new Promise<void>((resolve) => {
         let settled = false;
@@ -147,6 +156,7 @@ function CustomPaymentPageContent() {
           theme: { color: "#7c3aed" },
           modal: {
             ondismiss: () => {
+              setPaymentState("failed");
               setError("Payment was not completed. Your custom build is still saved.");
               finish();
             },
@@ -156,17 +166,25 @@ function CustomPaymentPageContent() {
             razorpay_payment_id: string;
             razorpay_signature: string;
           }) => {
+            setPaymentState("verifying");
             void verifyRazorpayPayment({
               orderId: order.id,
               razorpayOrderId: response.razorpay_order_id,
               razorpayPaymentId: response.razorpay_payment_id,
               razorpaySignature: response.razorpay_signature,
             })
-              .then(() => {
-                router.push(`/order/confirmation?order=${encodeURIComponent(order.id)}`);
+              .then((result) => {
+                if (result.orderStatus === "CONFIRMED") {
+                  setPaymentState("confirmed");
+                  router.push(`/order/confirmation?order=${encodeURIComponent(order.id)}`);
+                  return;
+                }
+                setPaymentState("pending");
+                setError("Payment received. We are confirming your custom order automatically.");
               })
               .catch((cause) => {
-                setError(cause instanceof Error ? cause.message : "Payment verification failed.");
+                setPaymentState("pending");
+                setError(cause instanceof Error ? cause.message : "Payment verification is still processing. We are checking the order status.");
               })
               .finally(finish);
           },
@@ -175,11 +193,42 @@ function CustomPaymentPageContent() {
         razorpay.open();
       });
     } catch (cause) {
+      setPaymentState("failed");
       setError(cause instanceof Error ? cause.message : "Unable to start payment.");
     } finally {
       setProcessing(false);
     }
   };
+
+
+
+  useEffect(() => {
+    if (!paymentOrderId || paymentState !== "pending") return;
+    let cancelled = false;
+    let attempts = 0;
+    const poll = async () => {
+      attempts += 1;
+      try {
+        const status = await getCheckoutOrderStatus(paymentOrderId);
+        if (cancelled) return;
+        if (status.status === "CONFIRMED") {
+          setPaymentState("confirmed");
+          router.push("/order/confirmation?order=" + encodeURIComponent(paymentOrderId));
+          return;
+        }
+        if (status.status === "CANCELLED" || status.status === "REFUNDED") {
+          setPaymentState("failed");
+          setError("Payment could not be confirmed. Your custom request remains saved.");
+          return;
+        }
+        if (attempts < 20) window.setTimeout(() => void poll(), 3000);
+      } catch {
+        if (!cancelled && attempts < 20) window.setTimeout(() => void poll(), 3000);
+      }
+    };
+    void poll();
+    return () => { cancelled = true; };
+  }, [paymentOrderId, paymentState, router]);
 
   if (loading || !isLoaded) {
     return (
@@ -298,11 +347,11 @@ function CustomPaymentPageContent() {
                 <Button
                   type="button"
                   size="lg"
-                  disabled={!selectedAddressId || processing || !checkoutReady || !request || amountMinor <= 0}
+                  disabled={!selectedAddressId || processing || paymentState === "pending" || paymentState === "confirmed" || !checkoutReady || !request || amountMinor <= 0}
                   onClick={() => void handlePay()}
                   className="mt-6 w-full"
                 >
-                  {processing ? "Preparing payment…" : !checkoutReady ? "Loading payment…" : `Pay ₹${(amountMinor / 100).toLocaleString("en-IN")}`}
+                  {paymentState === "pending" ? "Confirming payment…" : paymentState === "confirmed" ? "Payment confirmed" : processing ? "Preparing payment…" : !checkoutReady ? "Loading payment…" : `Pay ₹${(amountMinor / 100).toLocaleString("en-IN")}`}
                 </Button>
 
                 <p className="mt-3 text-center text-[11px] leading-4 text-muted">
