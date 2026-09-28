@@ -14,7 +14,16 @@ export class AdminService {
         this.prisma.product.count({ where: { status: 'ACTIVE' } }),
         this.prisma.product.count({ where: { status: 'ARCHIVED' } }),
         this.prisma.category.count({ where: { isActive: true } }),
-        this.prisma.productInventory.findMany({ where: { product: { status: 'ACTIVE' }, trackStock: true }, select: { stock: true, reserved: true, lowStockAt: true } }),
+        this.prisma.product.findMany({
+          where: { status: 'ACTIVE' },
+          select: {
+            inventory: { select: { stock: true, reserved: true, lowStockAt: true, trackStock: true, allowBackorder: true } },
+            variants: {
+              where: { isActive: true, trackStock: true },
+              select: { stock: true, reserved: true, lowStockAt: true, trackStock: true, allowBackorder: true },
+            },
+          },
+        }),
         this.prisma.order.count(),
         this.prisma.order.count({ where: { status: 'PENDING_PAYMENT' } }),
         this.prisma.order.count({ where: { status: 'PROCESSING' } }),
@@ -26,13 +35,29 @@ export class AdminService {
         this.prisma.siteSetting.count(),
       ]);
 
-    const lowStockProducts = inventories.filter((item) => item.stock - item.reserved <= item.lowStockAt).length;
+    const inventoryRows = inventories.flatMap((product) =>
+      product.variants.length > 0
+        ? product.variants
+        : product.inventory?.trackStock
+          ? [product.inventory]
+          : [],
+    );
+
+    const lowStockProducts = inventories.filter((product) => {
+      const rows = product.variants.length > 0
+        ? product.variants
+        : product.inventory?.trackStock
+          ? [product.inventory]
+          : [];
+      return rows.some((item) => item.stock - item.reserved <= item.lowStockAt);
+    }).length;
+
     return {
       products: { total: products, active: activeProducts, archived: archivedProducts },
       categories, lowStockProducts,
       inventory: {
-        availableUnits: inventories.reduce((t, i) => t + Math.max(0, i.stock - i.reserved), 0),
-        reservedUnits: inventories.reduce((t, i) => t + i.reserved, 0),
+        availableUnits: inventoryRows.reduce((t, i) => t + Math.max(0, i.stock - i.reserved), 0),
+        reservedUnits: inventoryRows.reduce((t, i) => t + i.reserved, 0),
       },
       orders: { total: orders, pendingPayment: pendingOrders, processing: processingOrders, readyToShip },
       customBuilds: { total: customRequests, needsAttention: pendingCustomRequests },
