@@ -242,7 +242,7 @@ export function Navbar() {
 
           <div className="flex items-center gap-1">
             <NavIconLink
-              href="/wishlist"
+              href={user ? "/wishlist" : "/login?returnTo=%2Fwishlist"}
               label={wishlistCount > 0 ? `Wishlist, ${wishlistCount} saved` : "Wishlist"}
             >
               <IconHeart size={18} stroke={1.7} />
@@ -338,7 +338,7 @@ export function Navbar() {
 
           <div className="mt-6 grid grid-cols-2 gap-3">
             <MobileActionLink
-              href="/wishlist"
+              href={user ? "/wishlist" : "/login?returnTo=%2Fwishlist"}
               onClick={closeMobileMenu}
             >
               <IconHeart size={17} stroke={1.7} />
@@ -429,7 +429,7 @@ function CartLink({
 }) {
   return (
     <Link
-      href={undefined as never}
+      href={href}
       aria-label={
         itemCount > 0
           ? `Shopping cart, ${itemCount} items`
