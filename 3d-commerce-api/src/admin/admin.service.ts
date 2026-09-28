@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationType } from '@prisma/client';
 
 type ProductRank = { product: any; score: number };
 
@@ -251,6 +252,23 @@ export class AdminService {
     for(const order of orders){const key=order.createdAt.toISOString().slice(0,10);const row=byDay.get(key);if(row){row.orders++;row.revenueMinor+=order.totalMinor;}}
     const ids=topProducts.map(x=>x.productId);const products=await this.prisma.product.findMany({where:{id:{in:ids}},select:{id:true,name:true,slug:true}});const productMap=new Map(products.map(p=>[p.id,p]));
     return { days:safeDays, summary:{orders:orders.length,revenueMinor:orders.reduce((t,o)=>t+o.totalMinor,0),averageOrderMinor:orders.length?Math.round(orders.reduce((t,o)=>t+o.totalMinor,0)/orders.length):0}, daily:[...byDay.entries()].map(([date,v])=>({date,...v})), topProducts:topProducts.map(x=>({...productMap.get(x.productId),quantity:x._sum.quantity??0,revenueMinor:x._sum.totalPriceMinor??0})), lowStock:lowStock.flatMap(p=>p.variants.map(v=>({...v,productId:p.id,productName:p.name,available:v.stock-v.reserved}))).filter(v=>v.available<=v.lowStockAt).sort((a,b)=>a.available-b.available).slice(0,25) };
+  }
+
+  async notificationAudience(search?: string) {
+    const term = search?.trim();
+    return this.prisma.user.findMany({ where: { role: 'CUSTOMER', ...(term ? { OR: [{name:{contains:term,mode:'insensitive'}},{email:{contains:term,mode:'insensitive'}}] } : {}) }, select: { id:true,name:true,email:true }, orderBy:{createdAt:'desc'}, take:500 });
+  }
+
+  async sendAnnouncement(input:{userIds?:string[];title:string;message:string;actorId?:string}) {
+    const title=input.title.trim(), message=input.message.trim();
+    if(!title||!message) throw new BadRequestException('Title and message are required');
+    const users = input.userIds?.length
+      ? await this.prisma.user.findMany({where:{id:{in:[...new Set(input.userIds)]},role:'CUSTOMER'},select:{id:true}})
+      : await this.prisma.user.findMany({where:{role:'CUSTOMER',isActive:true},select:{id:true}});
+    if(!users.length) return {sent:0};
+    const result=await this.prisma.notification.createMany({data:users.map(u=>({userId:u.id,type:NotificationType.ADMIN_ANNOUNCEMENT,title,message}))});
+    await this.prisma.adminAuditLog.create({data:{actorId:input.actorId??null,action:'NOTIFICATION_BROADCAST',entityType:'NOTIFICATION',summary:`Announcement sent to ${result.count} customers`,metadata:JSON.stringify({title,userIds:input.userIds??null})}});
+    return {sent:result.count};
   }
 
   async merchandising(limit = 8) {
