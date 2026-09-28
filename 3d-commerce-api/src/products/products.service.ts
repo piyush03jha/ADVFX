@@ -376,6 +376,54 @@ export class ProductsService {
     };
   }
 
+  async uploadReviewPhoto(
+    userId: string,
+    productId: string,
+    file: { originalname: string; mimetype: string; buffer: Buffer },
+  ) {
+    await this.ensureActiveProduct(productId);
+
+    const purchased = await this.prisma.order.findFirst({
+      where: {
+        userId,
+        payment: { status: 'CAPTURED' },
+        items: { some: { productId } },
+      },
+      select: { id: true },
+    });
+
+    if (!purchased) {
+      throw new ForbiddenException('Only customers who purchased this product can upload a review photo');
+    }
+
+    if (!file.buffer?.length) throw new BadRequestException('Review image is empty');
+    if (file.buffer.length > 5 * 1024 * 1024) {
+      throw new BadRequestException('Review image must be 5 MB or smaller');
+    }
+
+    const extension = file.originalname.toLowerCase().split('.').pop() ?? '';
+    if (!['jpg', 'jpeg', 'png', 'webp'].includes(extension)) {
+      throw new BadRequestException('Only JPG, PNG and WebP review images are supported');
+    }
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) {
+      throw new BadRequestException('Invalid review image MIME type');
+    }
+
+    try {
+      await sharp(file.buffer).metadata();
+    } catch {
+      throw new BadRequestException('Uploaded review image is not valid');
+    }
+
+    const stored = await this.storage.saveReviewImage(
+      productId + '/' + userId,
+      file.originalname,
+      file.buffer,
+    );
+
+    return { url: stored.storageUrl };
+  }
+
   async createReview(userId: string, productId: string, dto: CreateProductReviewDto) {
     await this.ensureActiveProduct(productId);
 
