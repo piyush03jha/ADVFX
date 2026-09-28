@@ -8,7 +8,7 @@ import {
 } from "@tabler/icons-react";
 
 const whatsappUrl = process.env.NEXT_PUBLIC_WHATSAPP_URL || "/contact";
-const contactEmail = process.env.NEXT_PUBLIC_CONTACT_EMAIL || "contact@advfx.in";
+const contactEmail = process.env.NEXT_PUBLIC_CONTACT_EMAIL || "contact@voxel3d.in";
 
 export default function ContactPage() {
   return (
