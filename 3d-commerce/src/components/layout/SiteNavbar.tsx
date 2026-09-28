@@ -161,7 +161,7 @@ export function Navbar() {
         <NavItems items={navItems} />
 
         <div className="pointer-events-auto ml-auto flex min-w-0 items-center gap-1 xl:gap-2">
-          <div className="relative hidden xl:block">
+          <div className="relative hidden min-[1600px]:block">
             <form
               onSubmit={handleSearchSubmit}
               className="flex w-[190px] items-center rounded-full border border-border bg-surface/80 px-3"
@@ -234,6 +234,57 @@ export function Navbar() {
           <CartLink itemCount={itemCount} isLoaded={isLoaded} />
         </div>
       </NavBody>
+
+      <div className="pointer-events-none mx-auto mt-2 hidden w-full px-3 lg:flex min-[1600px]:hidden">
+        <div className="pointer-events-auto relative mx-auto w-[min(420px,calc(100vw-2rem))]">
+          <form
+            onSubmit={handleSearchSubmit}
+            className="flex h-10 items-center rounded-full border border-border/80 bg-background/90 px-3 shadow-lg backdrop-blur-xl"
+            role="search"
+          >
+            <IconSearch
+              size={16}
+              stroke={1.8}
+              className="shrink-0 text-muted"
+            />
+
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search products"
+              aria-label="Search products"
+              className="h-8 w-full appearance-none bg-transparent px-2 text-xs text-foreground outline-none placeholder:text-muted focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
+            />
+          </form>
+
+          {searchQuery.trim().length >= 3 && (
+            <div className="absolute left-0 right-0 top-12 z-[100] overflow-hidden rounded-2xl border border-border bg-surface-elevated shadow-xl">
+              {suggestions.length > 0 ? (
+                suggestions.map((product) => (
+                  <Link
+                    key={product.id}
+                    href={`/shop?search=${encodeURIComponent(product.name)}`}
+                    onClick={() => setSearchQuery("")}
+                    className="block border-b border-border/60 px-4 py-3 last:border-0 hover:bg-surface"
+                  >
+                    <p className="text-sm font-medium text-foreground">
+                      {product.name}
+                    </p>
+                    <p className="mt-0.5 text-xs text-muted">
+                      {product.category}
+                    </p>
+                  </Link>
+                ))
+              ) : (
+                <p className="px-4 py-3 text-sm text-muted">
+                  No related products found.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
 
       <MobileNav>
         <MobileNavHeader>
