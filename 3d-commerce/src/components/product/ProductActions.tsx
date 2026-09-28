@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -18,16 +18,16 @@ import type { StorefrontProduct, StorefrontVariant } from "@/lib/catalog-api";
 
 interface ProductActionsProps {
   product: StorefrontProduct;
+  selectedVariantId: string | null;
+  quantity: number;
+  onVariantChange: (variantId: string | null) => void;
+  onQuantityChange: (quantity: number) => void;
 }
 
-export function ProductActions({ product }: ProductActionsProps) {
+export function ProductActions({ product, selectedVariantId, quantity, onVariantChange, onQuantityChange }: ProductActionsProps) {
   const router = useRouter();
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const variants = product.variants ?? [];
-  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(
-    variants[0]?.id ?? null,
-  );
-  const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
   const [pending, setPending] = useState(false);
   const [buying, setBuying] = useState(false);
@@ -150,7 +150,7 @@ export function ProductActions({ product }: ProductActionsProps) {
                   size="md"
                   ariaLabel={`Select ${label}`}
                   ariaPressed={selected}
-                  onClick={() => setSelectedVariantId(variant.id)}
+                  onClick={() => onVariantChange(variant.id)}
                   disabled={available !== null && available <= 0}
                   className="min-h-12 w-full justify-center rounded-xl px-3 text-center"
                 >
@@ -177,7 +177,7 @@ export function ProductActions({ product }: ProductActionsProps) {
           <button
             type="button"
             aria-label="Decrease quantity"
-            onClick={() => setQuantity((value) => Math.max(1, value - 1))}
+            onClick={() => onQuantityChange(Math.max(1, quantity - 1))}
             className="flex h-full w-9 items-center justify-center text-muted transition-colors hover:text-foreground"
           >
             <IconMinus size={13} />
@@ -190,7 +190,7 @@ export function ProductActions({ product }: ProductActionsProps) {
           <button
             type="button"
             aria-label="Increase quantity"
-            onClick={() => setQuantity((value) => selectedAvailable === null ? value + 1 : Math.min(selectedAvailable, value + 1))}
+            onClick={() => onQuantityChange(selectedAvailable === null ? quantity + 1 : Math.min(selectedAvailable, quantity + 1))}
             disabled={selectedAvailable !== null && quantity >= selectedAvailable}
             className="flex h-full w-9 items-center justify-center text-muted transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
           >
@@ -200,9 +200,10 @@ export function ProductActions({ product }: ProductActionsProps) {
       </div>
 
       <div className="mt-5 flex items-baseline gap-3">
-        <p className="text-lg font-semibold text-foreground">
-          ₹{displayPrice.toLocaleString("en-IN")}
+        <p className="rounded-full bg-red-500 px-4 py-1.5 text-xl font-bold tracking-tight text-white shadow-[0_8px_24px_rgba(239,68,68,0.18)]">
+          ₹{(displayPrice * quantity).toLocaleString("en-IN")}
         </p>
+        <span className="text-[9px] uppercase tracking-[0.14em] text-muted">Size × quantity</span>
         {selectedVariant?.oldPrice !== undefined ? (
           <span className="text-sm text-muted line-through">
             ₹{selectedVariant.oldPrice.toLocaleString("en-IN")}
