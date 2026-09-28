@@ -77,7 +77,11 @@ export class OrdersController {
 
   @UseGuards(AuthGuard, AdminGuard)
   @Get('admin/list')
-  findAllAdmin(@Query('status') status?: string) {
+  findAllAdmin(
+    @Query('status') status?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+  ) {
     let parsedStatus: OrderStatus | undefined;
 
     if (status !== undefined) {
@@ -87,7 +91,11 @@ export class OrdersController {
       parsedStatus = status as OrderStatus;
     }
 
-    return this.ordersService.findAllAdmin(parsedStatus);
+    return this.ordersService.findAllAdmin(
+      parsedStatus,
+      Number(page ?? 1),
+      Number(pageSize ?? 25),
+    );
   }
 
   @UseGuards(AuthGuard, AdminGuard)
