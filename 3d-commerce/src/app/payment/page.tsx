@@ -275,7 +275,7 @@ export default function PaymentPage() {
         <Navbar />
         <main className="min-h-screen">
           <Container>
-            <div className="flex min-h-[70vh] items-center justify-center text-[10px] uppercase tracking-[0.18em] text-muted">
+            <div className="flex min-h-[70vh] items-center justify-center text-[11px] uppercase tracking-[0.18em] text-muted">
               Loading secure payment…
             </div>
           </Container>
@@ -291,7 +291,7 @@ export default function PaymentPage() {
         <main className="min-h-screen">
           <Container>
             <div className="mx-auto max-w-xl py-24 text-center">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-primary">Payment</p>
+              <p className="text-[11px] uppercase tracking-[0.2em] text-primary">Payment</p>
               <h1 className="mt-4 font-serif text-4xl text-foreground">Your cart is empty</h1>
               <Button href="/shop" size="lg" className="mt-7">
                 Return to shop
@@ -322,7 +322,7 @@ export default function PaymentPage() {
             <div className="mb-8 sm:mb-10">
               <Link
                 href={backToCheckoutHref}
-                className="inline-flex items-center gap-2 text-[9px] uppercase tracking-[0.16em] text-muted transition-colors hover:text-foreground"
+                className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.16em] text-muted transition-colors hover:text-foreground"
               >
                 <IconArrowLeft size={14} />
                 Back to delivery
@@ -332,7 +332,7 @@ export default function PaymentPage() {
                 <div>
                   <div className="flex items-center gap-3">
                     <span className="h-px w-7 bg-primary" />
-                    <p className="text-[9px] font-medium uppercase tracking-[0.24em] text-primary">
+                    <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-primary">
                       Payment
                     </p>
                   </div>
@@ -346,7 +346,7 @@ export default function PaymentPage() {
                   </p>
                 </div>
 
-                <div className="hidden items-center gap-2 text-[10px] uppercase tracking-[0.12em] text-muted sm:flex">
+                <div className="hidden items-center gap-2 text-[11px] uppercase tracking-[0.12em] text-muted sm:flex">
                   <IconLock size={14} className="text-primary" />
                   Encrypted checkout
                 </div>
@@ -355,16 +355,16 @@ export default function PaymentPage() {
 
             <div className="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start lg:gap-12">
               <div className="space-y-7">
-                <section className="rounded-2xl border border-white/[0.08] bg-white/[0.015] p-5 sm:p-7">
+                <section className="rounded-2xl border border-border bg-surface p-5 sm:p-7">
                   <div className="flex items-center justify-between gap-4">
                     <div>
-                      <p className="text-[9px] uppercase tracking-[0.2em] text-primary">01</p>
+                      <p className="text-[11px] uppercase tracking-[0.2em] text-primary">01</p>
                       <h2 className="mt-2 text-xl font-medium text-foreground">Razorpay</h2>
                     </div>
-                    <span className="text-[10px] text-muted">{countryConfig.currency}</span>
+                    <span className="text-[11px] text-muted">{countryConfig.currency}</span>
                   </div>
 
-                  <div className="mt-6 rounded-xl border border-white/[0.07] bg-black/[0.06] p-5">
+                  <div className="mt-6 rounded-xl border border-border bg-surface-elevated p-5">
                     <div className="flex gap-4">
                       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
                         <IconShieldCheck size={18} />
@@ -382,9 +382,9 @@ export default function PaymentPage() {
                   </div>
                 </section>
 
-                <section className="rounded-2xl border border-white/[0.08] bg-white/[0.015] p-5 sm:p-7">
+                <section className="rounded-2xl border border-border bg-surface p-5 sm:p-7">
                   <div className="flex gap-4">
-                    <span className="pt-0.5 font-mono text-[10px] tracking-[0.15em] text-primary">02</span>
+                    <span className="pt-0.5 font-mono text-[11px] tracking-[0.15em] text-primary">02</span>
                     <div>
                       <h2 className="text-xl font-medium text-foreground">Payment security</h2>
                       <p className="mt-1.5 text-xs leading-5 text-muted">
@@ -401,8 +401,8 @@ export default function PaymentPage() {
                 </section>
               </div>
 
-              <aside className="rounded-2xl border border-white/[0.08] bg-white/[0.025] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.24)] sm:p-6 lg:sticky lg:top-24">
-                <p className="text-[9px] font-medium uppercase tracking-[0.2em] text-primary">Order summary</p>
+              <aside className="rounded-2xl border border-border bg-surface p-5 shadow-[0_24px_70px_rgba(0,0,0,0.24)] sm:p-6 lg:sticky lg:top-24">
+                <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-primary">Order summary</p>
 
                 <div className="mt-2 flex items-end justify-between gap-4">
                   <h2 className="font-serif text-2xl tracking-[-0.035em] text-foreground">Your order</h2>
@@ -411,10 +411,10 @@ export default function PaymentPage() {
                   </span>
                 </div>
 
-            <div className="mt-5 space-y-4 border-b border-white/[0.07] pb-5">
+            <div className="mt-5 space-y-4 border-b border-border pb-5">
                   {displayItems.map((item) => (
                     <div key={item.key} className="flex min-w-0 gap-3">
-                      <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-white/[0.07] bg-[#0b0b0c]">
+                      <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-border bg-background">
                         <Image
                           src={item.product.image.startsWith("/") ? item.product.image : "/" + item.product.image}
                           alt={item.product.name}
@@ -422,13 +422,13 @@ export default function PaymentPage() {
                           sizes="64px"
                           className="object-cover"
                         />
-                        <span className="absolute right-1 top-1 rounded-full bg-black/80 px-1.5 py-0.5 text-[9px] text-white">
+                        <span className="absolute right-1 top-1 rounded-full bg-black/80 px-1.5 py-0.5 text-[11px] text-white">
                           {item.quantity}
                         </span>
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-xs font-medium text-foreground">{item.product.name}</p>
-                        <p className="mt-1 text-[10px] text-muted">{
+                        <p className="mt-1 text-[11px] text-muted">{
                           item.variantName ?? item.variantSize ?? item.size
                         }</p>
                       </div>
@@ -437,7 +437,7 @@ export default function PaymentPage() {
                 </div>
 
                 {quoteError ? (
-                  <div className="mt-4 rounded-xl border border-red-400/20 bg-red-400/[0.04] p-3 text-[10px] leading-4 text-red-300">
+                  <div className="mt-4 rounded-xl border border-red-400/20 bg-red-400/[0.04] p-3 text-[11px] leading-4 text-error">
                     {quoteError}
                   </div>
                 ) : null}
@@ -459,14 +459,14 @@ export default function PaymentPage() {
                   </div>
                 ) : null}
 
-                <div className="mt-5 flex items-end justify-between border-t border-white/[0.07] pt-5">
+                <div className="mt-5 flex items-end justify-between border-t border-border pt-5">
                   <div>
-                    <p className="text-[9px] uppercase tracking-[0.16em] text-muted">Total</p>
+                    <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Total</p>
                     <p className="mt-1 text-2xl font-semibold tracking-[-0.03em] text-foreground">
                       {total ? formatQuoteMoney(total.amountMinor, total.currency) : "—"}
                     </p>
                   </div>
-                  <span className="text-right text-[9px] leading-4 text-muted">
+                  <span className="text-right text-[11px] leading-4 text-muted">
                     {countryConfig.name}
                     <br />
                     {countryConfig.currency}
@@ -492,7 +492,7 @@ export default function PaymentPage() {
                       : "Pay " + (total ? formatQuoteMoney(total.amountMinor, total.currency) : "")}
                 </Button>
 
-                <p className="mt-3 text-center text-[9px] leading-4 text-muted">
+                <p className="mt-3 text-center text-[11px] leading-4 text-muted">
                   Your order is confirmed only after successful server-side payment verification.
                 </p>
               </aside>
@@ -514,10 +514,10 @@ function TrustItem({
   text: string;
 }) {
   return (
-    <div className="rounded-xl border border-white/[0.07] bg-black/[0.06] p-4">
+    <div className="rounded-xl border border-border bg-surface-elevated p-4">
       <span className="text-primary">{icon}</span>
       <p className="mt-3 text-xs font-medium text-foreground">{title}</p>
-      <p className="mt-1 text-[10px] text-muted">{text}</p>
+      <p className="mt-1 text-[11px] text-muted">{text}</p>
     </div>
   );
 }
@@ -534,7 +534,7 @@ function SummaryRow({
   return (
     <div className="flex items-center justify-between gap-4 text-sm">
       <span className="text-muted">{label}</span>
-      <span className={positive ? "font-medium text-emerald-400" : "font-medium text-foreground"}>
+      <span className={positive ? "font-medium text-success" : "font-medium text-foreground"}>
         {value}
       </span>
     </div>
