@@ -51,7 +51,11 @@ export function ProductActions({ product }: ProductActionsProps) {
   const displayPrice = selectedVariant?.price ?? product.price;
 
   const addToCart = async () => {
-    if (pending) return;
+    if (pending || isAuthLoading) return;
+    if (!isAuthenticated) {
+      router.push("/login?returnTo=" + encodeURIComponent(window.location.pathname + window.location.search));
+      return;
+    }
     if (selectedAvailable !== null && selectedAvailable < quantity) {
       setError("The selected size does not have enough stock.");
       return;
@@ -75,7 +79,11 @@ export function ProductActions({ product }: ProductActionsProps) {
   };
 
   const buyNow = async () => {
-    if (pending || buying) return;
+    if (pending || buying || isAuthLoading) return;
+    if (!isAuthenticated) {
+      router.push("/login?returnTo=" + encodeURIComponent(window.location.pathname + window.location.search));
+      return;
+    }
     setBuying(true);
     setError(null);
 
