@@ -235,54 +235,68 @@ export function Navbar() {
         </div>
       </NavBody>
 
-      <div className="pointer-events-none mx-auto mt-2 hidden w-full px-3 lg:flex min-[1600px]:hidden">
-        <div className="pointer-events-auto relative mx-auto w-[min(420px,calc(100vw-2rem))]">
+      <div className="pointer-events-none hidden lg:flex min-[1600px]:hidden absolute right-4 top-1/2 -translate-y-1/2 z-[70]">
+        <div className="pointer-events-auto relative">
+          <button
+            type="button"
+            onClick={() => {
+              const input = document.getElementById("desktop-collapsed-search");
+              input?.focus();
+            }}
+            aria-label="Open search"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-muted transition-all duration-300 hover:bg-surface-elevated hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <IconSearch size={18} stroke={1.8} />
+          </button>
+
           <form
             onSubmit={handleSearchSubmit}
-            className="flex h-10 items-center rounded-full border border-border/80 bg-background/90 px-3 shadow-lg backdrop-blur-xl"
             role="search"
+            className="absolute right-0 top-11 w-[min(360px,calc(100vw-2rem))] overflow-hidden rounded-full border border-border/80 bg-background/95 px-3 shadow-xl backdrop-blur-xl transition-all duration-200"
           >
-            <IconSearch
-              size={16}
-              stroke={1.8}
-              className="shrink-0 text-muted"
-            />
-
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search products"
-              aria-label="Search products"
-              className="h-8 w-full appearance-none bg-transparent px-2 text-xs text-foreground outline-none placeholder:text-muted focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
-            />
-          </form>
-
-          {searchQuery.trim().length >= 3 && (
-            <div className="absolute left-0 right-0 top-12 z-[100] overflow-hidden rounded-2xl border border-border bg-surface-elevated shadow-xl">
-              {suggestions.length > 0 ? (
-                suggestions.map((product) => (
-                  <Link
-                    key={product.id}
-                    href={`/shop?search=${encodeURIComponent(product.name)}`}
-                    onClick={() => setSearchQuery("")}
-                    className="block border-b border-border/60 px-4 py-3 last:border-0 hover:bg-surface"
-                  >
-                    <p className="text-sm font-medium text-foreground">
-                      {product.name}
-                    </p>
-                    <p className="mt-0.5 text-xs text-muted">
-                      {product.category}
-                    </p>
-                  </Link>
-                ))
-              ) : (
-                <p className="px-4 py-3 text-sm text-muted">
-                  No related products found.
-                </p>
-              )}
+            <div className="flex h-10 items-center">
+              <IconSearch
+                size={16}
+                stroke={1.8}
+                className="shrink-0 text-muted"
+              />
+              <input
+                id="desktop-collapsed-search"
+                type="search"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search products"
+                aria-label="Search products"
+                className="h-8 w-full appearance-none bg-transparent px-2 text-xs text-foreground outline-none placeholder:text-muted focus:outline-none focus:ring-0"
+              />
             </div>
-          )}
+
+            {searchQuery.trim().length >= 3 && (
+              <div className="absolute left-0 right-0 top-12 overflow-hidden rounded-2xl border border-border bg-surface-elevated shadow-xl">
+                {suggestions.length > 0 ? (
+                  suggestions.map((product) => (
+                    <Link
+                      key={product.id}
+                      href={`/shop?search=${encodeURIComponent(product.name)}`}
+                      onClick={() => setSearchQuery("")}
+                      className="block border-b border-border/60 px-4 py-3 last:border-0 hover:bg-surface"
+                    >
+                      <p className="text-sm font-medium text-foreground">
+                        {product.name}
+                      </p>
+                      <p className="mt-0.5 text-xs text-muted">
+                        {product.category}
+                      </p>
+                    </Link>
+                  ))
+                ) : (
+                  <p className="px-4 py-3 text-sm text-muted">
+                    No related products found.
+                  </p>
+                )}
+              </div>
+            )}
+          </form>
         </div>
       </div>
 
