@@ -1,6 +1,6 @@
 import { Navbar } from "@/components/layout/SiteNavbar";
 import { Hero } from "@/components/home/Hero";
-import { MostPurchased } from "@/components/home/MostPurchased";
+import { BestSellers } from "@/components/home/BestSellers";
 import { CustomBuild } from "@/components/home/CustomBuild";
 import { ShopByCategory } from "@/components/home/shop-catogery";
 import { TrendingNow } from "@/components/home/TrendingNow";
@@ -16,7 +16,7 @@ export default function Home() {
       <main>
         <Hero />
 
-        <MostPurchased />
+        <BestSellers />
         <CustomBuild />
         <ShopByCategory />
         <TrendingNow />
