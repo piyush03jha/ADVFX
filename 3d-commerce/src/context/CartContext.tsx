@@ -336,6 +336,7 @@ export function CartProvider({
     }
 
     let skipped = 0;
+    const failedItems: GuestCartItem[] = [];
 
     for (const item of guestItems) {
       try {
@@ -349,10 +350,16 @@ export function CartProvider({
         });
       } catch {
         skipped += 1;
+        failedItems.push(item);
       }
     }
 
-    applyBackendCart(await readBackendCart());
+    try {
+      applyBackendCart(await readBackendCart());
+    } catch (cause) {
+      setLocalGuestCart(failedItems);
+      throw cause;
+    }
 
     if (skipped > 0) {
       setError(
