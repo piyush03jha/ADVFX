@@ -163,6 +163,81 @@ export class AdminService {
     return { products, categories };
   }
 
+  async promotions() {
+    return this.prisma.promotion.findMany({ orderBy: { createdAt: 'desc' } });
+  }
+
+  async upsertPromotion(input: {
+    id?: string;
+    name: string;
+    description?: string | null;
+    code?: string | null;
+    type: any;
+    value: number;
+    minSubtotalMinor?: number | null;
+    maxDiscountMinor?: number | null;
+    startsAt?: string | null;
+    endsAt?: string | null;
+    usageLimit?: number | null;
+    isActive?: boolean;
+  }) {
+    const data = {
+      name: input.name.trim(),
+      description: input.description?.trim() || null,
+      code: input.code?.trim().toUpperCase() || null,
+      type: input.type,
+      value: input.value,
+      minSubtotalMinor: input.minSubtotalMinor ?? null,
+      maxDiscountMinor: input.maxDiscountMinor ?? null,
+      startsAt: input.startsAt ? new Date(input.startsAt) : null,
+      endsAt: input.endsAt ? new Date(input.endsAt) : null,
+      usageLimit: input.usageLimit ?? null,
+      isActive: input.isActive ?? true,
+    };
+    if (!data.name) throw new BadRequestException('Promotion name is required');
+    if (data.value < 0) throw new BadRequestException('Promotion value cannot be negative');
+    return input.id
+      ? this.prisma.promotion.update({ where: { id: input.id }, data })
+      : this.prisma.promotion.create({ data });
+  }
+
+  async setPromotionActive(id: string, isActive: boolean) {
+    return this.prisma.promotion.update({ where: { id }, data: { isActive } });
+  }
+
+  async taxRules() {
+    return this.prisma.taxRule.findMany({ orderBy: [{ priority: 'asc' }, { createdAt: 'desc' }] });
+  }
+
+  async upsertTaxRule(input: {
+    id?: string;
+    name: string;
+    countryCode: string;
+    stateCode?: string | null;
+    rateBps: number;
+    applyToShipping?: boolean;
+    priority?: number;
+    isActive?: boolean;
+  }) {
+    const data = {
+      name: input.name.trim(),
+      countryCode: input.countryCode.trim().toUpperCase(),
+      stateCode: input.stateCode?.trim().toUpperCase() || null,
+      rateBps: Math.max(0, Math.round(input.rateBps)),
+      applyToShipping: input.applyToShipping ?? false,
+      priority: Math.max(0, Math.round(input.priority ?? 0)),
+      isActive: input.isActive ?? true,
+    };
+    if (!data.name || !data.countryCode) throw new BadRequestException('Name and country code are required');
+    return input.id
+      ? this.prisma.taxRule.update({ where: { id: input.id }, data })
+      : this.prisma.taxRule.create({ data });
+  }
+
+  async setTaxRuleActive(id: string, isActive: boolean) {
+    return this.prisma.taxRule.update({ where: { id }, data: { isActive } });
+  }
+
   async merchandising(limit = 8) {
     const products = await this.prisma.product.findMany({ where: { status: 'ACTIVE' }, include: { metrics: true } });
     const bestsellers: ProductRank[] = products.map((product) => ({
