@@ -1,6 +1,8 @@
 "use client";
 
 import { ChangeEvent, useEffect, useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { IconStar } from "@tabler/icons-react";
 
 import type { StorefrontProduct } from "@/lib/catalog-api";
@@ -24,6 +26,12 @@ interface ReviewsResponse {
   };
 }
 
+interface ReviewEligibility {
+  purchased: boolean;
+  alreadyReviewed: boolean;
+  canReview: boolean;
+}
+
 interface ProductReviewsProps {
   product: StorefrontProduct;
 }
@@ -39,6 +47,10 @@ export function ProductReviews({ product }: ProductReviewsProps) {
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [photo, setPhoto] = useState<File | null>(null);
+  const [eligibility, setEligibility] = useState<
+    "loading" | "unauthenticated" | "not-purchased" | "already-reviewed" | "eligible" | "unavailable"
+  >("loading");
+  const pathname = usePathname();
 
   async function loadReviews() {
     const response = await fetch(
@@ -50,7 +62,53 @@ export function ProductReviews({ product }: ProductReviewsProps) {
   }
 
   useEffect(() => {
-    void loadReviews().catch(() => undefined);
+    let cancelled = false;
+
+    async function loadReviewAccess() {
+      try {
+        const sessionResponse = await fetch("/api/auth/session", {
+          cache: "no-store",
+        });
+        const session = (await sessionResponse.json().catch(() => null)) as
+          | { user?: { id: string } | null }
+          | null;
+
+        if (!sessionResponse.ok || !session?.user) {
+          if (!cancelled) setEligibility("unauthenticated");
+          return;
+        }
+
+        const response = await fetch(
+          `/api/products/${encodeURIComponent(product.id)}/review-eligibility`,
+          { cache: "no-store" },
+        );
+        const data = (await response.json().catch(() => null)) as
+          | ReviewEligibility
+          | { error?: string }
+          | null;
+
+        if (!response.ok || !data || !("canReview" in data)) {
+          if (!cancelled) setEligibility("unavailable");
+          return;
+        }
+
+        if (cancelled) return;
+        if (data.alreadyReviewed) setEligibility("already-reviewed");
+        else if (data.purchased) setEligibility("eligible");
+        else setEligibility("not-purchased");
+      } catch {
+        if (!cancelled) setEligibility("unavailable");
+      }
+    }
+
+    void Promise.all([
+      loadReviews().catch(() => undefined),
+      loadReviewAccess(),
+    ]);
+
+    return () => {
+      cancelled = true;
+    };
   }, [product.id]);
 
   async function submitReview(event: React.FormEvent<HTMLFormElement>) {
@@ -180,69 +238,111 @@ export function ProductReviews({ product }: ProductReviewsProps) {
         )}
       </div>
 
-      <form onSubmit={submitReview} className="mt-6 rounded-2xl border border-border bg-surface p-5 sm:p-6">
-        <p className="text-sm font-medium text-foreground">Write a review</p>
-        <p className="mt-1 text-xs text-muted">
-          Only customers who purchased this product can submit a review.
-        </p>
+      <div className="mt-6 rounded-2xl border border-border bg-surface p-5 sm:p-6">
+        {eligibility === "loading" ? (
+          <p className="text-sm text-muted">Checking review eligibility…</p>
+        ) : eligibility === "unauthenticated" ? (
+          <div>
+            <p className="text-sm font-medium text-foreground">Want to share your experience?</p>
+            <p className="mt-1 text-xs text-muted">
+              Sign in to check whether you can review this product.
+            </p>
+            <Link
+              href={`/login?returnTo=${encodeURIComponent(pathname || "/")}`}
+              className="mt-4 inline-flex rounded-xl bg-primary px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-primary-foreground"
+            >
+              Login to write a review
+            </Link>
+          </div>
+        ) : eligibility === "not-purchased" ? (
+          <div>
+            <p className="text-sm font-medium text-foreground">Review this product after purchase</p>
+            <p className="mt-1 text-xs leading-5 text-muted">
+              You can review this product after purchasing it with a completed payment.
+            </p>
+          </div>
+        ) : eligibility === "already-reviewed" ? (
+          <div>
+            <p className="text-sm font-medium text-foreground">You have already reviewed this product.</p>
+            <p className="mt-1 text-xs leading-5 text-muted">
+              Thank you for sharing your experience with other customers.
+            </p>
+          </div>
+        ) : eligibility === "unavailable" ? (
+          <div>
+            <p className="text-sm font-medium text-foreground">Review access is temporarily unavailable.</p>
+            <p className="mt-1 text-xs leading-5 text-muted">
+              Please refresh the page and try again.
+            </p>
+          </div>
+        ) : (
+          <>
+            <p className="text-sm font-medium text-foreground">Write a review</p>
+            <p className="mt-1 text-xs text-muted">
+              Your review will be marked as a verified purchase.
+            </p>
 
-        <div className="mt-4 flex gap-1">
-          {Array.from({ length: 5 }).map((_, index) => {
-            const value = index + 1;
-            return (
-              <button
-                key={value}
-                type="button"
-                aria-label={`${value} stars`}
-                onClick={() => setRating(value)}
-                className="p-1 text-primary"
-              >
-                <IconStar size={18} fill={value <= rating ? "currentColor" : "none"} />
-              </button>
-            );
-          })}
-        </div>
+            <form onSubmit={submitReview} className="mt-4">
+              <div className="flex gap-1">
+                {Array.from({ length: 5 }).map((_, index) => {
+                  const value = index + 1;
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      aria-label={`${value} stars`}
+                      onClick={() => setRating(value)}
+                      className="p-1 text-primary"
+                    >
+                      <IconStar size={18} fill={value <= rating ? "currentColor" : "none"} />
+                    </button>
+                  );
+                })}
+              </div>
 
-        <input
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
-          maxLength={120}
-          placeholder="Review title (optional)"
-          className="mt-4 w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none"
-        />
+              <input
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                maxLength={120}
+                placeholder="Review title (optional)"
+                className="mt-4 w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none"
+              />
 
-        <label className="mt-3 block">
-          <span className="mb-2 block text-[10px] font-medium uppercase tracking-[0.14em] text-muted">Add a product photo (optional)</span>
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={(event: ChangeEvent<HTMLInputElement>) => setPhoto(event.target.files?.[0] ?? null)}
-            className="block w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-surface-elevated file:px-3 file:py-2 file:text-xs file:text-foreground"
-          />
-          <span className="mt-1 block text-[10px] text-muted">JPG, PNG or WebP · max 5 MB</span>
-        </label>
+              <label className="mt-3 block">
+                <span className="mb-2 block text-[10px] font-medium uppercase tracking-[0.14em] text-muted">Add a product photo (optional)</span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={(event: ChangeEvent<HTMLInputElement>) => setPhoto(event.target.files?.[0] ?? null)}
+                  className="block w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-surface-elevated file:px-3 file:py-2 file:text-xs file:text-foreground"
+                />
+                <span className="mt-1 block text-[10px] text-muted">JPG, PNG or WebP · max 5 MB</span>
+              </label>
 
-        <textarea
-          required
-          value={comment}
-          onChange={(event) => setComment(event.target.value)}
-          maxLength={2000}
-          rows={4}
-          placeholder="Tell other customers about the physical product..."
-          className="mt-3 w-full resize-y rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none"
-        />
+              <textarea
+                required
+                value={comment}
+                onChange={(event) => setComment(event.target.value)}
+                maxLength={2000}
+                rows={4}
+                placeholder="Tell other customers about the physical product..."
+                className="mt-3 w-full resize-y rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none"
+              />
 
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <button
-            type="submit"
-            disabled={submitting || comment.trim().length === 0}
-            className="rounded-xl bg-primary px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {submitting ? "Submitting..." : "Submit review"}
-          </button>
-          {message && <span className="text-xs text-muted">{message}</span>}
-        </div>
-      </form>
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <button
+                  type="submit"
+                  disabled={submitting || comment.trim().length === 0}
+                  className="rounded-xl bg-primary px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {submitting ? "Submitting..." : "Submit review"}
+                </button>
+                {message && <span className="text-xs text-muted">{message}</span>}
+              </div>
+            </form>
+          </>
+        )}
+      </div>
     </div>
   );
 }
