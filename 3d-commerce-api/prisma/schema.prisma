@@ -39,6 +39,7 @@ model User {
 
   customerCredential   CustomerCredential?
   customerAuthSessions CustomerAuthSession[]
+  customerOAuthIdentities CustomerOAuthIdentity[]
   verificationTokens   AuthVerificationToken[]
   passwordResetTokens  AuthPasswordResetToken[]
   adminAuthSessions    AdminAuthSession[]
@@ -136,6 +137,32 @@ model AdminAuthSession {
   createdAt DateTime @default(now())
 
   @@index([userId, expiresAt])
+}
+
+
+/**
+ * ============================================================
+ * CUSTOMER OAUTH IDENTITY
+ * ============================================================
+ */
+model CustomerOAuthIdentity {
+  id              String           @id @default(cuid())
+  userId          String
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider        OAuthProvider
+  providerSubject String
+  email           String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([provider, providerSubject])
+  @@index([userId])
+  @@index([email])
+}
+
+enum OAuthProvider {
+  GOOGLE
 }
 
 /**
