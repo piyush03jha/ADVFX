@@ -33,6 +33,26 @@ export class UpdateProductDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(70)
+  seoTitle?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  seoDescription?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  seoKeywords?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  canonicalUrl?: string;
+
+  @IsOptional()
+  @IsString()
   categoryId?: string;
 
   @IsOptional()
