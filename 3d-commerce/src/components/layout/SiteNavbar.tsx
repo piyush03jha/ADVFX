@@ -38,6 +38,7 @@ const navItems = [
 export function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isDesktopSearchOpen, setIsDesktopSearchOpen] = useState(false);
 
   const { itemCount, isLoaded } = useCart();
   const { itemCount: wishlistCount, isLoaded: isWishlistLoaded } = useWishlist();
@@ -240,8 +241,7 @@ export function Navbar() {
           <button
             type="button"
             onClick={() => {
-              const input = document.getElementById("desktop-collapsed-search");
-              input?.focus();
+              setIsDesktopSearchOpen((open) => !open);
             }}
             aria-label="Open search"
             className="flex h-9 w-9 items-center justify-center rounded-full text-muted transition-all duration-300 hover:bg-surface-elevated hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
@@ -249,11 +249,15 @@ export function Navbar() {
             <IconSearch size={18} stroke={1.8} />
           </button>
 
-          <form
-            onSubmit={handleSearchSubmit}
-            role="search"
-            className="absolute right-0 top-11 w-[min(360px,calc(100vw-2rem))] overflow-hidden rounded-full border border-border/80 bg-background/95 px-3 shadow-xl backdrop-blur-xl transition-all duration-200"
-          >
+          {isDesktopSearchOpen && (
+            <form
+              onSubmit={(event) => {
+                handleSearchSubmit(event);
+                setIsDesktopSearchOpen(false);
+              }}
+              role="search"
+              className="absolute right-0 top-11 w-[min(360px,calc(100vw-2rem))] overflow-hidden rounded-full border border-border/80 bg-background/95 px-3 shadow-xl backdrop-blur-xl"
+            >
             <div className="flex h-10 items-center">
               <IconSearch
                 size={16}
@@ -296,7 +300,8 @@ export function Navbar() {
                 )}
               </div>
             )}
-          </form>
+            </form>
+          )}
         </div>
       </div>
 
