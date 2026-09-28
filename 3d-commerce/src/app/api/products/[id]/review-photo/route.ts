@@ -19,7 +19,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     getBackendApiUrl(`products/${encodeURIComponent(id)}/review-photo`),
     {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: {\n        Authorization: `Bearer ${token}`,\n        "Content-Type": request.headers.get("content-type") ?? "",\n      },
       body: await request.arrayBuffer(),
       cache: "no-store",
     },
