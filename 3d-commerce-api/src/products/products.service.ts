@@ -332,7 +332,7 @@ export class ProductsService {
         verifiedPurchase: true,
         createdAt: true,
         user: { select: { name: true } },
-        product: { select: { id: true, name: true, slug: true } },
+        product: { select: { id: true, name: true, slug: true, media: { where: { type: 'IMAGE' }, orderBy: { sortOrder: 'asc' }, take: 1, select: { url: true, altText: true } } } },
       },
       orderBy: { createdAt: 'desc' },
       take: Math.min(Math.max(limit, 1), 12),
