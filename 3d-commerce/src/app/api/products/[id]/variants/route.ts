@@ -19,9 +19,9 @@ async function proxy(
       method,
       headers: {
         Authorization: "Bearer " + token,
-        ...(method !== "DELETE" ? { "Content-Type": "application/json" } : {}),
+        "Content-Type": "application/json",
       },
-      body: method !== "DELETE" ? await request.text() : undefined,
+      body: await request.text(),
       cache: "no-store",
     });
     const data = await response.json().catch(() => null);
