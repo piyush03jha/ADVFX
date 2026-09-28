@@ -421,6 +421,29 @@ export class ProductsService {
     });
   }
 
+  async findAllAdminReviews() {
+    return this.prisma.productReview.findMany({
+      include: {
+        product: { select: { id: true, name: true, slug: true } },
+        user: { select: { id: true, name: true, email: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async setReviewPublished(id: string, isPublished: boolean) {
+    const review = await this.prisma.productReview.findUnique({ where: { id }, select: { id: true } });
+    if (!review) throw new NotFoundException('Review not found');
+    return this.prisma.productReview.update({
+      where: { id },
+      data: { isPublished },
+      include: {
+        product: { select: { id: true, name: true } },
+        user: { select: { name: true, email: true } },
+      },
+    });
+  }
+
   async findOne(id: string) {
     const product = await this.prisma.product.findFirst({
       where: { id, status: 'ACTIVE' },
