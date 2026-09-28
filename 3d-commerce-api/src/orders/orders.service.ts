@@ -346,24 +346,52 @@ export class OrdersService {
     return order;
   }
 
-  async findAllAdmin(status?: OrderStatus, page = 1, pageSize = ADMIN_ORDERS_PAGE_SIZE_DEFAULT) {
+  async findAllAdmin(
+    status?: OrderStatus,
+    page = 1,
+    pageSize = ADMIN_ORDERS_PAGE_SIZE_DEFAULT,
+  ) {
     const safePage = Number.isInteger(page) && page > 0 ? page : 1;
     const safePageSize =
       Number.isInteger(pageSize) && pageSize > 0
         ? Math.min(pageSize, ADMIN_ORDERS_PAGE_SIZE_MAX)
         : ADMIN_ORDERS_PAGE_SIZE_DEFAULT;
 
-    // Previously unbounded (`findMany` with no take/skip): as the order
-    // table grows this fetches every order with deep includes on every
-    // admin page load. Keeps the existing array response shape (so the
-    // frontend doesn't need to change) but now always bounded.
-    return this.prisma.order.findMany({
-      where: status ? { status } : undefined,
-      include: { items: true, shippingAddress: true, payment: true, shipment: true, inventoryReservations: true, user: true, promotion: true, shippingRule: true },
-      orderBy: { createdAt: 'desc' },
-      skip: (safePage - 1) * safePageSize,
-      take: safePageSize,
-    });
+    const where = status ? { status } : undefined;
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.order.findMany({
+        where,
+        include: {
+          items: true,
+          shippingAddress: true,
+          payment: true,
+          shipment: true,
+          inventoryReservations: true,
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+          promotion: true,
+          shippingRule: true,
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (safePage - 1) * safePageSize,
+        take: safePageSize,
+      }),
+      this.prisma.order.count({ where }),
+    ]);
+
+    return {
+      items,
+      total,
+      page: safePage,
+      pageSize: safePageSize,
+      totalPages: Math.max(1, Math.ceil(total / safePageSize)),
+    };
   }
 
   async findOneAdmin(id: string) {
