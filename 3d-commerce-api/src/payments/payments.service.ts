@@ -139,7 +139,25 @@ export class PaymentsService {
           };
         }
 
-        await this.razorpay.refundPayment(captured.id, order.payment.amountMinor);
+        try {
+          await this.razorpay.refundPayment(captured.id, order.payment.amountMinor);
+          await this.prisma.payment.update({
+            where: { orderId: order.id },
+            data: { status: PaymentStatus.REFUNDED },
+          });
+        } catch (error) {
+          await this.notifications.create(
+            order.userId ?? "",
+            {
+              type: NotificationType.PAYMENT_FAILED,
+              title: "Refund requires attention",
+              message: `Payment ${captured.id} was captured but the automatic refund failed.`,
+              entityType: "ORDER",
+              entityId: order.id,
+            },
+          ).catch(() => undefined);
+          throw error;
+        }
         return {
           orderId: order.id,
           status: OrderStatus.REFUNDED,
@@ -518,7 +536,6 @@ export class PaymentsService {
         where: {
           orderId,
           status: "ACTIVE",
-          expiresAt: { gt: new Date() },
         },
       });
 
@@ -587,11 +604,13 @@ export class PaymentsService {
     const attempt = razorpayOrderId
       ? await this.prisma.paymentAttempt.findUnique({
           where: { providerOrderId: razorpayOrderId },
+          include: { payment: { select: { orderId: true } } },
         })
       : paymentId
         ? await this.prisma.paymentAttempt.findFirst({
             where: { providerPaymentId: paymentId },
             orderBy: { createdAt: "desc" },
+            include: { payment: { select: { orderId: true } } },
           })
         : null;
 
@@ -609,7 +628,7 @@ export class PaymentsService {
     }
 
     const result = await this.applyCapturedPayment(
-      attempt.paymentId,
+      attempt.payment.orderId,
       paymentId ?? attempt.providerPaymentId ?? "",
       attempt.providerOrderId,
       resolvedAmount,
@@ -622,8 +641,21 @@ export class PaymentsService {
           result.providerPaymentId,
           resolvedAmount,
         );
-      } catch {
-        // Observability for refund failures is handled by the Razorpay service layer.
+      } catch (error) {
+        await this.notifications.create(
+          (await this.prisma.order.findUnique({ where: { id: attempt.payment.orderId }, select: { userId: true } }))?.userId ?? "",
+          {
+            type: NotificationType.PAYMENT_FAILED,
+            title: "Payment reconciliation requires attention",
+            message: `Payment ${result.providerPaymentId} could not be refunded automatically.`,
+            entityType: "ORDER",
+            entityId: attempt.payment.orderId,
+          },
+        ).catch(() => undefined);
+        await this.prisma.payment.updateMany({
+          where: { orderId: attempt.payment.orderId },
+          data: { status: PaymentStatus.CAPTURED },
+        });
       }
     }
   }
