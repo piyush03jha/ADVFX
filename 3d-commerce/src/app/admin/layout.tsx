@@ -46,7 +46,7 @@ export default function AdminLayout({children}:{children:React.ReactNode}){
       <aside className={open?"fixed inset-y-0 left-0 z-50 flex w-[280px] shrink-0 flex-col border-r border-border bg-background/95 p-4 backdrop-blur-xl transition-transform duration-300 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0":"fixed inset-y-0 left-0 z-50 flex w-[280px] shrink-0 -translate-x-full flex-col border-r border-border bg-background/95 p-4 backdrop-blur-xl transition-transform duration-300 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0"}>
         <div className="flex items-start justify-between px-3 py-3">
           <Link href="/admin" className="min-w-0" onClick={()=>setOpen(false)}>
-            <p className="text-[9px] uppercase tracking-[0.25em] text-primary">FORMA / ADMIN</p><p className="mt-1 text-base font-semibold tracking-[-0.02em]">Operations</p>
+            <p className="text-[9px] uppercase tracking-[0.25em] text-primary">Voxel3D / ADMIN</p><p className="mt-1 text-base font-semibold tracking-[-0.02em]">Operations</p>
           </Link>
           <button className="rounded-lg p-2 text-muted lg:hidden" onClick={()=>setOpen(false)}><IconX size={18}/></button>
         </div>
