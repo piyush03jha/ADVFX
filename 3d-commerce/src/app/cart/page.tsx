@@ -2,8 +2,6 @@
 
 import { IconArrowLeft, IconShoppingBag } from "@tabler/icons-react";
 import Link from "next/link";
-import { useEffect } from "react";
-
 import { Navbar } from "@/components/layout/SiteNavbar";
 import { CartItem } from "@/components/cart/CartItem";
 import { CartSummary } from "@/components/cart/CartSummary";
@@ -13,11 +11,7 @@ import { Container } from "@/components/ui/Container";
 import { useCart } from "@/context/CartContext";
 
 export default function CartPage() {
-  const { items, itemCount, isLoaded, isRefreshing, clearCart, refreshCart } = useCart();
-
-  useEffect(() => {
-    void refreshCart();
-  }, [refreshCart]);
+  const { items, itemCount, isLoaded, isRefreshing, clearCart, refreshCart, error } = useCart();
 
   return (
     <>
@@ -61,6 +55,20 @@ export default function CartPage() {
                 </div>
               )}
             </div>
+
+            {error && (
+              <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-400/20 bg-amber-400/[0.06] px-4 py-3 text-xs text-amber-200">
+                <span>{error}</span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void refreshCart()}
+                >
+                  Retry
+                </Button>
+              </div>
+            )}
 
             {!isLoaded || isRefreshing ? (
               <div className="flex min-h-[420px] items-center justify-center rounded-2xl border border-white/[0.08] bg-[linear-gradient(135deg,hsl(var(--foreground)/0.055),hsl(var(--background)/0.02)_55%,hsl(var(--primary)/0.07))] shadow-[0_18px_55px_rgba(0,0,0,0.12)]">
