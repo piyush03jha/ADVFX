@@ -31,8 +31,7 @@ const navItems = [
   { name: "Home", link: "/" },
   { name: "Shop", link: "/shop" },
   { name: "Custom", link: "/custom" },
-  { name: "Gaming", link: "/shop/gaming" },
-  { name: "Anime", link: "/shop/anime" },
+  { name: "Category", link: "/#categories" },
   { name: "Contact Us", link: "/contact" },
 ];
 
