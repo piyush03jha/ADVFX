@@ -133,14 +133,10 @@ export function ProductActions({ product }: ProductActionsProps) {
             </span>
           </div>
 
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="grid grid-cols-3 gap-2">
             {variants.map((variant) => {
               const selected = variant.id === selectedVariantId;
               const label = variant.name + (variant.size ? " · " + variant.size : "");
-              const priceLabel =
-                variant.price !== undefined
-                  ? "₹" + variant.price.toLocaleString("en-IN")
-                  : "Price available in checkout";
               const available =
                 variant.trackStock && !variant.allowBackorder
                   ? Math.max(0, (variant.stock ?? 0) - (variant.reserved ?? 0))
@@ -156,15 +152,10 @@ export function ProductActions({ product }: ProductActionsProps) {
                   ariaPressed={selected}
                   onClick={() => setSelectedVariantId(variant.id)}
                   disabled={available !== null && available <= 0}
-                  className="relative min-h-14 w-full justify-between rounded-xl px-4 text-left"
+                  className="min-h-12 w-full justify-center rounded-xl px-3 text-center"
                 >
-                  <span>
-                    <span className="block text-xs font-semibold">{label}</span>
-                    <span className="mt-1 block text-[10px] opacity-70">
-                      {priceLabel} · {available === null ? "In stock" : available > 0 ? `${available} available` : "Out of stock"}
-                    </span>
-                  </span>
-                  {selected ? <IconCheck size={16} /> : null}
+                  <span className="text-xs font-semibold">{label}</span>
+                  {selected ? <IconCheck size={14} /> : null}
                 </Button>
               );
             })}
