@@ -75,15 +75,24 @@ export default function AdminOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
 
   async function load() {
     setLoading(true);
     try {
-      const query = filter === "ALL" ? "" : `?status=${encodeURIComponent(filter)}`;
-      const response = await fetch(`/api/admin/orders${query}`, { cache: "no-store" });
+      const params = new URLSearchParams({
+        page: String(page),
+        pageSize: "25",
+      });
+      if (filter !== "ALL") params.set("status", filter);
+      const response = await fetch(`/api/admin/orders?${params.toString()}`, { cache: "no-store" });
       if (!response.ok) throw new Error();
       const data = await response.json();
-      setOrders(Array.isArray(data) ? (data as Order[]) : []);
+      setOrders(Array.isArray(data) ? (data as Order[]) : (data.items ?? []));
+      setTotal(Number(data.total ?? data.length ?? 0));
+      setTotalPages(Number(data.totalPages ?? 1));
       setError("");
     } catch {
       setError("Unable to load orders.");
@@ -94,7 +103,7 @@ export default function AdminOrdersPage() {
 
   useEffect(() => {
     void load();
-  }, [filter]);
+  }, [filter, page]);
 
   async function updateStatus(id: string, status: string) {
     setBusyId(id);
@@ -151,10 +160,13 @@ export default function AdminOrdersPage() {
         {FILTERS.map((status) => (
           <button
             key={status}
-            onClick={() => setFilter(status)}
+            onClick={() => {
+              setFilter(status);
+              setPage(1);
+            }}
             className={`rounded-full border px-3 py-1.5 text-[9px] font-medium uppercase tracking-[0.08em] ${filter === status ? "border-primary/30 bg-primary/10 text-primary" : "border-border text-muted hover:text-foreground"}`}
           >
-            {status === "ALL" ? `All ${orders.length}` : `${label(status)} ${counts[status] ?? 0}`}
+            {status === "ALL" ? `All ${total}` : `${label(status)} ${counts[status] ?? 0}`}
           </button>
         ))}
       </div>
@@ -163,6 +175,32 @@ export default function AdminOrdersPage() {
         <IconFilter size={14} className="text-muted" />
         <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search order, customer or product…" className="h-10 min-w-0 flex-1 bg-transparent text-xs outline-none placeholder:text-muted" />
       </div>
+
+      {!loading && totalPages > 1 && (
+        <div className="mt-5 flex items-center justify-between rounded-2xl border border-border bg-surface px-4 py-3">
+          <p className="text-[10px] text-muted">
+            Page {page} of {totalPages} · {total} orders
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={page <= 1}
+              onClick={() => setPage((current) => Math.max(1, current - 1))}
+              className="rounded-xl border border-border px-3 py-2 text-[10px] text-muted disabled:opacity-40"
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              disabled={page >= totalPages}
+              onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+              className="rounded-xl border border-border px-3 py-2 text-[10px] text-muted disabled:opacity-40"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="mt-6 space-y-3">
         {loading ? (
