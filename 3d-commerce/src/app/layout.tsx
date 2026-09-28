@@ -14,7 +14,7 @@ const fraunces = Fraunces({ variable: "--font-fraunces", subsets: ["latin"], axe
 
 export const metadata: Metadata = {
   title: "FORMA — Premium 3D Models & Collectibles",
-  description: "Premium 3D models, custom 3D creations, and physical collectibles built with obsessive attention to detail.",
+  description: "Premium physical 3D models, custom 3D creations, and collectibles built with obsessive attention to detail.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
