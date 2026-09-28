@@ -1,4 +1,4 @@
-import { forwardRef, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { PrismaModule } from '../prisma/prisma.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { PricingModule } from '../pricing/pricing.module';
@@ -11,7 +11,7 @@ import { RazorpayService } from '../payments/razorpay.service';
 import { PaymentsModule } from '../payments/payments.module';
 
 @Module({
-  imports: [PrismaModule, NotificationsModule, PricingModule, AuthModule, forwardRef(() => PaymentsModule)],
+  imports: [PrismaModule, NotificationsModule, PricingModule, AuthModule, PaymentsModule],
   controllers: [OrdersController],
   providers: [OrdersService, ReturnsService, OrdersExpirationScheduler, RazorpayService],
   exports: [OrdersService, ReturnsService],
