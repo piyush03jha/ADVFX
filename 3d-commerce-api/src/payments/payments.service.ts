@@ -352,6 +352,45 @@ export class PaymentsService {
     };
   }
 
+  async reconcileCapturedPayment(input: {
+    orderId: string;
+    providerPaymentId: string;
+    providerOrderId: string;
+    amount: number;
+    currency: string;
+  }) {
+    const result = await this.applyCapturedPayment(
+      input.orderId,
+      input.providerPaymentId,
+      input.providerOrderId,
+      input.amount,
+      input.currency,
+    );
+
+    if (result.kind === "REFUND_REQUIRED") {
+      try {
+        await this.razorpay.refundPayment(
+          result.providerPaymentId,
+          input.amount,
+        );
+        await this.prisma.payment.update({
+          where: { orderId: input.orderId },
+          data: { status: PaymentStatus.REFUNDED },
+        });
+        return { ...result, refunded: true };
+      } catch (error) {
+        console.error("Razorpay refund failed during reconciliation", {
+          orderId: input.orderId,
+          providerPaymentId: result.providerPaymentId,
+          error,
+        });
+        return { ...result, refunded: false };
+      }
+    }
+
+    return result;
+  }
+
   async handleWebhook(rawBody: string, signature: string) {
     if (!this.razorpay.verifyWebhookSignature(rawBody, signature)) {
       throw new BadRequestException('Invalid Razorpay webhook signature');
