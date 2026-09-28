@@ -1,7 +1,6 @@
 "use client";
 
 import { Badge } from "@/components/ui/Badge";
-import { Price } from "@/components/ui/Price";
 import { Rating } from "@/components/ui/Rating";
 import { WishlistButton } from "@/components/ui/WishlistButton";
 
