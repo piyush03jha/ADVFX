@@ -14,4 +14,9 @@ export class CreateProductReviewDto {
   @IsString()
   @MaxLength(2000)
   comment!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  photoUrl?: string;
 }
