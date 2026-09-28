@@ -63,6 +63,7 @@ export function ShopNavigation({
               image:
                 category.imageUrl ||
                 "/catogeries/1.jpg",
+              matchTerms: [category.name, category.slug],
             }));
 
           setDynamicCategories(mapped);
