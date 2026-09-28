@@ -93,6 +93,11 @@ export interface StorefrontVariant {
   name: string;
   size?: string | null;
   sku?: string | null;
+  stock?: number;
+  reserved?: number;
+  lowStockAt?: number;
+  trackStock?: boolean;
+  allowBackorder?: boolean;
   price?: number;
   oldPrice?: number;
 }
