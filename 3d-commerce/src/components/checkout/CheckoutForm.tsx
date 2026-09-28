@@ -40,9 +40,9 @@ export interface CheckoutDraft {
 const INITIAL_FORM: FormState = { email: "", phone: "" };
 const DRAFT_KEY = "forma-checkout-draft";
 const sectionClass =
-  "relative overflow-hidden rounded-3xl border border-white/[0.1] bg-[linear-gradient(135deg,hsl(var(--foreground)/0.06),hsl(var(--background)/0.02)_55%,hsl(var(--primary)/0.07))] p-4 shadow-[0_20px_60px_rgba(0,0,0,0.14)] sm:p-6";
+  "relative overflow-hidden rounded-3xl border border-border bg-[linear-gradient(135deg,rgb(from var(--foreground) r g b / 0.06),rgb(from var(--background) r g b / 0.02)_55%,rgb(from var(--primary) r g b / 0.07))] p-4 shadow-[0_20px_60px_rgba(0,0,0,0.14)] sm:p-6";
 const innerClass =
-  "rounded-xl border border-white/[0.08] bg-[linear-gradient(135deg,hsl(var(--foreground)/0.04),hsl(var(--background)/0.015)_65%,hsl(var(--primary)/0.045))]";
+  "rounded-xl border border-border bg-[linear-gradient(135deg,rgb(from var(--foreground) r g b / 0.04),rgb(from var(--background) r g b / 0.015)_65%,rgb(from var(--primary) r g b / 0.045))]";
 
 export function CheckoutForm({
   onCountryChange,
@@ -241,13 +241,13 @@ export function CheckoutForm({
 
         {selectedAddress && (
           <div className={`${innerClass} mt-5 p-3.5 sm:p-4`}>
-            <p className="text-[9px] uppercase tracking-[0.15em] text-muted">
+            <p className="text-[11px] uppercase tracking-[0.15em] text-muted">
               Delivering to
             </p>
             <p className="mt-1 text-xs font-medium text-foreground">
               {selectedAddress.fullName}
             </p>
-            <p className="mt-0.5 text-[10px] leading-4 text-muted">
+            <p className="mt-0.5 text-[11px] leading-4 text-muted">
               {selectedAddress.addressLine1}
               {selectedAddress.addressLine2
                 ? `, ${selectedAddress.addressLine2}`
@@ -260,7 +260,7 @@ export function CheckoutForm({
               onClick={() =>
                 window.scrollTo({ top: 0, behavior: "smooth" })
               }
-              className="mt-2 text-[9px] font-medium text-primary hover:text-primary-hover"
+              className="mt-2 text-[11px] font-medium text-primary hover:text-primary-hover"
             >
               Change address
             </button>
@@ -269,7 +269,7 @@ export function CheckoutForm({
 
         <div className="mt-5">
           <label className="block">
-            <span className="mb-2 block text-[9px] font-medium uppercase tracking-[0.15em] text-muted">
+            <span className="mb-2 block text-[11px] font-medium uppercase tracking-[0.15em] text-muted">
               Coupon code
             </span>
             <div className="flex gap-2">
@@ -277,9 +277,9 @@ export function CheckoutForm({
                 value={couponCode}
                 onChange={(event) => setCouponCode(event.target.value)}
                 placeholder="Optional"
-                className="h-11 min-w-0 flex-1 rounded-xl border border-white/[0.09] bg-background px-4 text-sm text-foreground outline-none focus:border-primary/60"
+                className="h-11 min-w-0 flex-1 rounded-xl border border-border bg-background px-4 text-sm text-foreground outline-none focus:border-primary/60"
               />
-              <span className="flex h-11 shrink-0 items-center rounded-xl border border-border px-3 text-[9px] uppercase tracking-[0.12em] text-muted">
+              <span className="flex h-11 shrink-0 items-center rounded-xl border border-border px-3 text-[11px] uppercase tracking-[0.12em] text-muted">
                 Server checked
               </span>
             </div>
@@ -287,11 +287,11 @@ export function CheckoutForm({
         </div>
 
         {quoteError ? (
-          <div className="mt-4 rounded-xl border border-red-400/20 bg-red-400/[0.04] p-3 text-[10px] leading-4 text-red-300">
+          <div className="mt-4 rounded-xl border border-red-400/20 bg-red-400/[0.04] p-3 text-[11px] leading-4 text-error">
             {quoteError}
           </div>
         ) : quote ? (
-          <div className={`${innerClass} mt-4 grid grid-cols-2 gap-3 p-3.5 text-[10px]`}>
+          <div className={`${innerClass} mt-4 grid grid-cols-2 gap-3 p-3.5 text-[11px]`}>
             <div>
               <p className="text-muted">Subtotal</p>
               <p className="mt-1 text-foreground">
@@ -361,7 +361,7 @@ function SectionHeading({
 }) {
   return (
     <div className="flex gap-3.5">
-      <span className="pt-0.5 font-mono text-[10px] tracking-[0.15em] text-primary">
+      <span className="pt-0.5 font-mono text-[11px] tracking-[0.15em] text-primary">
         {number}
       </span>
       <div className="min-w-0">
@@ -395,7 +395,7 @@ function Field({
 }) {
   return (
     <label className="block min-w-0">
-      <span className="mb-2 block text-[9px] font-medium uppercase tracking-[0.16em] text-muted">
+      <span className="mb-2 block text-[11px] font-medium uppercase tracking-[0.16em] text-muted">
         {label}
       </span>
       <span className="relative block">
@@ -410,7 +410,7 @@ function Field({
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
           required={required}
-          className={`h-11 w-full min-w-0 rounded-xl border border-white/[0.09] bg-[linear-gradient(135deg,hsl(var(--foreground)/0.04),hsl(var(--background)/0.02))] px-4 text-sm text-foreground outline-none transition-colors placeholder:text-muted/50 focus:border-primary/60 ${icon ? "pl-11" : ""}`}
+          className={`h-11 w-full min-w-0 rounded-xl border border-border bg-[linear-gradient(135deg,rgb(from var(--foreground) r g b / 0.04),rgb(from var(--background) r g b / 0.02))] px-4 text-sm text-foreground outline-none transition-colors placeholder:text-muted/50 focus:border-primary/60 ${icon ? "pl-11" : ""}`}
         />
       </span>
     </label>
@@ -430,14 +430,14 @@ function SelectField({
 }) {
   return (
     <label className="block min-w-0">
-      <span className="mb-2 block text-[9px] font-medium uppercase tracking-[0.16em] text-muted">
+      <span className="mb-2 block text-[11px] font-medium uppercase tracking-[0.16em] text-muted">
         {label}
       </span>
       <span className="relative block">
         <select
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          className="h-11 w-full appearance-none rounded-xl border border-white/[0.09] bg-[linear-gradient(135deg,hsl(var(--foreground)/0.04),hsl(var(--background)/0.02))] px-4 pr-10 text-sm text-foreground outline-none transition-colors focus:border-primary/60"
+          className="h-11 w-full appearance-none rounded-xl border border-border bg-[linear-gradient(135deg,rgb(from var(--foreground) r g b / 0.04),rgb(from var(--background) r g b / 0.02))] px-4 pr-10 text-sm text-foreground outline-none transition-colors focus:border-primary/60"
         >
           {options.map((option) => (
             <option
