@@ -23,6 +23,7 @@ const nav=[
   {href:"/admin/commerce",label:"Promotions & tax",icon:IconTags},
   {href:"/admin/processing",label:"3D processing",icon:IconCpu},
   {href:"/admin/audit",label:"Audit log",icon:IconHistory},
+  {href:"/admin/analytics",label:"Analytics",icon:IconChartBar},
 ];
 
 export default function AdminLayout({children}:{children:React.ReactNode}){
