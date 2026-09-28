@@ -114,26 +114,10 @@ export class ProductsService {
           ...(input.size !== undefined ? { size } : {}),
           ...(input.sku !== undefined ? { sku } : {}),
           ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
-          ...(input.stock !== undefined || input.lowStockAt !== undefined || input.trackStock !== undefined || input.allowBackorder !== undefined
-            ? {
-                inventory: {
-                  upsert: {
-                    create: {
-                      stock: input.stock ?? 0,
-                      lowStockAt: input.lowStockAt ?? 5,
-                      trackStock: input.trackStock ?? true,
-                      allowBackorder: input.allowBackorder ?? false,
-                    },
-                    update: {
-                      ...(input.stock !== undefined ? { stock: input.stock } : {}),
-                      ...(input.lowStockAt !== undefined ? { lowStockAt: input.lowStockAt } : {}),
-                      ...(input.trackStock !== undefined ? { trackStock: input.trackStock } : {}),
-                      ...(input.allowBackorder !== undefined ? { allowBackorder: input.allowBackorder } : {}),
-                    },
-                  },
-                },
-              }
-            : {}),
+          ...(input.stock !== undefined ? { stock: input.stock } : {}),
+          ...(input.lowStockAt !== undefined ? { lowStockAt: input.lowStockAt } : {}),
+          ...(input.trackStock !== undefined ? { trackStock: input.trackStock } : {}),
+          ...(input.allowBackorder !== undefined ? { allowBackorder: input.allowBackorder } : {}),
         },
       });
 
@@ -751,7 +735,7 @@ export class ProductsService {
       tags: { include: { tag: true } },
       variants: {
         where: { isActive: true },
-        include: { price: true, inventory: true },
+        include: { price: true },
         orderBy: { createdAt: "asc" },
       },
     };
