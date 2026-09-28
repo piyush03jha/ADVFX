@@ -4,6 +4,8 @@ import { IconHeart } from "@tabler/icons-react";
 import type { ButtonHTMLAttributes, MouseEvent } from "react";
 
 import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 import {
   useWishlist,
   type WishlistProduct,
@@ -25,11 +27,18 @@ export function WishlistButton({
   ...props
 }: WishlistButtonProps) {
   const { isInWishlist, toggleWishlist, isSyncing } = useWishlist();
+  const { isAuthenticated, isLoading } = useAuth();
+  const router = useRouter();
   const isWishlisted = isInWishlist(product.id);
 
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
+    if (isLoading) return;
+    if (!isAuthenticated) {
+      router.push("/login?returnTo=" + encodeURIComponent(window.location.pathname + window.location.search));
+      return;
+    }
     void toggleWishlist(product);
     onClick?.(event);
   };
@@ -38,7 +47,7 @@ export function WishlistButton({
     <button
       {...props}
       type="button"
-      disabled={isSyncing || props.disabled}
+      disabled={isLoading || isSyncing || props.disabled}
       aria-label={
         isWishlisted
           ? `Remove ${product.name} from wishlist`
