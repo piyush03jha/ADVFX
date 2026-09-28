@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { PolicyPage } from "@/components/content/PolicyPage";
 
-export const metadata: Metadata = { title: "Refund Policy — FORMA", description: "FORMA refunds, cancellations, and payment reconciliation policy." };
+export const metadata: Metadata = { title: "Refund Policy — Voxel3D", description: "Voxel3D refunds, cancellations, and payment reconciliation policy." };
 
 export default function RefundPage() {
   return <PolicyPage contentKey="refund" eyebrow="Legal" title="Refund Policy" intro="This policy describes how cancellations, payment failures, refunds, and eligible returns are handled for physical orders." sections={[
