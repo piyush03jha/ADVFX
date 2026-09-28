@@ -197,8 +197,7 @@ model Category {
  */
 
 model Wishlist {
-  id String @id @default(cuid())
-  userId String @unique
+  id String @id @default(cuid())  userId String @unique
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   items WishlistItem[]
@@ -397,8 +396,7 @@ model ProductInventory {
 }
 
 /** * ============================================================
- * INVENTORY RESERVATION
- * ============================================================
+ * INVENTORY RESERVATION * ============================================================
  */
 
 model InventoryReservation {
@@ -597,8 +595,7 @@ model ProductVariantPrice {
   currency       String @default("INR")
   amountMinor    Int  compareAtMinor Int?
 
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
+  isActive  Boolean  @default(true)  createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([currency, isActive])
@@ -797,8 +794,7 @@ enum ShipmentStatus {
   DELIVERED  EXCEPTION
 }
 
-/**
- * ============================================================
+/** * ============================================================
  * SHIPPING RULE
  * ============================================================
  */
@@ -997,7 +993,6 @@ model ProductFile {
 
   convertedFromId String?
   convertedFrom   ProductFile? @relation("ConvertedFiles", fields: [convertedFromId], references: [id])
-
   convertedFiles ProductFile[] @relation("ConvertedFiles")
 
   processingJobs ProductFileProcessingJob[]
@@ -1197,8 +1192,7 @@ enum ProcessingStatus {
   PENDING
   PROCESSING
   COMPLETED
-  FAILED
-}
+  FAILED}
 
 /**
  * ============================================================
@@ -1397,8 +1391,7 @@ model Notification {
 }
 
 enum NotificationType {
-  ORDER_CREATED
-  ORDER_CONFIRMED
+  ORDER_CREATED  ORDER_CONFIRMED
   ORDER_PROCESSING
   ORDER_SHIPPED
   ORDER_DELIVERED
@@ -1410,6 +1403,7 @@ enum NotificationType {
   CUSTOM_REVISION_REQUESTED
   CUSTOM_APPROVED
   CUSTOM_ORDERABLE
+  ADMIN_ANNOUNCEMENT
 }
 
 /**
