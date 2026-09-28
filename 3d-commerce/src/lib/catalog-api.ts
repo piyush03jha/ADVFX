@@ -119,6 +119,7 @@ export interface StorefrontProduct {
   rating: number;
   reviewCount: number;
   image: string;
+  images: string[];
   model: string;
   format: string;
   fileSize: string;
@@ -246,6 +247,10 @@ export function mapCatalogProduct(product: CatalogProduct): StorefrontProduct {
     rating: 0,
     reviewCount: 0,
     image: primaryImage(product),
+    images: product.media
+      .filter((media) => media.type === "IMAGE")
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map((media) => media.url),
     model: primaryModel(product),
     format: product.media.some((media) => media.type === "MODEL_PREVIEW") ? "GLB" : "Physical",
     fileSize: "",
