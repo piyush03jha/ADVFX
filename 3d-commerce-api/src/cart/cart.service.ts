@@ -21,8 +21,7 @@ export class CartService {
     const variant = variantId
       ? await this.prisma.productVariant.findFirst({
           where: { id: variantId, productId, isActive: true },
-          include: { inventory: true },
-        })
+          })
       : null;
 
     if (variantId && !variant) throw new NotFoundException('Product variant is not available');
@@ -36,7 +35,7 @@ export class CartService {
       throw new NotFoundException('Product is not available');
     }
 
-    const inventory = variant?.inventory ?? product.inventory;
+    const inventory = variant ?? product.inventory;
     if (inventory?.trackStock && !inventory.allowBackorder) {
       const existing = await this.prisma.cartItem.findUnique({
         where: { cartId_productId_variantKey: { cartId: (await this.getOrCreate(userId)).id, productId, variantKey: variantId ?? '__base__' } },
@@ -71,12 +70,12 @@ export class CartService {
     const cart = await this.getOrCreate(userId);
     const item = await this.prisma.cartItem.findUnique({
       where: { cartId_productId_variantKey: { cartId: cart.id, productId, variantKey: variantId ?? '__base__' } },
-      include: { product: { include: { inventory: true } }, variant: { include: { inventory: true } } },
+      include: { product: { include: { inventory: true } }, variant: { include: { price: true } } },
     });
 
     if (!item) throw new NotFoundException('Cart item not found');
 
-    const inventory = item.variant?.inventory ?? item.product.inventory;
+    const inventory = item.variant ?? item.product.inventory;
     if (
       inventory?.trackStock &&
       !inventory.allowBackorder &&
