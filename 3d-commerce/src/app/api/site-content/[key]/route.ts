@@ -1,0 +1,2 @@
+import { NextRequest, NextResponse } from 'next/server';
+export async function GET(request:NextRequest,{params}:{params:Promise<{key:string}>}){const {key}=await params;const api=process.env.BACKEND_API_URL||'http://localhost:4000';const r=await fetch(api+'/site-content/'+encodeURIComponent(key),{cache:'no-store'});return new NextResponse(await r.text(),{status:r.status,headers:{'Content-Type':r.headers.get('content-type')||'application/json'}})}
