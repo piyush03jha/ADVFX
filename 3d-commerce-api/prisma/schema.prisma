@@ -319,6 +319,7 @@ model ProductReview {
   rating  Int
   title   String?
   comment String
+  photoUrl String?
 
   isPublished    Boolean @default(true)
   verifiedPurchase Boolean @default(true)
