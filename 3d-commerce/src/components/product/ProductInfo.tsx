@@ -1,3 +1,5 @@
+"use client";
+
 import { Badge } from "@/components/ui/Badge";
 import { Price } from "@/components/ui/Price";
 import { Rating } from "@/components/ui/Rating";
@@ -7,6 +9,8 @@ import type { StorefrontProduct } from "@/lib/catalog-api";
 
 import { ProductActions } from "./ProductActions";
 
+import { useMemo, useState } from "react";
+
 interface ProductInfoProps {
   product: StorefrontProduct;
 }
@@ -14,6 +18,12 @@ interface ProductInfoProps {
 export function ProductInfo({
   product,
 }: ProductInfoProps) {
+  const variants = product.variants ?? [];
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(variants[0]?.id ?? null);
+  const [quantity, setQuantity] = useState(1);
+  const selectedVariant = useMemo(() => variants.find((variant) => variant.id === selectedVariantId) ?? null, [variants, selectedVariantId]);
+  const selectedPrice = selectedVariant?.price ?? product.price;
+  const selectedOldPrice = selectedVariant?.oldPrice ?? product.oldPrice;
   return (
     <div
       className="
@@ -105,31 +115,20 @@ export function ProductInfo({
           PRICE
       ================================================== */}
 
-      <div className="mt-7 flex flex-wrap items-end justify-between gap-4">
-        <div className="flex flex-wrap items-end gap-3">
-        <Price
-          value={product.price}
-          size="lg"
-        />
+      <div className="mt-7 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="rounded-full bg-yellow-400 px-5 py-2 text-2xl font-bold tracking-tight text-black shadow-[0_8px_24px_rgba(250,204,21,0.16)]">
+            ₹{selectedPrice.toLocaleString("en-IN")}
+          </div>
 
-        {product.oldPrice && (
-          <span
-            className="
-              mb-1
-              text-sm
-              text-muted
-              line-through
-            "
-          >
-            ₹
-            {product.oldPrice.toLocaleString(
-              "en-IN",
-            )}
-          </span>
-        )}
+          {selectedOldPrice !== undefined && selectedOldPrice > selectedPrice ? (
+            <span className="text-sm text-muted line-through">
+              ₹{selectedOldPrice.toLocaleString("en-IN")}
+            </span>
+          ) : null}
 
           {product.discount && (
-            <Badge variant="primary" className="mb-1 rounded-md px-2 py-1 font-semibold">
+            <Badge variant="primary" className="rounded-md px-2 py-1 font-semibold">
               {product.discount}
             </Badge>
           )}
@@ -177,7 +176,7 @@ export function ProductInfo({
           PURCHASE ACTIONS
       ================================================== */}
 
-      <ProductActions product={product} />
+      <ProductActions product={product} selectedVariantId={selectedVariantId} quantity={quantity} onVariantChange={setSelectedVariantId} onQuantityChange={setQuantity} />
     </div>
   );
 }
