@@ -187,7 +187,7 @@ function CustomPaymentPageContent() {
         <Navbar />
         <main className="min-h-screen">
           <Container>
-            <div className="flex min-h-[70vh] items-center justify-center text-[10px] uppercase tracking-[0.18em] text-muted">
+            <div className="flex min-h-[70vh] items-center justify-center text-[11px] uppercase tracking-[0.18em] text-muted">
               Loading custom order…
             </div>
           </Container>
@@ -203,7 +203,7 @@ function CustomPaymentPageContent() {
         <main className="min-h-screen">
           <Container>
             <div className="mx-auto max-w-xl py-24 text-center">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-error">Custom payment</p>
+              <p className="text-[11px] uppercase tracking-[0.2em] text-error">Custom payment</p>
               <h1 className="mt-4 font-serif text-4xl">Unable to continue</h1>
               <p className="mt-3 text-sm text-muted">{error}</p>
               <Button href="/custom" size="lg" className="mt-7">Back to custom</Button>
@@ -226,10 +226,10 @@ function CustomPaymentPageContent() {
         <section className="pb-20 pt-28 sm:pb-24 sm:pt-32">
           <Container>
             <div className="mb-8">
-              <Link href="/custom" className="inline-flex items-center gap-2 text-[9px] uppercase tracking-[0.16em] text-muted hover:text-foreground">
+              <Link href="/custom" className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.16em] text-muted hover:text-foreground">
                 <IconArrowLeft size={14} /> Back to custom
               </Link>
-              <p className="mt-7 text-[9px] font-medium uppercase tracking-[0.22em] text-primary">Custom physical order</p>
+              <p className="mt-7 text-[11px] font-medium uppercase tracking-[0.22em] text-primary">Custom physical order</p>
               <h1 className="mt-3 font-serif text-4xl tracking-[-0.05em] sm:text-5xl">Complete your custom order.</h1>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">
                 Your configuration and server-calculated price are locked into this payment step.
@@ -238,11 +238,11 @@ function CustomPaymentPageContent() {
 
             <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
               <div className="space-y-5">
-                <section className="rounded-3xl border border-white/[0.1] bg-white/[0.02] p-5 sm:p-7">
+                <section className="rounded-3xl border border-border bg-surface p-5 sm:p-7">
                   <div className="flex items-center gap-3">
                     <IconMapPin size={18} className="text-primary" />
                     <div>
-                      <p className="text-[9px] uppercase tracking-[0.16em] text-primary">01</p>
+                      <p className="text-[11px] uppercase tracking-[0.16em] text-primary">01</p>
                       <h2 className="mt-1 text-xl font-medium">Delivery address</h2>
                     </div>
                   </div>
@@ -254,29 +254,29 @@ function CustomPaymentPageContent() {
                   </div>
                 </section>
 
-                <section className="rounded-3xl border border-white/[0.1] bg-white/[0.02] p-5 sm:p-7">
+                <section className="rounded-3xl border border-border bg-surface p-5 sm:p-7">
                   <div className="flex items-center gap-3">
                     <IconShieldCheck size={18} className="text-primary" />
                     <div>
-                      <p className="text-[9px] uppercase tracking-[0.16em] text-primary">02</p>
+                      <p className="text-[11px] uppercase tracking-[0.16em] text-primary">02</p>
                       <h2 className="mt-1 text-xl font-medium">Secure payment</h2>
                     </div>
                   </div>
-                  <div className="mt-5 rounded-2xl border border-white/[0.07] bg-black/[0.06] p-5">
+                  <div className="mt-5 rounded-2xl border border-border bg-surface-elevated p-5">
                     <p className="text-sm font-medium">Razorpay</p>
                     <p className="mt-2 text-xs leading-5 text-muted">
                       Payment is verified by the server before your custom order is confirmed.
                     </p>
                   </div>
-                  {error ? <p className="mt-4 rounded-xl border border-red-400/20 bg-red-400/[0.04] p-3 text-[10px] text-red-300">{error}</p> : null}
+                  {error ? <p className="mt-4 rounded-xl border border-red-400/20 bg-red-400/[0.04] p-3 text-[11px] text-error">{error}</p> : null}
                 </section>
               </div>
 
-              <aside className="h-fit rounded-3xl border border-white/[0.1] bg-white/[0.025] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.22)] lg:sticky lg:top-24">
-                <p className="text-[9px] uppercase tracking-[0.18em] text-primary">Order summary</p>
+              <aside className="h-fit rounded-3xl border border-border bg-surface p-5 shadow-[0_24px_70px_rgba(0,0,0,0.22)] lg:sticky lg:top-24">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-primary">Order summary</p>
                 <h2 className="mt-2 font-serif text-2xl">{request?.title ?? "Custom product"}</h2>
 
-                <div className="mt-5 space-y-3 border-b border-white/[0.07] pb-5 text-xs">
+                <div className="mt-5 space-y-3 border-b border-border pb-5 text-xs">
                   <Row label="Category" value={request?.category ?? "Custom"} />
                   {request?.bodyType ? <Row label="Body" value={request.bodyType} /> : null}
                   {request?.headType ? <Row label="Head" value={request.headType} /> : null}
@@ -289,10 +289,10 @@ function CustomPaymentPageContent() {
 
                 <div className="mt-5 flex items-end justify-between gap-4">
                   <div>
-                    <p className="text-[9px] uppercase tracking-[0.16em] text-muted">Total</p>
+                    <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Total</p>
                     <p className="mt-1 text-3xl font-semibold">₹{(amountMinor / 100).toLocaleString("en-IN")}</p>
                   </div>
-                  <span className="text-[9px] text-muted">Manufacturing order</span>
+                  <span className="text-[11px] text-muted">Manufacturing order</span>
                 </div>
 
                 <Button
@@ -305,7 +305,7 @@ function CustomPaymentPageContent() {
                   {processing ? "Preparing payment…" : !checkoutReady ? "Loading payment…" : `Pay ₹${(amountMinor / 100).toLocaleString("en-IN")}`}
                 </Button>
 
-                <p className="mt-3 text-center text-[9px] leading-4 text-muted">
+                <p className="mt-3 text-center text-[11px] leading-4 text-muted">
                   Your custom request enters the manufacturing workflow after successful payment verification.
                 </p>
               </aside>
@@ -325,7 +325,7 @@ export default function CustomPaymentPage() {
           <Navbar />
           <main className="min-h-screen">
             <Container>
-              <div className="flex min-h-[70vh] items-center justify-center text-[10px] uppercase tracking-[0.18em] text-muted">
+              <div className="flex min-h-[70vh] items-center justify-center text-[11px] uppercase tracking-[0.18em] text-muted">
                 Loading custom payment…
               </div>
             </Container>
