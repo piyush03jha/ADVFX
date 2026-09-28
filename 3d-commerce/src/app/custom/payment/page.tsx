@@ -140,11 +140,11 @@ function CustomPaymentPageContent() {
           key: razorpayOrder.keyId,
           amount: razorpayOrder.amount,
           currency: razorpayOrder.currency,
-          name: "ADVFX",
+          name: "Voxel3D",
           description: `Custom physical product ${razorpayOrder.orderNumber}`,
           order_id: razorpayOrder.razorpayOrderId,
           notes: { orderId: order.id, customRequestId: request.id },
-          theme: { color: "#c9a86a" },
+          theme: { color: "#7c3aed" },
           modal: {
             ondismiss: () => {
               setError("Payment was not completed. Your custom build is still saved.");
