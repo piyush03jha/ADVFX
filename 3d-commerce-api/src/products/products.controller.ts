@@ -76,6 +76,23 @@ export class ProductsController {
   }
 
   @UseGuards(CustomerAuthGuard)
+  @Post(':id/review-photo')
+  async uploadReviewPhoto(@Req() req: any, @Param('id') id: string, @Res() reply: FastifyReply) {
+    const request = reply.request as FastifyRequest & {
+      file?: () => Promise<{ filename: string; mimetype: string; toBuffer: () => Promise<Buffer> } | undefined>;
+    };
+    if (typeof request.file !== 'function') throw new BadRequestException('Multipart upload support is not available');
+    const uploadedFile = await request.file();
+    if (!uploadedFile) throw new BadRequestException('Review image is required');
+    const buffer = await uploadedFile.toBuffer();
+    return reply.send(await this.productsService.uploadReviewPhoto(req.user.id, id, {
+      originalname: uploadedFile.filename,
+      mimetype: uploadedFile.mimetype,
+      buffer,
+    }));
+  }
+
+  @UseGuards(CustomerAuthGuard)
   @Post(':id/reviews')
   createReview(
     @Req() req: any,
