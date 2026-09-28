@@ -326,40 +326,39 @@ export function CartProvider({
   const syncGuestCart = useCallback(async () => {
     const guestItems = getLocalGuestCart();
 
+    // Take ownership before any network work. This prevents a second refresh
+    // from merging the same guest lines again while the first merge is running.
+    clearLocalGuestCart();
+
     if (guestItems.length === 0) {
       applyBackendCart(await readBackendCart());
       return;
     }
 
-    const backendCart = await readBackendCart();
-    const backendQuantities = new Map(
-      backendCart.items.map((item) => [
-        getItemKey(
-          item.productId,
-          item.variantId ?? null,
-        ),
-        item.quantity,
-      ]),
-    );
+    let skipped = 0;
 
     for (const item of guestItems) {
-      const key = getItemKey(item.product.id, item.variantId, item.size);
-      const existingQuantity = backendQuantities.get(key) ?? 0;
-
-      await mutateBackendCart("/items", {
-        method: "POST",
-        body: JSON.stringify({
-          productId: item.product.id,
-          variantId: item.variantId ?? undefined,
-          quantity: item.quantity,
-        }),
-      });
-
-      backendQuantities.set(key, existingQuantity + item.quantity);
+      try {
+        await mutateBackendCart("/items", {
+          method: "POST",
+          body: JSON.stringify({
+            productId: item.product.id,
+            variantId: item.variantId ?? undefined,
+            quantity: item.quantity,
+          }),
+        });
+      } catch {
+        skipped += 1;
+      }
     }
 
-    clearLocalGuestCart();
     applyBackendCart(await readBackendCart());
+
+    if (skipped > 0) {
+      setError(
+        `${skipped} item(s) from before you signed in are no longer available.`,
+      );
+    }
   }, [applyBackendCart]);
 
   const refreshCart = useCallback(async () => {
