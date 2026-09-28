@@ -198,14 +198,11 @@ export class ProductsService {
         name,
         size: input.size?.trim() || null,
         sku: input.sku?.trim() || null,
-        inventory: {
-          create: {
-            stock: input.stock ?? 0,
-            lowStockAt: input.lowStockAt ?? 5,
-            trackStock: input.trackStock ?? true,
-            allowBackorder: input.allowBackorder ?? false,
-          },
-        },
+        stock: input.stock ?? 0,
+        reserved: 0,
+        lowStockAt: input.lowStockAt ?? 5,
+        trackStock: input.trackStock ?? true,
+        allowBackorder: input.allowBackorder ?? false,
         price: {
           create: {
             currency: 'INR',
