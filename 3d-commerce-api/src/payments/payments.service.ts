@@ -331,10 +331,23 @@ export class PaymentsService {
     );
 
     if (result.kind === "REFUND_REQUIRED") {
-      await this.razorpay.refundPayment(
-        result.providerPaymentId,
-        attempt.amountMinor,
-      );
+      try {
+        await this.razorpay.refundPayment(
+          result.providerPaymentId,
+          attempt.amountMinor,
+        );
+        await this.prisma.payment.update({
+          where: { orderId: order.id },
+          data: { status: PaymentStatus.REFUNDED },
+        });
+      } catch (error) {
+        console.error("Razorpay refund failed after payment verification", {
+          orderId: order.id,
+          providerPaymentId: result.providerPaymentId,
+          error,
+        });
+        throw error;
+      }
     }
 
     if (result.kind === "NONE") {
