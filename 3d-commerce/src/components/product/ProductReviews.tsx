@@ -37,7 +37,8 @@ export function ProductReviews({ product }: ProductReviewsProps) {
   const [comment, setComment] = useState("");
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
-  const [submitting, setSubmitting] = useState(false);\n  const [photo, setPhoto] = useState<File | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [photo, setPhoto] = useState<File | null>(null);
 
   async function loadReviews() {
     const response = await fetch(
@@ -58,6 +59,24 @@ export function ProductReviews({ product }: ProductReviewsProps) {
     setMessage("");
 
     try {
+      let photoUrl: string | undefined;
+
+      if (photo) {
+        const formData = new FormData();
+        formData.append("file", photo);
+        const photoResponse = await fetch(
+          `/api/products/${encodeURIComponent(product.id)}/review-photo`,
+          { method: "POST", body: formData },
+        );
+        const photoBody = (await photoResponse.json().catch(() => null)) as
+          | { url?: string; error?: string }
+          | null;
+        if (!photoResponse.ok || !photoBody?.url) {
+          throw new Error(photoBody?.error ?? "Unable to upload review photo.");
+        }
+        photoUrl = photoBody.url;
+      }
+
       const response = await fetch(
         `/api/products/${encodeURIComponent(product.id)}/reviews`,
         {
@@ -144,7 +163,8 @@ export function ProductReviews({ product }: ProductReviewsProps) {
               <p className="mt-3 text-sm font-medium text-foreground">
                 {review.title || "Customer review"}
               </p>
-              <p className="mt-2 text-sm leading-6 text-muted">{review.comment}</p>\n              {review.photoUrl ? <img src={review.photoUrl} alt="Customer review" className="mt-4 max-h-64 w-full rounded-xl border border-border object-cover" loading="lazy" /> : null}
+              <p className="mt-2 text-sm leading-6 text-muted">{review.comment}</p>
+              {review.photoUrl ? <img src={review.photoUrl} alt="Customer review" className="mt-4 max-h-64 w-full rounded-xl border border-border object-cover" loading="lazy" /> : null}
               <p className="mt-4 text-[11px] text-muted">
                 {review.user.name || "Customer"} · {new Date(review.createdAt).toLocaleDateString("en-IN")}
               </p>
