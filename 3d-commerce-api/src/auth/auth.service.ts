@@ -17,6 +17,7 @@ import type { UserRole } from '@prisma/client';
 import type { AuthenticatedUser } from './auth.types';
 import { AuthEmailService } from './email.service';
 import { AuthCaptchaService } from './captcha.service';
+import { GoogleOAuthService } from './google-oauth.service';
 
 const CUSTOMER_SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 const ADMIN_SESSION_TTL_MS = 1000 * 60 * 60 * 12;
@@ -43,6 +44,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly emailService: AuthEmailService,
     private readonly captchaService: AuthCaptchaService,
+    private readonly googleOAuthService: GoogleOAuthService,
   ) {}
 
   async registerCustomer(name: string, email: string, password: string, captchaToken: string, captchaAnswer?: string) {
@@ -106,6 +108,15 @@ export class AuthService {
       verificationRequired: true,
       ...this.developmentToken('emailVerificationToken', verificationToken),
     };
+  }
+
+  async googleCustomerLogin(code: string) {
+    const identity = await this.googleOAuthService.exchangeCode(code);
+    return this.googleOAuthService.findOrCreateCustomer(
+      identity.googleSubject,
+      identity.email,
+      identity.name,
+    );
   }
 
   async customerLogin(email: string, password: string, captchaToken: string, captchaAnswer?: string) {
