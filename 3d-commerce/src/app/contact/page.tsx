@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { IconArrowRight, IconMail, IconMessageCircle } from "@tabler/icons-react";
+import { IconArrowRight, IconBrandWhatsapp, IconMail, IconMessageCircle, IconPackage } from "@tabler/icons-react";\n\nconst whatsappUrl = process.env.NEXT_PUBLIC_WHATSAPP_URL || "/contact";
 
 export default function ContactPage() {
   return (
