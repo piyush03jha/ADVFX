@@ -19,7 +19,7 @@ export function Card({
     <div
       {...props}
       className={`
-        card-premium
+        surface
         overflow-hidden
         rounded-2xl
         ${interactive ? "cursor-pointer" : ""}
