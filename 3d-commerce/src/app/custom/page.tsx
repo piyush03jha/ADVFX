@@ -26,7 +26,7 @@ export default function CustomPage() {
       <Navbar />
 
       <main className="relative isolate overflow-hidden pt-20 sm:pt-24">
-        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[700px] bg-[radial-gradient(circle_at_72%_8%,hsl(var(--primary)/0.10),transparent_34%),radial-gradient(circle_at_18%_18%,hsl(var(--foreground)/0.035),transparent_28%)]" />
+        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[700px] bg-[radial-gradient(circle_at_72%_8%,rgb(from var(--primary) r g b / 0.10),transparent_34%),radial-gradient(circle_at_18%_18%,rgb(from var(--foreground) r g b / 0.035),transparent_28%)]" />
 
         {submission ? (
           <>
@@ -37,7 +37,7 @@ export default function CustomPage() {
           <>
             <section className="mx-auto max-w-[1440px] px-4 pb-8 sm:px-6 lg:px-10">
               <div className="mx-auto max-w-4xl py-8 text-center sm:py-12">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-primary">Custom studio</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">Custom studio</p>
                 <h1 className="mt-3 font-serif text-4xl tracking-[-0.055em] sm:text-5xl lg:text-6xl">
                   Made for you, not from a template.
                 </h1>
@@ -58,7 +58,7 @@ export default function CustomPage() {
             <section className="border-y border-border bg-surface/35">
               <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
                 <div className="max-w-2xl">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">How we work</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">How we work</p>
                   <h2 className="mt-2 font-serif text-3xl tracking-[-0.04em] sm:text-4xl">Simple from your side.</h2>
                   <p className="mt-3 text-sm leading-6 text-muted">You share the idea. We handle the technical work and keep you informed.</p>
                 </div>
@@ -70,7 +70,7 @@ export default function CustomPage() {
                     ["03", "We deliver", "After the build is confirmed, we process the physical order and arrange delivery."],
                   ].map(([number, title, text]) => (
                     <div key={number} className="rounded-2xl border border-border bg-background/55 p-5">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full border border-primary/25 bg-primary/10 text-[10px] font-semibold text-primary">{number}</div>
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full border border-primary/25 bg-primary/10 text-[11px] font-semibold text-primary">{number}</div>
                       <h3 className="mt-5 text-sm font-semibold">{title}</h3>
                       <p className="mt-2 text-xs leading-5 text-muted">{text}</p>
                     </div>
@@ -95,7 +95,7 @@ function CustomPageSupport() {
       <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
         <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="rounded-3xl border border-border bg-surface p-7 sm:p-9">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">Not sure what to choose?</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">Not sure what to choose?</p>
             <h2 className="mt-3 font-serif text-3xl tracking-[-0.04em] sm:text-4xl">Confused about the right option?</h2>
             <p className="mt-3 max-w-xl text-sm leading-6 text-muted">
               Don&apos;t worry. Send us your idea and photos and our team will guide you on the suitable size, format, and next steps.
@@ -111,7 +111,7 @@ function CustomPageSupport() {
           </div>
 
           <div className="rounded-3xl border border-border bg-surface p-7 sm:p-9">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">Bulk orders</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">Bulk orders</p>
             <h2 className="mt-3 font-serif text-3xl tracking-[-0.04em]">Ordering for a team, event, or business?</h2>
             <p className="mt-3 text-sm leading-6 text-muted">
               Tell us the product, quantity, preferred sizes, and deadline. We&apos;ll take the conversation from there.
