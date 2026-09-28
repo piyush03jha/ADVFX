@@ -162,7 +162,7 @@ export function Navbar() {
         <NavItems items={navItems} />
 
         <div className="pointer-events-auto ml-auto flex min-w-0 items-center gap-1 xl:gap-2">
-          <div className="relative hidden min-[1550px]:block">
+          <div className="relative hidden xl:block">
             <form
               onSubmit={handleSearchSubmit}
               className="flex w-[190px] items-center rounded-full border border-border bg-surface/80 px-3"
@@ -213,7 +213,7 @@ export function Navbar() {
           </div>
 
           <NavIconLink
-            href="/wishlist"
+            href={user ? "/wishlist" : "/login?returnTo=%2Fwishlist"}
             label={wishlistCount > 0 ? `Wishlist, ${wishlistCount} saved` : "Wishlist"}
           >
             <IconHeart size={18} stroke={1.7} />
@@ -429,7 +429,7 @@ function CartLink({
 }) {
   return (
     <Link
-      href="/cart"
+      href={undefined as never}
       aria-label={
         itemCount > 0
           ? `Shopping cart, ${itemCount} items`
