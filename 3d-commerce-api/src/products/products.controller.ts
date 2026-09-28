@@ -70,6 +70,12 @@ export class ProductsController {
     return this.productsService.setReviewPublished(reviewId, isPublished);
   }
 
+  @UseGuards(CustomerAuthGuard)
+  @Get(':id/review-eligibility')
+  getReviewEligibility(@Req() req: any, @Param('id') id: string) {
+    return this.productsService.getReviewEligibility(req.user.id, id);
+  }
+
   @Get(':id/reviews')
   getReviews(@Param('id') id: string) {
     return this.productsService.getReviews(id);
