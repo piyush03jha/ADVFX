@@ -56,6 +56,10 @@ export interface CatalogProduct {
   slug: string;
   createdAt?: string;
   description?: string | null;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+  seoKeywords?: string | null;
+  canonicalUrl?: string | null;
   category?: CatalogCategory | null;
   status: "DRAFT" | "ACTIVE" | "ARCHIVED";
   isFeatured: boolean;
