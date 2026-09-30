@@ -4,7 +4,7 @@ import { ProductFileFormat, ProductFileType } from "@prisma/client";
  * Supported upload formats for the product asset system.
  *
  * 3D:
- * .abc .usd .obj .ply .stl .bvh .fbx .glb .gltf
+ * .glb
  *
  * 2D:
  * .png .jpg .jpeg .webp .svg
@@ -13,16 +13,8 @@ import { ProductFileFormat, ProductFileType } from "@prisma/client";
  * .pdf
  */
 export const SUPPORTED_EXTENSIONS = {
-  // 3D
-  ".abc": ProductFileFormat.ABC,
-  ".usd": ProductFileFormat.USD,
-  ".obj": ProductFileFormat.OBJ,
-  ".ply": ProductFileFormat.PLY,
-  ".stl": ProductFileFormat.STL,
-  ".bvh": ProductFileFormat.BVH,
-  ".fbx": ProductFileFormat.FBX,
+  // 3D — GLB is the only production-supported web model upload.
   ".glb": ProductFileFormat.GLB,
-  ".gltf": ProductFileFormat.GLTF,
 
   // 2D
   ".png": ProductFileFormat.PNG,
@@ -36,15 +28,7 @@ export const SUPPORTED_EXTENSIONS = {
 } as const;
 
 export const MODEL_FORMATS = new Set<ProductFileFormat>([
-  ProductFileFormat.ABC,
-  ProductFileFormat.USD,
-  ProductFileFormat.OBJ,
-  ProductFileFormat.PLY,
-  ProductFileFormat.STL,
-  ProductFileFormat.BVH,
-  ProductFileFormat.FBX,
   ProductFileFormat.GLB,
-  ProductFileFormat.GLTF,
 ]);
 
 export const IMAGE_FORMATS = new Set<ProductFileFormat>([
