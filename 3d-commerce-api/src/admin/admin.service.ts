@@ -81,12 +81,35 @@ export class AdminService {
   }
 
   async updateSettings(input: { hero?: unknown; storefront?: unknown; siteContent?: unknown; privacy?: unknown; terms?: unknown; refund?: unknown; shipping?: unknown; faq?: unknown }) {
-    const updates = Object.entries(input).filter(([, value]) => value !== undefined).map(([key, value]) => ({ key, value: JSON.stringify(value) }));
+    const updates = Object.entries(input)
+      .filter(([, value]) => value !== undefined)
+      .map(([key, value]) => ({ key, value: JSON.stringify(value) }));
+
+    const siteContent =
+      input.siteContent &&
+      typeof input.siteContent === 'object' &&
+      !Array.isArray(input.siteContent)
+        ? input.siteContent as Record<string, unknown>
+        : null;
+
+    const contactEmail =
+      typeof siteContent?.contactEmail === 'string'
+        ? siteContent.contactEmail.trim()
+        : '';
+
+    if (contactEmail) {
+      updates.push({
+        key: 'contactEmail',
+        value: JSON.stringify(contactEmail),
+      });
+    }
+
     if (updates.length) {
       await this.prisma.$transaction(updates.map((item) => this.prisma.siteSetting.upsert({
         where: { key: item.key }, create: { key: item.key, value: item.value }, update: { value: item.value },
       })));
     }
+
     return this.settings();
   }
 
