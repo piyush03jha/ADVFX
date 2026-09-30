@@ -10,7 +10,6 @@ import { ProcessingJobsWorker } from "./processing-jobs.worker";
 import { ProcessingJobs2DWorker } from "./processing-jobs-2d.worker";
 import { ImageProcessingService } from "./image-processing.service";
 
-import { ModelConverterService } from "./converters/model-converter.service";
 
 @Module({
   imports: [
@@ -29,7 +28,6 @@ import { ModelConverterService } from "./converters/model-converter.service";
     ProcessingJobsWorker,
     ProcessingJobs2DWorker,
     ImageProcessingService,
-    ModelConverterService,
   ],
 
   exports: [
@@ -37,7 +35,6 @@ import { ModelConverterService } from "./converters/model-converter.service";
     ProcessingJobsWorker,
     ProcessingJobs2DWorker,
     ImageProcessingService,
-    ModelConverterService,
   ],
 })
 export class ProcessingJobsModule {}
