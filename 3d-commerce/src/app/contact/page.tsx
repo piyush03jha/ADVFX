@@ -20,7 +20,8 @@ async function getContactEmail() {
   return process.env.NEXT_PUBLIC_CONTACT_EMAIL || "contact@voxel3d.in";
 }
 
-export default async function ContactPage() {\n  const contactEmail = await getContactEmail();
+export default async function ContactPage() {
+  const contactEmail = await getContactEmail();
   return (
     <main className="min-h-screen bg-background px-6 py-28 text-foreground sm:px-10 lg:px-16">
       <div className="mx-auto max-w-6xl">
