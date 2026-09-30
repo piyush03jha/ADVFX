@@ -15,7 +15,7 @@ import {
 import { IconButton } from "@/components/ui/IconButton";
 import { Button } from "@/components/ui/Button";
 import { Section } from "@/components/ui/Section";
-import { faqItems } from "@/config/faq";
+import { faqItems, type FAQItem } from "@/config/faq";
 
 export function FAQ() {
   const [items, setItems] = useState(faqItems);
@@ -372,7 +372,7 @@ function FAQItem({
   onToggle,
   shouldReduceMotion,
 }: {
-  item: (typeof items)[number];
+  item: FAQItem;
   index: number;
   isOpen: boolean;
   onToggle: (id: string) => void;
