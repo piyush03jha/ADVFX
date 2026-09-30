@@ -315,44 +315,9 @@ export class ProductFilesService {
       );
     }
 
-    const entryPointExtension =
-      extname(
-        normalizedEntryPoint,
-      ).toLowerCase();
-
-    const entryPointFormat =
-      SUPPORTED_EXTENSIONS[
-        entryPointExtension as keyof typeof SUPPORTED_EXTENSIONS
-      ];
-
-    if (
-      entryPointFormat !==
-      ProductFileFormat.GLTF
-    ) {
-      throw new BadRequestException(
-        "Asset bundle entry point must currently be a .gltf file",
-      );
-    }
-
-    if (
-      entryPointFile.format !==
-      ProductFileFormat.GLTF
-    ) {
-      throw new BadRequestException(
-        "Bundle entry point could not be validated as a GLTF file",
-      );
-    }
-
-    if (
-      entryPointFile.fileType !==
-      getProductFileType(
-        ProductFileFormat.GLTF,
-      )
-    ) {
-      throw new BadRequestException(
-        "Bundle entry point must be a model file",
-      );
-    }
+    throw new BadRequestException(
+      "3D asset bundles are not supported in the current GLB-only upload flow. Upload a single GLB file.",
+    );
 
     /**
      * Prisma allows explicitly supplying the ID.
