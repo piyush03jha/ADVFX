@@ -1,10 +1,11 @@
 "use client";
 import { useEffect,useState } from "react";
 import { AdminPage,AdminCard,AdminButton } from "@/components/admin/AdminKit";
+import { faqItems } from "@/config/faq";
 type Featured={id:string;name:string;slug:string};
 export default function StoreControls(){
  const [featured,setFeatured]=useState<Featured[]>([]),[limit,setLimit]=useState("6"),[saving,setSaving]=useState(false),[message,setMessage]=useState("");
- const [content,setContent]=useState({contactEmail:"",phone:"",tagline:"",privacy:"",terms:"",refund:"",shipping:"",faq:""});
+ const [content,setContent]=useState({contactEmail:"",phone:"",tagline:"",privacy:"",terms:"",refund:"",shipping:"",faq:JSON.stringify(faqItems,null,2)});
  async function load(){const r=await fetch("/api/admin/settings",{cache:"no-store"});if(!r.ok)return;const d=await r.json();const h=d.settings?.hero;const sc=d.settings?.siteContent; if(h?.maxItems)setLimit(String(h.maxItems));if(Array.isArray(d.featured))setFeatured(d.featured);if(sc)setContent(x=>({...x,...sc}));}
  useEffect(()=>{void load()},[]);
  async function save(){setSaving(true);setMessage("");try{const r=await fetch("/api/admin/settings",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({hero:{maxItems:Number(limit)},siteContent:content,privacy:content.privacy,terms:content.terms,refund:content.refund,shipping:content.shipping,faq:content.faq})});if(!r.ok)throw new Error();setMessage("Store and policy content saved.")}catch{setMessage("Unable to save settings.")}finally{setSaving(false)}}
@@ -12,7 +13,7 @@ export default function StoreControls(){
  return <AdminPage title="Store controls" eyebrow="Content" description="Manage storefront presentation, contact information and policy content from the admin workspace.">
  <AdminCard className="mt-7"><h2 className="text-sm font-semibold">Hero configuration</h2><p className="mt-1 text-[10px] text-muted">Featured catalog products appear in the hero.</p><label className="mt-5 block max-w-xs text-[10px] text-muted">Maximum hero products<input value={limit} onChange={e=>setLimit(e.target.value)} type="number" min="1" max="12" className="mt-2 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground"/></label></AdminCard>
  <AdminCard className="mt-5"><h2 className="text-sm font-semibold">Business contact</h2><div className="mt-4 grid gap-4 sm:grid-cols-2">{field("contactEmail","Contact email")}{field("phone","Phone")}{field("tagline","Store tagline")}</div></AdminCard>
- <AdminCard className="mt-5"><h2 className="text-sm font-semibold">Policy pages</h2><p className="mt-1 text-[10px] text-muted">Markdown/plain text is rendered as policy content. Update this when your legal/business terms change.</p><div className="mt-4 grid gap-4 lg:grid-cols-2">{field("privacy","Privacy policy",true)}{field("terms","Terms & conditions",true)}{field("refund","Refund policy",true)}{field("shipping","Shipping policy",true)}{field("faq","FAQ",true)}</div></AdminCard>
+ <AdminCard className="mt-5"><h2 className="text-sm font-semibold">Policy pages</h2><p className="mt-1 text-[10px] text-muted">Markdown/plain text is rendered as policy content. FAQ must be a JSON array with id, question and answer fields. Update this when your legal/business terms change.</p><div className="mt-4 grid gap-4 lg:grid-cols-2">{field("privacy","Privacy policy",true)}{field("terms","Terms & conditions",true)}{field("refund","Refund policy",true)}{field("shipping","Shipping policy",true)}{field("faq","FAQ (JSON)",true)}</div></AdminCard>
  <AdminCard className="mt-5"><h2 className="text-sm font-semibold">Currently featured</h2><div className="mt-4 space-y-2">{featured.map(p=><div key={p.id} className="rounded-xl border border-border p-3 text-xs">{p.name}</div>)}{!featured.length&&<p className="text-xs text-muted">No products are featured.</p>}</div></AdminCard>
  <div className="sticky bottom-4 mt-5 flex items-center justify-between rounded-2xl border border-border bg-background/95 p-3 backdrop-blur"><span className="text-xs text-muted">{message}</span><AdminButton onClick={()=>void save()} disabled={saving}>{saving?"Saving…":"Save all content"}</AdminButton></div>
  </AdminPage>
