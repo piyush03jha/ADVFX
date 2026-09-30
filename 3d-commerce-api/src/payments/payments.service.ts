@@ -688,6 +688,10 @@ export class PaymentsService {
           result.providerPaymentId,
           resolvedAmount,
         );
+        await this.prisma.payment.update({
+          where: { orderId: attempt.payment.orderId },
+          data: { status: PaymentStatus.REFUNDED },
+        });
       } catch (error) {
         await this.notifications.create(
           (await this.prisma.order.findUnique({ where: { id: attempt.payment.orderId }, select: { userId: true } }))?.userId ?? "",
