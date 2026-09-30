@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AnimatePresence,
   motion,
@@ -15,15 +15,63 @@ import {
 import { IconButton } from "@/components/ui/IconButton";
 import { Button } from "@/components/ui/Button";
 import { Section } from "@/components/ui/Section";
-import { faqItems } from "@/config/faq";
+import { items } from "@/config/faq";
 
 export function FAQ() {
+  const [items, setItems] = useState(faqItems);
   const [openId, setOpenId] = useState<string | null>(
-    faqItems[0]?.id ?? null,
+    items[0]?.id ?? null,
   );
 
   const [showAllMobile, setShowAllMobile] =
     useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadFaq() {
+      try {
+        const response = await fetch("/api/site-content/faq", {
+          cache: "no-store",
+        });
+        if (!response.ok) return;
+
+        const data = await response.json();
+        const value = data?.value;
+        if (
+          !Array.isArray(value) ||
+          !value.length ||
+          value.some(
+            (item: unknown) =>
+              typeof item !== "object" ||
+              item === null ||
+              typeof (item as { id?: unknown }).id !== "string" ||
+              typeof (item as { question?: unknown }).question !== "string" ||
+              typeof (item as { answer?: unknown }).answer !== "string",
+          )
+        ) {
+          return;
+        }
+
+        if (!cancelled) {
+          setItems(value);
+          setOpenId((current) =>
+            value.some((item) => item.id === current)
+              ? current
+              : value[0]?.id ?? null,
+          );
+        }
+      } catch {
+        // Keep the bundled FAQ as a resilient storefront fallback.
+      }
+    }
+
+    void loadFaq();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const shouldReduceMotion =
     useReducedMotion();
@@ -35,8 +83,8 @@ export function FAQ() {
   };
 
   const mobileQuestions = showAllMobile
-    ? faqItems
-    : faqItems.slice(0, 3);
+    ? items
+    : items.slice(0, 3);
 
   return (
     <Section
@@ -195,7 +243,7 @@ export function FAQ() {
           ================================================= */}
 
           <div className="hidden sm:block">
-            {faqItems.map((item, index) => {
+            {items.map((item, index) => {
               const isOpen =
                 openId === item.id;
 
@@ -270,7 +318,7 @@ export function FAQ() {
                 VIEW ALL
             ================================================= */}
 
-            {faqItems.length > 3 && (
+            {items.length > 3 && (
               <div className="flex justify-center pt-6">
                 <Button
                   type="button"
@@ -324,7 +372,7 @@ function FAQItem({
   onToggle,
   shouldReduceMotion,
 }: {
-  item: (typeof faqItems)[number];
+  item: (typeof items)[number];
   index: number;
   isOpen: boolean;
   onToggle: (id: string) => void;
