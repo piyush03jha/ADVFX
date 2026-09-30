@@ -2,6 +2,7 @@ import { ForbiddenException } from '@nestjs/common';
 import { ProductsService } from './products.service';
 
 describe('ProductsService', () => {
+  const storage = { saveProductFile: jest.fn(), delete: jest.fn(), getAbsolutePath: jest.fn() } as any;
   const prisma = {
     product: { findFirst: jest.fn() },
     productReview: { findFirst: jest.fn(), findUnique: jest.fn(), create: jest.fn(), findMany: jest.fn(), aggregate: jest.fn() },
@@ -12,7 +13,7 @@ describe('ProductsService', () => {
 
   beforeEach(() => {
     jest.resetAllMocks();
-    service = new ProductsService(prisma);
+    service = new ProductsService(prisma, storage);
   });
 
   it('accepts a review only after a captured purchase', async () => {
