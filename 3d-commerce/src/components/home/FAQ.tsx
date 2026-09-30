@@ -15,7 +15,7 @@ import {
 import { IconButton } from "@/components/ui/IconButton";
 import { Button } from "@/components/ui/Button";
 import { Section } from "@/components/ui/Section";
-import { items } from "@/config/faq";
+import { faqItems } from "@/config/faq";
 
 export function FAQ() {
   const [items, setItems] = useState(faqItems);
