@@ -391,6 +391,37 @@ describeDb("AUDIT: checkout -> payment behaviour (real DB)", () => {
 
     expect((await ord(o.id)).status).toBe("CANCELLED");
     expect(razorpay.refunds.map((r) => r.paymentId)).toContain("pay_real");
+    expect((await ord(o.id)).payment?.status).toBe("REFUNDED");
+  });
+
+  it("8 LATE WEBHOOK after cancellation: captured money is refunded and persisted as REFUNDED", async () => {
+    const { u, a, A } = await shop();
+
+    await fillCart(u.id, [{ productId: A.id, quantity: 1 }]);
+
+    const o = await checkout(u.id, a.id);
+    const rz = await payments.createRazorpayOrder(u.id, o.id);
+
+    // The checkout expires before Razorpay reports the capture.
+    await payments.cancelRazorpayPayment(u.id, o.id);
+    expect((await ord(o.id)).status).toBe("CANCELLED");
+
+    razorpay.markPaid(rz.razorpayOrderId!, "pay_late_webhook");
+
+    await hook("payment.captured", {
+      id: "pay_late_webhook",
+      order_id: rz.razorpayOrderId,
+      amount: o.totalMinor,
+      currency: "INR",
+    });
+
+    const after = await ord(o.id);
+    expect(after.status).toBe("CANCELLED");
+    expect(after.payment?.status).toBe("REFUNDED");
+    expect(razorpay.refunds).toContainEqual({
+      paymentId: "pay_late_webhook",
+      amount: o.totalMinor,
+    });
   });
 
   it("8 DUPLICATE PAYMENT: a second captured payment is refunded", async () => {
