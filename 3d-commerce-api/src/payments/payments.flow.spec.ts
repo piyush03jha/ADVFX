@@ -107,14 +107,15 @@ describeDb("AUDIT: checkout -> payment behaviour (real DB)", () => {
     captureMessage: async () => undefined,
   } as any;
 
+  const payments = new PaymentsService(prisma, razorpay as any, notifications);
   const orders = new OrdersService(
     prisma,
     notifications,
     pricing,
     razorpay as any,
+    payments,
     observability,
   );
-  const payments = new PaymentsService(prisma, razorpay as any, notifications);
   let n = 0;
 
   beforeAll(async () => {
