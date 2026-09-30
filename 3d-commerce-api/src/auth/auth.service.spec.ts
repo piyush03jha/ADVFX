@@ -6,7 +6,8 @@ describe('AuthService', () => {
   const prisma = { user: { findUnique: jest.fn(), update: jest.fn() }, $executeRaw: jest.fn(), $queryRaw: jest.fn(), $transaction: jest.fn() } as any;
   const emailService = { sendVerificationEmail: jest.fn(), sendPasswordResetEmail: jest.fn() } as any;
   const captchaService = { verify: jest.fn(), verifyForAuth: jest.fn() } as any;
-  const service = new AuthService(prisma, emailService, captchaService);
+  const googleOAuthService = { exchangeCode: jest.fn(), findOrCreateCustomer: jest.fn() } as any;
+  const service = new AuthService(prisma, emailService, captchaService, googleOAuthService);
 
   beforeEach(() => jest.clearAllMocks());
 
