@@ -8,9 +8,19 @@ import {
 } from "@tabler/icons-react";
 
 const whatsappUrl = process.env.NEXT_PUBLIC_WHATSAPP_URL || "/contact";
-const contactEmail = process.env.NEXT_PUBLIC_CONTACT_EMAIL || "contact@voxel3d.in";
+async function getContactEmail() {
+  try {
+    const api = process.env.BACKEND_API_URL || "http://localhost:4000";
+    const response = await fetch(api + "/site-content/contactEmail", { cache: "no-store" });
+    if (response.ok) {
+      const data = await response.json();
+      if (typeof data?.value === "string" && data.value.trim()) return data.value.trim();
+    }
+  } catch {}
+  return process.env.NEXT_PUBLIC_CONTACT_EMAIL || "contact@voxel3d.in";
+}
 
-export default function ContactPage() {
+export default async function ContactPage() {\n  const contactEmail = await getContactEmail();
   return (
     <main className="min-h-screen bg-background px-6 py-28 text-foreground sm:px-10 lg:px-16">
       <div className="mx-auto max-w-6xl">
