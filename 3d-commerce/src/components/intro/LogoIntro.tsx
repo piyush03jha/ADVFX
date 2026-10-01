@@ -270,17 +270,17 @@ function CameraController({
     gsap.set(cube.current.rotation, { x: 0.18, y: -0.42, z: -0.08 });
 
     gsap.set(word.current.scale, { x: 0.82, y: 0.82, z: 0.82 });
-    gsap.set(word.current.position, { x: 2.10, y: 0.05, z: -0.04 });
+    gsap.set(word.current.position, { x: 4.20, y: 0.05, z: -0.04 });
 
     gsap.set(threeD.current.scale, { x: 0.68, y: 0.68, z: 0.68 });
-    gsap.set(threeD.current.position, { x: -3.15, y: 0.02, z: -0.08 });
+    gsap.set(threeD.current.position, { x: -8.50, y: 0.02, z: -0.08 });
 
     gsap.set(line.current.scale, { x: 0.001, y: 1, z: 1 });
     gsap.set(line.current.position, { x: POUR_START.x, y: POUR_START.y, z: 0.05 });
     curve.current.geometry.setDrawRange(0, 0);
 
-    gsap.set(nozzle.current.position, { x: 5.45, y: POUR_START.y, z: 0.24 });
-    gsap.set(nozzle.current.rotation, { z: 0 });
+    gsap.set(nozzle.current.position, { x: POUR_START.x - 1.15, y: POUR_START.y + 0.45, z: 0.24 });
+    gsap.set(nozzle.current.rotation, { z: -0.34 });
     gsap.set(nozzle.current.scale, { x: 0.82, y: 0.82, z: 0.82 });
 
     gsap.set(glowMaterial, { opacity: 0 });
@@ -340,7 +340,7 @@ function CameraController({
         opacity: 0.56,
         duration: 0.12,
         ease: "power2.out",
-      }, 0.20)
+      }, 0.42)
       .to(drop.current.scale, {
         x: 1,
         y: 1,
@@ -362,7 +362,7 @@ function CameraController({
           );
 
           nozzle.current?.position.set(point.x, point.y, 0.24);
-          nozzle.current?.rotation.set(0, 0, THREE.MathUtils.lerp(-0.34, Math.PI / 2, p));
+          nozzle.current?.rotation.set(0, 0, -0.34 * (1 - p));
 
           glow.current?.position.set(point.x, point.y, 0.16);
           drop.current?.position.set(point.x, point.y, 0.16);
@@ -403,7 +403,7 @@ function CameraController({
         ease: "power2.out",
       }, 1.50)
       .to(word.current.position, {
-        x: 2.10,
+        x: 4.20,
         y: 0.05,
         duration: 0.20,
         ease: "power3.out",
@@ -414,13 +414,13 @@ function CameraController({
         ease: "power2.out",
       }, 1.68)
       .to(threeD.current.position, {
-        x: -3.15,
+        x: -8.50,
         y: 0.02,
         duration: 0.18,
         ease: "back.out(1.5)",
       }, 1.68)
       .to(camera.position, {
-        x: 0.05,
+        x: 0.20,
         y: 0.02,
         z: 12.82,
         duration: 0.24,
@@ -464,7 +464,7 @@ function LogoScene({ timelineStarted }: { timelineStarted: boolean }) {
       <directionalLight position={[3, 4, 6]} intensity={2.4} />
       <pointLight color="#a855f7" position={[-4, 1, 4]} intensity={8} distance={14} />
       <group ref={refs.stage}>
-        <LogoLayer clip="cube" opacity={0} groupRef={refs.cube} materialRef={refs.cubeMaterial} position={[3.15, -0.02, 0.16]} z={4} />
+        <LogoLayer clip="cube" opacity={0} groupRef={refs.cube} materialRef={refs.cubeMaterial} position={[7.75, -0.02, 0.16]} z={4} />
         <LogoLayer clip="word" opacity={0} groupRef={refs.word} materialRef={refs.wordMaterial} position={[0, 0, 0]} z={3} />
         <LogoLayer clip="threeD" opacity={0} groupRef={refs.threeD} materialRef={refs.threeDMaterial} position={[0, 0, -0.16]} z={2} />
         <PouringLine
