@@ -222,30 +222,23 @@ function LogoIcon({
           visibility: "hidden",
         }}
       >
-        <svg
-          viewBox="65 20 205 185"
-          width="112"
-          height="102"
-          aria-hidden="true"
+        <img
+          src="/logo/voxel_icon.png"
+          alt=""
+          width={112}
+          height={102}
+          draggable={false}
           style={{
             display: "block",
-            overflow: "visible",
+            width: "112px",
+            height: "102px",
+            objectFit: "contain",
           }}
-        >
-          <image
-            href="/logo/voxel3d.svg"
-            x="-168"
-            y="85"
-            width="120"
-            height="70"
-            preserveAspectRatio="none"
-          />
-        </svg>
+        />
       </div>
     </Html>
   );
 }
-
 function LogoLetter({
   letterRef,
 }: {
