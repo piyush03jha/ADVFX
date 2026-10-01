@@ -20,7 +20,6 @@ const BLENDER_FORMATS = new Set<ProductFileFormat>([
   ProductFileFormat.USD,
   ProductFileFormat.USDA,
   ProductFileFormat.USDC,
-  ProductFileFormat.USDZ,
   ProductFileFormat.BVH,
   ProductFileFormat.SVG,
 ]);
