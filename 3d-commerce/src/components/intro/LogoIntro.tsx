@@ -127,26 +127,14 @@ function Filament({
 function LineController({
   lineRef,
   glowRef,
-  iconRef,
-  letterRef,
   timelineStarted,
 }: {
   lineRef: MutableRefObject<THREE.Line | null>;
   glowRef: MutableRefObject<THREE.Line | null>;
-  iconRef: MutableRefObject<HTMLDivElement | null>;
-  letterRef: MutableRefObject<HTMLDivElement | null>;
   timelineStarted: boolean;
 }) {
   useEffect(() => {
-    if (
-      !timelineStarted ||
-      !lineRef.current ||
-      !glowRef.current ||
-      !iconRef.current ||
-      !letterRef.current
-    ) {
-      return;
-    }
+    if (!timelineStarted || !lineRef.current || !glowRef.current) return;
 
     const line = lineRef.current;
     const glow = glowRef.current;
@@ -157,23 +145,10 @@ function LineController({
     line.geometry.setDrawRange(0, 1);
     glow.geometry.setDrawRange(0, 1);
 
-    // Explicit initial state. Both logo assets remain invisible while
-    // the filament is being drawn.
-    gsap.set(iconRef.current, {
-      opacity: 0,
-      visibility: "hidden",
-    });
-
-    gsap.set(letterRef.current, {
-      opacity: 0,
-      visibility: "hidden",
-      x: -14,
-    });
-
     const progress = { value: 1 };
+
     const timeline = gsap.timeline();
 
-    // 1. Draw the complete white line first.
     timeline.to(progress, {
       value: lineCount,
       duration: 2.8,
@@ -186,42 +161,13 @@ function LineController({
       },
     });
 
-    // 2. Only after the entire line is complete, show the icon.
-    timeline.to(
-      iconRef.current,
-      {
-        opacity: 1,
-        visibility: "visible",
-        duration: 0.45,
-        ease: "power2.out",
-      },
-      "+=0.08",
-    );
-
-    // 3. Only after the icon has finished appearing, show the letter.
-    timeline.to(
-      letterRef.current,
-      {
-        opacity: 1,
-        visibility: "visible",
-        x: 0,
-        duration: 0.5,
-        ease: "power3.out",
-      },
-      "+=0.12",
-    );
-
     return () => timeline.kill();
-  }, [lineRef, glowRef, iconRef, letterRef, timelineStarted]);
+  }, [lineRef, glowRef, timelineStarted]);
 
   return null;
 }
 
-function LogoIcon({
-  iconRef,
-}: {
-  iconRef: MutableRefObject<HTMLDivElement | null>;
-}) {
+function LogoIcon() {
   return (
     <Html
       position={[0, 0.35, 1.15]}
@@ -230,74 +176,25 @@ function LogoIcon({
       sprite
       zIndexRange={[20, 0]}
     >
-      <div
-        ref={iconRef}
+      <svg
+        viewBox="65 20 205 185"
+        width="112"
+        height="102"
+        aria-hidden="true"
         style={{
           display: "block",
-          opacity: 0,
-          visibility: "hidden",
+          overflow: "visible",
         }}
       >
-        <svg
-          viewBox="65 20 205 185"
-          width="112"
-          height="102"
-          aria-hidden="true"
-          style={{
-            display: "block",
-            overflow: "visible",
-          }}
-        >
-          <image
-            href="/logo/voxel_icon.png"
-            x="-168"
-            y="85"
-            width="120"
-            height="70"
-            preserveAspectRatio="none"
-          />
-        </svg>
-      </div>
-    </Html>
-  );
-}
-
-function LogoLetter({
-  letterRef,
-}: {
-  letterRef: MutableRefObject<HTMLDivElement | null>;
-}) {
-  return (
-    <Html
-      position={[1.05, 0.35, 1.14]}
-      center
-      transform
-      sprite
-      zIndexRange={[19, 0]}
-    >
-      <div
-        ref={letterRef}
-        style={{
-          display: "block",
-          opacity: 0,
-          visibility: "hidden",
-          transform: "translateX(-14px)",
-        }}
-      >
-        <img
-          src="/logo/voxel_letter.png"
-          alt=""
-          width={230}
-          height={72}
-          draggable={false}
-          style={{
-            display: "block",
-            width: "230px",
-            height: "auto",
-            objectFit: "contain",
-          }}
+        <image
+          href="/logo/voxel_icon.png"
+          x="-168"
+          y="85"
+          width="120"
+          height="90"
+          preserveAspectRatio="none"
         />
-      </div>
+      </svg>
     </Html>
   );
 }
@@ -305,21 +202,16 @@ function LogoLetter({
 function LogoScene({ timelineStarted }: { timelineStarted: boolean }) {
   const lineRef = useRef<THREE.Line | null>(null);
   const glowRef = useRef<THREE.Line | null>(null);
-  const iconRef = useRef<HTMLDivElement | null>(null);
-  const letterRef = useRef<HTMLDivElement | null>(null);
 
   return (
     <>
-      <Filament lineRef={lineRef} glowRef={glowRef} />
       <LineController
         lineRef={lineRef}
         glowRef={glowRef}
-        iconRef={iconRef}
-        letterRef={letterRef}
         timelineStarted={timelineStarted}
       />
-      <LogoIcon iconRef={iconRef} />
-      <LogoLetter letterRef={letterRef} />
+      <Filament lineRef={lineRef} glowRef={glowRef} />
+      <LogoIcon />
     </>
   );
 }
