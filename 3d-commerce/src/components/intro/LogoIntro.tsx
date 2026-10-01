@@ -4,7 +4,6 @@ import { useEffect, useRef } from "react";
 import gsap from "gsap";
 
 const INTRO_KEY = "voxel3d-logo-intro-seen";
-const INTRO_DURATION = 1.95;
 
 export function LogoIntro() {
   const rootRef = useRef<HTMLDivElement>(null);
