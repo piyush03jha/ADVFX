@@ -87,7 +87,7 @@ function LogoLayer({
             void main() {
               if (vUv.x < uClip.x || vUv.x > uClip.x + uClip.z ||
                   vUv.y < uClip.y || vUv.y > uClip.y + uClip.w) discard;
-              if (vUv.y > 0.17 && vUv.y < 0.24) discard;
+              if (vUv.y > 0.17 && vUv.y < 0.24 && vUv.x > 0.13 && vUv.x < 0.81) discard;
               vec4 color = texture2D(uMap, vUv);
               float alpha = max(color.r, max(color.g, color.b)) * uOpacity;
               if (alpha < 0.01) discard;
@@ -304,7 +304,7 @@ function CameraController({
     // 0.00–0.18: camera enters while the nozzle arrives.
     // The complete sequence is intentionally compact so the intro stays under ~2 seconds.
 
-    // 0.08–1.14: straight right → left, then a smooth 90° turn upward into the icon.
+    // 0.08–1.46: nozzle appears first, prints left → right, then turns upward into the icon.
     const curveIndexCount = curve.current.geometry.index?.count ?? 0;
     const curveProgress = { value: 0 };
     const turnCurve = createTurnCurve();
