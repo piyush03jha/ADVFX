@@ -48,7 +48,9 @@ export class ModelConversionService {
     });
 
     if (!file) throw new Error(`Product file "${productFileId}" not found`);
-    if (file.fileType !== "MODEL") throw new Error("Conversion requested for a non-model file");
+    if (file.fileType !== "MODEL" && file.format !== ProductFileFormat.PDF) {
+      throw new Error("Conversion requested for an unsupported product file type");
+    }
 
     const workDir = join(this.tmpRoot, randomUUID());
     await fs.mkdir(workDir, { recursive: true });
@@ -63,16 +65,12 @@ export class ModelConversionService {
       await fs.writeFile(sourcePath, await this.storage.read(file.storageKey));
 
       let blenderInput = sourcePath;
-      if (file.format === ProductFileFormat.PDF) {
-        throw new Error("PDF is a document format and is not converted as a ProductFile model");
-      }
-
       if (file.format !== ProductFileFormat.GLB) {
-        if (!BLENDER_FORMATS.has(file.format)) {
+        if (file.format !== ProductFileFormat.PDF && !BLENDER_FORMATS.has(file.format)) {
           throw new Error(`Unsupported 3D conversion format: ${file.format}`);
         }
 
-        if (file.format === ProductFileFormat.SVG) {
+        if (file.format === ProductFileFormat.PDF || file.format === ProductFileFormat.SVG) {
           blenderInput = await this.svgToExtrusionSource(sourcePath, workDir);
         }
 
