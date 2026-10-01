@@ -1,222 +1,215 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { useEffect, useMemo, useRef, useState, type MutableRefObject, type RefObject } from "react";
+import * as THREE from "three";
 import gsap from "gsap";
 
 const INTRO_KEY = "voxel3d-logo-intro-seen";
+const LOGO_SRC = "/logo/voxel3d.svg";
 
-export function LogoIntro() {
-  const rootRef = useRef<HTMLDivElement>(null);
-  const logoRef = useRef<HTMLImageElement>(null);
-  const markRef = useRef<HTMLDivElement>(null);
-  const beamRef = useRef<HTMLDivElement>(null);
-  const glowRef = useRef<HTMLDivElement>(null);
+const CLIPS = {
+  cube: [0, 0, 0.23, 0.64] as const,
+  word: [0.225, 0, 0.775, 0.64] as const,
+  line: [0.11, 0.565, 0.815, 0.435] as const,
+  threeD: [0.805, 0.565, 0.195, 0.435] as const,
+};
+
+type Clip = keyof typeof CLIPS;
+
+function LogoLayer({
+  clip,
+  opacity,
+  groupRef,
+  position,
+  z,
+}: {
+  clip: Clip;
+  opacity: number;
+  groupRef: RefObject<THREE.Group | null>;
+  position: [number, number, number];
+  z: number;
+}) {
+  const texture = useMemo(() => {
+    const loader = new THREE.TextureLoader();
+    const texture = loader.load(LOGO_SRC);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.minFilter = THREE.LinearFilter;
+    texture.magFilter = THREE.LinearFilter;
+    return texture;
+  }, []);
+
+  const [x, y, width, height] = CLIPS[clip];
+
+  return (
+    <group ref={groupRef} position={position} renderOrder={z}>
+      <mesh>
+        <planeGeometry args={[12.51, 3.28]} />
+        <shaderMaterial
+          transparent
+          depthWrite={false}
+          uniforms={{
+            uMap: { value: texture },
+            uClip: { value: new THREE.Vector4(x, 1 - y - height, width, height) },
+            uOpacity: { value: opacity },
+          }}
+          vertexShader={`
+            varying vec2 vUv;
+            void main() {
+              vUv = uv;
+              gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+          `}
+          fragmentShader={`
+            uniform sampler2D uMap;
+            uniform vec4 uClip;
+            uniform float uOpacity;
+            varying vec2 vUv;
+            void main() {
+              if (vUv.x < uClip.x || vUv.x > uClip.x + uClip.z ||
+                  vUv.y < uClip.y || vUv.y > uClip.y + uClip.w) discard;
+              vec4 color = texture2D(uMap, vUv);
+              float luminance = dot(color.rgb, vec3(0.299, 0.587, 0.114));
+              float alpha = smoothstep(0.008, 0.055, luminance) * uOpacity;
+              if (alpha < 0.01) discard;
+              gl_FragColor = vec4(color.rgb, alpha);
+            }
+          `}
+        />
+      </mesh>
+    </group>
+  );
+}
+
+function CameraController({
+  timelineStarted,
+  refs,
+}: {
+  timelineStarted: boolean;
+  refs: {
+    camera: MutableRefObject<THREE.PerspectiveCamera | null>;
+    stage: MutableRefObject<THREE.Group | null>;
+    cube: MutableRefObject<THREE.Group | null>;
+    word: MutableRefObject<THREE.Group | null>;
+    line: MutableRefObject<THREE.Group | null>;
+    threeD: MutableRefObject<THREE.Group | null>;
+  };
+}) {
+  const { camera } = useThree();
 
   useEffect(() => {
-    const root = rootRef.current;
-    const logo = logoRef.current;
-    const mark = markRef.current;
-    const beam = beamRef.current;
-    const glow = glowRef.current;
+    if (camera instanceof THREE.PerspectiveCamera) refs.camera.current = camera;
+  }, [camera, refs]);
 
-    if (!root || !logo || !mark || !beam || !glow) return;
+  useFrame(() => camera.updateProjectionMatrix());
 
-    let cancelled = false;
-    let timeoutId: number | undefined;
+  useEffect(() => {
+    if (!timelineStarted || !(camera instanceof THREE.PerspectiveCamera)) return;
+    const { stage, cube, word, line, threeD } = refs;
+    if (!stage.current || !cube.current || !word.current || !line.current || !threeD.current) return;
+
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const alreadySeen = window.sessionStorage.getItem(INTRO_KEY) === "1";
+    const targets = [stage.current, cube.current, word.current, line.current, threeD.current];
 
-    if (alreadySeen) {
-      root.remove();
+    gsap.set(camera.position, { x: 0.28, y: 0.16, z: 13.7 });
+    gsap.set(camera.rotation, { x: -0.05, y: 0.10, z: 0.008 });
+    gsap.set(stage.current.scale, { x: 0.86, y: 0.86, z: 0.86 });
+    gsap.set(cube.current.scale, { x: 0.78, y: 0.78, z: 0.78 });
+    gsap.set(cube.current.rotation, { x: 0.10, y: -0.42, z: -0.06 });
+    gsap.set(word.current.position, { x: 0.62, y: 0, z: -0.06 });
+    gsap.set(word.current.scale, { x: 0.82, y: 0.82, z: 0.82 });
+    gsap.set(line.current.position, { x: -4.63, y: -0.12, z: -0.12 });
+    gsap.set(line.current.scale, { x: 0.001, y: 1, z: 1 });
+    gsap.set(threeD.current.position, { x: 1.16, y: -0.05, z: -0.18 });
+    gsap.set(threeD.current.scale, { x: 0.68, y: 0.68, z: 0.68 });
+
+    if (reduced) {
+      gsap.set(targets, { clearProps: "all" });
       return;
     }
 
-    const finish = () => {
-      if (cancelled) return;
-      window.sessionStorage.setItem(INTRO_KEY, "1");
+    const tl = gsap.timeline();
+    tl.to(stage.current.scale, { x: 1, y: 1, z: 1, duration: 0.28, ease: "power3.out" }, 0)
+      .to(camera.position, { x: 0, y: 0, z: 12.55, duration: 0.52, ease: "power3.out" }, 0)
+      .to(camera.rotation, { x: 0, y: 0, z: 0, duration: 0.62, ease: "power3.inOut" }, 0)
+      .to(cube.current.rotation, { x: 0, y: 0, z: 0, duration: 0.52, ease: "back.out(1.7)" }, 0.06)
+      .to(cube.current.scale, { x: 1, y: 1, z: 1, duration: 0.48, ease: "back.out(1.4)" }, 0.06)
+      .to(word.current.position, { x: 0, duration: 0.5, ease: "power3.out" }, 0.38)
+      .to(word.current.scale, { x: 1, y: 1, z: 1, duration: 0.5, ease: "power3.out" }, 0.38)
+      .to(line.current.position, { x: -0.41, duration: 0.62, ease: "power2.inOut" }, 0.84)
+      .to(line.current.scale, { x: 1, duration: 0.62, ease: "power2.inOut" }, 0.84)
+      .to(threeD.current.position, { x: 0, duration: 0.38, ease: "power3.out" }, 1.22)
+      .to(threeD.current.scale, { x: 1, y: 1, z: 1, duration: 0.38, ease: "back.out(1.5)" }, 1.22)
+      .to(camera.position, { x: -0.16, y: 0.05, z: 12.8, duration: 0.38, ease: "power2.inOut" }, 1.42)
+      .to(camera.rotation, { x: 0.006, y: -0.012, z: -0.004, duration: 0.38, ease: "power2.inOut" }, 1.42);
 
-      const exit = gsap.timeline({
-        defaults: { ease: "power3.inOut" },
-        onComplete: () => {
-          root.remove();
-        },
-      });
+    return () => tl.kill();
+  }, [refs, timelineStarted]);
 
-      exit
-        .to(root, { opacity: 0, duration: reduced ? 0.01 : 0.28 })
-        .set(root, { pointerEvents: "none" });
-    };
+  return null;
+}
 
-    if (reduced) {
-      gsap.set([logo, mark, beam, glow], {
-        opacity: 1,
-        clearProps: "transform,filter",
-      });
-      timeoutId = window.setTimeout(finish, 320);
-      return () => {
-        cancelled = true;
-        if (timeoutId) window.clearTimeout(timeoutId);
-      };
-    }
-
-    // Keep the full logo artwork intact. The visual choreography is done
-    // with an overflow reveal, layered depth, and a short camera-like push.
-    gsap.set(root, { opacity: 1 });
-    gsap.set(logo, {
-      opacity: 0,
-      scale: 0.76,
-      x: 0,
-      y: 14,
-      rotateX: -18,
-      rotateY: 14,
-      transformPerspective: 1200,
-      filter: "blur(10px)",
-    });
-    gsap.set(mark, {
-      opacity: 0,
-      scale: 0.62,
-      rotate: -8,
-      transformOrigin: "50% 50%",
-    });
-    gsap.set(beam, {
-      scaleX: 0,
-      transformOrigin: "0% 50%",
-    });
-    gsap.set(glow, {
-      opacity: 0,
-      scale: 0.55,
-    });
-
-    const tl = gsap.timeline({
-      defaults: { overwrite: "auto" },
-      onComplete: () => {
-        timeoutId = window.setTimeout(finish, 80);
-      },
-    });
-
-    tl.to(glow, {
-        opacity: 1,
-        scale: 1,
-        duration: 0.34,
-        ease: "power2.out",
-      })
-      .to(
-        mark,
-        {
-          opacity: 1,
-          scale: 1,
-          rotate: 0,
-          duration: 0.42,
-          ease: "back.out(1.45)",
-        },
-        "-=0.18",
-      )
-      .to(
-        logo,
-        {
-          opacity: 1,
-          scale: 1,
-          y: 0,
-          rotateX: 0,
-          rotateY: 0,
-          filter: "blur(0px)",
-          duration: 0.62,
-          ease: "power3.out",
-        },
-        "-=0.24",
-      )
-      .to(
-        beam,
-        {
-          scaleX: 1,
-          duration: 0.42,
-          ease: "power2.out",
-        },
-        "-=0.28",
-      )
-      .to(
-        glow,
-        {
-          opacity: 0.45,
-          scale: 1.08,
-          duration: 0.35,
-          ease: "sine.out",
-        },
-        "-=0.25",
-      )
-      .to(
-        [logo, mark],
-        {
-          scale: 1.025,
-          duration: 0.18,
-          ease: "power2.out",
-        },
-        "-=0.18",
-      )
-      .to(
-        [logo, mark],
-        {
-          scale: 1,
-          duration: 0.22,
-          ease: "power2.inOut",
-        },
-      )
-      .to(
-        root,
-        {
-          opacity: 0.98,
-          duration: 0.12,
-        },
-        "+=0.01",
-      );
-
-    return () => {
-      cancelled = true;
-      if (timeoutId) window.clearTimeout(timeoutId);
-      tl.kill();
-      gsap.killTweensOf([root, logo, mark, beam, glow]);
-    };
-  }, []);
+function LogoScene({ timelineStarted }: { timelineStarted: boolean }) {
+  const refs = useMemo(() => ({
+    camera: { current: null } as MutableRefObject<THREE.PerspectiveCamera | null>,
+    stage: { current: null } as MutableRefObject<THREE.Group | null>,
+    cube: { current: null } as MutableRefObject<THREE.Group | null>,
+    word: { current: null } as MutableRefObject<THREE.Group | null>,
+    line: { current: null } as MutableRefObject<THREE.Group | null>,
+    threeD: { current: null } as MutableRefObject<THREE.Group | null>,
+  }), []);
 
   return (
-    <div
-      ref={rootRef}
-      aria-hidden="true"
-      className="fixed inset-0 z-[300] flex items-center justify-center overflow-hidden bg-background"
-      style={{ perspective: "1200px" }}
-    >
-      <div
-        ref={glowRef}
-        className="pointer-events-none absolute h-[42vw] w-[42vw] min-h-[240px] min-w-[240px] max-h-[560px] max-w-[560px] rounded-full bg-primary/20 blur-[80px]"
-      />
+    <>
+      <CameraController timelineStarted={timelineStarted} refs={refs} />
+      <group ref={refs.stage}>
+        <LogoLayer clip="cube" opacity={1} groupRef={refs.cube} position={[0, 0, 0.16]} z={4} />
+        <LogoLayer clip="word" opacity={1} groupRef={refs.word} position={[0, 0, 0]} z={3} />
+        <LogoLayer clip="line" opacity={1} groupRef={refs.line} position={[0, 0, -0.08]} z={2} />
+        <LogoLayer clip="threeD" opacity={1} groupRef={refs.threeD} position={[0, 0, -0.16]} z={1} />
+      </group>
+    </>
+  );
+}
 
-      <div className="relative w-[min(78vw,760px)] max-w-[760px]">
-        <div
-          ref={markRef}
-          className="absolute left-1/2 top-1/2 h-[72%] w-[18%] -translate-x-1/2 -translate-y-1/2 rounded-[28%] border border-primary/20 bg-primary/[0.025] blur-[0.2px]"
-        />
+export function LogoIntro() {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [show, setShow] = useState(true);
+  const [timelineStarted, setTimelineStarted] = useState(false);
 
-        <div
-          className="relative overflow-hidden rounded-[2rem]"
-          style={{
-            clipPath: "inset(0 round 2rem)",
-            transformStyle: "preserve-3d",
-          }}
-        >
-          <img
-            ref={logoRef}
-            src="/logo/voxel3d-top.svg"
-            alt=""
-            draggable={false}
-            className="relative z-10 h-auto w-full select-none"
-          />
+  useEffect(() => {
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (window.sessionStorage.getItem(INTRO_KEY) === "1") {
+      setShow(false);
+      return;
+    }
 
-          <div
-            ref={beamRef}
-            className="absolute left-[9%] right-[8%] top-1/2 z-20 h-px bg-primary/70 shadow-[0_0_24px_var(--glow-primary)]"
-          />
-        </div>
-      </div>
+    setTimelineStarted(true);
+    const finish = window.setTimeout(() => {
+      window.sessionStorage.setItem(INTRO_KEY, "1");
+      gsap.to(rootRef.current, {
+        opacity: 0,
+        duration: reduced ? 0.05 : 0.28,
+        ease: "power3.inOut",
+        onComplete: () => setShow(false),
+      });
+    }, reduced ? 450 : 2050);
+
+    return () => window.clearTimeout(finish);
+  }, []);
+
+  if (!show) return null;
+
+  return (
+    <div ref={rootRef} aria-hidden="true" className="fixed inset-0 z-[300] overflow-hidden bg-[#050507]">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(100,84,162,0.18),transparent_52%)]" />
+      <Canvas
+        dpr={[1, 1.5]}
+        camera={{ position: [0, 0, 13.7], fov: 28, near: 0.1, far: 100 }}
+        gl={{ alpha: true, antialias: true, powerPreference: "high-performance" }}
+      >
+        <LogoScene timelineStarted={timelineStarted} />
+      </Canvas>
     </div>
   );
 }
