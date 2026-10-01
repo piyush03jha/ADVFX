@@ -148,23 +148,28 @@ function PouringLine({
         <meshBasicMaterial color="#ffffff" transparent opacity={0.98} />
       </mesh>
 
-      {/* Minimal applicator — no cone or oversized sci-fi shape. */}
+      {/* Minimal 3D printer nozzle. Its origin is the tip so the white filament
+          always appears to come directly from the nozzle and follows its path. */}
       <group
         ref={nozzleRef}
         position={[5.45, POUR_START.y, 0.24]}
-        rotation={[0, 0, Math.PI]}
+        rotation={[0, 0, -Math.PI / 2]}
       >
-        <mesh position={[0.16, 0, 0]}>
-          <cylinderGeometry args={[0.075, 0.095, 0.46, 20]} />
-          <meshBasicMaterial color="#f2f2f6" />
+        <mesh position={[0, 0.48, 0]}>
+          <cylinderGeometry args={[0.145, 0.16, 0.46, 8]} />
+          <meshStandardMaterial color="#202027" metalness={0.85} roughness={0.24} />
         </mesh>
-        <mesh position={[-0.14, 0, 0]}>
-          <cylinderGeometry args={[0.095, 0.055, 0.16, 20]} />
-          <meshBasicMaterial color="#ffffff" />
+        <mesh position={[0, 0.24, 0]}>
+          <cylinderGeometry args={[0.18, 0.18, 0.09, 16]} />
+          <meshStandardMaterial color="#d9d9df" metalness={0.9} roughness={0.18} />
         </mesh>
-        <mesh position={[-0.25, 0, 0]}>
-          <cylinderGeometry args={[0.035, 0.035, 0.045, 20]} />
-          <meshBasicMaterial color="#ffffff" />
+        <mesh position={[0, 0.09, 0]} rotation={[Math.PI, 0, 0]}>
+          <coneGeometry args={[0.155, 0.20, 8]} />
+          <meshStandardMaterial color="#e9e9ee" metalness={0.92} roughness={0.16} />
+        </mesh>
+        <mesh position={[0, 0.49, 0]}>
+          <cylinderGeometry args={[0.09, 0.09, 0.48, 8]} />
+          <meshStandardMaterial color="#09090d" metalness={0.65} roughness={0.28} />
         </mesh>
       </group>
 
@@ -274,7 +279,7 @@ function CameraController({
     curve.current.geometry.setDrawRange(0, 0);
 
     gsap.set(nozzle.current.position, { x: 5.45, y: POUR_START.y, z: 0.24 });
-    gsap.set(nozzle.current.rotation, { z: Math.PI });
+    gsap.set(nozzle.current.rotation, { z: -Math.PI / 2 });
     gsap.set(nozzle.current.scale, { x: 0.82, y: 0.82, z: 0.82 });
     gsap.set(nozzle.current.scale, { x: 0.82, y: 0.82, z: 0.82 });
 
@@ -296,80 +301,60 @@ function CameraController({
 
     const tl = gsap.timeline();
 
-    // 0.00–0.30: camera gently enters the scene while the nozzle arrives.
-    tl.to(camera.position, {
-      x: 0.05,
-      y: 0.02,
-      z: 12.7,
-      duration: 0.52,
-      ease: "power3.out",
-    }, 0)
-      .to(camera.rotation, {
-        x: 0,
-        y: 0,
-        z: 0,
-        duration: 0.62,
-        ease: "power3.inOut",
-      }, 0)
-      .to(stage.current.scale, {
-        x: 1,
-        y: 1,
-        z: 1,
-        duration: 0.48,
-        ease: "power3.out",
-      }, 0);
+    // 0.00–0.18: camera enters while the nozzle arrives.
+    // The complete sequence is intentionally compact so the intro stays under ~2 seconds.
 
-    // 0.08–1.25: straight right → left, then a smooth 90° turn upward into the icon.
+    // 0.08–1.14: straight right → left, then a smooth 90° turn upward into the icon.
     const curveIndexCount = curve.current.geometry.index?.count ?? 0;
     const curveProgress = { value: 0 };
     const turnCurve = createTurnCurve();
 
     tl.to(cubeMaterial.current.uniforms.uOpacity, {
       value: 1,
-      duration: 0.28,
+      duration: 0.18,
       ease: "power2.out",
-    }, 1.50)
+    }, 1.38)
       // Enter from the right and settle onto the exact start of the logo stroke.
       .to(nozzle.current.position, {
         x: POUR_START.x,
         y: POUR_START.y,
-        duration: 0.22,
+        duration: 0.18,
         ease: "power3.out",
       }, 0.08)
       // Long, perfectly straight pour.
       .to(nozzle.current.position, {
         x: POUR_STRAIGHT_END.x,
         y: POUR_STRAIGHT_END.y,
-        duration: 0.86,
+        duration: 0.70,
         ease: "none",
-      }, 0.30)
+      }, 0.22)
       .to(line.current.scale, {
         x: 1,
-        duration: 0.86,
+        duration: 0.70,
         ease: "none",
-      }, 0.30)
+      }, 0.22)
       .to(glowMaterial, {
         opacity: 0.56,
         duration: 0.12,
         ease: "power2.out",
-      }, 0.28)
+      }, 0.20)
       .to(drop.current.scale, {
         x: 1,
         y: 1,
         z: 1,
         duration: 0.10,
         ease: "back.out(2)",
-      }, 0.38)
+      }, 0.28)
       .to(drop.current.position, {
         x: POUR_STRAIGHT_END.x,
         y: POUR_STRAIGHT_END.y,
-        duration: 0.86,
+        duration: 0.70,
         ease: "none",
-      }, 0.38)
+      }, 0.28)
       // Follow the quarter-circle and rotate the applicator with the path.
       .to(curveProgress, {
         value: 1,
-        duration: 0.34,
+        duration: 0.26,
         ease: "power2.inOut",
         onUpdate: () => {
           const p = curveProgress.value;
@@ -387,72 +372,72 @@ function CameraController({
           glow.current?.position.set(point.x, point.y, 0.16);
           drop.current?.position.set(point.x, point.y, 0.16);
         },
-      }, 1.16)
+      }, 0.92)
       .to(drop.current.scale, {
         x: 0.001,
         y: 0.001,
         z: 0.001,
         duration: 0.10,
         ease: "power2.in",
-      }, 1.42);
+      }, 1.22);
 
     // 1.50–1.80: the applicator disappears into the icon, then the logo resolves.
     tl.to(nozzle.current.scale, {
       x: 0.001,
       y: 0.001,
       z: 0.001,
-      duration: 0.16,
+      duration: 0.14,
       ease: "power2.in",
-    }, 1.48)
+    }, 1.24)
       .to(glowMaterial, {
         opacity: 0,
-        duration: 0.16,
+        duration: 0.14,
         ease: "power2.out",
-      }, 1.48);
+      }, 1.24);
 
     // 1.50–1.95: the icon resolves first, followed by VOXEL and 3D.
     tl.to(cube.current, {
       scale: 1,
       rotation: { x: 0, y: 0, z: 0 },
-      duration: 0.28,
+      duration: 0.18,
       ease: "back.out(1.7)",
-    }, 1.50)
+    }, 1.38)
       .to(wordMaterial.current.uniforms.uOpacity, {
         value: 1,
-        duration: 0.30,
+        duration: 0.20,
         ease: "power2.out",
-      }, 1.62)
+      }, 1.50)
       .to(word.current.position, {
         x: 0,
         y: 0,
-        duration: 0.30,
+        duration: 0.20,
         ease: "power3.out",
-      }, 1.62)
+      }, 1.50)
       .to(threeDMaterial.current.uniforms.uOpacity, {
         value: 1,
-        duration: 0.28,
+        duration: 0.18,
         ease: "power2.out",
-      }, 1.76)
+      }, 1.68)
       .to(threeD.current.position, {
         x: 0,
         y: 0,
-        duration: 0.28,
+        duration: 0.18,
         ease: "back.out(1.5)",
-      }, 1.76)
+      }, 1.68)
       .to(camera.position, {
         x: -0.14,
         y: 0.035,
         z: 12.82,
-        duration: 0.32,
+        duration: 0.24,
         ease: "power2.inOut",
-      }, 1.76)
+      }, 1.68)
       .to(camera.rotation, {
         x: 0.005,
         y: -0.012,
         z: -0.004,
-        duration: 0.32,
+        duration: 0.24,
         ease: "power2.inOut",
-      }, 1.76);
+      }, 1.68);
 
     return () => tl.kill();
   }, [refs, timelineStarted]);
@@ -516,11 +501,11 @@ export function LogoIntro() {
 
       gsap.to(rootRef.current, {
         opacity: 0,
-        duration: reduced ? 0.05 : 0.26,
+        duration: reduced ? 0.05 : 0.20,
         ease: "power3.inOut",
         onComplete: () => setShow(false),
       });
-    }, reduced ? 500 : 2150);
+    }, reduced ? 500 : 1980);
 
     return () => window.clearTimeout(finish);
   }, []);
