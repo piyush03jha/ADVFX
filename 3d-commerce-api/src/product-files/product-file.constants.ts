@@ -13,8 +13,19 @@ import { ProductFileFormat, ProductFileType } from "@prisma/client";
  * .pdf
  */
 export const SUPPORTED_EXTENSIONS = {
-  // 3D — GLB is the only production-supported web model upload.
+  // 3D source formats. The browser still receives only the generated GLB.
+  ".abc": ProductFileFormat.ABC,
+  ".usd": ProductFileFormat.USD,
+  ".usda": ProductFileFormat.USDA,
+  ".usdc": ProductFileFormat.USDC,
+  ".usdz": ProductFileFormat.USDZ,
+  ".obj": ProductFileFormat.OBJ,
+  ".ply": ProductFileFormat.PLY,
+  ".stl": ProductFileFormat.STL,
+  ".bvh": ProductFileFormat.BVH,
+  ".fbx": ProductFileFormat.FBX,
   ".glb": ProductFileFormat.GLB,
+  ".gltf": ProductFileFormat.GLTF,
 
   // 2D
   ".png": ProductFileFormat.PNG,
@@ -28,7 +39,18 @@ export const SUPPORTED_EXTENSIONS = {
 } as const;
 
 export const MODEL_FORMATS = new Set<ProductFileFormat>([
+  ProductFileFormat.ABC,
+  ProductFileFormat.USD,
+  ProductFileFormat.USDA,
+  ProductFileFormat.USDC,
+  ProductFileFormat.USDZ,
+  ProductFileFormat.OBJ,
+  ProductFileFormat.PLY,
+  ProductFileFormat.STL,
+  ProductFileFormat.BVH,
+  ProductFileFormat.FBX,
   ProductFileFormat.GLB,
+  ProductFileFormat.GLTF,
 ]);
 
 export const IMAGE_FORMATS = new Set<ProductFileFormat>([
