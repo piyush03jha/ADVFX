@@ -70,7 +70,7 @@ export function LogoIntro() {
         draw,
         {
           progress: 1,
-          duration: 1.3,
+          duration: 0.35,
           ease: "power2.inOut",
           onUpdate: () => {
             const currentLength = draw.progress * length;
@@ -89,7 +89,7 @@ export function LogoIntro() {
 
       timeline.to(
         head,
-        { opacity: 0, duration: 0.25, ease: "power2.out" },
+        { opacity: 0, duration: 0.2, ease: "power2.out" },
         ">-0.05",
       );
 
@@ -100,7 +100,7 @@ export function LogoIntro() {
           clipPath: SHOWN,
           opacity: 1,
           y: 0,
-          duration: 0.7,
+          duration: 0.4,
           ease: "power3.out",
         },
         ">-0.1",
@@ -134,8 +134,8 @@ export function LogoIntro() {
 
       timeline.to(
         root,
-        { opacity: 0, duration: 0.5, ease: "power2.inOut" },
-        "+=0.8",
+        { opacity: 0, duration: 0.3, ease: "power2.inOut" },
+        "+=0.35",
       );
     }, root);
 
