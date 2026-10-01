@@ -198,6 +198,8 @@ function CameraController({
     ) return;
 
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const glowMaterial = glow.current.material as THREE.MeshBasicMaterial;
+    const dropMaterial = drop.current.material as THREE.MeshBasicMaterial;
 
     gsap.set(camera.position, { x: 0.42, y: 0.12, z: 13.9 });
     gsap.set(camera.rotation, { x: -0.045, y: 0.075, z: 0.006 });
@@ -224,8 +226,9 @@ function CameraController({
     gsap.set(nozzle.current.rotation, { z: Math.PI / 2 });
     gsap.set(nozzle.current.scale, { x: 0.82, y: 0.82, z: 0.82 });
 
-    gsap.set(glow.current.material, { opacity: 0 });
+    gsap.set(glowMaterial, { opacity: 0 });
     gsap.set(drop.current.scale, { x: 0.001, y: 0.001, z: 0.001 });
+    gsap.set(dropMaterial, { opacity: 0.9 });
 
     if (reduced) {
       gsap.set(cubeMaterial.current.uniforms.uOpacity, { value: 1 });
@@ -274,7 +277,7 @@ function CameraController({
         duration: 0.82,
         ease: "power2.inOut",
       }, 0.16)
-      .to(glow.current.material, {
+      .to(glowMaterial, {
         opacity: 0.78,
         duration: 0.12,
         ease: "power2.out",
