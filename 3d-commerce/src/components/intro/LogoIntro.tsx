@@ -14,25 +14,24 @@ import gsap from "gsap";
 const LINE_START = new THREE.Vector3(4.2, -1.0, 1);
 const HORIZONTAL_END = new THREE.Vector3(-3.4, -1.0, 1);
 
-// Compact quarter-turn: horizontal tangent -> vertical tangent.
-const CURVE_CONTROL = new THREE.Vector3(-4.2, -1.0, 1);
-const CURVE_END = new THREE.Vector3(-4.2, -0.2, 1);
-
-// Only a short rise after the curve.
-const VERTICAL_END = new THREE.Vector3(-4.2, 0.35, 1);
+// Small quarter-turn matching the reference:
+// long horizontal run, then only a small rise.
+const CURVE_CONTROL = new THREE.Vector3(-3.9, -1.0, 1);
+const CURVE_END = new THREE.Vector3(-4.2, -0.62, 1);
+const VERTICAL_END = new THREE.Vector3(-4.2, -0.05, 1);
 
 const CURVE_SAMPLES = 96;
 
 function createFilamentPoints() {
   const points: THREE.Vector3[] = [];
 
-  // Straight horizontal section: right -> left.
-  for (let i = 0; i <= 48; i += 1) {
-    const t = i / 48;
+  // Long horizontal section: right -> left.
+  for (let i = 0; i <= 64; i += 1) {
+    const t = i / 64;
     points.push(new THREE.Vector3().lerpVectors(LINE_START, HORIZONTAL_END, t));
   }
 
-  // Smooth 90-degree turn.
+  // Smooth 90-degree bend.
   const curve = new THREE.QuadraticBezierCurve3(
     HORIZONTAL_END,
     CURVE_CONTROL,
@@ -41,9 +40,9 @@ function createFilamentPoints() {
 
   points.push(...curve.getPoints(CURVE_SAMPLES).slice(1));
 
-  // Short vertical section after the turn.
-  for (let i = 1; i <= 20; i += 1) {
-    const t = i / 20;
+  // Very short vertical continuation after the bend.
+  for (let i = 1; i <= 12; i += 1) {
+    const t = i / 12;
     points.push(new THREE.Vector3().lerpVectors(CURVE_END, VERTICAL_END, t));
   }
 
@@ -113,7 +112,6 @@ function LineController({
 
     const line = lineRef.current;
     const glow = glowRef.current;
-
     const lineCount = line.geometry.attributes.position.count;
     const glowCount = glow.geometry.attributes.position.count;
 
@@ -124,15 +122,12 @@ function LineController({
 
     const timeline = gsap.timeline();
 
-    // Reveal from right -> left, then smoothly turn upward,
-    // followed by only a small vertical rise.
     timeline.to(progress, {
       value: lineCount,
       duration: 2.8,
       ease: "power1.inOut",
       onUpdate: () => {
         const count = Math.max(1, Math.floor(progress.value));
-
         line.geometry.setDrawRange(0, count);
         glow.geometry.setDrawRange(0, Math.min(count, glowCount));
       },
@@ -144,11 +139,7 @@ function LineController({
   return null;
 }
 
-function LogoScene({
-  timelineStarted,
-}: {
-  timelineStarted: boolean;
-}) {
+function LogoScene({ timelineStarted }: { timelineStarted: boolean }) {
   const lineRef = useRef<THREE.Line | null>(null);
   const glowRef = useRef<THREE.Line | null>(null);
 
