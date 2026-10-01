@@ -334,16 +334,24 @@ function CameraController({
       duration: 0.34,
       ease: "back.out(1.7)",
     }, 1.27)
+      .to(wordMaterial.current.uniforms.uOpacity, {
+        value: 1,
+        duration: 0.42,
+        ease: "power2.out",
+      }, 1.39)
       .to(word.current, {
-        opacity: 1,
         x: 0,
         y: 0,
         scale: 1,
         duration: 0.42,
         ease: "power3.out",
       }, 1.39)
+      .to(threeDMaterial.current.uniforms.uOpacity, {
+        value: 1,
+        duration: 0.34,
+        ease: "power2.out",
+      }, 1.51)
       .to(threeD.current, {
-        opacity: 1,
         x: 0,
         y: 0,
         scale: 1,
