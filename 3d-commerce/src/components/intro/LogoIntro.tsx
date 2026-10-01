@@ -11,7 +11,7 @@ const LOGO_SRC = "/logo/voxel3d.svg";
 const CLIPS = {
   cube: [0, 0, 0.23, 0.64] as const,
   word: [0.225, 0, 0.775, 0.64] as const,
-  threeD: [0.805, 0, 0.195, 0.64] as const,
+  threeD: [0.805, 0.565, 0.195, 0.435] as const,
 };
 
 type Clip = keyof typeof CLIPS;
@@ -22,10 +22,12 @@ function LogoLayer({
   groupRef,
   position,
   z,
+  materialRef,
 }: {
   clip: Clip;
   opacity: number;
   groupRef: RefObject<THREE.Group | null>;
+  materialRef: RefObject<THREE.ShaderMaterial | null>;
   position: [number, number, number];
   z: number;
 }) {
@@ -45,6 +47,7 @@ function LogoLayer({
       <mesh>
         <planeGeometry args={[12.51, 3.28]} />
         <shaderMaterial
+          ref={materialRef}
           transparent
           depthWrite={false}
           uniforms={{
@@ -144,8 +147,11 @@ function CameraController({
     camera: MutableRefObject<THREE.PerspectiveCamera | null>;
     stage: MutableRefObject<THREE.Group | null>;
     cube: MutableRefObject<THREE.Group | null>;
+    cubeMaterial: MutableRefObject<THREE.ShaderMaterial | null>;
     word: MutableRefObject<THREE.Group | null>;
+    wordMaterial: MutableRefObject<THREE.ShaderMaterial | null>;
     threeD: MutableRefObject<THREE.Group | null>;
+    threeDMaterial: MutableRefObject<THREE.ShaderMaterial | null>;
     line: MutableRefObject<THREE.Group | null>;
     nozzle: MutableRefObject<THREE.Group | null>;
     glow: MutableRefObject<THREE.Mesh | null>;
@@ -167,7 +173,10 @@ function CameraController({
       stage,
       cube,
       word,
+      wordMaterial,
+      cubeMaterial,
       threeD,
+      threeDMaterial,
       line,
       nozzle,
       glow,
@@ -178,7 +187,10 @@ function CameraController({
       !stage.current ||
       !cube.current ||
       !word.current ||
+      !wordMaterial.current ||
+      !cubeMaterial.current ||
       !threeD.current ||
+      !threeDMaterial.current ||
       !line.current ||
       !nozzle.current ||
       !glow.current ||
@@ -192,20 +204,21 @@ function CameraController({
 
     gsap.set(stage.current.scale, { x: 0.9, y: 0.9, z: 0.9 });
 
+    gsap.set(cubeMaterial.current.uniforms.uOpacity, { value: 0 });
+    gsap.set(wordMaterial.current.uniforms.uOpacity, { value: 0 });
+    gsap.set(threeDMaterial.current.uniforms.uOpacity, { value: 0 });
+
     gsap.set(cube.current, {
-      opacity: 0,
       scale: 0.72,
       rotation: { x: 0.18, y: -0.42, z: -0.08 },
     });
 
     gsap.set(word.current, {
-      opacity: 0,
       scale: 0.82,
       position: { x: 0.25, y: 0.08, z: -0.04 },
     });
 
     gsap.set(threeD.current, {
-      opacity: 0,
       scale: 0.68,
       position: { x: 0.45, y: 0.06, z: -0.08 },
     });
@@ -221,10 +234,10 @@ function CameraController({
     gsap.set(drop.current.scale, { x: 0.001, y: 0.001, z: 0.001 });
 
     if (reduced) {
-      gsap.set(
-        [cube.current, word.current, threeD.current],
-        { opacity: 1, clearProps: "transform" },
-      );
+      gsap.set(cubeMaterial.current.uniforms.uOpacity, { value: 1 });
+      gsap.set(wordMaterial.current.uniforms.uOpacity, { value: 1 });
+      gsap.set(threeDMaterial.current.uniforms.uOpacity, { value: 1 });
+      gsap.set([cube.current, word.current, threeD.current], { clearProps: "transform" });
       gsap.set(line.current.scale, { x: 1, y: 1, z: 1 });
       gsap.set(nozzle.current.position, { x: 4.18, y: -0.96, z: 0.24 });
       return;
@@ -256,7 +269,8 @@ function CameraController({
       }, 0);
 
     // 0.10–1.05: nozzle sweeps right → left while the white line pours behind it.
-    tl.to(nozzle.current.position, {
+    tl.to(cubeMaterial.current.uniforms.uOpacity, { value: 1, duration: 0.34, ease: "power2.out" }, 1.27)
+      .to(nozzle.current.position, {
       x: -4.18,
       duration: 0.82,
       ease: "power2.inOut",
@@ -315,7 +329,6 @@ function CameraController({
 
     // 1.27–1.82: once the line is settled, the actual logo is born.
     tl.to(cube.current, {
-      opacity: 1,
       scale: 1,
       rotation: { x: 0, y: 0, z: 0 },
       duration: 0.34,
@@ -363,8 +376,11 @@ function LogoScene({ timelineStarted }: { timelineStarted: boolean }) {
     camera: { current: null } as MutableRefObject<THREE.PerspectiveCamera | null>,
     stage: { current: null } as MutableRefObject<THREE.Group | null>,
     cube: { current: null } as MutableRefObject<THREE.Group | null>,
+    cubeMaterial: { current: null } as MutableRefObject<THREE.ShaderMaterial | null>,
     word: { current: null } as MutableRefObject<THREE.Group | null>,
+    wordMaterial: { current: null } as MutableRefObject<THREE.ShaderMaterial | null>,
     threeD: { current: null } as MutableRefObject<THREE.Group | null>,
+    threeDMaterial: { current: null } as MutableRefObject<THREE.ShaderMaterial | null>,
     line: { current: null } as MutableRefObject<THREE.Group | null>,
     nozzle: { current: null } as MutableRefObject<THREE.Group | null>,
     glow: { current: null } as MutableRefObject<THREE.Mesh | null>,
@@ -375,9 +391,9 @@ function LogoScene({ timelineStarted }: { timelineStarted: boolean }) {
     <>
       <CameraController timelineStarted={timelineStarted} refs={refs} />
       <group ref={refs.stage}>
-        <LogoLayer clip="cube" opacity={0} groupRef={refs.cube} position={[0, 0, 0.16]} z={4} />
-        <LogoLayer clip="word" opacity={0} groupRef={refs.word} position={[0, 0, 0]} z={3} />
-        <LogoLayer clip="threeD" opacity={0} groupRef={refs.threeD} position={[0, 0, -0.16]} z={2} />
+        <LogoLayer clip="cube" opacity={0} groupRef={refs.cube} materialRef={refs.cubeMaterial} position={[0, 0, 0.16]} z={4} />
+        <LogoLayer clip="word" opacity={0} groupRef={refs.word} materialRef={refs.wordMaterial} position={[0, 0, 0]} z={3} />
+        <LogoLayer clip="threeD" opacity={0} groupRef={refs.threeD} materialRef={refs.threeDMaterial} position={[0, 0, -0.16]} z={2} />
         <PouringLine
           lineRef={refs.line}
           nozzleRef={refs.nozzle}
