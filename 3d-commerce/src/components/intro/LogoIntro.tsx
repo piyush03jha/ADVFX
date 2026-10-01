@@ -281,7 +281,6 @@ function CameraController({
     gsap.set(nozzle.current.position, { x: 5.45, y: POUR_START.y, z: 0.24 });
     gsap.set(nozzle.current.rotation, { z: -Math.PI / 2 });
     gsap.set(nozzle.current.scale, { x: 0.82, y: 0.82, z: 0.82 });
-    gsap.set(nozzle.current.scale, { x: 0.82, y: 0.82, z: 0.82 });
 
     gsap.set(glowMaterial, { opacity: 0 });
     gsap.set(drop.current.scale, { x: 0.001, y: 0.001, z: 0.001 });
@@ -295,7 +294,7 @@ function CameraController({
       gsap.set(line.current.scale, { x: 1, y: 1, z: 1 });
       gsap.set(curve.current.geometry, { drawRange: { start: 0, count: curve.current.geometry.index?.count ?? 0 } });
       gsap.set(nozzle.current.position, { x: POUR_CURVE_END.x, y: POUR_CURVE_END.y, z: 0.24 });
-      gsap.set(nozzle.current.rotation, { z: Math.PI / 2 });
+      gsap.set(nozzle.current.rotation, { z: Math.PI });
       return;
     }
 
@@ -367,7 +366,7 @@ function CameraController({
           );
 
           nozzle.current?.position.set(point.x, point.y, 0.24);
-          nozzle.current?.rotation.set(0, 0, Math.atan2(tangent.y, tangent.x) + Math.PI);
+          nozzle.current?.rotation.set(0, 0, Math.atan2(tangent.x, -tangent.y));
 
           glow.current?.position.set(point.x, point.y, 0.16);
           drop.current?.position.set(point.x, point.y, 0.16);
@@ -465,6 +464,9 @@ function LogoScene({ timelineStarted }: { timelineStarted: boolean }) {
   return (
     <>
       <CameraController timelineStarted={timelineStarted} refs={refs} />
+      <ambientLight intensity={1.15} />
+      <directionalLight position={[3, 4, 6]} intensity={2.4} />
+      <pointLight color="#a855f7" position={[-4, 1, 4]} intensity={8} distance={14} />
       <group ref={refs.stage}>
         <LogoLayer clip="cube" opacity={0} groupRef={refs.cube} materialRef={refs.cubeMaterial} position={[0, 0, 0.16]} z={4} />
         <LogoLayer clip="word" opacity={0} groupRef={refs.word} materialRef={refs.wordMaterial} position={[0, 0, 0]} z={3} />
