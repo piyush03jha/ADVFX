@@ -118,7 +118,7 @@ function CameraController({
     gsap.set(cube.current.rotation, { x: 0.10, y: -0.42, z: -0.06 });
     gsap.set(word.current.position, { x: 0.62, y: 0, z: -0.06 });
     gsap.set(word.current.scale, { x: 0.82, y: 0.82, z: 0.82 });
-    gsap.set(line.current.position, { x: -4.28, y: -0.12, z: -0.12 });
+    gsap.set(line.current.position, { x: -4.63, y: -0.12, z: -0.12 });
     gsap.set(line.current.scale, { x: 0.001, y: 1, z: 1 });
     gsap.set(threeD.current.position, { x: 1.16, y: -0.05, z: -0.18 });
     gsap.set(threeD.current.scale, { x: 0.68, y: 0.68, z: 0.68 });
@@ -136,7 +136,7 @@ function CameraController({
       .to(cube.current.scale, { x: 1, y: 1, z: 1, duration: 0.48, ease: "back.out(1.4)" }, 0.06)
       .to(word.current.position, { x: 0, duration: 0.5, ease: "power3.out" }, 0.38)
       .to(word.current.scale, { x: 1, y: 1, z: 1, duration: 0.5, ease: "power3.out" }, 0.38)
-      .to(line.current.position, { x: 0, duration: 0.62, ease: "power2.inOut" }, 0.84)
+      .to(line.current.position, { x: -0.41, duration: 0.62, ease: "power2.inOut" }, 0.84)
       .to(line.current.scale, { x: 1, duration: 0.62, ease: "power2.inOut" }, 0.84)
       .to(threeD.current.position, { x: 0, duration: 0.38, ease: "power3.out" }, 1.22)
       .to(threeD.current.scale, { x: 1, y: 1, z: 1, duration: 0.38, ease: "back.out(1.5)" }, 1.22)
