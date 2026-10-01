@@ -16,17 +16,20 @@ const CLIPS = {
 
 const POUR_START = new THREE.Vector3(3.82, -1.03, 0);
 const POUR_STRAIGHT_END = new THREE.Vector3(-4.62, -1.03, 0);
-const POUR_CURVE_END = new THREE.Vector3(-5.22, -0.43, 0);
+const POUR_CURVE_END = new THREE.Vector3(-4.82, -0.46, 0);
 
 function createTurnCurve() {
-  const radius = 0.6;
+  // The end point is the lower edge/center of the cube mark in the logo.
+  // Use a cubic quarter-turn with horizontal start tangent and vertical end
+  // tangent so the filament lands under the icon instead of beside it.
+  const dx = POUR_CURVE_END.x - POUR_STRAIGHT_END.x;
+  const dy = POUR_CURVE_END.y - POUR_STRAIGHT_END.y;
   const k = 0.5522848;
-  const center = new THREE.Vector3(-4.62, -0.43, 0);
 
   return new THREE.CubicBezierCurve3(
     POUR_STRAIGHT_END,
-    new THREE.Vector3(center.x - k * radius, center.y - radius, 0),
-    new THREE.Vector3(center.x - radius, center.y - k * radius, 0),
+    new THREE.Vector3(POUR_STRAIGHT_END.x, POUR_STRAIGHT_END.y + k * dy, 0),
+    new THREE.Vector3(POUR_CURVE_END.x, POUR_CURVE_END.y - k * dy, 0),
     POUR_CURVE_END,
   );
 }
