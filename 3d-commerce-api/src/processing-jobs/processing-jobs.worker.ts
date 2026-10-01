@@ -19,6 +19,7 @@ import { StorageService } from "../storage/storage.service";
 import { FileContentValidationService } from "../product-files/file-content-validation.service";
 import { ProcessingJobs2DWorker } from "./processing-jobs-2d.worker";
 import { ImageProcessingService } from "./image-processing.service";
+import { ModelConversionService } from "./model-conversion.service";
 
 @Injectable()
 export class ProcessingJobsWorker
@@ -60,6 +61,7 @@ export class ProcessingJobsWorker
     private readonly contentValidator: FileContentValidationService,
     private readonly processingJobs2DWorker: ProcessingJobs2DWorker,
     private readonly imageProcessingService: ImageProcessingService,
+    private readonly modelConversionService: ModelConversionService,
   ) {}
 
   /**
@@ -660,10 +662,12 @@ export class ProcessingJobsWorker
       productFile.fileType ===
       ProductFileType.DOCUMENT
     ) {
-      await this.processingJobs2DWorker.processFile(
-        productFile,
-      );
+      if (productFile.format === ProductFileFormat.PDF) {
+        await this.modelConversionService.convert(productFile.id);
+        return;
+      }
 
+      await this.processingJobs2DWorker.processFile(productFile);
       return;
     }
 
@@ -675,14 +679,8 @@ export class ProcessingJobsWorker
       productFile.fileType ===
       ProductFileType.MODEL
     ) {
-      if (productFile.format === ProductFileFormat.GLB) {
-        // GLB is already the canonical browser delivery format.
-        return;
-      }
-
-      throw new Error(
-        `Unsupported 3D upload format: ${productFile.format}. Only GLB is supported.`,
-      );
+      await this.modelConversionService.convert(productFile.id);
+      return;
     }
 
     throw new Error(
