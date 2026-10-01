@@ -41,13 +41,18 @@ export class ModelConversionService {
     private readonly storage: StorageService,
   ) {}
 
-  async convert(productFileId: string): Promise<void> {
+  async convert(productFileId: string, jobId?: string): Promise<void> {
     const file = await this.prisma.productFile.findUnique({
       where: { id: productFileId },
       include: { generatedByJob: true },
     });
 
     if (!file) throw new Error(`Product file "${productFileId}" not found`);
+    if (jobId) {
+      const job = await this.prisma.productFileProcessingJob.findUnique({ where: { id: jobId }, select: { outputFileId: true } });
+      if (job?.outputFileId) return;
+    }
+
     if (file.fileType !== "MODEL" && file.format !== ProductFileFormat.PDF) {
       throw new Error("Conversion requested for an unsupported product file type");
     }
