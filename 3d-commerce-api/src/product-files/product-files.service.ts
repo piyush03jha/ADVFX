@@ -237,45 +237,6 @@ export class ProductFilesService {
 
   /**
    * ============================================================
-   * GET BUNDLE
-   * ============================================================
-   */
-
-  async findBundle(
-    productId: string,
-    bundleId: string,
-  ) {
-    const bundle =
-      await this.prisma.productFileBundle.findFirst(
-        {
-          where: {
-            id: bundleId,
-            productId,
-          },
-          include: {
-            rootFile: true,
-            assets: {
-              orderBy: {
-                relativePath: "asc",
-              },
-            },
-          },
-        },
-      );
-
-    if (!bundle) {
-      throw new NotFoundException(
-        `Asset bundle "${bundleId}" not found`,
-      );
-    }
-
-    return this.serializeBundle(
-      bundle,
-    );
-  }
-
-  /**
-   * ============================================================
    * DELETE FILE
    * ============================================================
    */
