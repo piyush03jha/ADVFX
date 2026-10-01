@@ -98,7 +98,7 @@ export class StorageService {
   async read(storageKey: string): Promise<Buffer> {
     if (this.provider === "local") {
       try {
-        return await fs.readFile(this.getAbsolutePath(storageKey));
+        return await readFile(this.getAbsolutePath(storageKey));
       } catch {
         throw new InternalServerErrorException("Unable to read stored file");
       }
