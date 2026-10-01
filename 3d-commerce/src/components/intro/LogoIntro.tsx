@@ -14,6 +14,23 @@ const CLIPS = {
   threeD: [0.805, 0.565, 0.195, 0.435] as const,
 };
 
+const POUR_START = new THREE.Vector3(3.82, -1.03, 0);
+const POUR_STRAIGHT_END = new THREE.Vector3(-4.62, -1.03, 0);
+const POUR_CURVE_END = new THREE.Vector3(-5.22, -0.43, 0);
+
+function createTurnCurve() {
+  const radius = 0.6;
+  const k = 0.5522848;
+  const center = new THREE.Vector3(-4.62, -0.43, 0);
+
+  return new THREE.CubicBezierCurve3(
+    POUR_STRAIGHT_END,
+    new THREE.Vector3(center.x - k * radius, center.y - radius, 0),
+    new THREE.Vector3(center.x - radius, center.y - k * radius, 0),
+    POUR_CURVE_END,
+  );
+}
+
 type Clip = keyof typeof CLIPS;
 
 function LogoLayer({
@@ -95,83 +112,64 @@ function PouringLine({
   glowRef: MutableRefObject<THREE.Mesh | null>;
   dropRef: MutableRefObject<THREE.Mesh | null>;
 }) {
-  const straightStart = new THREE.Vector3(3.813, -1.034, 0);
-  const straightEnd = new THREE.Vector3(-4.62, -1.034, 0);
+  const turnCurve = useMemo(() => createTurnCurve(), []);
 
   const curveGeometry = useMemo(() => {
-    // A smooth quarter-turn: horizontal travel → upward turn into the icon.
-    const curve = new THREE.CubicBezierCurve3(
-      new THREE.Vector3(-4.62, -1.034, 0),
-      new THREE.Vector3(-4.98, -1.034, 0),
-      new THREE.Vector3(-5.22, -0.80, 0),
-      new THREE.Vector3(-5.22, -0.43, 0),
-    );
-
-    const geometry = new THREE.TubeGeometry(curve, 32, 0.019, 8, false);
+    const geometry = new THREE.TubeGeometry(turnCurve, 40, 0.020, 8, false);
     geometry.setDrawRange(0, 0);
     return geometry;
-  }, []);
+  }, [turnCurve]);
 
-  useEffect(() => {
-    return () => curveGeometry.dispose();
-  }, [curveGeometry]);
+  useEffect(() => () => curveGeometry.dispose(), [curveGeometry]);
 
-  const straightLength = straightStart.distanceTo(straightEnd);
-  const curveEnd = new THREE.Vector3(-5.22, -0.43, 0);
+  const straightLength = POUR_START.distanceTo(POUR_STRAIGHT_END);
 
   return (
     <group>
-      {/* Straight stroke: clean right → left. */}
-      <group ref={lineRef} position={[straightStart.x, straightStart.y, 0.05]}>
+      {/* The stroke is deliberately simple: long straight run first. */}
+      <group ref={lineRef} position={[POUR_START.x, POUR_START.y, 0.05]}>
         <mesh position={[-straightLength / 2, 0, 0]}>
-          <planeGeometry args={[straightLength, 0.038]} />
+          <planeGeometry args={[straightLength, 0.042]} />
           <meshBasicMaterial color="#ffffff" transparent opacity={0.98} />
         </mesh>
-        <mesh position={[-straightLength / 2, 0, -0.01]} scale={[1, 3.2, 1]}>
-          <planeGeometry args={[straightLength, 0.038]} />
+        <mesh position={[-straightLength / 2, 0, -0.01]} scale={[1, 3.0, 1]}>
+          <planeGeometry args={[straightLength, 0.042]} />
           <meshBasicMaterial
             color="#ffffff"
             transparent
-            opacity={0.1}
+            opacity={0.10}
             blending={THREE.AdditiveBlending}
           />
         </mesh>
       </group>
 
-      {/* The 90° turn is a real curve, revealed progressively with BufferGeometry.drawRange. */}
+      {/* Exact quarter-turn: horizontal → rounded 90° → vertical into the icon. */}
       <mesh ref={curveRef} geometry={curveGeometry} position={[0, 0, 0.05]}>
         <meshBasicMaterial color="#ffffff" transparent opacity={0.98} />
       </mesh>
 
+      {/* Minimal applicator — no cone or oversized sci-fi shape. */}
       <group
         ref={nozzleRef}
-        position={[5.55, straightStart.y, 0.24]}
-        rotation={[0, 0, -Math.PI / 2]}
+        position={[5.45, POUR_START.y, 0.24]}
+        rotation={[0, 0, Math.PI]}
       >
-        <mesh position={[0.18, 0, 0]}>
-          <capsuleGeometry args={[0.105, 0.38, 8, 16]} />
-          <meshBasicMaterial color="#f5f5fa" />
+        <mesh position={[0.16, 0, 0]}>
+          <cylinderGeometry args={[0.075, 0.095, 0.46, 20]} />
+          <meshBasicMaterial color="#f2f2f6" />
         </mesh>
-        <mesh position={[-0.12, 0, 0]}>
-          <cylinderGeometry args={[0.13, 0.09, 0.24, 20]} />
+        <mesh position={[-0.14, 0, 0]}>
+          <cylinderGeometry args={[0.095, 0.055, 0.16, 20]} />
           <meshBasicMaterial color="#ffffff" />
         </mesh>
-        <mesh position={[-0.27, 0, 0]}>
-          <cylinderGeometry args={[0.052, 0.052, 0.045, 20]} />
-          <meshBasicMaterial color="#ffffff" />
-        </mesh>
-        <mesh position={[-0.295, 0, 0]}>
-          <circleGeometry args={[0.045, 24]} />
+        <mesh position={[-0.25, 0, 0]}>
+          <cylinderGeometry args={[0.035, 0.035, 0.045, 20]} />
           <meshBasicMaterial color="#ffffff" />
         </mesh>
       </group>
 
-      <mesh
-        ref={glowRef}
-        position={[5.3, straightStart.y, 0.16]}
-        scale={[1.25, 1.25, 1.25]}
-      >
-        <circleGeometry args={[0.075, 32]} />
+      <mesh ref={glowRef} position={[5.20, POUR_START.y, 0.16]} scale={[1.15, 1.15, 1.15]}>
+        <circleGeometry args={[0.065, 32]} />
         <meshBasicMaterial
           color="#ffffff"
           transparent
@@ -180,12 +178,8 @@ function PouringLine({
         />
       </mesh>
 
-      <mesh
-        ref={dropRef}
-        position={[5.27, straightStart.y, 0.16]}
-        scale={[0.001, 0.001, 0.001]}
-      >
-        <sphereGeometry args={[0.035, 12, 8]} />
+      <mesh ref={dropRef} position={[5.18, POUR_START.y, 0.16]} scale={[0.001, 0.001, 0.001]}>
+        <sphereGeometry args={[0.030, 12, 8]} />
         <meshBasicMaterial color="#ffffff" transparent opacity={0.9} />
       </mesh>
     </group>
@@ -276,11 +270,12 @@ function CameraController({
     gsap.set(threeD.current.position, { x: 0.45, y: 0.06, z: -0.08 });
 
     gsap.set(line.current.scale, { x: 0.001, y: 1, z: 1 });
-    gsap.set(line.current.position, { x: 3.813, y: -1.034, z: 0.05 });
+    gsap.set(line.current.position, { x: POUR_START.x, y: POUR_START.y, z: 0.05 });
     curve.current.geometry.setDrawRange(0, 0);
 
-    gsap.set(nozzle.current.position, { x: 5.55, y: -1.034, z: 0.24 });
-    gsap.set(nozzle.current.rotation, { z: -Math.PI / 2 });
+    gsap.set(nozzle.current.position, { x: 5.45, y: POUR_START.y, z: 0.24 });
+    gsap.set(nozzle.current.rotation, { z: Math.PI });
+    gsap.set(nozzle.current.scale, { x: 0.82, y: 0.82, z: 0.82 });
     gsap.set(nozzle.current.scale, { x: 0.82, y: 0.82, z: 0.82 });
 
     gsap.set(glowMaterial, { opacity: 0 });
@@ -294,8 +289,8 @@ function CameraController({
       gsap.set([cube.current, word.current, threeD.current], { clearProps: "transform" });
       gsap.set(line.current.scale, { x: 1, y: 1, z: 1 });
       gsap.set(curve.current.geometry, { drawRange: { start: 0, count: curve.current.geometry.index?.count ?? 0 } });
-      gsap.set(nozzle.current.position, { x: -5.22, y: -0.43, z: 0.24 });
-      gsap.set(nozzle.current.rotation, { z: 0 });
+      gsap.set(nozzle.current.position, { x: POUR_CURVE_END.x, y: POUR_CURVE_END.y, z: 0.24 });
+      gsap.set(nozzle.current.rotation, { z: Math.PI / 2 });
       return;
     }
 
@@ -324,20 +319,27 @@ function CameraController({
         ease: "power3.out",
       }, 0);
 
-    // 0.08–1.25: straight pour from right → left, then a smooth 90° upward turn.
+    // 0.08–1.25: straight right → left, then a smooth 90° turn upward into the icon.
     const curveIndexCount = curve.current.geometry.index?.count ?? 0;
-    const curveProgress = { count: 0 };
+    const curveProgress = { value: 0 };
+    const turnCurve = createTurnCurve();
 
-    tl.to(cubeMaterial.current.uniforms.uOpacity, { value: 1, duration: 0.28, ease: "power2.out" }, 1.50)
+    tl.to(cubeMaterial.current.uniforms.uOpacity, {
+      value: 1,
+      duration: 0.28,
+      ease: "power2.out",
+    }, 1.50)
+      // Enter from the right and settle onto the exact start of the logo stroke.
       .to(nozzle.current.position, {
-        x: 3.813,
-        y: -1.034,
+        x: POUR_START.x,
+        y: POUR_START.y,
         duration: 0.22,
         ease: "power3.out",
       }, 0.08)
+      // Long, perfectly straight pour.
       .to(nozzle.current.position, {
-        x: -4.62,
-        y: -1.034,
+        x: POUR_STRAIGHT_END.x,
+        y: POUR_STRAIGHT_END.y,
         duration: 0.86,
         ease: "none",
       }, 0.30)
@@ -347,7 +349,7 @@ function CameraController({
         ease: "none",
       }, 0.30)
       .to(glowMaterial, {
-        opacity: 0.58,
+        opacity: 0.56,
         duration: 0.12,
         ease: "power2.out",
       }, 0.28)
@@ -355,43 +357,42 @@ function CameraController({
         x: 1,
         y: 1,
         z: 1,
-        duration: 0.1,
+        duration: 0.10,
         ease: "back.out(2)",
       }, 0.38)
       .to(drop.current.position, {
-        x: -4.62,
-        y: -1.034,
+        x: POUR_STRAIGHT_END.x,
+        y: POUR_STRAIGHT_END.y,
         duration: 0.86,
         ease: "none",
       }, 0.38)
+      // Follow the quarter-circle and rotate the applicator with the path.
       .to(curveProgress, {
-        count: curveIndexCount,
+        value: 1,
         duration: 0.34,
         ease: "power2.inOut",
-        onUpdate: () => curve.current?.geometry.setDrawRange(0, Math.floor(curveProgress.count)),
-      }, 1.16)
-      .to(nozzle.current.position, {
-        x: -5.22,
-        y: -0.43,
-        duration: 0.34,
-        ease: "power2.inOut",
-      }, 1.16)
-      .to(nozzle.current.rotation, {
-        z: 0,
-        duration: 0.34,
-        ease: "power2.inOut",
-      }, 1.16)
-      .to(drop.current.position, {
-        x: -5.22,
-        y: -0.43,
-        duration: 0.34,
-        ease: "none",
+        onUpdate: () => {
+          const p = curveProgress.value;
+          const point = turnCurve.getPointAt(p);
+          const tangent = turnCurve.getTangentAt(Math.min(0.999, p)).normalize();
+
+          curve.current?.geometry.setDrawRange(
+            0,
+            Math.max(1, Math.floor(curveIndexCount * p)),
+          );
+
+          nozzle.current?.position.set(point.x, point.y, 0.24);
+          nozzle.current?.rotation.set(0, 0, Math.atan2(tangent.y, tangent.x) + Math.PI);
+
+          glow.current?.position.set(point.x, point.y, 0.16);
+          drop.current?.position.set(point.x, point.y, 0.16);
+        },
       }, 1.16)
       .to(drop.current.scale, {
         x: 0.001,
         y: 0.001,
         z: 0.001,
-        duration: 0.1,
+        duration: 0.10,
         ease: "power2.in",
       }, 1.42);
 
@@ -409,7 +410,7 @@ function CameraController({
         ease: "power2.out",
       }, 1.48);
 
-    // 1.50–1.95: the icon appears after the bend, then VOXEL and 3D resolve.
+    // 1.50–1.95: the icon resolves first, followed by VOXEL and 3D.
     tl.to(cube.current, {
       scale: 1,
       rotation: { x: 0, y: 0, z: 0 },
