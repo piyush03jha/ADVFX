@@ -310,6 +310,7 @@ function LogoScene({ timelineStarted }: { timelineStarted: boolean }) {
 
   return (
     <>
+      <Filament lineRef={lineRef} glowRef={glowRef} />
       <LineController
         lineRef={lineRef}
         glowRef={glowRef}
@@ -317,7 +318,6 @@ function LogoScene({ timelineStarted }: { timelineStarted: boolean }) {
         letterRef={letterRef}
         timelineStarted={timelineStarted}
       />
-      <Filament lineRef={lineRef} glowRef={glowRef} />
       <LogoIcon iconRef={iconRef} />
       <LogoLetter letterRef={letterRef} />
     </>
