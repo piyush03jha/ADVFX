@@ -139,15 +139,14 @@ export const NavbarLogo = () => (
   <Link
     href="/"
     aria-label="Voxel3D home"
-    className="relative z-20 flex shrink-0 items-center px-2 py-1 transition-opacity hover:opacity-80"
+    className="relative z-20 flex shrink-0 items-center px-1.5 py-.5 transition-opacity hover:opacity-80"
   >
     <img
       src="/logo/full_logo.png"
       alt="Voxel3D"
-      width={110}
-      height={30}
       draggable={false}
-      className="block h-6 w-auto scale-[0.72] object-contain sm:h-7 sm:scale-[0.72]"
+      style={{height:35, width:"auto"}}
+      className="block object-contain sm:h-7 sm:h-[18px]"
     />
   </Link>
 );
