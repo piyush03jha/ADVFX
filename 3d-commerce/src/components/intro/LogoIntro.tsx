@@ -93,51 +93,91 @@ function PouringLine({
   glowRef: MutableRefObject<THREE.Mesh | null>;
   dropRef: MutableRefObject<THREE.Mesh | null>;
 }) {
+  // These coordinates are derived from the white stroke in voxel3d.svg:
+  // x: 163 → 1007, y: 204 → 267, mapped into the 12.51 × 3.28 logo plane.
+  const lineLength = 8.434;
+  const lineAngle = -0.0683;
+  const rightX = 3.813;
+  const rightY = -1.034;
+
   return (
     <group>
-      <group ref={lineRef} position={[-4.18, -0.96, 0.05]} scale={[0.001, 1, 1]}>
-        <mesh position={[4.19, 0, 0]}>
-          <planeGeometry args={[8.38, 0.045]} />
+      {/* The stroke grows from the nozzle backwards, following the exact logo angle. */}
+      <group
+        ref={lineRef}
+        position={[rightX, rightY, 0.05]}
+        rotation={[0, 0, lineAngle]}
+        scale={[0.001, 1, 1]}
+      >
+        <mesh position={[-lineLength / 2, 0, 0]}>
+          <planeGeometry args={[lineLength, 0.038]} />
           <meshBasicMaterial color="#ffffff" transparent opacity={0.98} />
         </mesh>
-        <mesh position={[4.19, 0, -0.01]} scale={[1, 3.8, 1]}>
-          <planeGeometry args={[8.38, 0.045]} />
-          <meshBasicMaterial color="#ffffff" transparent opacity={0.11} blending={THREE.AdditiveBlending} />
+        <mesh position={[-lineLength / 2, 0, -0.01]} scale={[1, 3.2, 1]}>
+          <planeGeometry args={[lineLength, 0.038]} />
+          <meshBasicMaterial
+            color="#ffffff"
+            transparent
+            opacity={0.1}
+            blending={THREE.AdditiveBlending}
+          />
         </mesh>
       </group>
 
-      <group ref={nozzleRef} position={[5.75, -0.96, 0.24]} rotation={[0, 0, Math.PI / 2]}>
-        <mesh position={[0.12, 0, 0]}>
-          <cylinderGeometry args={[0.11, 0.16, 0.62, 18]} />
-          <meshBasicMaterial color="#f7f7ff" />
+      {/* Minimal applicator head: clean, architectural, and visually tied to the stroke. */}
+      <group
+        ref={nozzleRef}
+        position={[rightX, rightY, 0.24]}
+        rotation={[0, 0, Math.PI / 2 + lineAngle]}
+      >
+        <mesh position={[0.18, 0, 0]}>
+          <capsuleGeometry args={[0.105, 0.38, 8, 16]} />
+          <meshBasicMaterial color="#f5f5fa" />
         </mesh>
-        <mesh position={[-0.26, 0, 0]}>
-          <coneGeometry args={[0.16, 0.28, 18]} />
+
+        <mesh position={[-0.12, 0, 0]}>
+          <cylinderGeometry args={[0.13, 0.09, 0.24, 20]} />
           <meshBasicMaterial color="#ffffff" />
         </mesh>
-        <mesh position={[-0.43, 0, 0]}>
-          <sphereGeometry args={[0.055, 16, 8]} />
+
+        {/* Tiny outlet at the stroke origin. */}
+        <mesh position={[-0.27, 0, 0]}>
+          <cylinderGeometry args={[0.052, 0.052, 0.045, 20]} />
           <meshBasicMaterial color="#ffffff" />
         </mesh>
-        <mesh position={[-0.44, 0, -0.01]}>
-          <planeGeometry args={[0.16, 0.16]} />
-          <meshBasicMaterial color="#ffffff" transparent opacity={0.3} blending={THREE.AdditiveBlending} />
+
+        <mesh position={[-0.295, 0, 0]}>
+          <circleGeometry args={[0.045, 24]} />
+          <meshBasicMaterial color="#ffffff" />
         </mesh>
       </group>
 
-      <mesh ref={glowRef} position={[5.31, -0.96, 0.16]} scale={[1.8, 1.8, 1.8]}>
-        <circleGeometry args={[0.11, 32]} />
-        <meshBasicMaterial color="#ffffff" transparent opacity={0} blending={THREE.AdditiveBlending} />
+      <mesh
+        ref={glowRef}
+        position={[rightX - 0.04, rightY + 0.015, 0.16]}
+        scale={[1.35, 1.35, 1.35]}
+      >
+        <circleGeometry args={[0.08, 32]} />
+        <meshBasicMaterial
+          color="#ffffff"
+          transparent
+          opacity={0}
+          blending={THREE.AdditiveBlending}
+        />
       </mesh>
 
-      <mesh ref={dropRef} position={[5.27, -1.16, 0.16]} scale={[0.001, 0.001, 0.001]}>
-        <sphereGeometry args={[0.045, 12, 8]} />
+      {/* A tiny bead makes the stroke feel deposited rather than laser-drawn. */}
+      <mesh
+        ref={dropRef}
+        position={[rightX - 0.31, rightY + 0.02, 0.16]}
+        scale={[0.001, 0.001, 0.001]}
+      >
+        <sphereGeometry args={[0.035, 12, 8]} />
         <meshBasicMaterial color="#ffffff" transparent opacity={0.9} />
       </mesh>
     </group>
   );
 }
-
 function CameraController({
   timelineStarted,
   refs,
@@ -220,10 +260,11 @@ function CameraController({
     gsap.set(threeD.current.position, { x: 0.45, y: 0.06, z: -0.08 });
 
     gsap.set(line.current.scale, { x: 0.001, y: 1, z: 1 });
-    gsap.set(line.current.position, { x: -4.18, y: -0.96, z: 0.05 });
+    gsap.set(line.current.position, { x: 3.813, y: -1.034, z: 0.05 });
+    gsap.set(line.current.rotation, { z: -0.0683 });
 
-    gsap.set(nozzle.current.position, { x: 5.75, y: -0.96, z: 0.24 });
-    gsap.set(nozzle.current.rotation, { z: Math.PI / 2 });
+    gsap.set(nozzle.current.position, { x: 5.55, y: -0.91, z: 0.24 });
+    gsap.set(nozzle.current.rotation, { z: Math.PI / 2 - 0.0683 });
     gsap.set(nozzle.current.scale, { x: 0.82, y: 0.82, z: 0.82 });
 
     gsap.set(glowMaterial, { opacity: 0 });
@@ -236,7 +277,9 @@ function CameraController({
       gsap.set(threeDMaterial.current.uniforms.uOpacity, { value: 1 });
       gsap.set([cube.current, word.current, threeD.current], { clearProps: "transform" });
       gsap.set(line.current.scale, { x: 1, y: 1, z: 1 });
-      gsap.set(nozzle.current.position, { x: 4.18, y: -0.96, z: 0.24 });
+      gsap.set(line.current.scale, { x: 1, y: 1, z: 1 });
+      gsap.set(nozzle.current.position, { x: 3.813, y: -1.034, z: 0.24 });
+      gsap.set(nozzle.current.rotation, { z: Math.PI / 2 - 0.0683 });
       return;
     }
 
@@ -265,61 +308,70 @@ function CameraController({
         ease: "power3.out",
       }, 0);
 
-    // 0.10–1.05: nozzle sweeps right → left while the white line pours behind it.
+    // 0.10–0.98: the applicator enters from the right and deposits the stroke behind its tip.
     tl.to(cubeMaterial.current.uniforms.uOpacity, { value: 1, duration: 0.34, ease: "power2.out" }, 1.27)
       .to(nozzle.current.position, {
-      x: -4.18,
-      duration: 0.82,
-      ease: "power2.inOut",
-    }, 0.16)
+        x: 3.813,
+        y: -1.034,
+        duration: 0.24,
+        ease: "power3.out",
+      }, 0.08)
+      .to(nozzle.current.position, {
+        x: -4.62,
+        y: -0.403,
+        duration: 0.78,
+        ease: "power2.inOut",
+      }, 0.32)
       .to(line.current.scale, {
         x: 1,
-        duration: 0.82,
+        duration: 0.78,
         ease: "power2.inOut",
-      }, 0.16)
+      }, 0.32)
       .to(glowMaterial, {
-        opacity: 0.78,
+        opacity: 0.68,
         duration: 0.12,
         ease: "power2.out",
-      }, 0.16)
+      }, 0.30)
       .to(drop.current.scale, {
         x: 1,
         y: 1,
         z: 1,
-        duration: 0.12,
+        duration: 0.1,
         ease: "back.out(2)",
-      }, 0.36)
+      }, 0.38)
       .to(drop.current.position, {
-        x: 1.1,
-        duration: 0.46,
+        x: -4.62,
+        y: -0.403,
+        duration: 0.78,
         ease: "none",
-      }, 0.36)
+      }, 0.38)
       .to(drop.current.scale, {
         x: 0.001,
         y: 0.001,
         z: 0.001,
-        duration: 0.18,
+        duration: 0.16,
         ease: "power2.in",
-      }, 0.78);
+      }, 0.98);
 
-    // 1.05–1.32: nozzle returns to its final right-side seat and settles.
+    // 1.10–1.30: return the applicator to the logo's right-side endpoint and settle.
     tl.to(nozzle.current.position, {
-      x: 4.18,
-      duration: 0.27,
+      x: 3.813,
+      y: -1.034,
+      duration: 0.28,
       ease: "power3.out",
-    }, 1.03)
+    }, 1.06)
       .to(nozzle.current.rotation, {
-        z: Math.PI / 2 + 0.045,
-        duration: 0.18,
+        z: Math.PI / 2 - 0.03,
+        duration: 0.16,
         ease: "power2.out",
-      }, 1.03)
+      }, 1.06)
       .to(nozzle.current.rotation, {
-        z: Math.PI / 2,
+        z: Math.PI / 2 - 0.0683,
         duration: 0.16,
         ease: "back.out(2)",
-      }, 1.21)
+      }, 1.22)
       .to(glow.current.material, {
-        opacity: 0.28,
+        opacity: 0.24,
         duration: 0.18,
         ease: "sine.out",
       }, 1.06);
