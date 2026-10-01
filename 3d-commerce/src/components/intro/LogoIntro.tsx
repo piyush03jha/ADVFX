@@ -8,6 +8,41 @@ import gsap from "gsap";
 const LINE_START = new THREE.Vector3(-4.2, -1.0, 1);
 const LINE_END = new THREE.Vector3(4.2, -1.0, 1);
 
+function Nozzle({
+  nozzleRef,
+}: {
+  nozzleRef: MutableRefObject<THREE.Group | null>;
+}) {
+  return (
+    <group
+      ref={nozzleRef}
+      position={[LINE_END.x, LINE_END.y, LINE_END.z + 0.08]}
+      rotation={[0, 0, -0.12]}
+    >
+      <mesh rotation={[0, 0, Math.PI / 2]} position={[0, 0, 0]}>
+        <cylinderGeometry args={[0.16, 0.11, 0.8, 32]} />
+        <meshStandardMaterial
+          color="#d8d8dc"
+          metalness={0.82}
+          roughness={0.24}
+        />
+      </mesh>
+
+      <mesh
+        rotation={[0, 0, Math.PI / 2]}
+        position={[-0.43, 0, 0]}
+      >
+        <coneGeometry args={[0.11, 0.3, 32]} />
+        <meshStandardMaterial
+          color="#bfc0c6"
+          metalness={0.8}
+          roughness={0.25}
+        />
+      </mesh>
+    </group>
+  );
+}
+
 function PouringLine({
   lineRef,
 }: {
@@ -18,10 +53,10 @@ function PouringLine({
   return (
     <group
       ref={lineRef}
-      position={[LINE_START.x, LINE_START.y, LINE_START.z]}
-      scale={[0.001, 1, 1]}
+      position={[LINE_END.x, LINE_END.y, LINE_END.z]}
+      scale={[-0.001, 1, 1]}
     >
-      <mesh position={[length / 2, 0, 0]} renderOrder={10}>
+      <mesh position={[-length / 2, 0, 0]} renderOrder={10}>
         <planeGeometry args={[length, 0.045]} />
         <meshBasicMaterial
           color="#ffffff"
@@ -33,7 +68,7 @@ function PouringLine({
       </mesh>
 
       <mesh
-        position={[length / 2, 0, -0.01]}
+        position={[-length / 2, 0, -0.01]}
         scale={[1, 3, 1]}
         renderOrder={9}
       >
@@ -53,34 +88,49 @@ function PouringLine({
 
 function LineController({
   lineRef,
+  nozzleRef,
   timelineStarted,
 }: {
   lineRef: MutableRefObject<THREE.Group | null>;
+  nozzleRef: MutableRefObject<THREE.Group | null>;
   timelineStarted: boolean;
 }) {
   useEffect(() => {
-    if (!timelineStarted || !lineRef.current) return;
+    if (!timelineStarted || !lineRef.current || !nozzleRef.current) return;
 
     const line = lineRef.current;
+    const nozzle = nozzleRef.current;
 
-    gsap.killTweensOf(line.scale);
+    gsap.killTweensOf([line.scale, nozzle.position]);
 
     gsap.set(line.scale, {
-      x: 0.001,
+      x: -0.001,
       y: 1,
       z: 1,
     });
 
-    const timeline = gsap.timeline();
-
-    timeline.to(line.scale, {
-      x: 1,
-      duration: 2,
-      ease: "none",
+    gsap.set(nozzle.position, {
+      x: LINE_END.x,
+      y: LINE_END.y,
+      z: LINE_END.z + 0.08,
     });
 
+    const timeline = gsap.timeline();
+
+    // The filament starts at the nozzle on the right and travels to the left.
+    timeline.to(
+      line.scale,
+      {
+        x: -1,
+        duration: 2,
+        ease: "none",
+      },
+      0,
+    );
+
+    // Keep the nozzle at the leading/right end for this step.
     return () => timeline.kill();
-  }, [lineRef, timelineStarted]);
+  }, [lineRef, nozzleRef, timelineStarted]);
 
   return null;
 }
@@ -91,15 +141,18 @@ function LogoScene({
   timelineStarted: boolean;
 }) {
   const lineRef = useRef<THREE.Group | null>(null);
+  const nozzleRef = useRef<THREE.Group | null>(null);
 
   return (
     <>
       <LineController
         lineRef={lineRef}
+        nozzleRef={nozzleRef}
         timelineStarted={timelineStarted}
       />
 
       <PouringLine lineRef={lineRef} />
+      <Nozzle nozzleRef={nozzleRef} />
     </>
   );
 }
@@ -148,6 +201,9 @@ export function LogoIntro() {
           powerPreference: "high-performance",
         }}
       >
+        <ambientLight intensity={1.2} />
+        <directionalLight position={[3, 4, 6]} intensity={2.4} />
+        <pointLight color="#a855f7" position={[2, 1, 4]} intensity={7} distance={14} />
         <LogoScene timelineStarted={timelineStarted} />
       </Canvas>
     </div>
