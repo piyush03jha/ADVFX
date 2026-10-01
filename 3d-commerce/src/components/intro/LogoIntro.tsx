@@ -187,11 +187,11 @@ function LogoIcon() {
         }}
       >
         <image
-          href="/logo/voxel3d.svg"
-          x="0"
-          y="0"
-          width="1251"
-          height="328"
+          href="/logo/voxel_icon.png"
+          x="-168"
+          y="85"
+          width="120"
+          height="70"
           preserveAspectRatio="none"
         />
       </svg>
