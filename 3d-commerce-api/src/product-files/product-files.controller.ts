@@ -118,23 +118,6 @@ export class ProductFilesController {
 
   /**
    * ============================================================
-   * BUNDLE DETAILS
-   * ============================================================
-   */
-
-  @Get("bundles/:bundleId")
-  findBundle(
-    @Param("productId") productId: string,
-    @Param("bundleId") bundleId: string,
-  ) {
-    return this.productFilesService.findBundle(
-      productId,
-      bundleId,
-    );
-  }
-
-  /**
-   * ============================================================
    * FILE
    * ============================================================
    */
@@ -236,20 +219,5 @@ export class ProductFilesController {
     );
   }
 
-  /**
-   * ============================================================
-   * DELETE BUNDLE
-   * ============================================================
-   */
 
-  @Delete("bundles/:bundleId")
-  deleteBundle(
-    @Param("productId") productId: string,
-    @Param("bundleId") bundleId: string,
-  ) {
-    return this.productFilesService.deleteBundle(
-      productId,
-      bundleId,
-    );
-  }
 }
