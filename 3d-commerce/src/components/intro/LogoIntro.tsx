@@ -14,35 +14,60 @@ import gsap from "gsap";
 const LINE_START = new THREE.Vector3(4.2, -1.0, 1);
 const HORIZONTAL_END = new THREE.Vector3(-3.4, -1.0, 1);
 
-// Small quarter-turn matching the reference:
-// long horizontal run, then only a small rise.
-const CURVE_CONTROL = new THREE.Vector3(-3.9, -1.0, 1);
-const CURVE_END = new THREE.Vector3(-4.2, -0.62, 1);
-const VERTICAL_END = new THREE.Vector3(-4.2, -0.05, 1);
+// Exact quarter-circle bend.
+// The circle is tangent to the horizontal segment at the start
+// and tangent to the vertical segment at the end, so there is
+// no visible kink in either direction.
+const CURVE_RADIUS = 0.42;
+const CURVE_CENTER = new THREE.Vector3(
+  HORIZONTAL_END.x,
+  HORIZONTAL_END.y + CURVE_RADIUS,
+  1,
+);
 
-const CURVE_SAMPLES = 96;
+const CURVE_END = new THREE.Vector3(
+  CURVE_CENTER.x - CURVE_RADIUS,
+  CURVE_CENTER.y,
+  1,
+);
+
+// Very small vertical continuation, matching the supplied reference.
+const VERTICAL_END = new THREE.Vector3(
+  CURVE_END.x,
+  CURVE_END.y + 0.28,
+  1,
+);
+
+const CURVE_SAMPLES = 48;
 
 function createFilamentPoints() {
   const points: THREE.Vector3[] = [];
 
   // Long horizontal section: right -> left.
-  for (let i = 0; i <= 64; i += 1) {
-    const t = i / 64;
+  for (let i = 0; i <= 96; i += 1) {
+    const t = i / 96;
     points.push(new THREE.Vector3().lerpVectors(LINE_START, HORIZONTAL_END, t));
   }
 
-  // Smooth 90-degree bend.
-  const curve = new THREE.QuadraticBezierCurve3(
-    HORIZONTAL_END,
-    CURVE_CONTROL,
-    CURVE_END,
-  );
+  // True 90-degree circular arc.
+  // Start angle = -90° (moving left).
+  // End angle = -180° (moving upward).
+  for (let i = 1; i <= CURVE_SAMPLES; i += 1) {
+    const t = i / CURVE_SAMPLES;
+    const angle = -Math.PI / 2 - t * (Math.PI / 2);
 
-  points.push(...curve.getPoints(CURVE_SAMPLES).slice(1));
+    points.push(
+      new THREE.Vector3(
+        CURVE_CENTER.x + CURVE_RADIUS * Math.cos(angle),
+        CURVE_CENTER.y + CURVE_RADIUS * Math.sin(angle),
+        1,
+      ),
+    );
+  }
 
-  // Very short vertical continuation after the bend.
-  for (let i = 1; i <= 12; i += 1) {
-    const t = i / 12;
+  // Short vertical section after the bend.
+  for (let i = 1; i <= 16; i += 1) {
+    const t = i / 16;
     points.push(new THREE.Vector3().lerpVectors(CURVE_END, VERTICAL_END, t));
   }
 
@@ -112,6 +137,7 @@ function LineController({
 
     const line = lineRef.current;
     const glow = glowRef.current;
+
     const lineCount = line.geometry.attributes.position.count;
     const glowCount = glow.geometry.attributes.position.count;
 
@@ -128,6 +154,7 @@ function LineController({
       ease: "power1.inOut",
       onUpdate: () => {
         const count = Math.max(1, Math.floor(progress.value));
+
         line.geometry.setDrawRange(0, count);
         glow.geometry.setDrawRange(0, Math.min(count, glowCount));
       },
