@@ -166,23 +166,27 @@ function LineController({
       },
     });
 
-    // 2. Only after the line is complete, reveal the icon.
+    // Keep both logo layers hidden until the line has completely finished.
+    gsap.set(iconRef.current, { autoAlpha: 0 });
+    gsap.set(letterRef.current, { autoAlpha: 0, x: -14 });
+
+    // 2. After the complete line, reveal the icon.
     timeline.to(
       iconRef.current,
       {
-        opacity: 1,
+        autoAlpha: 1,
         duration: 0.45,
         ease: "power2.out",
       },
       "+=0.08",
     );
 
-    // 3. Then reveal VOXEL lettering beside the icon.
+    // 3. Only after the icon has appeared, reveal the lettering.
     timeline.to(
       letterRef.current,
       {
-        opacity: 1,
-        x: 14,
+        autoAlpha: 1,
+        x: 0,
         duration: 0.5,
         ease: "power3.out",
       },
@@ -208,25 +212,34 @@ function LogoIcon({
       sprite
       zIndexRange={[20, 0]}
     >
-      <div ref={iconRef} style={{ opacity: 0 }}>
-        <svg
-        viewBox="65 20 205 185"
-        width="112"
-        height="102"
-        aria-hidden="true"
+      <div
+        ref={iconRef}
         style={{
           display: "block",
-          overflow: "visible",
+          width: "112px",
+          height: "102px",
+          opacity: 0,
+          visibility: "hidden",
         }}
       >
-        <image
-          href="/logo/voxel_icon.png"
-          x="-168"
-          y="85"
-          width="120"
-          height="70"
-          preserveAspectRatio="none"
-        />
+        <svg
+          viewBox="65 20 205 185"
+          width="112"
+          height="102"
+          aria-hidden="true"
+          style={{
+            display: "block",
+            overflow: "visible",
+          }}
+        >
+          <image
+            href="/logo/voxel3d.svg"
+            x="-168"
+            y="85"
+            width="120"
+            height="70"
+            preserveAspectRatio="none"
+          />
         </svg>
       </div>
     </Html>
@@ -250,6 +263,7 @@ function LogoLetter({
         ref={letterRef}
         style={{
           opacity: 0,
+          visibility: "hidden",
           transform: "translateX(-14px)",
         }}
       >
