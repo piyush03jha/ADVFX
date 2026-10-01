@@ -160,7 +160,7 @@ export function LogoIntro() {
       >
         <img
           ref={iconRef}
-          src="/logo/layers/voxel-icon.svg"
+          src="/logo/voxel-icon.svg"
           alt=""
           draggable={false}
           className={layer}
@@ -169,7 +169,7 @@ export function LogoIntro() {
 
         <img
           ref={wordRef}
-          src="/logo/layers/voxel-word.svg"
+          src="/logo/voxel-word.svg"
           alt=""
           draggable={false}
           className={layer}
@@ -178,7 +178,7 @@ export function LogoIntro() {
 
         <img
           ref={threeRef}
-          src="/logo/layers/voxel-3d.svg"
+          src="/logo/voxel-3d.svg"
           alt=""
           draggable={false}
           className={layer}
