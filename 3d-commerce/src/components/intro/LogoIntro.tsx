@@ -136,11 +136,11 @@ function PouringLine({
         position={[POUR_START.x, POUR_START.y, 0.05]}
         scale={[0.001, 1, 1]}
       >
-        <mesh position={[straightLength / 2, 0, 0]}>
+        <mesh position={[-straightLength / 2, 0, 0]}>
           <planeGeometry args={[straightLength, 0.042]} />
           <meshBasicMaterial color="#ffffff" transparent opacity={0.98} />
         </mesh>
-        <mesh position={[straightLength / 2, 0, -0.01]} scale={[1, 2.2, 1]}>
+        <mesh position={[-straightLength / 2, 0, -0.01]} scale={[1, 2.2, 1]}>
           <planeGeometry args={[straightLength, 0.042]} />
           <meshBasicMaterial
             color="#ffffff"
