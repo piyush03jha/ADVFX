@@ -1,144 +1,141 @@
 "use client";
 
 import { Canvas } from "@react-three/fiber";
-import { useEffect, useRef, useState, type MutableRefObject } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import gsap from "gsap";
 
-const LINE_START = new THREE.Vector3(-4.2, -1.0, 1);
-const LINE_END = new THREE.Vector3(4.2, -1.0, 1);
+const LINE_START = new THREE.Vector3(4.2, -1.0, 1);
+const HORIZONTAL_END = new THREE.Vector3(-3.2, -1.0, 1);
+const CURVE_CONTROL = new THREE.Vector3(-4.2, -1.0, 1);
+const CURVE_END = new THREE.Vector3(-4.2, 0, 1);
+const VERTICAL_END = new THREE.Vector3(-4.2, 2.2, 1);
 
-function Nozzle({
-  nozzleRef,
-}: {
-  nozzleRef: MutableRefObject<THREE.Group | null>;
-}) {
-  return (
-    <group
-      ref={nozzleRef}
-      position={[LINE_END.x, LINE_END.y, LINE_END.z + 0.08]}
-    >
-      {/* The group origin is the exact filament/nozzle tip.
-          The nozzle body extends to the right, away from the filament. */}
-      <mesh
-        rotation={[0, 0, Math.PI / 2]}
-        position={[0.55, 0, 0]}
-      >
-        <cylinderGeometry args={[0.16, 0.11, 0.8, 32]} />
-        <meshStandardMaterial
-          color="#d8d8dc"
-          metalness={0.82}
-          roughness={0.24}
-        />
-      </mesh>
+const CURVE_SAMPLES = 96;
 
-      {/* Cone tip ends exactly at the group origin. */}
-      <mesh
-        rotation={[0, 0, Math.PI / 2]}
-        position={[0.15, 0, 0]}
-      >
-        <coneGeometry args={[0.11, 0.3, 32]} />
-        <meshStandardMaterial
-          color="#bfc0c6"
-          metalness={0.8}
-          roughness={0.25}
-        />
-      </mesh>
-    </group>
+function createFilamentPoints() {
+  const points: THREE.Vector3[] = [];
+
+  // First section: straight horizontal line, right -> left.
+  for (let i = 0; i <= 48; i += 1) {
+    const t = i / 48;
+    points.push(new THREE.Vector3().lerpVectors(LINE_START, HORIZONTAL_END, t));
+  }
+
+  // Second section: smooth quarter-turn from horizontal to vertical.
+  // Tangent enters from the left and exits upward, producing a smooth 90° turn.
+  const curve = new THREE.QuadraticBezierCurve3(
+    HORIZONTAL_END,
+    CURVE_CONTROL,
+    CURVE_END,
   );
+
+  const curvePoints = curve.getPoints(CURVE_SAMPLES);
+
+  // Skip the first point because HORIZONTAL_END is already present.
+  points.push(...curvePoints.slice(1));
+
+  // Third section: vertical line after the turn.
+  for (let i = 1; i <= 32; i += 1) {
+    const t = i / 32;
+    points.push(new THREE.Vector3().lerpVectors(CURVE_END, VERTICAL_END, t));
+  }
+
+  return points;
 }
 
-function PouringLine({
+function Filament({
   lineRef,
+  glowRef,
 }: {
-  lineRef: MutableRefObject<THREE.Group | null>;
+  lineRef: React.MutableRefObject<THREE.Line | null>;
+  glowRef: React.MutableRefObject<THREE.Line | null>;
 }) {
-  const length = LINE_END.x - LINE_START.x;
+  const points = useMemo(() => createFilamentPoints(), []);
+
+  const geometry = useMemo(() => {
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    geometry.setDrawRange(0, 1);
+    return geometry;
+  }, [points]);
+
+  const glowGeometry = useMemo(() => {
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    geometry.setDrawRange(0, 1);
+    return geometry;
+  }, [points]);
 
   return (
-    <group
-      ref={lineRef}
-      position={[LINE_END.x, LINE_END.y, LINE_END.z]}
-      scale={[-0.001, 1, 1]}
-    >
-      {/* Local geometry starts at x=0.
-          Negative scale therefore reveals it from RIGHT -> LEFT. */}
-      <mesh position={[length / 2, 0, 0]} renderOrder={10}>
-        <planeGeometry args={[length, 0.045]} />
-        <meshBasicMaterial
+    <>
+      <line ref={lineRef} geometry={geometry} renderOrder={10}>
+        <lineBasicMaterial
           color="#ffffff"
           transparent
           opacity={1}
+          linewidth={2}
           depthTest={false}
           depthWrite={false}
         />
-      </mesh>
+      </line>
 
-      <mesh
-        position={[length / 2, 0, -0.01]}
-        scale={[1, 3, 1]}
-        renderOrder={9}
-      >
-        <planeGeometry args={[length, 0.045]} />
-        <meshBasicMaterial
+      <line ref={glowRef} geometry={glowGeometry} renderOrder={9}>
+        <lineBasicMaterial
           color="#ffffff"
           transparent
-          opacity={0.12}
-          blending={THREE.AdditiveBlending}
+          opacity={0.16}
+          linewidth={6}
           depthTest={false}
           depthWrite={false}
+          blending={THREE.AdditiveBlending}
         />
-      </mesh>
-    </group>
+      </line>
+    </>
   );
 }
 
 function LineController({
   lineRef,
-  nozzleRef,
+  glowRef,
   timelineStarted,
 }: {
-  lineRef: MutableRefObject<THREE.Group | null>;
-  nozzleRef: MutableRefObject<THREE.Group | null>;
+  lineRef: React.MutableRefObject<THREE.Line | null>;
+  glowRef: React.MutableRefObject<THREE.Line | null>;
   timelineStarted: boolean;
 }) {
   useEffect(() => {
-    if (!timelineStarted || !lineRef.current || !nozzleRef.current) return;
+    if (!timelineStarted || !lineRef.current || !glowRef.current) return;
 
     const line = lineRef.current;
-    const nozzle = nozzleRef.current;
+    const glow = glowRef.current;
 
-    gsap.killTweensOf([line.scale, nozzle.position]);
+    const lineCount = line.geometry.attributes.position.count;
+    const glowCount = glow.geometry.attributes.position.count;
 
-    gsap.set(line.scale, {
-      x: -0.001,
-      y: 1,
-      z: 1,
-    });
+    line.geometry.setDrawRange(0, 1);
+    glow.geometry.setDrawRange(0, 1);
 
-    gsap.set(nozzle.position, {
-      x: LINE_END.x,
-      y: LINE_END.y,
-      z: LINE_END.z + 0.08,
-    });
+    const progress = { value: 1 };
 
     const timeline = gsap.timeline();
 
-    // The filament begins exactly at the nozzle tip on the right
-    // and reveals horizontally toward the left.
-    timeline.to(
-      line.scale,
-      {
-        x: -1,
-        duration: 2,
-        ease: "none",
+    // Reveal from the right-hand start, across the horizontal section,
+    // through the smooth 90° turn, and finally upward.
+    timeline.to(progress, {
+      value: lineCount,
+      duration: 2.8,
+      ease: "power1.inOut",
+      onUpdate: () => {
+        const count = Math.max(1, Math.floor(progress.value));
+        line.geometry.setDrawRange(0, count);
+        glow.geometry.setDrawRange(
+          0,
+          Math.min(count, glowCount),
+        );
       },
-      0,
-    );
+    });
 
-    // Nozzle remains fixed for this isolated animation stage.
     return () => timeline.kill();
-  }, [lineRef, nozzleRef, timelineStarted]);
+  }, [lineRef, glowRef, timelineStarted]);
 
   return null;
 }
@@ -148,19 +145,17 @@ function LogoScene({
 }: {
   timelineStarted: boolean;
 }) {
-  const lineRef = useRef<THREE.Group | null>(null);
-  const nozzleRef = useRef<THREE.Group | null>(null);
+  const lineRef = useRef<THREE.Line | null>(null);
+  const glowRef = useRef<THREE.Line | null>(null);
 
   return (
     <>
       <LineController
         lineRef={lineRef}
-        nozzleRef={nozzleRef}
+        glowRef={glowRef}
         timelineStarted={timelineStarted}
       />
-
-      <PouringLine lineRef={lineRef} />
-      <Nozzle nozzleRef={nozzleRef} />
+      <Filament lineRef={lineRef} glowRef={glowRef} />
     </>
   );
 }
