@@ -1,7 +1,13 @@
 "use client";
 
 import { Canvas } from "@react-three/fiber";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MutableRefObject,
+} from "react";
 import * as THREE from "three";
 import gsap from "gsap";
 
@@ -16,26 +22,23 @@ const CURVE_SAMPLES = 96;
 function createFilamentPoints() {
   const points: THREE.Vector3[] = [];
 
-  // First section: straight horizontal line, right -> left.
+  // Straight horizontal section: right -> left.
   for (let i = 0; i <= 48; i += 1) {
     const t = i / 48;
     points.push(new THREE.Vector3().lerpVectors(LINE_START, HORIZONTAL_END, t));
   }
 
-  // Second section: smooth quarter-turn from horizontal to vertical.
-  // Tangent enters from the left and exits upward, producing a smooth 90° turn.
+  // Smooth 90-degree transition:
+  // horizontal tangent -> vertical tangent.
   const curve = new THREE.QuadraticBezierCurve3(
     HORIZONTAL_END,
     CURVE_CONTROL,
     CURVE_END,
   );
 
-  const curvePoints = curve.getPoints(CURVE_SAMPLES);
+  points.push(...curve.getPoints(CURVE_SAMPLES).slice(1));
 
-  // Skip the first point because HORIZONTAL_END is already present.
-  points.push(...curvePoints.slice(1));
-
-  // Third section: vertical line after the turn.
+  // Straight vertical section after the turn.
   for (let i = 1; i <= 32; i += 1) {
     const t = i / 32;
     points.push(new THREE.Vector3().lerpVectors(CURVE_END, VERTICAL_END, t));
@@ -48,21 +51,21 @@ function Filament({
   lineRef,
   glowRef,
 }: {
-  lineRef: React.MutableRefObject<THREE.Line | null>;
-  glowRef: React.MutableRefObject<THREE.Line | null>;
+  lineRef: MutableRefObject<THREE.Line | null>;
+  glowRef: MutableRefObject<THREE.Line | null>;
 }) {
   const points = useMemo(() => createFilamentPoints(), []);
 
   const geometry = useMemo(() => {
-    const geometry = new THREE.BufferGeometry().setFromPoints(points);
-    geometry.setDrawRange(0, 1);
-    return geometry;
+    const nextGeometry = new THREE.BufferGeometry().setFromPoints(points);
+    nextGeometry.setDrawRange(0, 1);
+    return nextGeometry;
   }, [points]);
 
   const glowGeometry = useMemo(() => {
-    const geometry = new THREE.BufferGeometry().setFromPoints(points);
-    geometry.setDrawRange(0, 1);
-    return geometry;
+    const nextGeometry = new THREE.BufferGeometry().setFromPoints(points);
+    nextGeometry.setDrawRange(0, 1);
+    return nextGeometry;
   }, [points]);
 
   return (
@@ -98,8 +101,8 @@ function LineController({
   glowRef,
   timelineStarted,
 }: {
-  lineRef: React.MutableRefObject<THREE.Line | null>;
-  glowRef: React.MutableRefObject<THREE.Line | null>;
+  lineRef: MutableRefObject<THREE.Line | null>;
+  glowRef: MutableRefObject<THREE.Line | null>;
   timelineStarted: boolean;
 }) {
   useEffect(() => {
@@ -118,19 +121,17 @@ function LineController({
 
     const timeline = gsap.timeline();
 
-    // Reveal from the right-hand start, across the horizontal section,
-    // through the smooth 90° turn, and finally upward.
+    // Reveal from the right, travel left, smoothly turn upward by 90 degrees,
+    // then continue vertically.
     timeline.to(progress, {
       value: lineCount,
       duration: 2.8,
       ease: "power1.inOut",
       onUpdate: () => {
         const count = Math.max(1, Math.floor(progress.value));
+
         line.geometry.setDrawRange(0, count);
-        glow.geometry.setDrawRange(
-          0,
-          Math.min(count, glowCount),
-        );
+        glow.geometry.setDrawRange(0, Math.min(count, glowCount));
       },
     });
 
