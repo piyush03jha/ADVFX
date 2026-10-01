@@ -79,9 +79,7 @@ function LineController({
       ease: "none",
     });
 
-    return () => {
-      timeline.kill();
-    };
+    return () => timeline.kill();
   }, [lineRef, timelineStarted]);
 
   return null;
@@ -101,9 +99,7 @@ function LogoScene({
         timelineStarted={timelineStarted}
       />
 
-      <group ref={lineRef}>
-        <PouringLine lineRef={lineRef} />
-      </group>
+      <PouringLine lineRef={lineRef} />
     </>
   );
 }
