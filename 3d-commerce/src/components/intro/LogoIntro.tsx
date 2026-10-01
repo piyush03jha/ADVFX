@@ -208,20 +208,14 @@ function CameraController({
     gsap.set(wordMaterial.current.uniforms.uOpacity, { value: 0 });
     gsap.set(threeDMaterial.current.uniforms.uOpacity, { value: 0 });
 
-    gsap.set(cube.current, {
-      scale: 0.72,
-      rotation: { x: 0.18, y: -0.42, z: -0.08 },
-    });
+    gsap.set(cube.current.scale, { x: 0.72, y: 0.72, z: 0.72 });
+    gsap.set(cube.current.rotation, { x: 0.18, y: -0.42, z: -0.08 });
 
-    gsap.set(word.current, {
-      scale: 0.82,
-      position: { x: 0.25, y: 0.08, z: -0.04 },
-    });
+    gsap.set(word.current.scale, { x: 0.82, y: 0.82, z: 0.82 });
+    gsap.set(word.current.position, { x: 0.25, y: 0.08, z: -0.04 });
 
-    gsap.set(threeD.current, {
-      scale: 0.68,
-      position: { x: 0.45, y: 0.06, z: -0.08 },
-    });
+    gsap.set(threeD.current.scale, { x: 0.68, y: 0.68, z: 0.68 });
+    gsap.set(threeD.current.position, { x: 0.45, y: 0.06, z: -0.08 });
 
     gsap.set(line.current.scale, { x: 0.001, y: 1, z: 1 });
     gsap.set(line.current.position, { x: -4.18, y: -0.96, z: 0.05 });
@@ -339,10 +333,9 @@ function CameraController({
         duration: 0.42,
         ease: "power2.out",
       }, 1.39)
-      .to(word.current, {
+      .to(word.current.position, {
         x: 0,
         y: 0,
-        scale: 1,
         duration: 0.42,
         ease: "power3.out",
       }, 1.39)
@@ -351,10 +344,9 @@ function CameraController({
         duration: 0.34,
         ease: "power2.out",
       }, 1.51)
-      .to(threeD.current, {
+      .to(threeD.current.position, {
         x: 0,
         y: 0,
-        scale: 1,
         duration: 0.34,
         ease: "back.out(1.5)",
       }, 1.51)
