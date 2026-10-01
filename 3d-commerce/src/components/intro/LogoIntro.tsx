@@ -96,17 +96,17 @@ function PouringLine({
   return (
     <group>
       <group ref={lineRef} position={[-4.18, -0.96, 0.05]} scale={[0.001, 1, 1]}>
-        <mesh>
+        <mesh position={[4.19, 0, 0]}>
           <planeGeometry args={[8.38, 0.045]} />
           <meshBasicMaterial color="#ffffff" transparent opacity={0.98} />
         </mesh>
-        <mesh position={[0, 0, -0.01]} scale={[1, 3.8, 1]}>
+        <mesh position={[4.19, 0, -0.01]} scale={[1, 3.8, 1]}>
           <planeGeometry args={[8.38, 0.045]} />
           <meshBasicMaterial color="#ffffff" transparent opacity={0.11} blending={THREE.AdditiveBlending} />
         </mesh>
       </group>
 
-      <group ref={nozzleRef} position={[5.75, -0.96, 0.24]} rotation={[0, 0, Math.PI]}>
+      <group ref={nozzleRef} position={[5.75, -0.96, 0.24]} rotation={[0, 0, Math.PI / 2]}>
         <mesh position={[0.12, 0, 0]}>
           <cylinderGeometry args={[0.11, 0.16, 0.62, 18]} />
           <meshBasicMaterial color="#f7f7ff" />
@@ -227,7 +227,7 @@ function CameraController({
     gsap.set(line.current.position, { x: -4.18, y: -0.96, z: 0.05 });
 
     gsap.set(nozzle.current.position, { x: 5.75, y: -0.96, z: 0.24 });
-    gsap.set(nozzle.current.rotation, { z: Math.PI });
+    gsap.set(nozzle.current.rotation, { z: Math.PI / 2 });
     gsap.set(nozzle.current.scale, { x: 0.82, y: 0.82, z: 0.82 });
 
     gsap.set(glow.current.material, { opacity: 0 });
@@ -312,12 +312,12 @@ function CameraController({
       ease: "power3.out",
     }, 1.03)
       .to(nozzle.current.rotation, {
-        z: Math.PI + 0.045,
+        z: Math.PI / 2 + 0.045,
         duration: 0.18,
         ease: "power2.out",
       }, 1.03)
       .to(nozzle.current.rotation, {
-        z: Math.PI,
+        z: Math.PI / 2,
         duration: 0.16,
         ease: "back.out(2)",
       }, 1.21)
