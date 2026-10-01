@@ -153,7 +153,7 @@ function PouringLine({
       <group
         ref={nozzleRef}
         position={[5.45, POUR_START.y, 0.24]}
-        rotation={[0, 0, -Math.PI / 2]}
+        rotation={[0, 0, 0]}
       >
         <mesh position={[0, 0.48, 0]}>
           <cylinderGeometry args={[0.145, 0.16, 0.46, 8]} />
@@ -279,7 +279,7 @@ function CameraController({
     curve.current.geometry.setDrawRange(0, 0);
 
     gsap.set(nozzle.current.position, { x: 5.45, y: POUR_START.y, z: 0.24 });
-    gsap.set(nozzle.current.rotation, { z: -Math.PI / 2 });
+    gsap.set(nozzle.current.rotation, { z: 0 });
     gsap.set(nozzle.current.scale, { x: 0.82, y: 0.82, z: 0.82 });
 
     gsap.set(glowMaterial, { opacity: 0 });
@@ -294,7 +294,7 @@ function CameraController({
       gsap.set(line.current.scale, { x: 1, y: 1, z: 1 });
       gsap.set(curve.current.geometry, { drawRange: { start: 0, count: curve.current.geometry.index?.count ?? 0 } });
       gsap.set(nozzle.current.position, { x: POUR_CURVE_END.x, y: POUR_CURVE_END.y, z: 0.24 });
-      gsap.set(nozzle.current.rotation, { z: Math.PI });
+      gsap.set(nozzle.current.rotation, { z: 0 });
       return;
     }
 
@@ -358,15 +358,13 @@ function CameraController({
         onUpdate: () => {
           const p = curveProgress.value;
           const point = turnCurve.getPointAt(p);
-          const tangent = turnCurve.getTangentAt(Math.min(0.999, p)).normalize();
-
           curve.current?.geometry.setDrawRange(
             0,
             Math.max(1, Math.floor(curveIndexCount * p)),
           );
 
           nozzle.current?.position.set(point.x, point.y, 0.24);
-          nozzle.current?.rotation.set(0, 0, Math.atan2(tangent.x, -tangent.y));
+          nozzle.current?.rotation.set(0, 0, 0);
 
           glow.current?.position.set(point.x, point.y, 0.16);
           drop.current?.position.set(point.x, point.y, 0.16);
