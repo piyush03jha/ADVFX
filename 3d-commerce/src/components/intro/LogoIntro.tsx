@@ -509,7 +509,7 @@ export function LogoIntro() {
         ease: "power3.inOut",
         onComplete: () => setShow(false),
       });
-    }, reduced ? 500 : 1980);
+    }, reduced ? 500 : 5000);
 
     return () => window.clearTimeout(finish);
   }, []);
