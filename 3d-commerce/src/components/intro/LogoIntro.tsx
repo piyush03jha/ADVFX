@@ -14,22 +14,19 @@ const CLIPS = {
   threeD: [0.805, 0.565, 0.195, 0.435] as const,
 };
 
-const POUR_START = new THREE.Vector3(3.82, -1.03, 0);
-const POUR_STRAIGHT_END = new THREE.Vector3(-4.62, -1.03, 0);
-const POUR_CURVE_END = new THREE.Vector3(-4.82, -0.46, 0);
+const POUR_START = new THREE.Vector3(-4.05, -1.02, 0);
+const POUR_STRAIGHT_END = new THREE.Vector3(3.15, -1.02, 0);
+const POUR_CURVE_END = new THREE.Vector3(3.15, -0.28, 0);
 
 function createTurnCurve() {
-  // The end point is the lower edge/center of the cube mark in the logo.
-  // Use a cubic quarter-turn with horizontal start tangent and vertical end
-  // tangent so the filament lands under the icon instead of beside it.
-  const dx = POUR_CURVE_END.x - POUR_STRAIGHT_END.x;
-  const dy = POUR_CURVE_END.y - POUR_STRAIGHT_END.y;
+  const radius = 0.74;
   const k = 0.5522848;
+  const center = new THREE.Vector3(3.15, -0.28, 0);
 
   return new THREE.CubicBezierCurve3(
     POUR_STRAIGHT_END,
-    new THREE.Vector3(POUR_STRAIGHT_END.x, POUR_STRAIGHT_END.y + k * dy, 0),
-    new THREE.Vector3(POUR_CURVE_END.x, POUR_CURVE_END.y - k * dy, 0),
+    new THREE.Vector3(center.x + radius * k, center.y - radius, 0),
+    new THREE.Vector3(center.x + radius, center.y - radius * k, 0),
     POUR_CURVE_END,
   );
 }
@@ -90,6 +87,7 @@ function LogoLayer({
             void main() {
               if (vUv.x < uClip.x || vUv.x > uClip.x + uClip.z ||
                   vUv.y < uClip.y || vUv.y > uClip.y + uClip.w) discard;
+              if (vUv.y > 0.17 && vUv.y < 0.24) discard;
               vec4 color = texture2D(uMap, vUv);
               float alpha = max(color.r, max(color.g, color.b)) * uOpacity;
               if (alpha < 0.01) discard;
@@ -131,11 +129,11 @@ function PouringLine({
     <group>
       {/* The stroke is deliberately simple: long straight run first. */}
       <group ref={lineRef} position={[POUR_START.x, POUR_START.y, 0.05]}>
-        <mesh position={[-straightLength / 2, 0, 0]}>
+        <mesh position={[straightLength / 2, 0, 0]}>
           <planeGeometry args={[straightLength, 0.042]} />
           <meshBasicMaterial color="#ffffff" transparent opacity={0.98} />
         </mesh>
-        <mesh position={[-straightLength / 2, 0, -0.01]} scale={[1, 3.0, 1]}>
+        <mesh position={[straightLength / 2, 0, -0.01]} scale={[1, 3.0, 1]}>
           <planeGeometry args={[straightLength, 0.042]} />
           <meshBasicMaterial
             color="#ffffff"
@@ -155,8 +153,8 @@ function PouringLine({
           always appears to come directly from the nozzle and follows its path. */}
       <group
         ref={nozzleRef}
-        position={[5.45, POUR_START.y, 0.24]}
-        rotation={[0, 0, 0]}
+        position={[POUR_START.x, POUR_START.y, 0.24]}
+        rotation={[0, 0, -0.34]}
       >
         <mesh position={[0, 0.48, 0]}>
           <cylinderGeometry args={[0.145, 0.16, 0.46, 8]} />
@@ -176,7 +174,7 @@ function PouringLine({
         </mesh>
       </group>
 
-      <mesh ref={glowRef} position={[5.20, POUR_START.y, 0.16]} scale={[1.15, 1.15, 1.15]}>
+      <mesh ref={glowRef} position={[POUR_START.x, POUR_START.y, 0.16]} scale={[1.15, 1.15, 1.15]}>
         <circleGeometry args={[0.065, 32]} />
         <meshBasicMaterial
           color="#ffffff"
@@ -186,7 +184,7 @@ function PouringLine({
         />
       </mesh>
 
-      <mesh ref={dropRef} position={[5.18, POUR_START.y, 0.16]} scale={[0.001, 0.001, 0.001]}>
+      <mesh ref={dropRef} position={[POUR_START.x, POUR_START.y, 0.16]} scale={[0.001, 0.001, 0.001]}>
         <sphereGeometry args={[0.030, 12, 8]} />
         <meshBasicMaterial color="#ffffff" transparent opacity={0.9} />
       </mesh>
@@ -272,10 +270,10 @@ function CameraController({
     gsap.set(cube.current.rotation, { x: 0.18, y: -0.42, z: -0.08 });
 
     gsap.set(word.current.scale, { x: 0.82, y: 0.82, z: 0.82 });
-    gsap.set(word.current.position, { x: 0.25, y: 0.08, z: -0.04 });
+    gsap.set(word.current.position, { x: 2.10, y: 0.05, z: -0.04 });
 
     gsap.set(threeD.current.scale, { x: 0.68, y: 0.68, z: 0.68 });
-    gsap.set(threeD.current.position, { x: 0.45, y: 0.06, z: -0.08 });
+    gsap.set(threeD.current.position, { x: -3.15, y: 0.02, z: -0.08 });
 
     gsap.set(line.current.scale, { x: 0.001, y: 1, z: 1 });
     gsap.set(line.current.position, { x: POUR_START.x, y: POUR_START.y, z: 0.05 });
@@ -317,24 +315,27 @@ function CameraController({
       ease: "power2.out",
     }, 1.38)
       // Enter from the right and settle onto the exact start of the logo stroke.
-      .to(nozzle.current.position, {
-        x: POUR_START.x,
-        y: POUR_START.y,
-        duration: 0.18,
-        ease: "power3.out",
-      }, 0.08)
-      // Long, perfectly straight pour.
+      .fromTo(nozzle.current.position,
+        { x: POUR_START.x - 1.15, y: POUR_START.y + 0.45, z: 0.24 },
+        {
+          x: POUR_START.x,
+          y: POUR_START.y,
+          duration: 0.28,
+          ease: "power3.out",
+        },
+        0.08,
+      )
       .to(nozzle.current.position, {
         x: POUR_STRAIGHT_END.x,
         y: POUR_STRAIGHT_END.y,
-        duration: 0.70,
+        duration: 0.78,
         ease: "none",
-      }, 0.22)
+      }, 0.42)
       .to(line.current.scale, {
         x: 1,
-        duration: 0.70,
+        duration: 0.78,
         ease: "none",
-      }, 0.22)
+      }, 0.42)
       .to(glowMaterial, {
         opacity: 0.56,
         duration: 0.12,
@@ -344,15 +345,9 @@ function CameraController({
         x: 1,
         y: 1,
         z: 1,
-        duration: 0.10,
-        ease: "back.out(2)",
-      }, 0.28)
-      .to(drop.current.position, {
-        x: POUR_STRAIGHT_END.x,
-        y: POUR_STRAIGHT_END.y,
-        duration: 0.70,
-        ease: "none",
-      }, 0.28)
+        duration: 0.08,
+        ease: "power2.out",
+      }, 0.42)
       // Follow the quarter-circle and rotate the applicator with the path.
       .to(curveProgress, {
         value: 1,
@@ -367,12 +362,12 @@ function CameraController({
           );
 
           nozzle.current?.position.set(point.x, point.y, 0.24);
-          nozzle.current?.rotation.set(0, 0, 0);
+          nozzle.current?.rotation.set(0, 0, THREE.MathUtils.lerp(-0.34, Math.PI / 2, p));
 
           glow.current?.position.set(point.x, point.y, 0.16);
           drop.current?.position.set(point.x, point.y, 0.16);
         },
-      }, 0.92)
+      }, 1.20)
       .to(drop.current.scale, {
         x: 0.001,
         y: 0.001,
@@ -408,8 +403,8 @@ function CameraController({
         ease: "power2.out",
       }, 1.50)
       .to(word.current.position, {
-        x: 0,
-        y: 0,
+        x: 2.10,
+        y: 0.05,
         duration: 0.20,
         ease: "power3.out",
       }, 1.50)
@@ -419,14 +414,14 @@ function CameraController({
         ease: "power2.out",
       }, 1.68)
       .to(threeD.current.position, {
-        x: 0,
-        y: 0,
+        x: -3.15,
+        y: 0.02,
         duration: 0.18,
         ease: "back.out(1.5)",
       }, 1.68)
       .to(camera.position, {
-        x: -0.14,
-        y: 0.035,
+        x: 0.05,
+        y: 0.02,
         z: 12.82,
         duration: 0.24,
         ease: "power2.inOut",
@@ -469,7 +464,7 @@ function LogoScene({ timelineStarted }: { timelineStarted: boolean }) {
       <directionalLight position={[3, 4, 6]} intensity={2.4} />
       <pointLight color="#a855f7" position={[-4, 1, 4]} intensity={8} distance={14} />
       <group ref={refs.stage}>
-        <LogoLayer clip="cube" opacity={0} groupRef={refs.cube} materialRef={refs.cubeMaterial} position={[0, 0, 0.16]} z={4} />
+        <LogoLayer clip="cube" opacity={0} groupRef={refs.cube} materialRef={refs.cubeMaterial} position={[3.15, -0.02, 0.16]} z={4} />
         <LogoLayer clip="word" opacity={0} groupRef={refs.word} materialRef={refs.wordMaterial} position={[0, 0, 0]} z={3} />
         <LogoLayer clip="threeD" opacity={0} groupRef={refs.threeD} materialRef={refs.threeDMaterial} position={[0, 0, -0.16]} z={2} />
         <PouringLine
