@@ -4,7 +4,7 @@ import {
   InternalServerErrorException,
 } from "@nestjs/common";
 import { createHash, createHmac, randomUUID } from "node:crypto";
-import { access, mkdir, unlink, writeFile } from "node:fs/promises";
+import { access, mkdir, unlink, writeFile, readFile } from "node:fs/promises";
 import { basename, extname, join, resolve, sep } from "node:path";
 import type { SaveProductFileOptions, StoredFile } from "./storage.types";
 
@@ -95,6 +95,22 @@ export class StorageService {
     };
   }
 
+  async read(storageKey: string): Promise<Buffer> {
+    if (this.provider === "local") {
+      try {
+        return await fs.readFile(this.getAbsolutePath(storageKey));
+      } catch {
+        throw new InternalServerErrorException("Unable to read stored file");
+      }
+    }
+
+    const response = await this.requestObject("GET", storageKey);
+    if (!(response instanceof Buffer)) {
+      throw new InternalServerErrorException("Unable to read stored file");
+    }
+    return response;
+  }
+
   async delete(storageKey: string): Promise<void> {
     if (this.provider === "local") {
       try { await unlink(this.getAbsolutePath(storageKey)); } catch (error: unknown) {
@@ -131,7 +147,7 @@ export class StorageService {
     await this.requestObject("DELETE", key);
   }
 
-  private async requestObject(method: "PUT" | "DELETE" | "HEAD", key: string, body?: Buffer, contentType?: string) {
+  private async requestObject(method: "PUT" | "DELETE" | "HEAD" | "GET", key: string, body?: Buffer, contentType?: string): Promise<Buffer | void> {
     const hostUrl = `${this.endpoint}/${encodeURIComponent(this.bucket)}/${key.split("/").map(encodeURIComponent).join("/")}`;
     const url = new URL(hostUrl);
     const payloadHash = createHash("sha256").update(body ?? Buffer.alloc(0)).digest("hex");
@@ -162,6 +178,10 @@ export class StorageService {
 
     if (!response.ok && !(method === "DELETE" && response.status === 404)) {
       throw new InternalServerErrorException(`Remote storage request failed (${response.status})`);
+    }
+
+    if (method === "GET") {
+      return Buffer.from(await response.arrayBuffer());
     }
   }
 
