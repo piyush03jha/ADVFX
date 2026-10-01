@@ -14,23 +14,26 @@ const CLIPS = {
   threeD: [0.805, 0.565, 0.195, 0.435] as const,
 };
 
-const POUR_START = new THREE.Vector3(-4.05, -1.02, 0);
-const POUR_STRAIGHT_END = new THREE.Vector3(3.15, -1.02, 0);
-const POUR_CURVE_END = new THREE.Vector3(3.15, -0.28, 0);
+// Right-hand end of the stroke = the left edge of the "3D" mark.
+// The stroke spans the icon + VOXEL and stops where 3D begins.
+const POUR_START = new THREE.Vector3(3.82, -1.03, 0);
+const POUR_STRAIGHT_END = new THREE.Vector3(-4.62, -1.03, 0);
+const POUR_CURVE_END = new THREE.Vector3(-4.82, -0.46, 0);
 
 function createTurnCurve() {
-  const radius = 0.74;
+  // Smooth turn: incoming tangent is horizontal (right → left), outgoing
+  // tangent is vertical (up into the bottom-center of the icon).
+  const dx = POUR_CURVE_END.x - POUR_STRAIGHT_END.x;
+  const dy = POUR_CURVE_END.y - POUR_STRAIGHT_END.y;
   const k = 0.5522848;
-  const center = new THREE.Vector3(3.15, -0.28, 0);
 
   return new THREE.CubicBezierCurve3(
     POUR_STRAIGHT_END,
-    new THREE.Vector3(center.x + radius * k, center.y - radius, 0),
-    new THREE.Vector3(center.x + radius, center.y - radius * k, 0),
+    new THREE.Vector3(POUR_STRAIGHT_END.x + k * dx, POUR_STRAIGHT_END.y, 0),
+    new THREE.Vector3(POUR_CURVE_END.x, POUR_CURVE_END.y - k * dy, 0),
     POUR_CURVE_END,
   );
 }
-
 type Clip = keyof typeof CLIPS;
 
 function LogoLayer({
@@ -307,7 +310,7 @@ function CameraController({
     // 0.00–0.18: camera enters while the nozzle arrives.
     // The complete sequence is intentionally compact so the intro stays under ~2 seconds.
 
-    // 0.08–1.46: nozzle appears first, prints left → right, then turns upward into the icon.
+    // 0.08–1.46: nozzle appears first, prints right → left, then turns upward into the icon.
     const curveIndexCount = curve.current.geometry.index?.count ?? 0;
     const curveProgress = { value: 0 };
     const turnCurve = createTurnCurve();
