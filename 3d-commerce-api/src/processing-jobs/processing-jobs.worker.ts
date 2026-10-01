@@ -663,7 +663,7 @@ export class ProcessingJobsWorker
       ProductFileType.DOCUMENT
     ) {
       if (productFile.format === ProductFileFormat.PDF) {
-        await this.modelConversionService.convert(productFile.id);
+        await this.modelConversionService.convert(productFile.id, jobId);
         return;
       }
 
