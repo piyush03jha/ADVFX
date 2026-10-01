@@ -128,10 +128,14 @@ function LineController({
   lineRef,
   glowRef,
   timelineStarted,
+  iconRef,
+  letterRef,
 }: {
   lineRef: MutableRefObject<THREE.Line | null>;
   glowRef: MutableRefObject<THREE.Line | null>;
   timelineStarted: boolean;
+  iconRef: MutableRefObject<HTMLDivElement | null>;
+  letterRef: MutableRefObject<HTMLDivElement | null>;
 }) {
   useEffect(() => {
     if (!timelineStarted || !lineRef.current || !glowRef.current) return;
@@ -149,6 +153,7 @@ function LineController({
 
     const timeline = gsap.timeline();
 
+    // 1. Complete the white filament first.
     timeline.to(progress, {
       value: lineCount,
       duration: 2.8,
@@ -161,13 +166,40 @@ function LineController({
       },
     });
 
+    // 2. Only after the line is complete, reveal the icon.
+    timeline.to(
+      iconRef.current,
+      {
+        opacity: 1,
+        duration: 0.45,
+        ease: "power2.out",
+      },
+      "+=0.08",
+    );
+
+    // 3. Then reveal VOXEL lettering beside the icon.
+    timeline.to(
+      letterRef.current,
+      {
+        opacity: 1,
+        x: 14,
+        duration: 0.5,
+        ease: "power3.out",
+      },
+      "+=0.12",
+    );
+
     return () => timeline.kill();
-  }, [lineRef, glowRef, timelineStarted]);
+  }, [lineRef, glowRef, timelineStarted, iconRef, letterRef]);
 
   return null;
 }
 
-function LogoIcon() {
+function LogoIcon({
+  iconRef,
+}: {
+  iconRef: MutableRefObject<HTMLDivElement | null>;
+}) {
   return (
     <Html
       position={[0, 0.35, 1.15]}
@@ -176,7 +208,8 @@ function LogoIcon() {
       sprite
       zIndexRange={[20, 0]}
     >
-      <svg
+      <div ref={iconRef} style={{ opacity: 0 }}>
+        <svg
         viewBox="65 20 205 185"
         width="112"
         height="102"
@@ -194,7 +227,46 @@ function LogoIcon() {
           height="70"
           preserveAspectRatio="none"
         />
-      </svg>
+        </svg>
+      </div>
+    </Html>
+  );
+}
+
+function LogoLetter({
+  letterRef,
+}: {
+  letterRef: MutableRefObject<HTMLDivElement | null>;
+}) {
+  return (
+    <Html
+      position={[1.05, 0.35, 1.14]}
+      center
+      transform
+      sprite
+      zIndexRange={[19, 0]}
+    >
+      <div
+        ref={letterRef}
+        style={{
+          opacity: 0,
+          transform: "translateX(-14px)",
+        }}
+      >
+        <img
+          src="/logo/voxel_letter.png"
+          alt=""
+          width={230}
+          height={72}
+          draggable={false}
+          style={{
+            display: "block",
+            width: "230px",
+            height: "auto",
+            objectFit: "contain",
+          }}
+        />
+      </div>
     </Html>
   );
 }
@@ -202,6 +274,8 @@ function LogoIcon() {
 function LogoScene({ timelineStarted }: { timelineStarted: boolean }) {
   const lineRef = useRef<THREE.Line | null>(null);
   const glowRef = useRef<THREE.Line | null>(null);
+  const iconRef = useRef<HTMLDivElement | null>(null);
+  const letterRef = useRef<HTMLDivElement | null>(null);
 
   return (
     <>
@@ -209,9 +283,12 @@ function LogoScene({ timelineStarted }: { timelineStarted: boolean }) {
         lineRef={lineRef}
         glowRef={glowRef}
         timelineStarted={timelineStarted}
+        iconRef={iconRef}
+        letterRef={letterRef}
       />
       <Filament lineRef={lineRef} glowRef={glowRef} />
-      <LogoIcon />
+      <LogoIcon iconRef={iconRef} />
+      <LogoLetter letterRef={letterRef} />
     </>
   );
 }
