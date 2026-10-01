@@ -17,9 +17,13 @@ function Nozzle({
     <group
       ref={nozzleRef}
       position={[LINE_END.x, LINE_END.y, LINE_END.z + 0.08]}
-      rotation={[0, 0, -0.12]}
     >
-      <mesh rotation={[0, 0, Math.PI / 2]} position={[0, 0, 0]}>
+      {/* The group origin is the nozzle tip/filament anchor.
+          The nozzle body extends to the right of the tip. */}
+      <mesh
+        rotation={[0, 0, Math.PI / 2]}
+        position={[0.38, 0, 0]}
+      >
         <cylinderGeometry args={[0.16, 0.11, 0.8, 32]} />
         <meshStandardMaterial
           color="#d8d8dc"
@@ -30,7 +34,7 @@ function Nozzle({
 
       <mesh
         rotation={[0, 0, Math.PI / 2]}
-        position={[-0.43, 0, 0]}
+        position={[-0.07, 0, 0]}
       >
         <coneGeometry args={[0.11, 0.3, 32]} />
         <meshStandardMaterial
@@ -117,7 +121,7 @@ function LineController({
 
     const timeline = gsap.timeline();
 
-    // The filament starts at the nozzle on the right and travels to the left.
+    // Filament starts at the nozzle tip on the right and reveals toward the left.
     timeline.to(
       line.scale,
       {
@@ -128,7 +132,7 @@ function LineController({
       0,
     );
 
-    // Keep the nozzle at the leading/right end for this step.
+    // Keep the nozzle anchored at the filament start for this isolated step.
     return () => timeline.kill();
   }, [lineRef, nozzleRef, timelineStarted]);
 
@@ -203,7 +207,12 @@ export function LogoIntro() {
       >
         <ambientLight intensity={1.2} />
         <directionalLight position={[3, 4, 6]} intensity={2.4} />
-        <pointLight color="#a855f7" position={[2, 1, 4]} intensity={7} distance={14} />
+        <pointLight
+          color="#a855f7"
+          position={[2, 1, 4]}
+          intensity={7}
+          distance={14}
+        />
         <LogoScene timelineStarted={timelineStarted} />
       </Canvas>
     </div>
