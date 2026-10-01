@@ -28,25 +28,11 @@ interface UploadedProductFile {
   buffer: Buffer;
 }
 
-interface BundleUploadFile extends UploadedProductFile {
-  relativePath: string;
-}
-
 interface PreparedUploadFile {
   originalName: string;
   format: ProductFileFormat | null;
   fileType: ReturnType<typeof getProductFileType> | null;
   mimeType: string;
-}
-
-interface StoredBundleFile {
-  normalizedPath: string;
-  originalName: string;
-  storageKey: string;
-  storageUrl: string;
-  mimeType: string;
-  fileSize: number;
-  format: ProductFileFormat | null;
 }
 
 @Injectable()
@@ -338,91 +324,6 @@ export class ProductFilesService {
     return {
       message:
         "Product file deleted successfully",
-    };
-  }
-
-  /**
-   * ============================================================
-   * DELETE BUNDLE
-   * ============================================================
-   */
-
-  async deleteBundle(
-    productId: string,
-    bundleId: string,
-  ) {
-    const bundle =
-      await this.prisma.productFileBundle.findFirst(
-        {
-          where: {
-            id: bundleId,
-            productId,
-          },
-          include: {
-            rootFile: {
-              select: {
-                id: true,
-                storageKey: true,
-              },
-            },
-            assets: {
-              select: {
-                storageKey: true,
-              },
-            },
-          },
-        },
-      );
-
-    if (!bundle) {
-      throw new NotFoundException(
-        `Asset bundle "${bundleId}" not found`,
-      );
-    }
-
-    /**
-     * Deleting the root ProductFile cascades into
-     * ProductFileBundle because rootFile has onDelete: Cascade.
-     *
-     * If we delete the bundle first, rootFile remains.
-     * Therefore remove the root ProductFile so the relationship
-     * and processing job are cleaned correctly.
-     */
-    await this.prisma.productFile.delete(
-      {
-        where: {
-          id: bundle.rootFile.id,
-        },
-      },
-    );
-
-    /**
-     * Root storage.
-     */
-    try {
-      await this.storage.delete(
-        bundle.rootFile.storageKey,
-      );
-    } catch {
-      // Database deletion has already succeeded.
-    }
-
-    /**
-     * Dependency storage.
-     */
-    for (const asset of bundle.assets) {
-      try {
-        await this.storage.delete(
-          asset.storageKey,
-        );
-      } catch {
-        // Database deletion has already succeeded.
-      }
-    }
-
-    return {
-      message:
-        "Asset bundle deleted successfully",
     };
   }
 
