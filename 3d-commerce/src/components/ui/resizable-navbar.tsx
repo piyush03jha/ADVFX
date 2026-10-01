@@ -136,9 +136,19 @@ export const MobileNavToggle = ({ isOpen, onClick }: { isOpen: boolean; onClick:
 );
 
 export const NavbarLogo = () => (
-  <Link href="/" className="relative z-20 flex shrink-0 items-center gap-2 px-2 py-1 text-sm font-semibold tracking-[0.15em] text-foreground transition-opacity hover:opacity-80">
-    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[image:var(--gradient-primary)] text-xs font-bold text-white shadow-[0_0_18px_var(--glow-primary)]">3D</span>
-    <span className="whitespace-nowrap">BRAND<span className="text-primary">.</span></span>
+  <Link
+    href="/"
+    aria-label="Voxel3D home"
+    className="relative z-20 flex shrink-0 items-center px-2 py-1 transition-opacity hover:opacity-80"
+  >
+    <img
+      src="/logo/full_logo.png"
+      alt="Voxel3D"
+      width={132}
+      height={36}
+      draggable={false}
+      className="block h-8 w-auto object-contain sm:h-9"
+    />
   </Link>
 );
 
