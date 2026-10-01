@@ -43,6 +43,10 @@ try:
             curve.data.extrude = 0.02
             curve.data.bevel_depth = 0.001
             curve.data.bevel_resolution = 2
+            bpy.context.view_layer.objects.active = curve
+            curve.select_set(True)
+            bpy.ops.object.convert(target="MESH")
+            curve.select_set(False)
     else:
         die(f"Unsupported Blender input format: {ext}")
 except Exception as exc:
