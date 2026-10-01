@@ -18,11 +18,11 @@ function Nozzle({
       ref={nozzleRef}
       position={[LINE_END.x, LINE_END.y, LINE_END.z + 0.08]}
     >
-      {/* The group origin is the nozzle tip/filament anchor.
-          The nozzle body extends to the right of the tip. */}
+      {/* The group origin is the exact filament/nozzle tip.
+          The nozzle body extends to the right, away from the filament. */}
       <mesh
         rotation={[0, 0, Math.PI / 2]}
-        position={[0.38, 0, 0]}
+        position={[0.55, 0, 0]}
       >
         <cylinderGeometry args={[0.16, 0.11, 0.8, 32]} />
         <meshStandardMaterial
@@ -32,9 +32,10 @@ function Nozzle({
         />
       </mesh>
 
+      {/* Cone tip ends exactly at the group origin. */}
       <mesh
         rotation={[0, 0, Math.PI / 2]}
-        position={[-0.07, 0, 0]}
+        position={[0.15, 0, 0]}
       >
         <coneGeometry args={[0.11, 0.3, 32]} />
         <meshStandardMaterial
@@ -60,7 +61,9 @@ function PouringLine({
       position={[LINE_END.x, LINE_END.y, LINE_END.z]}
       scale={[-0.001, 1, 1]}
     >
-      <mesh position={[-length / 2, 0, 0]} renderOrder={10}>
+      {/* Local geometry starts at x=0.
+          Negative scale therefore reveals it from RIGHT -> LEFT. */}
+      <mesh position={[length / 2, 0, 0]} renderOrder={10}>
         <planeGeometry args={[length, 0.045]} />
         <meshBasicMaterial
           color="#ffffff"
@@ -72,7 +75,7 @@ function PouringLine({
       </mesh>
 
       <mesh
-        position={[-length / 2, 0, -0.01]}
+        position={[length / 2, 0, -0.01]}
         scale={[1, 3, 1]}
         renderOrder={9}
       >
@@ -121,7 +124,8 @@ function LineController({
 
     const timeline = gsap.timeline();
 
-    // Filament starts at the nozzle tip on the right and reveals toward the left.
+    // The filament begins exactly at the nozzle tip on the right
+    // and reveals horizontally toward the left.
     timeline.to(
       line.scale,
       {
@@ -132,7 +136,7 @@ function LineController({
       0,
     );
 
-    // Keep the nozzle anchored at the filament start for this isolated step.
+    // Nozzle remains fixed for this isolated animation stage.
     return () => timeline.kill();
   }, [lineRef, nozzleRef, timelineStarted]);
 
