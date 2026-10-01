@@ -470,7 +470,7 @@ function LogoScene({ timelineStarted }: { timelineStarted: boolean }) {
       <directionalLight position={[3, 4, 6]} intensity={2.4} />
       <pointLight color="#a855f7" position={[-4, 1, 4]} intensity={8} distance={14} />
       <group ref={refs.stage}>
-        <LogoLayer clip="cube" opacity={0} groupRef={refs.cube} materialRef={refs.cubeMaterial} position={[7.75, -0.02, 0.16]} z={4} />
+        <LogoLayer clip="cube" opacity={0} groupRef={refs.cube} materialRef={refs.cubeMaterial} position={[0, 0, 0.16]} z={4} />
         <LogoLayer clip="word" opacity={0} groupRef={refs.word} materialRef={refs.wordMaterial} position={[0, 0, 0]} z={3} />
         <LogoLayer clip="threeD" opacity={0} groupRef={refs.threeD} materialRef={refs.threeDMaterial} position={[0, 0, -0.16]} z={2} />
         <PouringLine
@@ -520,9 +520,9 @@ export function LogoIntro() {
     <div
       ref={rootRef}
       aria-hidden="true"
-      className="fixed inset-0 z-[300] overflow-hidden bg-[#050507]"
+      className="fixed inset-0 z-[300] overflow-hidden bg-[#11131b]"
     >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(100,84,162,0.18),transparent_52%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(132,108,190,0.22),rgba(17,19,27,0.96)_68%)]" />
 
       <Canvas
         dpr={[1, 1.5]}
