@@ -128,12 +128,16 @@ function PouringLine({
   return (
     <group>
       {/* The stroke is deliberately simple: long straight run first. */}
-      <group ref={lineRef} position={[POUR_START.x, POUR_START.y, 0.05]}>
+      <group
+        ref={lineRef}
+        position={[POUR_START.x, POUR_START.y, 0.05]}
+        scale={[0.001, 1, 1]}
+      >
         <mesh position={[straightLength / 2, 0, 0]}>
           <planeGeometry args={[straightLength, 0.042]} />
           <meshBasicMaterial color="#ffffff" transparent opacity={0.98} />
         </mesh>
-        <mesh position={[straightLength / 2, 0, -0.01]} scale={[1, 3.0, 1]}>
+        <mesh position={[straightLength / 2, 0, -0.01]} scale={[1, 2.2, 1]}>
           <planeGeometry args={[straightLength, 0.042]} />
           <meshBasicMaterial
             color="#ffffff"
@@ -149,27 +153,26 @@ function PouringLine({
         <meshBasicMaterial color="#ffffff" transparent opacity={0.98} />
       </mesh>
 
-      {/* Minimal 3D printer nozzle. Its origin is the tip so the white filament
-          always appears to come directly from the nozzle and follows its path. */}
+      {/* Tip-origin nozzle: the filament path starts exactly at the nozzle tip. */}
       <group
         ref={nozzleRef}
         position={[POUR_START.x, POUR_START.y, 0.24]}
-        rotation={[0, 0, -0.34]}
+        rotation={[0, 0, -Math.PI / 4]}
       >
-        <mesh position={[0, 0.48, 0]}>
-          <cylinderGeometry args={[0.145, 0.16, 0.46, 8]} />
+        <mesh position={[0, 0.56, 0]}>
+          <cylinderGeometry args={[0.145, 0.16, 0.72, 8]} />
           <meshStandardMaterial color="#202027" metalness={0.85} roughness={0.24} />
         </mesh>
-        <mesh position={[0, 0.24, 0]}>
-          <cylinderGeometry args={[0.18, 0.18, 0.09, 16]} />
+        <mesh position={[0, 0.25, 0]}>
+          <cylinderGeometry args={[0.18, 0.18, 0.10, 16]} />
           <meshStandardMaterial color="#d9d9df" metalness={0.9} roughness={0.18} />
         </mesh>
-        <mesh position={[0, 0.09, 0]} rotation={[Math.PI, 0, 0]}>
-          <coneGeometry args={[0.155, 0.20, 8]} />
+        <mesh position={[0, 0.105, 0]} rotation={[Math.PI, 0, 0]}>
+          <coneGeometry args={[0.155, 0.21, 8]} />
           <meshStandardMaterial color="#e9e9ee" metalness={0.92} roughness={0.16} />
         </mesh>
-        <mesh position={[0, 0.49, 0]}>
-          <cylinderGeometry args={[0.09, 0.09, 0.48, 8]} />
+        <mesh position={[0, 0.72, 0]}>
+          <cylinderGeometry args={[0.09, 0.09, 0.42, 8]} />
           <meshStandardMaterial color="#09090d" metalness={0.65} roughness={0.28} />
         </mesh>
       </group>
@@ -295,7 +298,7 @@ function CameraController({
       gsap.set(line.current.scale, { x: 1, y: 1, z: 1 });
       gsap.set(curve.current.geometry, { drawRange: { start: 0, count: curve.current.geometry.index?.count ?? 0 } });
       gsap.set(nozzle.current.position, { x: POUR_CURVE_END.x, y: POUR_CURVE_END.y, z: 0.24 });
-      gsap.set(nozzle.current.rotation, { z: 0 });
+      gsap.set(nozzle.current.rotation, { z: -Math.PI / 4 });
       return;
     }
 
@@ -348,7 +351,7 @@ function CameraController({
         duration: 0.08,
         ease: "power2.out",
       }, 0.42)
-      // Follow the quarter-circle and rotate the applicator with the path.
+      // Follow the quarter-circle while keeping the nozzle at the reference printer angle.
       .to(curveProgress, {
         value: 1,
         duration: 0.26,
