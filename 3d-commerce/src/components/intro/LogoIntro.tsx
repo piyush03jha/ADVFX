@@ -12,10 +12,14 @@ import * as THREE from "three";
 import gsap from "gsap";
 
 const LINE_START = new THREE.Vector3(4.2, -1.0, 1);
-const HORIZONTAL_END = new THREE.Vector3(-3.2, -1.0, 1);
+const HORIZONTAL_END = new THREE.Vector3(-3.4, -1.0, 1);
+
+// Compact quarter-turn: horizontal tangent -> vertical tangent.
 const CURVE_CONTROL = new THREE.Vector3(-4.2, -1.0, 1);
-const CURVE_END = new THREE.Vector3(-4.2, 0, 1);
-const VERTICAL_END = new THREE.Vector3(-4.2, 2.2, 1);
+const CURVE_END = new THREE.Vector3(-4.2, -0.2, 1);
+
+// Only a short rise after the curve.
+const VERTICAL_END = new THREE.Vector3(-4.2, 0.35, 1);
 
 const CURVE_SAMPLES = 96;
 
@@ -28,8 +32,7 @@ function createFilamentPoints() {
     points.push(new THREE.Vector3().lerpVectors(LINE_START, HORIZONTAL_END, t));
   }
 
-  // Smooth 90-degree transition:
-  // horizontal tangent -> vertical tangent.
+  // Smooth 90-degree turn.
   const curve = new THREE.QuadraticBezierCurve3(
     HORIZONTAL_END,
     CURVE_CONTROL,
@@ -38,9 +41,9 @@ function createFilamentPoints() {
 
   points.push(...curve.getPoints(CURVE_SAMPLES).slice(1));
 
-  // Straight vertical section after the turn.
-  for (let i = 1; i <= 32; i += 1) {
-    const t = i / 32;
+  // Short vertical section after the turn.
+  for (let i = 1; i <= 20; i += 1) {
+    const t = i / 20;
     points.push(new THREE.Vector3().lerpVectors(CURVE_END, VERTICAL_END, t));
   }
 
@@ -121,8 +124,8 @@ function LineController({
 
     const timeline = gsap.timeline();
 
-    // Reveal from the right, travel left, smoothly turn upward by 90 degrees,
-    // then continue vertically.
+    // Reveal from right -> left, then smoothly turn upward,
+    // followed by only a small vertical rise.
     timeline.to(progress, {
       value: lineCount,
       duration: 2.8,
