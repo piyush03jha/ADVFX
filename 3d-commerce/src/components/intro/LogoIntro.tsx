@@ -328,7 +328,7 @@ function CameraController({
     const curveIndexCount = curve.current.geometry.index?.count ?? 0;
     const curveProgress = { count: 0 };
 
-    tl.to(cubeMaterial.current.uniforms.uOpacity, { value: 1, duration: 0.34, ease: "power2.out" }, 1.30)
+    tl.to(cubeMaterial.current.uniforms.uOpacity, { value: 1, duration: 0.28, ease: "power2.out" }, 1.50)
       .to(nozzle.current.position, {
         x: 3.813,
         y: -1.034,
@@ -409,49 +409,49 @@ function CameraController({
         ease: "power2.out",
       }, 1.48);
 
-    // 1.27–1.82: once the line is settled, the actual logo is born.
+    // 1.50–1.95: the icon appears after the bend, then VOXEL and 3D resolve.
     tl.to(cube.current, {
       scale: 1,
       rotation: { x: 0, y: 0, z: 0 },
-      duration: 0.34,
+      duration: 0.28,
       ease: "back.out(1.7)",
-    }, 1.27)
+    }, 1.50)
       .to(wordMaterial.current.uniforms.uOpacity, {
         value: 1,
-        duration: 0.42,
+        duration: 0.30,
         ease: "power2.out",
-      }, 1.39)
+      }, 1.62)
       .to(word.current.position, {
         x: 0,
         y: 0,
-        duration: 0.42,
+        duration: 0.30,
         ease: "power3.out",
-      }, 1.39)
+      }, 1.62)
       .to(threeDMaterial.current.uniforms.uOpacity, {
         value: 1,
-        duration: 0.34,
+        duration: 0.28,
         ease: "power2.out",
-      }, 1.51)
+      }, 1.76)
       .to(threeD.current.position, {
         x: 0,
         y: 0,
-        duration: 0.34,
+        duration: 0.28,
         ease: "back.out(1.5)",
-      }, 1.51)
+      }, 1.76)
       .to(camera.position, {
         x: -0.14,
         y: 0.035,
         z: 12.82,
-        duration: 0.38,
+        duration: 0.32,
         ease: "power2.inOut",
-      }, 1.55)
+      }, 1.76)
       .to(camera.rotation, {
         x: 0.005,
         y: -0.012,
         z: -0.004,
-        duration: 0.38,
+        duration: 0.32,
         ease: "power2.inOut",
-      }, 1.55);
+      }, 1.76);
 
     return () => tl.kill();
   }, [refs, timelineStarted]);
