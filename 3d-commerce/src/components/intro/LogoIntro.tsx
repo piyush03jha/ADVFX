@@ -1,6 +1,7 @@
 "use client";
 
 import { Canvas } from "@react-three/fiber";
+import { Html } from "@react-three/drei";
 import {
   useEffect,
   useMemo,
@@ -166,6 +167,38 @@ function LineController({
   return null;
 }
 
+function LogoIcon() {
+  return (
+    <Html
+      position={[0, 0.35, 1.15]}
+      center
+      transform
+      sprite
+      zIndexRange={[20, 0]}
+    >
+      <svg
+        viewBox="65 20 205 185"
+        width="112"
+        height="102"
+        aria-hidden="true"
+        style={{
+          display: "block",
+          overflow: "visible",
+        }}
+      >
+        <image
+          href="/logo/voxel3d.svg"
+          x="0"
+          y="0"
+          width="1251"
+          height="328"
+          preserveAspectRatio="none"
+        />
+      </svg>
+    </Html>
+  );
+}
+
 function LogoScene({ timelineStarted }: { timelineStarted: boolean }) {
   const lineRef = useRef<THREE.Line | null>(null);
   const glowRef = useRef<THREE.Line | null>(null);
@@ -178,6 +211,7 @@ function LogoScene({ timelineStarted }: { timelineStarted: boolean }) {
         timelineStarted={timelineStarted}
       />
       <Filament lineRef={lineRef} glowRef={glowRef} />
+      <LogoIcon />
     </>
   );
 }
