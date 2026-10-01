@@ -273,17 +273,17 @@ function CameraController({
     gsap.set(cube.current.rotation, { x: 0.18, y: -0.42, z: -0.08 });
 
     gsap.set(word.current.scale, { x: 0.82, y: 0.82, z: 0.82 });
-    gsap.set(word.current.position, { x: 4.20, y: 0.05, z: -0.04 });
+    gsap.set(word.current.position, { x: 0, y: 0, z: -0.04 });
 
     gsap.set(threeD.current.scale, { x: 0.68, y: 0.68, z: 0.68 });
-    gsap.set(threeD.current.position, { x: -8.50, y: 0.02, z: -0.08 });
+    gsap.set(threeD.current.position, { x: 0, y: 0, z: -0.08 });
 
     gsap.set(line.current.scale, { x: 0.001, y: 1, z: 1 });
     gsap.set(line.current.position, { x: POUR_START.x, y: POUR_START.y, z: 0.05 });
     curve.current.geometry.setDrawRange(0, 0);
 
-    gsap.set(nozzle.current.position, { x: POUR_START.x - 1.15, y: POUR_START.y + 0.45, z: 0.24 });
-    gsap.set(nozzle.current.rotation, { z: -0.34 });
+    gsap.set(nozzle.current.position, { x: POUR_START.x, y: POUR_START.y, z: 0.24 });
+    gsap.set(nozzle.current.rotation, { z: -Math.PI / 4 });
     gsap.set(nozzle.current.scale, { x: 0.82, y: 0.82, z: 0.82 });
 
     gsap.set(glowMaterial, { opacity: 0 });
@@ -318,39 +318,39 @@ function CameraController({
       ease: "power2.out",
     }, 1.38)
       // Enter from the right and settle onto the exact start of the logo stroke.
-      .fromTo(nozzle.current.position,
-        { x: POUR_START.x - 1.15, y: POUR_START.y + 0.45, z: 0.24 },
-        {
-          x: POUR_START.x,
-          y: POUR_START.y,
-          duration: 0.28,
-          ease: "power3.out",
-        },
-        0.08,
-      )
+      // Nozzle is already sitting at the right-hand end of the future stroke.
+      // Nothing from the white stroke is visible before the nozzle starts printing.
+      .to(nozzle.current.position, {
+        x: POUR_START.x,
+        y: POUR_START.y,
+        duration: 0.18,
+        ease: "power3.out",
+      }, 0.08)
+      // Print right → left. The nozzle tip and the leading edge of the stroke
+      // travel together, so the line never appears ahead of the nozzle.
       .to(nozzle.current.position, {
         x: POUR_STRAIGHT_END.x,
         y: POUR_STRAIGHT_END.y,
         duration: 0.78,
         ease: "none",
-      }, 0.42)
+      }, 0.30)
       .to(line.current.scale, {
         x: 1,
         duration: 0.78,
         ease: "none",
-      }, 0.42)
+      }, 0.30)
       .to(glowMaterial, {
         opacity: 0.56,
         duration: 0.12,
         ease: "power2.out",
-      }, 0.42)
+      }, 0.30)
       .to(drop.current.scale, {
         x: 1,
         y: 1,
         z: 1,
         duration: 0.08,
         ease: "power2.out",
-      }, 0.42)
+      }, 0.30)
       // Follow the quarter-circle while keeping the nozzle at the reference printer angle.
       .to(curveProgress, {
         value: 1,
@@ -365,7 +365,7 @@ function CameraController({
           );
 
           nozzle.current?.position.set(point.x, point.y, 0.24);
-          nozzle.current?.rotation.set(0, 0, -0.34 * (1 - p));
+          nozzle.current?.rotation.set(0, 0, -Math.PI / 4);
 
           glow.current?.position.set(point.x, point.y, 0.16);
           drop.current?.position.set(point.x, point.y, 0.16);
@@ -406,8 +406,8 @@ function CameraController({
         ease: "power2.out",
       }, 1.50)
       .to(word.current.position, {
-        x: 4.20,
-        y: 0.05,
+        x: 0,
+        y: 0,
         duration: 0.20,
         ease: "power3.out",
       }, 1.50)
@@ -417,8 +417,8 @@ function CameraController({
         ease: "power2.out",
       }, 1.68)
       .to(threeD.current.position, {
-        x: -8.50,
-        y: 0.02,
+        x: 0,
+        y: 0,
         duration: 0.18,
         ease: "back.out(1.5)",
       }, 1.68)
