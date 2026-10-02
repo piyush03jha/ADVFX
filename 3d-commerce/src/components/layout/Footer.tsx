@@ -12,10 +12,10 @@ import {
 } from "@tabler/icons-react";
 
 const collections = [
-  { label: "Bestsellers", href: "/bestsellers" },
-  { label: "New Arrivals", href: "/new-arrivals" },
-  { label: "Categories", href: "/categories" },
-  { label: "Bulk Order", href: "/bulk-order" },
+  { label: "Bestsellers", href: "/#best-sellers" },
+  { label: "New Arrivals", href: "/#new-arrivals" },
+  { label: "Categories", href: "/#categories" },
+  { label: "Bulk Order", href: "/#bulk-order" },
 ];
 
 const helpLinks = [
