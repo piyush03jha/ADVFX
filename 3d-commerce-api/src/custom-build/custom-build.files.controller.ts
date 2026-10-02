@@ -61,6 +61,9 @@ export class CustomBuildFilesController {
 
     const extension = uploaded.filename.toLowerCase().match(/\\.([a-z0-9]+)$/)?.[1] ?? '';
     const isImage = REFERENCE_MIME_TYPES.has(uploaded.mimetype);
+    if (isImage && uploaded.buffer.length > MAX_REFERENCE_FILE_SIZE) {
+      throw new BadRequestException(`Reference images cannot exceed ${MAX_REFERENCE_FILE_SIZE / (1024 * 1024)} MB each.`);
+    }
     const isModel = MODEL_EXTENSIONS.has(extension);
 
     if (!isImage && !isModel) {
