@@ -13,6 +13,8 @@ import {
 } from "@prisma/client";
 
 import { promises as fs } from "node:fs";
+import { join } from "node:path";
+import { randomUUID } from "node:crypto";
 
 import { PrismaService } from "../prisma/prisma.service";
 import { StorageService } from "../storage/storage.service";
@@ -569,152 +571,81 @@ export class ProcessingJobsWorker
     productFile: any,
     jobId: string,
   ): Promise<void> {
-    if (
-      !(await this.storage.exists(
-        productFile.storageKey,
-      ))
-    ) {
+    if (!(await this.storage.exists(productFile.storageKey))) {
       throw new Error(
         `Storage file not found: ${productFile.storageKey}`,
       );
     }
 
-    const absolutePath =
-      this.storage.getAbsolutePath(
-        productFile.storageKey,
-      );
-
-    const buffer =
-      await fs.readFile(
-        absolutePath,
-      );
-
-    /**
-     * Validate uploaded content before processing.
-     */
-    await this.contentValidator.validate(
-      productFile.format,
-      buffer,
+    const buffer = await this.storage.read(productFile.storageKey);
+    const tempDir = join("/tmp", "product-file-processing", randomUUID());
+    const tempPath = join(
+      tempDir,
+      productFile.originalName?.replace(/[^a-zA-Z0-9._-]/g, "-") || "source",
     );
 
-    // -------------------------------------------------------------------------
-    // IMAGE
-    // -------------------------------------------------------------------------
+    await fs.mkdir(tempDir, { recursive: true });
+    await fs.writeFile(tempPath, buffer);
 
-    if (
-      productFile.fileType ===
-      ProductFileType.IMAGE
-    ) {
-      switch (productFile.format) {
-        case ProductFileFormat.PNG:
-        case ProductFileFormat.JPG:
-        case ProductFileFormat.JPEG:
-        case ProductFileFormat.WEBP: {
-          const metadata =
-            await this.imageProcessingService.validateRasterImage(
-              absolutePath,
+    try {
+      await this.contentValidator.validate(
+        productFile.format,
+        buffer,
+      );
+
+      if (productFile.fileType === ProductFileType.IMAGE) {
+        switch (productFile.format) {
+          case ProductFileFormat.PNG:
+          case ProductFileFormat.JPG:
+          case ProductFileFormat.JPEG:
+          case ProductFileFormat.WEBP: {
+            const metadata =
+              await this.imageProcessingService.validateRasterImage(tempPath);
+
+            await this.prisma.productFile.update({
+              where: { id: productFile.id },
+              data: {
+                imageWidth: metadata.width,
+                imageHeight: metadata.height,
+                imageChannels: metadata.channels,
+                imageHasAlpha: metadata.hasAlpha,
+                imageColorSpace: metadata.space ?? null,
+              },
+            });
+            return;
+          }
+
+          case ProductFileFormat.SVG:
+            await this.imageProcessingService.validateSvg(tempPath);
+            return;
+
+          default:
+            throw new Error(
+              `Unsupported image format: ${productFile.format}`,
             );
+        }
+      }
 
-          await this.prisma.productFile.update({
-            where: {
-              id: productFile.id,
-            },
-            data: {
-              imageWidth:
-                metadata.width,
-
-              imageHeight:
-                metadata.height,
-
-              imageChannels:
-                metadata.channels,
-
-              imageHasAlpha:
-                metadata.hasAlpha,
-
-              imageColorSpace:
-                metadata.space ?? null,
-            },
-          });
-
+      if (productFile.fileType === ProductFileType.DOCUMENT) {
+        if (productFile.format === ProductFileFormat.PDF) {
+          await this.modelConversionService.convert(productFile.id, jobId);
           return;
         }
 
-        case ProductFileFormat.SVG:
-          await this.imageProcessingService.validateSvg(
-            absolutePath,
-          );
-
-          return;
-
-        default:
-          throw new Error(
-            `Unsupported image format: ${productFile.format}`,
-          );
-      }
-    }
-
-    // -------------------------------------------------------------------------
-    // DOCUMENT
-    // -------------------------------------------------------------------------
-
-    if (
-      productFile.fileType ===
-      ProductFileType.DOCUMENT
-    ) {
-      if (productFile.format === ProductFileFormat.PDF) {
-        await this.modelConversionService.convert(productFile.id, jobId);
+        await this.processingJobs2DWorker.processFile(productFile);
         return;
       }
 
-      await this.processingJobs2DWorker.processFile(productFile);
-      return;
+      if (productFile.fileType === ProductFileType.MODEL) {
+        await this.modelConversionService.convert(productFile.id);
+        return;
+      }
+
+      throw new Error(
+        `Unsupported product file type: ${productFile.fileType}`,
+      );
+    } finally {
+      await fs.rm(tempDir, { recursive: true, force: true }).catch(() => undefined);
     }
-
-    // -------------------------------------------------------------------------
-    // MODEL
-    // -------------------------------------------------------------------------
-
-    if (
-      productFile.fileType ===
-      ProductFileType.MODEL
-    ) {
-      await this.modelConversionService.convert(productFile.id);
-      return;
-    }
-
-    throw new Error(
-      `Unsupported product file type: ${productFile.fileType}`,
-    );
-  }
-
-  private getPositiveNumber(
-    value: string | undefined,
-    fallback: number,
-  ): number {
-    const parsed =
-      Number(value);
-
-    if (
-      !Number.isFinite(parsed) ||
-      parsed <= 0
-    ) {
-      return fallback;
-    }
-
-    return parsed;
-  }
-
-  private sleep(
-    milliseconds: number,
-  ): Promise<void> {
-    return new Promise(
-      (resolve) => {
-        setTimeout(
-          resolve,
-          milliseconds,
-        );
-      },
-    );
   }
 }
