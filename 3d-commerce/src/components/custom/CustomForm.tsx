@@ -71,7 +71,7 @@ export function CustomForm({
   const [category, setCategory] = useState<CustomCategory>("person");
   const [size, setSize] = useState("15");
   const [frame, setFrame] = useState("single");
-  const [files, setFiles] = useState<File[]>([]);
+  const [files, setFiles] = useState<File[]>([]);\n  const [modelFile, setModelFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState("");
   const [details, setDetails] = useState("");
   const [activeImage, setActiveImage] = useState(0);
@@ -274,7 +274,7 @@ export function CustomForm({
         }
       }
 
-      onSubmit({
+      if (modelFile) {\n        const formData = new FormData();\n        formData.append("file", modelFile);\n\n        const uploadResponse = await fetch(\n          `/api/custom-requests/${encodeURIComponent(requestBody.id)}/files`,\n          { method: "POST", body: formData },\n        );\n        const uploadBody = (await uploadResponse.json().catch(() => null)) as\n          | { message?: string | string[]; error?: string }\n          | null;\n        if (!uploadResponse.ok) {\n          const message =\n            uploadBody && "message" in uploadBody\n              ? Array.isArray(uploadBody.message)\n                ? uploadBody.message[0]\n                : uploadBody.message ?? "Unable to upload your 3D reference."\n              : uploadBody?.error ?? "Unable to upload your 3D reference.";\n          throw new Error(message);\n        }\n      }\n\n      onSubmit({
         requestId: requestBody.id,
         category,
         price,
@@ -509,7 +509,7 @@ export function CustomForm({
             </p>
             <h3 className="mt-1 text-lg font-semibold">Upload reference photos</h3>
             <p className="mt-1 text-xs leading-5 text-muted">
-              For people and pets, front, back, left and right JPG/PNG views give us the best likeness.
+              Add up to 5 JPG/PNG reference images (50 MB total). You can also provide one 3D reference file up to 100 MB.
             </p>
           </div>
 
