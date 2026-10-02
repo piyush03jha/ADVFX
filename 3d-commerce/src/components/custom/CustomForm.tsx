@@ -91,13 +91,13 @@ export function CustomForm({
   const configuredCategory = config?.categories.find((option) => option.slug === category);
   const configured = (section:string, slug:string|undefined) => configuredCategory?.options.find((option)=>option.section===section && option.slug===slug);
   const selectedBody =
-    configured("body", body) ? { id: body, label: configured("body", body)!.name, description: configured("body", body)!.description ?? "", basePrice: configured("body", body)!.priceMinor / 100 } : (bodyOptions.find((option) => option.id === body) ?? bodyOptions[1]);
+    configured("body", body) ? { id: body, label: configured("body", body)!.name, description: configured("body", body)!.description ?? "", basePrice: configured("body", body)!.priceMinor / 100, image: configured("body", body)!.imageUrl ?? "/catogeries/1.jpg" } : (bodyOptions.find((option) => option.id === body) ?? bodyOptions[1]);
   const selectedHead =
-    configured("head", head) ? { id: head, label: configured("head", head)!.name, description: configured("head", head)!.description ?? "", addPrice: configured("head", head)!.priceMinor / 100 } : (headOptions.find((option) => option.id === head) ?? headOptions[0]);
+    configured("head", head) ? { id: head, label: configured("head", head)!.name, description: configured("head", head)!.description ?? "", addPrice: configured("head", head)!.priceMinor / 100, image: configured("head", head)!.imageUrl ?? "/catogeries/4.jpg" } : (headOptions.find((option) => option.id === head) ?? headOptions[0]);
   const configuredSize = config?.sizeOptions.find((option) => option.slug === size);
   const selectedSize = configuredSize ? { value: size, label: configuredSize.name, multiplier: configuredSize.multiplier ?? 1 } : (sizeOptions.find((option) => option.value === size) ?? sizeOptions[2]);
   const selectedFrame =
-    configured("frame", frame) ? { id: frame, label: configured("frame", frame)!.name, description: configured("frame", frame)!.description ?? "", addPrice: configured("frame", frame)!.priceMinor / 100 } : (frameOptions.find((option) => option.id === frame) ?? frameOptions[0]);
+    configured("frame", frame) ? { id: frame, label: configured("frame", frame)!.name, description: configured("frame", frame)!.description ?? "", addPrice: configured("frame", frame)!.priceMinor / 100, image: configured("frame", frame)!.imageUrl ?? "/catogeries/4.jpg" } : (frameOptions.find((option) => option.id === frame) ?? frameOptions[0]);
 
   const hasHeadConnection =
     category === "person" || category === "pet" || category === "character";
@@ -437,6 +437,7 @@ export function CustomForm({
                     {bodyOptions.map((option) => (
                       <SelectionButton
                         key={option.id}
+                        image={option.image}
                         label={option.label}
                         price={option.priceLabel}
                         description={option.description}
@@ -452,6 +453,7 @@ export function CustomForm({
                     {headOptions.map((option) => (
                       <SelectionButton
                         key={option.id}
+                        image={option.image}
                         label={option.label}
                         price={option.priceLabel}
                         description={option.description}
@@ -644,10 +646,12 @@ function SelectionButton({
   label,
   price,
   description,
+  image,
   selected,
   onClick,
 }: {
   label: string;
+  image?: string;
   price: string;
   description: string;
   selected: boolean;
@@ -659,6 +663,7 @@ function SelectionButton({
       onClick={onClick}
       className={`rounded-xl border p-3 text-left transition ${selected ? "border-primary/60 bg-primary/[0.07]" : "border-border bg-surface hover:border-primary/35 hover:bg-surface-hover"}`}
     >
+      {image && <div className="mb-2 aspect-[4/3] overflow-hidden rounded-lg bg-surface-elevated"><img src={image} alt="" className="h-full w-full object-cover" /></div>}
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-semibold">{label}</p>
         <span className="text-[10px] font-medium text-primary">{price}</span>
