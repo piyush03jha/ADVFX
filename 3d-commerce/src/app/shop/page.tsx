@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
-import { ShopProductGrid } from "@/components/shop/ShopProductGrid";
 import { Navbar } from "@/components/layout/SiteNavbar";
+import { ShopListing } from "@/components/shop/ShopListing";
 
 export const metadata: Metadata = {
   title: "Shop 3D Models | Forma",
@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 interface ShopPageProps {
-  searchParams: Promise<{ category?: string; search?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
 export default async function ShopPage({ searchParams }: ShopPageProps) {
@@ -20,7 +20,7 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
     <>
       <Navbar />
       <main className="min-h-screen bg-background">
-        <ShopProductGrid activeCategory={params.category} initialSearch={params.search} />
+        <ShopListing searchParams={params} basePath="/shop" />
       </main>
     </>
   );
