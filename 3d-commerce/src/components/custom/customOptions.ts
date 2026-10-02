@@ -6,7 +6,6 @@ export const bodyOptions = [
 ];
 
 export const headOptions = [
-  { id: "bobble", label: "Bobble head", description: "Oversized head with a playful collectible feel.", addPrice: 500, priceLabel: "+₹500", image: "/catogeries/3.jpg" },
   { id: "stationary", label: "Stationary head", description: "Classic proportions with a natural head shape.", addPrice: 0, priceLabel: "Included", image: "/catogeries/4.jpg" },
 ];
 
