@@ -28,7 +28,12 @@ export class StorageService {
   }
 
   async saveProductFile(options: SaveProductFileOptions): Promise<StoredFile> {
-    return this.saveScopedFile(["products", options.productId.trim()], options.filename.trim(), options.buffer);
+    return this.saveScopedFile(
+      ["products", options.productId.trim()],
+      options.filename.trim(),
+      options.buffer,
+      true,
+    );
   }
 
   async saveCategoryImage(categoryId: string, filename: string, buffer: Buffer): Promise<StoredFile> {
@@ -63,7 +68,12 @@ export class StorageService {
     return this.saveScopedFile(["products", normalizedProductId, "bundles", normalizedBundleId], normalizedPath, buffer);
   }
 
-  private async saveScopedFile(segments: string[], originalName: string, buffer: Buffer): Promise<StoredFile> {
+  private async saveScopedFile(
+    segments: string[],
+    originalName: string,
+    buffer: Buffer,
+    exposeThroughAssetRoute = false,
+  ): Promise<StoredFile> {
     if (!originalName || !buffer?.length) throw new BadRequestException("File name and non-empty file are required");
 
     const extension = extname(originalName).toLowerCase();
@@ -95,10 +105,34 @@ export class StorageService {
       storageKey,
       storageUrl: this.publicBaseUrl
         ? `${this.publicBaseUrl}/${storageKey.split("/").map(encodeURIComponent).join("/")}`
-        : null,
+        : exposeThroughAssetRoute
+          ? this.getPublicAssetUrl(storageKey)
+          : null,
       storagePath: "",
       size: buffer.length,
     };
+  }
+
+  /** Browser-accessible URL for product assets stored in a private bucket. */
+  getPublicAssetUrl(storageKey: string): string {
+    const normalizedKey = this.normalizeRemoteKey(storageKey);
+    return `/api/assets/${normalizedKey.split("/").map(encodeURIComponent).join("/")}`;
+  }
+
+  getContentTypeForStorageKey(storageKey: string): string {
+    return this.contentType(extname(storageKey).toLowerCase());
+  }
+
+  private normalizeRemoteKey(storageKey: string): string {
+    const normalized = storageKey.replace(/\\/g, "/").replace(/^\/+/, "");
+    if (
+      !normalized ||
+      normalized.includes("\0") ||
+      normalized.split("/").some((segment) => segment === "." || segment === "..")
+    ) {
+      throw new BadRequestException("Invalid storage key");
+    }
+    return normalized;
   }
 
   async read(storageKey: string): Promise<Buffer> {
