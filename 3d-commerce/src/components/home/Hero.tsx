@@ -21,8 +21,9 @@ export function Hero() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const [initialRotationStart] = useState(() => Date.now());
   const isModelHeldRef = useRef(false);
-  const rotationStartedAtRef = useRef(Date.now());
+  const rotationStartedAtRef = useRef(initialRotationStart);
   const remainingTimeRef = useRef(HERO_MODEL_ROTATION_MS);
   const timeoutRef = useRef<number | null>(null);
 
