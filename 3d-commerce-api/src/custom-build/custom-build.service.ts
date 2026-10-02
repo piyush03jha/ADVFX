@@ -41,7 +41,6 @@ const BODY_BASE: Record<string, number> = {
 };
 
 const HEAD_ADD: Record<string, number> = {
-  bobble: 500,
   stationary: 0,
 };
 
