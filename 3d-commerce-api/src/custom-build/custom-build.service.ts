@@ -186,6 +186,17 @@ export class CustomBuildService {
   async updateConfigOption(id: string, dto: UpdateCustomBuildOptionDto) { return this.prisma.customBuildOption.update({ where: { id }, data: dto }); }
   async deleteConfigOption(id: string) { return this.prisma.customBuildOption.delete({ where: { id } }); }
 
+  async uploadConfigOptionImage(id: string, file: { originalname: string; mimetype: string; buffer: Buffer }) {
+    const option = await this.prisma.customBuildOption.findUnique({ where: { id } });
+    if (!option) throw new NotFoundException("Custom option not found");
+    if (!file.buffer?.length || file.buffer.length > 5 * 1024 * 1024) throw new BadRequestException("Option image must be between 1 byte and 5 MB");
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.mimetype)) throw new BadRequestException("Only JPG, PNG and WebP are supported");
+    const stored = await this.storage.saveCustomBuildOptionImage(id, file.originalname, file.buffer);
+    const updated = await this.prisma.customBuildOption.update({ where: { id }, data: { imageUrl: stored.storageUrl } });
+    if (option.imageUrl?.startsWith("/storage/")) { try { await this.storage.delete(option.imageUrl.replace(/^\/storage\//, "")); } catch {} }
+    return updated;
+  }
+
   async uploadConfigCategoryImage(id: string, file: { originalname: string; mimetype: string; buffer: Buffer }) {
     const category = await this.prisma.customBuildCategory.findUnique({ where: { id } });
     if (!category) throw new NotFoundException("Custom category not found");
