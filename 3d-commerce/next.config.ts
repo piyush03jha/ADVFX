@@ -4,8 +4,13 @@ const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
   images: {
-    // Product/category images are served through the /storage proxy and /public.
-    localPatterns: [{ pathname: "/storage/**" }, { pathname: "/catogeries/**" }],
+    // Product/category images can be local files or private product assets
+    // exposed through the same-origin /api/assets proxy.
+    localPatterns: [
+      { pathname: "/storage/**" },
+      { pathname: "/catogeries/**" },
+      { pathname: "/api/assets/**" },
+    ],
     formats: ["image/avif", "image/webp"],
     deviceSizes: [360, 480, 640, 768, 1024, 1280, 1536],
     imageSizes: [96, 160, 256, 384],
@@ -14,4 +19,4 @@ const nextConfig: NextConfig = {
 
 export default nextConfig;
 
-import('@opennextjs/cloudflare').then(m => m.initOpenNextCloudflareForDev());
+import("@opennextjs/cloudflare").then((m) => m.initOpenNextCloudflareForDev());
