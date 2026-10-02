@@ -69,3 +69,9 @@ VALUES
 ('cbopt_person_size_20','cbcat_person','size','20','20 cm','',0,1.35,3,true,CURRENT_TIMESTAMP),
 ('cbopt_person_size_25','cbcat_person','size','25','25 cm','',0,1.75,4,true,CURRENT_TIMESTAMP),
 ('cbopt_person_size_30','cbcat_person','size','30','30 cm','',0,2.15,5,true,CURRENT_TIMESTAMP);
+
+INSERT INTO "CustomBuildOption" ("id","categoryId","section","slug","name","description","priceMinor","multiplier","sortOrder","isActive","updatedAt")
+SELECT 'cbopt_' || c.slug || '_size_' || s.slug, c.id, 'size', s.slug, s.name, '', 0, s.multiplier, s.sortOrder, true, CURRENT_TIMESTAMP
+FROM "CustomBuildCategory" c
+CROSS JOIN (VALUES ('8','8 cm',0.75,0),('12','12 cm',0.9,1),('15','15 cm',1,2),('20','20 cm',1.35,3),('25','25 cm',1.75,4),('30','30 cm',2.15,5)) AS s(slug,name,multiplier,sortOrder)
+WHERE c.slug <> 'person';
