@@ -87,7 +87,7 @@ export class CustomBuildService {
     }
 
     if (input.category === "person") {
-      if (!input.bodyType || !input.headType || !input.subjectType) {
+      if (!input.bodyType || !input.subjectType) {
         throw new BadRequestException(
           "Person custom builds require body type, head type and subject type",
         );
@@ -110,26 +110,12 @@ export class CustomBuildService {
 
       const base =
         BODY_BASE[input.bodyType] +
-        HEAD_ADD[input.headType] +
         SUBJECT_ADD[input.subjectType];
 
       return Math.round(base * multiplier);
     }
 
-    if (
-      (input.category === "pet" || input.category === "character") &&
-      !input.headType
-    ) {
-      throw new BadRequestException("This category requires a head type");
-    }
-
-    return Math.round(
-      (CATEGORY_BASE[input.category] +
-        (input.category === "pet" || input.category === "character"
-          ? HEAD_ADD[input.headType ?? "stationary"]
-          : 0)) *
-        multiplier,
-    );
+    return Math.round(CATEGORY_BASE[input.category] * multiplier);
   }
 
   async quote(input: CustomPricingInput) {
@@ -151,15 +137,10 @@ export class CustomBuildService {
     let baseMinor = category.basePriceMinor;
     const selected: any[] = [];
     if (category.slug === "person") {
-      const body = by("body", input.bodyType), head = by("head", input.headType), frame = by("frame", input.subjectType);
-      if (!body || !head || !frame) throw new BadRequestException("Person build has an invalid configuration");
-      baseMinor = body.priceMinor + head.priceMinor + frame.priceMinor;
-      selected.push(body, head, frame);
-    } else if (input.headType) {
-      const head = by("head", input.headType);
-      if (!head) throw new BadRequestException("Invalid head configuration");
-      baseMinor += head.priceMinor; selected.push(head);
-    }
+      const body = by("body", input.bodyType), frame = by("frame", input.subjectType);
+      if (!body || !frame) throw new BadRequestException("Person build has an invalid configuration");
+      baseMinor = body.priceMinor + frame.priceMinor;
+      selected.push(body, frame);
     return {
       amountMinor: Math.round(baseMinor * size.multiplier), currency: category.currency,
       breakdown: { category: category.slug, categoryName: category.name, bodyType: input.bodyType ?? null, headType: input.headType ?? null, subjectType: input.subjectType ?? null, personCount: input.personCount ?? null, petCount: input.petCount ?? null, sizeCm: input.sizeCm, multiplier: size.multiplier, selectedOptions: selected.map((o) => ({ section: o.section, slug: o.slug, name: o.name, priceMinor: o.priceMinor })) },
