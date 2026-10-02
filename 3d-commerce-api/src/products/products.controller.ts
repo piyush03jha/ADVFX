@@ -24,11 +24,15 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { UpsertPriceDto } from './dto/upsert-price.dto';
 import { UpsertVariantDto } from './dto/upsert-variant.dto';
 import { ProductsService } from './products.service';
+import { StorageService } from '../storage/storage.service';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
 @Controller('products')
 export class ProductsController {
-  constructor(private readonly productsService: ProductsService) {}
+  constructor(
+    private readonly productsService: ProductsService,
+    private readonly storage: StorageService,
+  ) {}
 
   @Get()
   findAll() {
@@ -229,11 +233,33 @@ export class ProductsController {
   }
 
   @Get(':id/media/:mediaId/file')
-  async getMediaFile(@Param('id') id: string, @Param('mediaId') mediaId: string, @Res() reply: FastifyReply) {
+  async getMediaFile(
+    @Param('id') id: string,
+    @Param('mediaId') mediaId: string,
+    @Res() reply: FastifyReply,
+  ) {
     const media = await this.productsService.getMediaFile(id, mediaId);
 
     if (/^https?:\/\//i.test(media.url)) {
       return reply.redirect(media.url);
+    }
+
+    if (media.url.startsWith('/api/assets/')) {
+      const encodedKey = media.url.slice('/api/assets/'.length);
+      const storageKey = encodedKey
+        .split('/')
+        .map((segment) => decodeURIComponent(segment))
+        .join('/');
+
+      if (!storageKey.startsWith(`products/${id}/`)) {
+        throw new BadRequestException('Invalid product media path');
+      }
+
+      const buffer = await this.storage.read(storageKey);
+      return new StreamableFile(buffer, {
+        type: this.storage.getContentTypeForStorageKey(storageKey),
+        length: buffer.length,
+      });
     }
 
     const storageKey = media.url.replace(/^\/storage\//, '');
