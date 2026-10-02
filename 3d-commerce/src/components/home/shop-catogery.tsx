@@ -133,7 +133,7 @@ function CategoryCard({
 }) {
   return (
     <Link
-      href={`/shop?category=${encodeURIComponent(category.name)}`}
+      href={`/shop?category=${encodeURIComponent(category.slug)}`}
       className="group block"
     >
       <Card
