@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { IconCheck, IconChevronDown, IconStar } from "@tabler/icons-react";
 import {
@@ -8,11 +8,13 @@ import {
   calculateCategoryPrice,
   calculatePrice,
   frameOptions,
-  headOptions,
   processSteps,
   sizeOptions,
 } from "./customOptions";
 import { CustomUploadZone } from "./CustomUploadZone";
+
+type ConfigOption = { id:string; section:string; slug:string; name:string; description?:string|null; imageUrl?:string|null; priceMinor:number; multiplier?:number|null; sortOrder:number; isActive:boolean };
+type ConfigCategory = { id:string; slug:CustomCategory; name:string; description?:string|null; imageUrl?:string|null; basePriceMinor:number; options:ConfigOption[] };
 
 export type CustomCategory =
   | "person"
@@ -42,7 +44,6 @@ interface CustomFormProps {
 
 const gallery = [
   { id: "full", label: "Full body", image: "/catogeries/2.jpg" },
-  { id: "bobble", label: "Bobble head", image: "/catogeries/3.jpg" },
   { id: "half", label: "Half body", image: "/catogeries/1.jpg" },
   { id: "stationary", label: "Stationary head", image: "/catogeries/4.jpg" },
 ];
@@ -53,7 +54,7 @@ const categories: Array<{
   description: string;
   image: string;
 }> = [
-  { id: "person", label: "Person", description: "Portraits, figurines & bobble heads", image: "/catogeries/2.jpg" },
+  { id: "person", label: "Person", description: "Portraits and figurines", image: "/catogeries/2.jpg" },
   { id: "pet", label: "Pet / Animal", description: "Turn your companion into a keepsake", image: "/catogeries/1.jpg" },
   { id: "object", label: "Product / Object", description: "Replicas, parts, sculptures & more", image: "/catogeries/4.jpg" },
   { id: "vehicle", label: "Vehicle", description: "Cars, bikes and display models", image: "/catogeries/2.jpg" },
@@ -72,6 +73,7 @@ export function CustomForm({
   const [size, setSize] = useState("15");
   const [frame, setFrame] = useState("single");
   const [files, setFiles] = useState<File[]>([]);
+  const [modelFile, setModelFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState("");
   const [details, setDetails] = useState("");
   const [activeImage, setActiveImage] = useState(0);
@@ -80,39 +82,42 @@ export function CustomForm({
   const [serverPrice, setServerPrice] = useState<number | null>(null);
   const [pricingError, setPricingError] = useState<string | null>(null);
   const [pricingLoading, setPricingLoading] = useState(false);
+  const [config, setConfig] = useState<{categories:ConfigCategory[];sizeOptions:ConfigOption[]}|null>(null);
   const router = useRouter();
 
+  useEffect(() => { void fetch("/api/custom-requests/config",{cache:"no-store"}).then(r=>r.ok?r.json():null).then((d)=>{ if(d?.categories) setConfig(d); }).catch(()=>{}); }, []);
+
+  const configuredCategory = config?.categories.find((option) => option.slug === category);
+  const configured = (section:string, slug:string|undefined) => configuredCategory?.options.find((option)=>option.section===section && option.slug===slug);
   const selectedBody =
-    bodyOptions.find((option) => option.id === body) ?? bodyOptions[1];
-  const selectedHead =
-    headOptions.find((option) => option.id === head) ?? headOptions[0];
-  const selectedSize =
-    sizeOptions.find((option) => option.value === size) ?? sizeOptions[2];
+    configured("body", body) ? { id: body, label: configured("body", body)!.name, description: configured("body", body)!.description ?? "", basePrice: configured("body", body)!.priceMinor / 100, image: configured("body", body)!.imageUrl ?? "/catogeries/1.jpg" } : (bodyOptions.find((option) => option.id === body) ?? bodyOptions[1]);
+  const configuredSize = config?.sizeOptions.find((option) => option.slug === size);
+  const selectedSize = configuredSize ? { value: size, label: configuredSize.name, multiplier: configuredSize.multiplier ?? 1 } : (sizeOptions.find((option) => option.value === size) ?? sizeOptions[2]);
   const selectedFrame =
-    frameOptions.find((option) => option.id === frame) ?? frameOptions[0];
+    configured("frame", frame) ? { id: frame, label: configured("frame", frame)!.name, description: configured("frame", frame)!.description ?? "", addPrice: configured("frame", frame)!.priceMinor / 100, image: configured("frame", frame)!.imageUrl ?? "/catogeries/4.jpg" } : (frameOptions.find((option) => option.id === frame) ?? frameOptions[0]);
 
-  const hasBobbleHead =
-    category === "person" || category === "pet" || category === "character";
   const isPerson = category === "person";
-  const selectedCategory =
-    categories.find((option) => option.id === category) ?? categories[0];
+  const rawCategory = config?.categories.find((option) => option.slug === category);
+  const selectedCategory = rawCategory
+    ? {
+        label: rawCategory.name,
+        description: rawCategory.description ?? "",
+        image: rawCategory.imageUrl || "/catogeries/4.jpg",
+      }
+    : (categories.find((option) => option.id === category) ?? categories[0]);
 
-  const localPrice = useMemo(
-    () =>
-      isPerson
-        ? calculatePrice({
-            body: selectedBody,
-            head: selectedHead,
-            frame: selectedFrame,
-            size: selectedSize,
-          })
-        : calculateCategoryPrice({
-            category,
-            head: selectedHead,
-            size: selectedSize,
-          }),
-    [category, isPerson, selectedBody, selectedFrame, selectedHead, selectedSize],
-  );
+  const localPrice = isPerson
+    ? calculatePrice({
+        body: selectedBody,
+        head: { addPrice: 0 },
+        frame: selectedFrame,
+        size: selectedSize,
+      })
+    : calculateCategoryPrice({
+        category,
+        head: { addPrice: 0 },
+        size: selectedSize,
+      });
 
   useEffect(() => {
     let cancelled = false;
@@ -125,7 +130,6 @@ export function CustomForm({
       body: JSON.stringify({
         category,
         bodyType: isPerson ? body : undefined,
-        headType: hasBobbleHead ? head : undefined,
         subjectType: isPerson ? frame : undefined,
         sizeCm: Number(size),
       }),
@@ -156,38 +160,30 @@ export function CustomForm({
     return () => {
       cancelled = true;
     };
-  }, [category, body, frame, hasBobbleHead, head, isPerson, size]);
+  }, [category, body, frame, isPerson, size]);
 
   const price = serverPrice ?? localPrice;
 
+  const displayCategories = config?.categories.map((item) => ({ id: item.slug, label: item.name, description: item.description ?? "", image: item.imageUrl || "/catogeries/4.jpg" })) ?? categories;
   const hasReference = files.length > 0;
-  const activeGallery = gallery[activeImage];
-
-  function showGalleryImage(id: string) {
-    const index = gallery.findIndex((item) => item.id === id);
-    if (index >= 0) setActiveImage(index);
-  }
+  const [previewImage, setPreviewImage] = useState(selectedCategory.image);
+  const [previewLabel, setPreviewLabel] = useState(selectedCategory.label);
+  const activeGallery = { id: "selected", label: previewLabel, image: previewImage };
 
   function selectCategory(value: CustomCategory) {
     setCategory(value);
-    if (value === "person") showGalleryImage(body);
-    else if (value === "pet" || value === "character") showGalleryImage("bobble");
-    else {
-      setActiveImage(
-        Math.max(0, categories.findIndex((item) => item.id === value)) %
-          gallery.length,
-      );
-    }
+    const nextCategory = config?.categories.find((item) => item.slug === value);
+    setPreviewImage(nextCategory?.imageUrl || categories.find((item) => item.id === value)?.image || "/catogeries/4.jpg");
+    setPreviewLabel(nextCategory?.name || categories.find((item) => item.id === value)?.label || value);
   }
 
   function handleBodyChange(value: string) {
     onBodyChange(value);
-    if (isPerson) showGalleryImage(value);
-  }
-
-  function handleHeadChange(value: string) {
-    onHeadChange(value);
-    if (isPerson || hasBobbleHead) showGalleryImage(value);
+    if (isPerson) {
+      const option = configured("body", value);
+      setPreviewImage(option?.imageUrl || bodyOptions.find((item) => item.id === value)?.image || selectedCategory.image);
+      setPreviewLabel(option?.name || bodyOptions.find((item) => item.id === value)?.label || value);
+    }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -203,7 +199,6 @@ export function CustomForm({
       const requirements = [
         `Category: ${selectedCategory.label}`,
         `Body type: ${isPerson ? selectedBody.label : "Not applicable"}`,
-        `Head connection: ${hasBobbleHead ? selectedHead.label : "Not applicable"}`,
         `Person in frame: ${isPerson ? selectedFrame.label : "Not applicable"}`,
         `Size: ${selectedSize.label}`,
         details.trim() ? `Additional requirements:\\n${details.trim()}` : "",
@@ -223,7 +218,6 @@ export function CustomForm({
           notes: details.trim() || undefined,
           category,
           bodyType: isPerson ? body : undefined,
-          headType: hasBobbleHead ? head : undefined,
           subjectType: isPerson ? frame : undefined,
           personCount:
             frame === "single" ? 1 : frame === "couple" ? 2 : frame === "group" ? 3 : 1,
@@ -274,12 +268,34 @@ export function CustomForm({
         }
       }
 
+      if (modelFile) {
+        const formData = new FormData();
+        formData.append("file", modelFile);
+
+        const uploadResponse = await fetch(
+          `/api/custom-requests/${encodeURIComponent(requestBody.id)}/files`,
+          { method: "POST", body: formData },
+        );
+        const uploadBody = (await uploadResponse.json().catch(() => null)) as
+          | { message?: string | string[]; error?: string }
+          | null;
+        if (!uploadResponse.ok) {
+          const message =
+            uploadBody && "message" in uploadBody
+              ? Array.isArray(uploadBody.message)
+                ? uploadBody.message[0]
+                : uploadBody.message ?? "Unable to upload your 3D reference."
+              : uploadBody?.error ?? "Unable to upload your 3D reference.";
+          throw new Error(message);
+        }
+      }
+
       onSubmit({
         requestId: requestBody.id,
         category,
         price,
         bodyLabel: isPerson ? selectedBody.label : "Not applicable",
-        headLabel: hasBobbleHead ? selectedHead.label : "Not applicable",
+        headLabel: "Default",
         sizeLabel: selectedSize.label,
         frameLabel: isPerson ? selectedFrame.label : "Not applicable",
       });
@@ -294,10 +310,6 @@ export function CustomForm({
     }
   }
 
-  const nextImage = () =>
-    setActiveImage((current) => (current + 1) % gallery.length);
-  const previousImage = () =>
-    setActiveImage((current) => (current - 1 + gallery.length) % gallery.length);
 
   return (
     <form onSubmit={handleSubmit} className="mx-auto max-w-[1380px]">
@@ -315,10 +327,10 @@ export function CustomForm({
             <div className="absolute left-4 top-4 rounded-full border border-white/15 bg-foreground/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-foreground/80 backdrop-blur-md">
               Custom 3D Studio
             </div>
-            <button type="button" onClick={previousImage} aria-label="Previous product example" className="absolute left-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl border border-white/15 bg-black/35 text-white backdrop-blur-md sm:left-5">
+            <button type="button" disabled aria-label="Previous product example" className="absolute left-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl border border-white/15 bg-black/35 text-white backdrop-blur-md sm:left-5">
               <span className="text-xl">‹</span>
             </button>
-            <button type="button" onClick={nextImage} aria-label="Next product example" className="absolute right-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl border border-white/15 bg-black/35 text-white backdrop-blur-md sm:right-5">
+            <button type="button" disabled aria-label="Next product example" className="absolute right-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl border border-white/15 bg-black/35 text-white backdrop-blur-md sm:right-5">
               <span className="text-xl">›</span>
             </button>
             <div className="absolute bottom-4 left-4 right-4 sm:bottom-5 sm:left-5 sm:right-5">
@@ -331,24 +343,7 @@ export function CustomForm({
             </div>
           </div>
 
-          <div className="mt-3 grid shrink-0 grid-cols-4 gap-2 sm:mt-4 sm:gap-3">
-            {gallery.map((item, index) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setActiveImage(index)}
-                aria-label={`Show ${item.label} example`}
-                className={`relative aspect-[4/3] overflow-hidden rounded-xl border transition ${activeImage === index ? "border-primary ring-1 ring-primary/30" : "border-white/10 opacity-65 hover:opacity-100"}`}
-              >
-                <img src={item.image} alt="" className="h-full w-full object-cover" />
-                {activeImage === index && (
-                  <span className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-white">
-                    <IconCheck size={12} />
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
+
         </div>
 
         <div className="flex flex-col bg-surface/80 p-5 sm:p-7 lg:max-h-[calc(100svh-120px)] lg:overflow-y-auto lg:p-9">
@@ -375,7 +370,7 @@ export function CustomForm({
           <div className="mt-6 space-y-6">
             <CompactSection label="What would you like to create?" hint={selectedCategory.label}>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {categories.map((option) => (
+                {displayCategories.map((option) => (
                   <button
                     key={option.id}
                     type="button"
@@ -415,48 +410,7 @@ export function CustomForm({
                     ))}
                   </div>
                 </CompactSection>
-
-                <CompactSection label="Head connection">
-                  <div className="grid grid-cols-2 gap-2">
-                    {headOptions.map((option) => (
-                      <SelectionButton
-                        key={option.id}
-                        label={option.label}
-                        price={option.priceLabel}
-                        description={option.description}
-                        selected={head === option.id}
-                        onClick={() => handleHeadChange(option.id)}
-                      />
-                    ))}
-                  </div>
-                </CompactSection>
-
-                <CompactSection label="Person in frame">
-                  <div className="relative">
-                    <select value={frame} onChange={(event) => setFrame(event.target.value)} className="h-12 w-full appearance-none rounded-xl border border-border bg-surface px-3.5 pr-10 text-sm font-medium outline-none focus:border-primary/60">
-                      {frameOptions.map((option) => (
-                        <option key={option.id} value={option.id}>{option.label} — {option.priceLabel}</option>
-                      ))}
-                    </select>
-                    <IconChevronDown size={17} className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-muted" />
-                  </div>
-                </CompactSection>
               </>
-            ) : hasBobbleHead ? (
-              <CompactSection label="Head connection" hint="Available">
-                <div className="grid grid-cols-2 gap-2">
-                  {headOptions.map((option) => (
-                    <SelectionButton
-                      key={option.id}
-                      label={option.label}
-                      price={option.priceLabel}
-                      description={option.description}
-                      selected={head === option.id}
-                      onClick={() => handleHeadChange(option.id)}
-                    />
-                  ))}
-                </div>
-              </CompactSection>
             ) : (
               <div className="rounded-2xl border border-border bg-surface/45 p-4">
                 <p className="text-xs font-semibold">
@@ -470,7 +424,7 @@ export function CustomForm({
 
             <CompactSection label="Size">
               <div className="relative">
-                <select value={size} onChange={(event) => setSize(event.target.value)} className="h-12 w-full appearance-none rounded-xl border border-border bg-surface px-3.5 pr-10 text-sm font-medium outline-none focus:border-primary/60">
+                <select value={size} onChange={(event) => { const value = event.target.value; setSize(value); const option = config?.sizeOptions.find((item) => item.slug === value); setPreviewImage(option?.imageUrl || selectedCategory.image); setPreviewLabel(option?.name || `${value} cm`); }} className="h-12 w-full appearance-none rounded-xl border border-border bg-surface px-3.5 pr-10 text-sm font-medium outline-none focus:border-primary/60">
                   {sizeOptions.map((option) => (
                     <option key={option.value} value={option.value}>{option.label}</option>
                   ))}
@@ -509,7 +463,7 @@ export function CustomForm({
             </p>
             <h3 className="mt-1 text-lg font-semibold">Upload reference photos</h3>
             <p className="mt-1 text-xs leading-5 text-muted">
-              For people and pets, front, back, left and right JPG/PNG views give us the best likeness.
+              Add up to 5 JPG/PNG reference images (50 MB total). You can also provide one 3D reference file up to 100 MB.
             </p>
           </div>
 
@@ -517,6 +471,8 @@ export function CustomForm({
             <CustomUploadZone
               files={files}
               onFilesChange={setFiles}
+              modelFile={modelFile}
+              onModelFileChange={setModelFile}
               error={fileError}
               onErrorChange={setFileError}
             />
@@ -611,10 +567,12 @@ function SelectionButton({
   label,
   price,
   description,
+  image,
   selected,
   onClick,
 }: {
   label: string;
+  image?: string;
   price: string;
   description: string;
   selected: boolean;
@@ -626,6 +584,7 @@ function SelectionButton({
       onClick={onClick}
       className={`rounded-xl border p-3 text-left transition ${selected ? "border-primary/60 bg-primary/[0.07]" : "border-border bg-surface hover:border-primary/35 hover:bg-surface-hover"}`}
     >
+      {image && <div className="mb-2 aspect-[4/3] overflow-hidden rounded-lg bg-surface-elevated"><img src={image} alt="" className="h-full w-full object-cover" /></div>}
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-semibold">{label}</p>
         <span className="text-[10px] font-medium text-primary">{price}</span>

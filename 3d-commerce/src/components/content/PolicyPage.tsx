@@ -1,18 +1,30 @@
 import Link from "next/link";
 
 type Section={title:string;body:string};
+type LiveContent={intro?:unknown;contactEmail?:unknown;sections?:unknown};
+function isSection(value: unknown): value is Section {
+  if (!value || typeof value !== "object") return false;
+  const item = value as Record<string, unknown>;
+  return typeof item.title === "string" && typeof item.body === "string";
+}
 export async function PolicyPage({
   eyebrow,title,intro,sections,contentKey,
 }:{eyebrow:string;title:string;intro:string;sections:Section[];contentKey?:string}) {
-  let live:any=null;
+  let live:LiveContent|null=null;
   if(contentKey){
     try{
       const api=process.env.BACKEND_API_URL||"http://localhost:4000";
       const r=await fetch(api+"/site-content/"+contentKey,{cache:"no-store"});
-      if(r.ok) live=(await r.json()).value;
+      if(r.ok){
+        const payload=await r.json();
+        if(payload && typeof payload==="object" && "value" in payload){
+          const value=(payload as {value?:unknown}).value;
+          if(value && typeof value==="object") live=value as LiveContent;
+        }
+      }
     }catch{}
   }
-  const liveSections=Array.isArray(live?.sections)?live.sections.filter((x:any)=>x?.title&&x?.body):null;
+  const liveSections=Array.isArray(live?.sections)?live.sections.filter(isSection):null;
   const renderedSections:Section[]=liveSections?.length?liveSections:sections;
   const renderedIntro=typeof live?.intro==="string"&&live.intro.trim()?live.intro:intro;
   const email=typeof live?.contactEmail==="string"&&live.contactEmail.trim()?live.contactEmail:"hello@voxel3d.in";

@@ -10,6 +10,7 @@ import { ProductFilesModule } from '../product-files/product-files.module';
 import { CustomBuildController } from './custom-build.controller';
 import { CustomBuildFilesController } from './custom-build.files.controller';
 import { CustomBuildService } from './custom-build.service';
+import { CustomBuildAdminController } from './custom-build.admin.controller';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { CustomBuildService } from './custom-build.service';
   controllers: [
     CustomBuildController,
     CustomBuildFilesController,
+    CustomBuildAdminController,
   ],
 
   providers: [CustomBuildService],

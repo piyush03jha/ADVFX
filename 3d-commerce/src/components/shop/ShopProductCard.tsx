@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -14,12 +15,22 @@ import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 
 import type { StorefrontProduct } from "@/lib/catalog-api";
+import { resolveMediaUrl } from "@/lib/media-url";
 
 interface ShopProductCardProps {
   product: StorefrontProduct;
+  /** Load eagerly (first row, above the fold) instead of lazily. */
+  priority?: boolean;
 }
 
-export function ShopProductCard({ product }: ShopProductCardProps) {
+export function ShopProductCard({ product, priority = false }: ShopProductCardProps) {
+  const imageSrc = resolveMediaUrl(product.image) ?? "/catogeries/1.jpg";
+  // The optimizer only allows configured local paths without query strings;
+  // anything else (remote CDN, signed URLs) is served as-is.
+  const optimizable =
+    imageSrc.startsWith("/") && !imageSrc.includes("?") &&
+    (imageSrc.startsWith("/storage/") || imageSrc.startsWith("/catogeries/"));
+
   const router = useRouter();
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const { addItem } = useCart();
@@ -79,12 +90,16 @@ export function ShopProductCard({ product }: ShopProductCardProps) {
   return (
     <Card interactive className="group h-full rounded-2xl">
       <div className="relative aspect-[0.88/1] overflow-hidden bg-[#0c0c0c]">
-        <Link href={`/product/${product.slug}`} className="block h-full">
-          <img
-            src={product.image}
+        <Link href={`/product/${product.slug}`} className="relative block h-full">
+          <Image
+            src={imageSrc}
             alt={product.name}
-            loading="lazy"
-            className="h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-105"
+            fill
+            sizes="(min-width: 1280px) 25vw, (min-width: 768px) 33vw, 50vw"
+            priority={priority}
+            loading={priority ? undefined : "lazy"}
+            unoptimized={!optimizable}
+            className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-105"
           />
         </Link>
 
@@ -116,28 +131,26 @@ export function ShopProductCard({ product }: ShopProductCardProps) {
         )}
       </div>
 
-      <div className="p-4 sm:p-5">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-[9px] font-medium uppercase tracking-[0.16em] text-muted">
-            {product.category}
-          </p>
-
-          <div className="flex shrink-0 items-center gap-2">
-            <Price value={product.price} size="sm" />
-
-            {product.oldPrice !== undefined && (
-              <span className="text-[10px] text-muted line-through">
-                ₹{product.oldPrice.toLocaleString("en-IN")}
-              </span>
-            )}
-          </div>
-        </div>
+      <div className="p-3 sm:p-4 lg:p-5">
+        <p className="text-[9px] font-medium uppercase tracking-[0.16em] text-muted">
+          {product.category}
+        </p>
 
         <Link href={`/product/${product.slug}`} className="block">
-          <h3 className="mt-1.5 min-h-[2.5rem] text-sm font-medium leading-5 tracking-[-0.015em] text-foreground transition-colors hover:text-primary-hover">
+          <h3 className="mt-1.5 line-clamp-2 min-h-[2.5rem] text-sm font-medium leading-5 tracking-[-0.015em] text-foreground transition-colors hover:text-primary-hover">
             {product.name}
           </h3>
         </Link>
+
+        <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+          <Price value={product.price} size="sm" />
+
+          {product.oldPrice !== undefined && (
+            <span className="text-[10px] text-muted line-through">
+              ₹{product.oldPrice.toLocaleString("en-IN")}
+            </span>
+          )}
+        </div>
 
         <Rating
           value={product.rating}
@@ -152,24 +165,24 @@ export function ShopProductCard({ product }: ShopProductCardProps) {
           </p>
         ) : null}
 
-        <div className="mt-4 grid grid-cols-2 gap-2">
+        <div className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-2">
           <Button
             type="button"
             variant="primary"
             size="lg"
             onClick={handleAddToCart}
-            className="min-h-12 w-full text-xs font-semibold sm:text-sm"
+            className="min-h-11 w-full text-xs font-semibold sm:text-sm"
           >
             {added ? "Added" : "Add to Cart"}
           </Button>
 
           <Button
             type="button"
-            variant="primary"
+            variant="outline"
             size="lg"
             onClick={handleBuyNow}
             disabled={buying}
-            className="min-h-12 w-full text-xs font-semibold sm:text-sm"
+            className="min-h-11 w-full text-xs font-semibold sm:text-sm"
           >
             {buying ? "Opening…" : "Buy Now"}
           </Button>

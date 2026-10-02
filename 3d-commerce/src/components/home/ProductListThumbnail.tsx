@@ -13,6 +13,7 @@ import {
 } from "@react-three/drei";
 
 import * as THREE from "three";
+import { useIntroDone } from "@/lib/introGate";
 
 interface ProductListThumbnailProps {
   model: string;
@@ -80,6 +81,7 @@ function Loading() {
 export function ProductListThumbnail({
   model,
 }: ProductListThumbnailProps) {
+  const introDone = useIntroDone();
   if (!model) {
     return (
       <div
@@ -111,6 +113,7 @@ export function ProductListThumbnail({
         bg-[#0b0b0b]
       "
     >
+      {introDone && (
       <Canvas
         camera={{
           position: [0, 0, 5],
@@ -137,6 +140,7 @@ export function ProductListThumbnail({
           <Model model={model} />
         </Suspense>
       </Canvas>
+      )}
     </div>
   );
 }

@@ -10,6 +10,7 @@ import {
   useGLTF,
 } from "@react-three/drei";
 import * as THREE from "three";
+import { useIntroDone } from "@/lib/introGate";
 
 import type { StorefrontProduct } from "@/lib/catalog-api";
 
@@ -91,6 +92,7 @@ function LoadingModel() {
 export function ProductCard3D({
   product,
 }: ProductCard3DProps) {
+  const introDone = useIntroDone();
   if (!product.model) {
     return (
       <div
@@ -139,6 +141,7 @@ export function ProductCard3D({
         "
       />
 
+      {introDone && (
       <Canvas
         camera={{
           position: [0, 0.2, 6],
@@ -173,6 +176,7 @@ export function ProductCard3D({
           <Model path={product.model} />
         </Suspense>
       </Canvas>
+      )}
     </div>
   );
 }

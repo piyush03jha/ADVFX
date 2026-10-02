@@ -65,6 +65,9 @@ export interface CatalogProduct {
   isFeatured: boolean;
   isTrending: boolean;
   isBestseller: boolean;
+  /** Present on paginated shop listings (aggregated from published reviews). */
+  rating?: number;
+  reviewCount?: number;
   badge?: string | null;
   material?: string | null;
   scale?: string | null;

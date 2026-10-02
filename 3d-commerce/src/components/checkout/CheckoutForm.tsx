@@ -162,7 +162,7 @@ export function CheckoutForm({
         <SectionHeading
           number="01"
           title="Contact information"
-          description="We'll use this for order confirmation and delivery updates."
+          description="We&apos;ll use this for order confirmation and delivery updates."
         />
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           <Field
@@ -322,7 +322,7 @@ export function CheckoutForm({
               Your payment is protected
             </p>
             <p className="mt-1 text-[11px] leading-5 text-muted">
-              You'll review the final amount and choose a payment method on the secure payment step.
+              You&apos;ll review the final amount and choose a payment method on the secure payment step.
             </p>
           </div>
         </div>

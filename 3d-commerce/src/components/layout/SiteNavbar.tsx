@@ -25,7 +25,6 @@ import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 import type { HeroProduct } from "@/config/hero-products";
 import { useAuth } from "@/context/AuthContext";
-import { getBackendApiUrl } from "@/lib/backend-api";
 
 const navItems = [
   { name: "Home", link: "/" },
@@ -61,7 +60,7 @@ export function Navbar() {
     const loadSearchProducts = async () => {
       try {
         const response = await fetch(
-          getBackendApiUrl("products"),
+          "/api/products",
           { cache: "no-store" },
         );
 

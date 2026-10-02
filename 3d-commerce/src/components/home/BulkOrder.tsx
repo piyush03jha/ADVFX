@@ -16,7 +16,7 @@ export function BulkOrder() {
   const reduceMotion = useReducedMotion();
 
   return (
-    <section className="relative overflow-hidden border-y border-border/70 py-14 sm:py-20 lg:py-28">
+    <section id="bulk-order" className="relative scroll-mt-28 overflow-hidden border-y border-border/70 py-14 sm:py-20 lg:py-28">
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_82%_35%,rgba(139,92,246,0.12),transparent_34%),radial-gradient(circle_at_15%_80%,rgba(59,130,246,0.07),transparent_30%)]" />
       <Container>
         <div className="grid gap-10 lg:grid-cols-[1fr_1.05fr] lg:items-center lg:gap-20">

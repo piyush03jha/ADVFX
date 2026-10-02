@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { Footer } from "@/components/layout/Footer";
 import { WhatsAppBot } from "@/components/layout/WhatsAppBot";
+import { LogoIntro } from "@/components/intro/LogoIntro";
 
 export function SiteChrome() {
   const pathname = usePathname();
@@ -11,6 +12,7 @@ export function SiteChrome() {
 
   return (
     <>
+      <LogoIntro />
       <WhatsAppBot />
       <Footer />
     </>

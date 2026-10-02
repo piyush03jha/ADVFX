@@ -12,6 +12,7 @@ const nav=[
   {href:"/admin/products",label:"Catalog",icon:IconPackage},
   {href:"/admin/catalog-tools",label:"Catalog operations",icon:IconClipboardList},
   {href:"/admin/categories",label:"Categories",icon:IconCategory},
+  {href:"/admin/custom-products",label:"Custom products",icon:IconCategory},
   {href:"/admin/orders",label:"Orders",icon:IconShoppingBag},
   {href:"/admin/custom-requests",label:"Custom requests",icon:IconChartBar},
   {href:"/admin/customers",label:"Customers",icon:IconUsers},

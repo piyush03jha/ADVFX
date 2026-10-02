@@ -14,9 +14,25 @@ import { ProductFileFormat } from '@prisma/client';
 import { StorageService } from '../storage/storage.service';
 
 const REFERENCE_MIME_TYPES = new Set(['image/jpeg', 'image/png']);
+const MODEL_EXTENSIONS = new Set([
+  'glb',
+  'gltf',
+  'obj',
+  'ply',
+  'stl',
+  'fbx',
+  'bvh',
+  'abc',
+  'usd',
+  'usda',
+  'usdc',
+  'usdz',
+]);
 const MAX_REFERENCE_FILES = 5;
 const MAX_REFERENCE_FILE_SIZE = 15 * 1024 * 1024;
 const MAX_REFERENCE_TOTAL_SIZE = 50 * 1024 * 1024;
+const MAX_MODEL_FILES = 1;
+const MAX_MODEL_FILE_SIZE = 100 * 1024 * 1024;
 
 @Controller('custom-requests/:requestId/files')
 export class CustomBuildFilesController {
@@ -41,49 +57,94 @@ export class CustomBuildFilesController {
     });
     if (!request) throw new BadRequestException('Custom request not found');
 
-    const referenceCount = await this.prisma.customRequestMedia.count({
-      where: { customRequestId: requestId },
-    });
-    if (referenceCount >= MAX_REFERENCE_FILES) {
-      throw new BadRequestException(
-        `A custom request can contain at most ${MAX_REFERENCE_FILES} reference images.`,
-      );
-    }
+    const uploaded = await this.readMultipart(req, MAX_MODEL_FILE_SIZE);
 
-    const uploaded = await this.readMultipart(req, MAX_REFERENCE_FILE_SIZE);
-    if (!REFERENCE_MIME_TYPES.has(uploaded.mimetype)) {
-      throw new BadRequestException('Only JPG and PNG references are supported');
+    const extension = uploaded.filename.toLowerCase().match(/\\.([a-z0-9]+)$/)?.[1] ?? '';
+    const isImage = REFERENCE_MIME_TYPES.has(uploaded.mimetype);
+    if (isImage && uploaded.buffer.length > MAX_REFERENCE_FILE_SIZE) {
+      throw new BadRequestException(`Reference images cannot exceed ${MAX_REFERENCE_FILE_SIZE / (1024 * 1024)} MB each.`);
     }
+    const isModel = MODEL_EXTENSIONS.has(extension);
 
-    const extension = uploaded.filename.toLowerCase().match(/\\.([a-z0-9]+)$/)?.[1];
-    const format =
-      extension === 'png'
-        ? ProductFileFormat.PNG
-        : extension === 'jpg' || extension === 'jpeg'
-          ? ProductFileFormat.JPEG
-          : null;
-    if (!format) {
+    if (!isImage && !isModel) {
       throw new BadRequestException(
-        'Reference filename must end in .jpg, .jpeg, or .png',
+        'Unsupported reference file. Use JPG/PNG images or GLB, glTF, OBJ, PLY, STL, FBX, BVH, ABC, USD, USDA, USDC, or USDZ.',
       );
     }
 
     const existingMedia = await this.prisma.customRequestMedia.findMany({
       where: { customRequestId: requestId },
-      select: { fileSize: true },
+      select: { fileSize: true, originalName: true },
     });
-    const existingTotal = existingMedia.reduce(
-      (total, media) => total + Number(media.fileSize),
-      0,
-    );
 
-    if (existingTotal + uploaded.buffer.length > MAX_REFERENCE_TOTAL_SIZE) {
-      throw new BadRequestException(
-        `Reference images for a custom request cannot exceed ${MAX_REFERENCE_TOTAL_SIZE / (1024 * 1024)} MB in total.`,
-      );
+    if (isModel) {
+      const existingModel = existingMedia.some((media) => {
+        const existingExtension =
+          media.originalName.toLowerCase().match(/\\.([a-z0-9]+)$/)?.[1] ?? '';
+        return MODEL_EXTENSIONS.has(existingExtension);
+      });
+
+      if (existingModel) {
+        throw new BadRequestException(
+          `A custom request can contain at most ${MAX_MODEL_FILES} 3D reference file.`,
+        );
+      }
+
+      if (uploaded.buffer.length > MAX_MODEL_FILE_SIZE) {
+        throw new BadRequestException(
+          `3D reference files cannot exceed ${MAX_MODEL_FILE_SIZE / (1024 * 1024)} MB.`,
+        );
+      }
+    } else {
+      const imageCount = existingMedia.filter((media) => {
+        const existingExtension =
+          media.originalName.toLowerCase().match(/\\.([a-z0-9]+)$/)?.[1] ?? '';
+        return ['jpg', 'jpeg', 'png'].includes(existingExtension);
+      }).length;
+
+      if (imageCount >= MAX_REFERENCE_FILES) {
+        throw new BadRequestException(
+          `A custom request can contain at most ${MAX_REFERENCE_FILES} reference images.`,
+        );
+      }
+
+      if (!REFERENCE_MIME_TYPES.has(uploaded.mimetype)) {
+        throw new BadRequestException('Only JPG and PNG references are supported');
+      }
+
+      const existingImageTotal = existingMedia
+        .filter((media) => {
+          const existingExtension =
+            media.originalName.toLowerCase().match(/\\.([a-z0-9]+)$/)?.[1] ?? '';
+          return ['jpg', 'jpeg', 'png'].includes(existingExtension);
+        })
+        .reduce((total, media) => total + Number(media.fileSize), 0);
+
+      if (existingImageTotal + uploaded.buffer.length > MAX_REFERENCE_TOTAL_SIZE) {
+        throw new BadRequestException(
+          `Reference images for a custom request cannot exceed ${MAX_REFERENCE_TOTAL_SIZE / (1024 * 1024)} MB in total.`,
+        );
+      }
     }
 
-    await this.contentValidator.validate(format, uploaded.buffer);
+    const format =
+      extension === 'png'
+        ? ProductFileFormat.PNG
+        : extension === 'jpg' || extension === 'jpeg'
+          ? ProductFileFormat.JPEG
+          : extension === 'glb'
+            ? ProductFileFormat.GLB
+            : extension === 'gltf'
+              ? ProductFileFormat.GLTF
+              : null;
+
+    if (isImage && !format) {
+      throw new BadRequestException('Reference filename must end in .jpg, .jpeg, or .png');
+    }
+
+    if (format) {
+      await this.contentValidator.validate(format, uploaded.buffer);
+    }
 
     const stored = await this.storage.saveCustomRequestFile(
       requestId,

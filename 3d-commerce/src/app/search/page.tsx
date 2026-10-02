@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { Navbar } from "@/components/layout/SiteNavbar";
-import { ShopProductGrid } from "@/components/shop/ShopProductGrid";
+import { ShopListing } from "@/components/shop/ShopListing";
 
 export const metadata: Metadata = {
   title: "Search Products | Forma",
@@ -9,7 +9,13 @@ export const metadata: Metadata = {
     "Search Forma's collection of premium physical 3D products, collectibles, gaming products, anime products and more.",
 };
 
-export default function SearchPage() {
+export default async function SearchPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+
   return (
     <>
       <Navbar />
@@ -28,7 +34,7 @@ export default function SearchPage() {
           </div>
         </section>
 
-        <ShopProductGrid pageSize={12} />
+        <ShopListing searchParams={params} basePath="/search" />
       </main>
     </>
   );
