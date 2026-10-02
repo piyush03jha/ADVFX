@@ -1247,6 +1247,43 @@ enum ProcessingJobStatus {
  * ============================================================
  */
 
+model CustomBuildCategory {
+  id            String   @id @default(cuid())
+  slug          String   @unique
+  name          String
+  description   String?
+  imageUrl      String?
+  basePriceMinor Int     @default(0)
+  currency      String   @default("INR")
+  sortOrder     Int      @default(0)
+  isActive      Boolean  @default(true)
+  options       CustomBuildOption[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
+}
+
+model CustomBuildOption {
+  id          String   @id @default(cuid())
+  categoryId  String
+  category    CustomBuildCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  section     String
+  slug        String
+  name        String
+  description String?
+  imageUrl    String?
+  priceMinor  Int      @default(0)
+  multiplier  Float?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([categoryId, section, slug])
+  @@index([categoryId, section, isActive])
+}
+
 model CustomRequest {
   id String @id @default(cuid())
 
@@ -1274,6 +1311,7 @@ model CustomRequest {
   order           Order?  @relation(fields: [orderId], references: [id], onDelete: SetNull)
 
   referenceFileCount Int @default(0)
+  configurationSnapshot String?
 
   status        CustomRequestStatus @default(SUBMITTED)
   revisionCount Int                 @default(0)
