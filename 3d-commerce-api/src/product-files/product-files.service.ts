@@ -428,13 +428,19 @@ export class ProductFilesService {
 
   private serializeFile<
     T extends {
+      id: string;
+      productId: string;
+      storageKey: string;
+      storageUrl: string | null;
       fileSize: bigint;
     },
   >(file: T) {
     return {
       ...file,
-      fileSize:
-        file.fileSize.toString(),
+      storageUrl:
+        file.storageUrl ??
+        this.storage.getPublicAssetUrl(file.storageKey),
+      fileSize: file.fileSize.toString(),
     };
   }
 
