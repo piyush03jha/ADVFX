@@ -2,20 +2,7 @@ import { notFound } from "next/navigation";
 
 import { ShopListing } from "@/components/shop/ShopListing";
 import { Navbar } from "@/components/layout/SiteNavbar";
-
-// Keys must match the `slug` values in src/config/shop-catogery.ts.
-// Values must match `product.category` exactly, as used in
-// src/config/trending-products.ts.
-const SLUG_TO_CATEGORY: Record<string, string> = {
-  "custom-miniatures": "Custom",
-  anime: "Anime",
-  "mobile-tv": "Mobile / TV",
-  gaming: "Gaming",
-  heroes: "Heroes",
-  collectibles: "Collectibles",
-  "desk-toys": "Desk Toys",
-  "weapon-props": "Weapon Props",
-};
+import { fetchShopCategories } from "@/lib/category-api";
 
 export default async function ShopCategoryPage({
   params,
@@ -24,15 +11,14 @@ export default async function ShopCategoryPage({
   params: Promise<{ catogery: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  // The folder is named `[catogery]`, so Next.js provides the route
-  // parameter under the exact same key: `catogery`.
   const { catogery } = await params;
   const query = await searchParams;
-  const activeCategory = SLUG_TO_CATEGORY[catogery];
+  const categories = await fetchShopCategories();
+  const category = categories.find(
+    (item) => item.slug.toLowerCase() === catogery.toLowerCase(),
+  );
 
-  if (!activeCategory) {
-    notFound();
-  }
+  if (!category) notFound();
 
   return (
     <>
@@ -40,7 +26,7 @@ export default async function ShopCategoryPage({
       <main className="min-h-screen bg-background">
         <ShopListing
           searchParams={query}
-          lockedCategory={activeCategory}
+          lockedCategory={category.slug}
           basePath={`/shop/${catogery}`}
         />
       </main>
