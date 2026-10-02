@@ -16,6 +16,17 @@ import { CreateProductReviewDto } from './dto/create-product-review.dto';
 import { StorageService } from '../storage/storage.service';
 import sharp from 'sharp';
 
+export interface ShopListQuery {
+  page: number;
+  limit: number;
+  q?: string;
+  categories?: string[];
+  minPrice?: number;
+  maxPrice?: number;
+  minRating?: number;
+  sort?: 'featured' | 'newest' | 'popular' | 'rating' | 'price-low' | 'price-high';
+}
+
 @Injectable()
 export class ProductsService {
   constructor(
@@ -260,6 +271,204 @@ export class ProductsService {
       ...product,
       isBestseller: bestsellerIds.has(product.id),
     }));
+  }
+
+  /**
+   * Paginated, filterable storefront listing.
+   *
+   * Unlike findAll(), this returns one page of lightweight rows (primary image,
+   * active price, first variant, inventory, metrics) so payload size and query
+   * cost stay constant as the catalog grows.
+   */
+  async findShopPage(query: ShopListQuery) {
+    const pageSize = Math.min(Math.max(Math.trunc(query.limit) || 12, 1), 48);
+    const requestedPage = Math.max(Math.trunc(query.page) || 1, 1);
+    const sort = query.sort ?? 'featured';
+
+    const and: Prisma.ProductWhereInput[] = [];
+
+    if (query.categories?.length) {
+      and.push({
+        category: {
+          OR: query.categories.flatMap((value) => [
+            { name: { equals: value, mode: 'insensitive' as const } },
+            { slug: { equals: value, mode: 'insensitive' as const } },
+          ]),
+        },
+      });
+    }
+
+    const search = query.q?.trim();
+    if (search) {
+      and.push({
+        OR: [
+          { name: { contains: search, mode: 'insensitive' } },
+          { category: { name: { contains: search, mode: 'insensitive' } } },
+        ],
+      });
+    }
+
+    const hasMin = query.minPrice !== undefined && query.minPrice > 0;
+    const hasMax = query.maxPrice !== undefined && Number.isFinite(query.maxPrice);
+    if (hasMin || hasMax) {
+      and.push({
+        prices: {
+          some: {
+            isActive: true,
+            amountMinor: {
+              ...(hasMin ? { gte: Math.round(query.minPrice! * 100) } : {}),
+              ...(hasMax ? { lte: Math.round(query.maxPrice! * 100) } : {}),
+            },
+          },
+        },
+      });
+    }
+
+    const where: Prisma.ProductWhereInput = { status: 'ACTIVE', AND: and };
+    const minRating = query.minRating && query.minRating > 0 ? query.minRating : 0;
+
+    // Price and rating live in other tables (one-to-many), so Prisma cannot
+    // order or filter on them directly. For those cases we sort a light
+    // id-only projection in memory, then load full rows for just one page.
+    const needsInMemory = sort === 'price-low' || sort === 'price-high' || sort === 'rating' || minRating > 0;
+
+    let total: number;
+    let page = requestedPage;
+    let pageIds: string[];
+    let ratingMap: Map<string, { rating: number; reviewCount: number }>;
+
+    if (needsInMemory) {
+      const [candidates, ratings] = await Promise.all([
+        this.prisma.product.findMany({
+          where,
+          select: {
+            id: true,
+            createdAt: true,
+            prices: { where: { isActive: true }, select: { amountMinor: true, currency: true } },
+          },
+        }),
+        this.reviewAggregates(),
+      ]);
+      ratingMap = ratings;
+
+      const rows = candidates
+        .map((row) => ({
+          id: row.id,
+          createdAt: row.createdAt.getTime(),
+          price: (row.prices.find((p) => p.currency === 'INR') ?? row.prices[0])?.amountMinor ?? 0,
+          rating: ratings.get(row.id)?.rating ?? 0,
+          reviewCount: ratings.get(row.id)?.reviewCount ?? 0,
+        }))
+        .filter((row) => row.rating >= minRating);
+
+      rows.sort((a, b) => {
+        switch (sort) {
+          case 'price-low':
+            return a.price - b.price || b.createdAt - a.createdAt;
+          case 'price-high':
+            return b.price - a.price || b.createdAt - a.createdAt;
+          case 'rating':
+            return b.rating - a.rating || b.reviewCount - a.reviewCount || b.createdAt - a.createdAt;
+          default:
+            return b.createdAt - a.createdAt;
+        }
+      });
+
+      total = rows.length;
+      page = Math.min(requestedPage, Math.max(1, Math.ceil(total / pageSize)));
+      pageIds = rows.slice((page - 1) * pageSize, page * pageSize).map((row) => row.id);
+    } else {
+      total = await this.prisma.product.count({ where });
+      page = Math.min(requestedPage, Math.max(1, Math.ceil(total / pageSize)));
+      const ids = await this.prisma.product.findMany({
+        where,
+        select: { id: true },
+        orderBy: this.shopOrderBy(sort),
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      });
+      pageIds = ids.map((row) => row.id);
+      ratingMap = await this.reviewAggregates(pageIds);
+    }
+
+    const products = pageIds.length
+      ? await this.prisma.product.findMany({
+          where: { id: { in: pageIds } },
+          include: {
+            category: true,
+            prices: { where: { isActive: true }, orderBy: { createdAt: 'desc' } },
+            media: {
+              where: { type: 'IMAGE' },
+              orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }],
+              take: 1,
+            },
+            variants: {
+              where: { isActive: true },
+              include: { price: true },
+              orderBy: { createdAt: 'asc' },
+              take: 1,
+            },
+            inventory: true,
+            metrics: true,
+          },
+        })
+      : [];
+
+    const byId = new Map(products.map((product) => [product.id, product]));
+    const items = pageIds
+      .map((id) => byId.get(id))
+      .filter((product): product is NonNullable<typeof product> => Boolean(product))
+      .map((product) => ({
+        ...product,
+        tags: [],
+        isBestseller: false,
+        rating: ratingMap.get(product.id)?.rating ?? 0,
+        reviewCount: ratingMap.get(product.id)?.reviewCount ?? 0,
+      }));
+
+    return {
+      items,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    };
+  }
+
+  private shopOrderBy(sort: ShopListQuery['sort']): Prisma.ProductOrderByWithRelationInput[] {
+    switch (sort) {
+      case 'newest':
+        return [{ createdAt: 'desc' }, { id: 'asc' }];
+      case 'popular':
+        return [
+          { metrics: { unitsSold: 'desc' } },
+          { metrics: { cartAddCount: 'desc' } },
+          { createdAt: 'desc' },
+          { id: 'asc' },
+        ];
+      case 'featured':
+      default:
+        return [{ isFeatured: 'desc' }, { isTrending: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }];
+    }
+  }
+
+  private async reviewAggregates(productIds?: string[]) {
+    const groups = await this.prisma.productReview.groupBy({
+      by: ['productId'],
+      where: { isPublished: true, ...(productIds ? { productId: { in: productIds } } : {}) },
+      _avg: { rating: true },
+      _count: { _all: true },
+    });
+
+    return new Map(
+      groups.map((group) => [
+        group.productId,
+        {
+          rating: Math.round((group._avg.rating ?? 0) * 10) / 10,
+          reviewCount: group._count._all,
+        },
+      ]),
+    );
   }
 
   /**
