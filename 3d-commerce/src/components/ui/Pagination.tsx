@@ -20,20 +20,12 @@ export function Pagination({ page, totalPages, onChange }: PaginationProps) {
     >
       <PageArrow direction="prev" disabled={page === 1} onClick={() => onChange(page - 1)} />
 
-      <div
-        className="
-          flex
-          max-w-[calc(100vw-7.5rem)]
-          items-center
-          gap-1.5
-          overflow-x-auto
-          px-0.5
-          [scrollbar-width:none]
-          [&::-webkit-scrollbar]:hidden
-          sm:max-w-none
-          sm:overflow-visible
-        "
-      >
+      {/* Phones: a compact counter instead of a scrolling number strip. */}
+      <span className="min-w-[7.5rem] text-center text-xs text-muted sm:hidden" aria-live="polite">
+        Page <span className="text-foreground">{page}</span> of {totalPages}
+      </span>
+
+      <div className="hidden items-center gap-1.5 px-0.5 sm:flex">
         {pages.map((item, index) =>
           item === "ellipsis" ? (
             <span
