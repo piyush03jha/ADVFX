@@ -11,6 +11,7 @@ import {
 import { randomBytes } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
+import { StorageService } from "../storage/storage.service";
 import { CreateCustomRequestDto } from "./dto/create-custom-request.dto";
 import { CustomPricingDto } from "./dto/custom-pricing.dto";
 
@@ -77,6 +78,7 @@ export class CustomBuildService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
+    private readonly storage: StorageService,
   ) {}
 
   calculatePrice(input: CustomPricingInput) {
