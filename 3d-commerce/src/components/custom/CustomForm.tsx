@@ -169,6 +169,7 @@ export function CustomForm({
 
   const price = serverPrice ?? localPrice;
 
+  const displayCategories = config?.categories.map((item) => ({ id: item.slug, label: item.name, description: item.description ?? "", image: item.imageUrl || "/catogeries/4.jpg" })) ?? categories;
   const hasReference = files.length > 0;
   const activeGallery = gallery[activeImage];
 
@@ -406,15 +407,15 @@ export function CustomForm({
           <div className="mt-6 space-y-6">
             <CompactSection label="What would you like to create?" hint={selectedCategory.label}>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {(config?.categories ?? categories).map((option) => (
+                {displayCategories.map((option) => (
                   <button
                     key={option.id}
                     type="button"
-                    onClick={() => selectCategory(option.slug ?? option.id)}
-                    className={`group overflow-hidden rounded-2xl border text-left transition ${category === option.slug ? "border-primary/70 bg-primary/[0.07]" : "border-border bg-surface hover:border-primary/35 hover:bg-surface-hover"}`}
+                    onClick={() => selectCategory(option.id)}
+                    className={`group overflow-hidden rounded-2xl border text-left transition ${category === option.id ? "border-primary/70 bg-primary/[0.07]" : "border-border bg-surface hover:border-primary/35 hover:bg-surface-hover"}`}
                   >
                     <div className="relative aspect-[4/3] overflow-hidden bg-surface-elevated">
-                      <img src={"imageUrl" in option ? (option.imageUrl || "/catogeries/4.jpg") : option.image} alt="" className="h-full w-full object-cover opacity-80 transition duration-500 group-hover:scale-105" />
+                      <img src={option.image} alt="" className="h-full w-full object-cover opacity-80 transition duration-500 group-hover:scale-105" />
                       {category === option.id && (
                         <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-white">
                           <IconCheck size={11} />
