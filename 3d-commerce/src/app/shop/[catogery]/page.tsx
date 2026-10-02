@@ -21,12 +21,12 @@ export default async function ShopCategoryPage({
   params,
   searchParams,
 }: {
-  params: Promise<{ catogery: string }>;\n  searchParams: Promise<Record<string, string | string[] | undefined>>;
+  params: Promise<{ catogery: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   // The folder is named `[catogery]`, so Next.js provides the route
   // parameter under the exact same key: `catogery`.
-  const { catogery } = await params;\n  const query = await searchParams;
+  const { catogery } = await params;
   const query = await searchParams;
   const activeCategory = SLUG_TO_CATEGORY[catogery];
 
