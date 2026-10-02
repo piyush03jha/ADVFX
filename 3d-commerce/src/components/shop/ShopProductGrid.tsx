@@ -7,7 +7,7 @@ import { IconPackageOff } from "@tabler/icons-react";
 import { Button } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import { Pagination } from "@/components/ui/Pagination";
-import { shopCategories } from "@/config/shop-categories";
+import type { ShopCategory } from "@/lib/category-api";
 import type { ShopPageResult } from "@/lib/shop-api";
 import {
   buildShopSearch,
@@ -28,11 +28,16 @@ interface ShopProductGridProps {
   state: ShopQueryState;
   lockedCategory?: string;
   basePath: string;
+  categories: ShopCategory[];
 }
 
-const categoryOptions = shopCategories;
-
-export function ShopProductGrid({ result, state, lockedCategory, basePath }: ShopProductGridProps) {
+export function ShopProductGrid({
+  result,
+  state,
+  lockedCategory,
+  basePath,
+  categories,
+}: ShopProductGridProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
@@ -40,18 +45,19 @@ export function ShopProductGrid({ result, state, lockedCategory, basePath }: Sho
   const [searchText, setSearchText] = useState(state.q);
   const navRef = useRef<HTMLDivElement>(null);
 
-  // The URL is the source of truth: every control just rewrites it, and the
-  // server component re-renders with the matching page of products.
   const navigate = (patch: Partial<ShopQueryState>) => {
     const next: ShopQueryState = { ...state, page: 1, ...patch };
+
     startTransition(() => {
-      router.replace(`${pathname || basePath}${buildShopSearch(next, { omitCategory: Boolean(lockedCategory) })}`, {
-        scroll: false,
-      });
+      router.replace(
+        `${pathname || basePath}${buildShopSearch(next, {
+          omitCategory: Boolean(lockedCategory),
+        })}`,
+        { scroll: false },
+      );
     });
   };
 
-  // Debounce typing so we don't hit the API on every keystroke.
   useEffect(() => {
     if (searchText.trim() === state.q.trim()) return;
     const timer = window.setTimeout(() => navigate({ q: searchText }), 350);
@@ -87,12 +93,13 @@ export function ShopProductGrid({ result, state, lockedCategory, basePath }: Sho
     navigate({ ...DEFAULT_SHOP_QUERY, sort: state.sort });
   };
 
-  const handleCategoryChange = (categoryId: string) => {
+  const handleCategoryChange = (categorySlug: string) => {
     if (lockedCategory) return;
+
     navigate({
-      categories: state.categories.includes(categoryId)
-        ? state.categories.filter((item) => item !== categoryId)
-        : [...state.categories, categoryId],
+      categories: state.categories.includes(categorySlug)
+        ? state.categories.filter((item) => item !== categorySlug)
+        : [...state.categories, categorySlug],
     });
   };
 
@@ -111,7 +118,6 @@ export function ShopProductGrid({ result, state, lockedCategory, basePath }: Sho
   return (
     <>
       <ShopHeader />
-
       <section className="relative pb-20 pt-0 sm:pb-24 lg:pb-28">
         <Container>
           <div className="pt-1 sm:pt-2 lg:pt-3">
@@ -119,19 +125,15 @@ export function ShopProductGrid({ result, state, lockedCategory, basePath }: Sho
               <div className="w-full min-w-0 xl:flex-[2]">
                 <ShopSearch value={searchText} onChange={setSearchText} />
               </div>
-
               <div className="flex flex-wrap items-center justify-between gap-2 sm:justify-center xl:shrink-0">
-                {/* Inline dropdowns only where there is room; phones/tablets use the drawer. */}
                 <div className="hidden lg:block">
                   <ShopFilters
-                    categories={categoryOptions.map((category) => category.id)}
                     filters={filters}
                     onChange={handleFilterChange}
                     onClear={clearFilters}
                     compact
                   />
                 </div>
-
                 <Button
                   type="button"
                   variant="outline"
@@ -141,12 +143,10 @@ export function ShopProductGrid({ result, state, lockedCategory, basePath }: Sho
                 >
                   Filters
                 </Button>
-
                 <ShopSort
                   value={state.sort}
                   onChange={(sort: ShopSortValue) => navigate({ sort })}
                 />
-
                 <button
                   type="button"
                   onClick={clearAll}
@@ -160,7 +160,7 @@ export function ShopProductGrid({ result, state, lockedCategory, basePath }: Sho
 
           <div ref={navRef} className="-mx-1 mb-7 mt-7 scroll-mt-24 sm:mb-8 sm:mt-8">
             <ShopNavigation
-              categories={categoryOptions}
+              categories={categories}
               selectedCategories={state.categories}
               onCategoryChange={handleCategoryChange}
               onShowAll={clearAll}
@@ -181,20 +181,17 @@ export function ShopProductGrid({ result, state, lockedCategory, basePath }: Sho
                     No exact match for &ldquo;{result.fallbackFor}&rdquo; &mdash; showing similar models.
                   </p>
                 ) : null}
-
                 <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4">
                   {items.map((product, index) => (
                     <ShopProductCard key={product.id} product={product} priority={index < 4} />
                   ))}
                 </div>
-
                 <div className="mt-6 flex items-center justify-center sm:mt-8">
                   <p className="text-[11px] uppercase tracking-[0.14em] text-muted" aria-live="polite">
                     Showing <span className="text-foreground">{rangeStart}&ndash;{rangeEnd}</span> of{" "}
                     <span className="text-foreground">{total}</span> models
                   </p>
                 </div>
-
                 <Pagination page={page} totalPages={result.totalPages} onChange={handlePageChange} />
               </div>
             ) : (
@@ -207,7 +204,7 @@ export function ShopProductGrid({ result, state, lockedCategory, basePath }: Sho
       <MobileFilters
         open={mobileFiltersOpen}
         onClose={() => setMobileFiltersOpen(false)}
-        categories={categoryOptions.map((category) => category.id)}
+        categories={categories}
         filters={filters}
         onChange={handleFilterChange}
         onClear={clearFilters}
@@ -216,16 +213,20 @@ export function ShopProductGrid({ result, state, lockedCategory, basePath }: Sho
   );
 }
 
-function EmptyProducts({ onClear, message = "Try another product name, category, or filter combination." }: { onClear: () => void; message?: string }) {
+function EmptyProducts({
+  onClear,
+  message = "Try another product name, category, or filter combination.",
+}: {
+  onClear: () => void;
+  message?: string;
+}) {
   return (
     <div className="flex min-h-[380px] flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-surface/40 px-6 text-center">
       <div className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-surface-elevated text-muted">
         <IconPackageOff size={20} stroke={1.5} />
       </div>
       <h3 className="mt-5 text-base font-medium text-foreground">No matching models</h3>
-      <p className="mt-2 max-w-sm text-xs leading-5 text-muted">
-        {message}
-      </p>
+      <p className="mt-2 max-w-sm text-xs leading-5 text-muted">{message}</p>
       <Button type="button" variant="outline" size="sm" onClick={onClear} className="mt-5">
         Clear Search &amp; Filters
       </Button>
