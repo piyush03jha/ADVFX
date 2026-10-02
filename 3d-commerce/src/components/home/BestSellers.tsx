@@ -39,7 +39,7 @@ export function BestSellers() {
   const visible = shouldReduceMotion ? undefined : { opacity: 1, y: 0 };
 
   return (
-    <section id="best-sellers" className="relative overflow-hidden py-12 sm:py-20 lg:py-28">
+    <section id="best-sellers" className="relative scroll-mt-28 overflow-hidden py-12 sm:py-20 lg:py-28">
       <div aria-hidden="true" className="pointer-events-none absolute left-[15%] top-0 -z-10 h-[320px] w-[320px] rounded-full bg-primary/[0.035] blur-[120px] sm:h-[360px] sm:w-[360px]" />
       <Container>
         <motion.div initial={initial} whileInView={visible} viewport={{ once: true, amount: 0.2 }} transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }} className="mb-6 flex items-end justify-between gap-4 sm:mb-9">
