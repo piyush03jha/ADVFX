@@ -49,32 +49,6 @@ export class ProductsController {
       page: num(query.page) ?? 1,
       limit: num(query.limit) ?? 12,
       q: query.q?.slice(0, 100),
-      categories: query.category
-        ?.split(',')
-        .map((item) => item.trim())
-        .filter(Boolean)
-        .slice(0, 10),
-      minPrice: num(query.minPrice),
-      maxPrice: num(query.maxPrice),
-      minRating: num(query.minRating),
-      sort,
-    });
-  }
-
-  @Get('shop')
-  findShopPage(@Query() query: Record<string, string | undefined>) {
-    const num = (value?: string) => {
-      if (value === undefined || value === '') return undefined;
-      const parsed = Number(value);
-      return Number.isFinite(parsed) ? parsed : undefined;
-    };
-    const sorts = ['featured', 'newest', 'popular', 'rating', 'price-low', 'price-high'] as const;
-    const sort = sorts.find((item) => item === query.sort);
-
-    return this.productsService.findShopPage({
-      page: num(query.page) ?? 1,
-      limit: num(query.limit) ?? 12,
-      q: query.q?.slice(0, 100),
       categories: query.category?.split(',').map((item) => item.trim()).filter(Boolean).slice(0, 10),
       minPrice: num(query.minPrice),
       maxPrice: num(query.maxPrice),
