@@ -181,3 +181,10 @@ service-account.json
 !/public/models/products/
 !/public/images/
 !/public/categories/
+# OpenNext
+.open-next
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
