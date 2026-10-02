@@ -399,7 +399,6 @@ export function CustomForm({
                     {bodyOptions.map((option) => (
                       <SelectionButton
                         key={option.id}
-                        image={option.image}
                         label={option.label}
                         price={option.priceLabel}
                         description={option.description}
