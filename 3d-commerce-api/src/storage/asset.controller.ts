@@ -61,7 +61,7 @@ export class AssetController {
         select: { id: true },
       }),
       this.prisma.productFileBundleAsset.findFirst({
-        where: { storageKey, bundle: { productId } },
+        where: { storageKey, bundle: { is: { productId } } },
         select: { mimeType: true },
       }),
     ]);
