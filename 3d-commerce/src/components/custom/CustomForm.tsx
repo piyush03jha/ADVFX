@@ -517,6 +517,8 @@ export function CustomForm({
             <CustomUploadZone
               files={files}
               onFilesChange={setFiles}
+              modelFile={modelFile}
+              onModelFileChange={setModelFile}
               error={fileError}
               onErrorChange={setFileError}
             />
