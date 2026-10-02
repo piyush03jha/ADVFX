@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { IconCheck, IconChevronDown, IconStar } from "@tabler/icons-react";
 import {
@@ -106,22 +106,18 @@ export function CustomForm({
       }
     : (categories.find((option) => option.id === category) ?? categories[0]);
 
-  const localPrice = useMemo(
-    () =>
-      isPerson
-        ? calculatePrice({
-            body: selectedBody,
-            head: { addPrice: 0 },
-            frame: selectedFrame,
-            size: selectedSize,
-          })
-        : calculateCategoryPrice({
-            category,
-            head: { addPrice: 0 },
-            size: selectedSize,
-          }),
-    [category, isPerson, selectedBody, selectedFrame, selectedSize],
-  );
+  const localPrice = isPerson
+    ? calculatePrice({
+        body: selectedBody,
+        head: { addPrice: 0 },
+        frame: selectedFrame,
+        size: selectedSize,
+      })
+    : calculateCategoryPrice({
+        category,
+        head: { addPrice: 0 },
+        size: selectedSize,
+      });
 
   useEffect(() => {
     let cancelled = false;
