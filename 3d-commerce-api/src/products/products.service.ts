@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
@@ -869,6 +870,16 @@ export class ProductsService {
       filename: file.originalname,
       buffer: file.buffer,
     });
+
+    // ProductMedia.url is a public storefront URL. A private remote bucket
+    // intentionally does not provide one, so fail clearly and remove the
+    // uploaded object instead of persisting an unusable URL.
+    if (!stored.storageUrl) {
+      try { await this.storage.delete(stored.storageKey); } catch { /* preserve configuration error */ }
+      throw new InternalServerErrorException(
+        'Product image storage requires STORAGE_PUBLIC_BASE_URL or a public asset delivery route',
+      );
+    }
 
     try {
       return await this.prisma.$transaction(async (tx) => {

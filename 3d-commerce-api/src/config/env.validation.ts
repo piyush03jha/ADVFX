@@ -37,7 +37,6 @@ export function validateEnvironment() {
       'STORAGE_ENDPOINT',
       'STORAGE_ACCESS_KEY_ID',
       'STORAGE_SECRET_ACCESS_KEY',
-      'STORAGE_PUBLIC_BASE_URL',
     ]) {
       if (!process.env[key]) throw new Error(`${key} must be configured for remote storage`);
     }
