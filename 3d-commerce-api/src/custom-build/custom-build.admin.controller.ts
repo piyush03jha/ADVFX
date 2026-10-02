@@ -3,7 +3,7 @@ import { AdminGuard } from "../auth/guards/admin.guard";
 import { AuthGuard } from "../auth/guards/auth.guard";
 import { CustomBuildService } from "./custom-build.service";
 import { CreateCustomBuildOptionDto, UpdateCustomBuildCategoryDto, UpdateCustomBuildOptionDto } from "./custom-build.config.dto";
-import { FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyReply, FastifyRequest } from "fastify";
 
 @UseGuards(AuthGuard, AdminGuard)
 @Controller("custom-requests/admin/config")
