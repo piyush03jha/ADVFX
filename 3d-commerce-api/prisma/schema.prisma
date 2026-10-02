@@ -321,6 +321,8 @@ model Product {
   @@index([isFeatured])
   @@index([isTrending])
   @@index([isBestseller])
+  // Storefront listing: ACTIVE products, optionally by category, newest first.
+  @@index([status, categoryId, createdAt])
 }
 
 enum ProductStatus {
