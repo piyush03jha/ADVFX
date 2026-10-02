@@ -124,7 +124,7 @@ function OrderConfirmationContent() {
           </h1>
 
           <p className="mx-auto mt-2 max-w-md text-xs leading-5 text-muted sm:text-sm">
-            Thank you for your purchase. We'll keep
+            Thank you for your purchase. We&apos;ll keep
             you updated as your order moves toward
             delivery.
           </p>
@@ -161,7 +161,7 @@ function OrderConfirmationContent() {
                 </p>
 
                 <p className="mt-1 text-[10px] text-muted">
-                  We'll notify you when your order
+                  We&apos;ll notify you when your order
                   ships.
                 </p>
               </div>
