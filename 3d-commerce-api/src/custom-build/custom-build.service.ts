@@ -141,9 +141,39 @@ export class CustomBuildService {
       if (!body || !frame) throw new BadRequestException("Person build has an invalid configuration");
       baseMinor = body.priceMinor + frame.priceMinor;
       selected.push(body, frame);
+      return {
+        amountMinor: Math.round(baseMinor * size.multiplier),
+        currency: category.currency,
+        breakdown: {
+          category: category.slug,
+          categoryName: category.name,
+          bodyType: input.bodyType ?? null,
+          headType: input.headType ?? null,
+          subjectType: input.subjectType ?? null,
+          personCount: input.personCount ?? null,
+          petCount: input.petCount ?? null,
+          sizeCm: input.sizeCm,
+          multiplier: size.multiplier,
+          selectedOptions: selected.map((o) => ({ section: o.section, slug: o.slug, name: o.name, priceMinor: o.priceMinor })),
+        },
+      };
+    }
+
     return {
-      amountMinor: Math.round(baseMinor * size.multiplier), currency: category.currency,
-      breakdown: { category: category.slug, categoryName: category.name, bodyType: input.bodyType ?? null, headType: input.headType ?? null, subjectType: input.subjectType ?? null, personCount: input.personCount ?? null, petCount: input.petCount ?? null, sizeCm: input.sizeCm, multiplier: size.multiplier, selectedOptions: selected.map((o) => ({ section: o.section, slug: o.slug, name: o.name, priceMinor: o.priceMinor })) },
+      amountMinor: Math.round(baseMinor * size.multiplier),
+      currency: category.currency,
+      breakdown: {
+        category: category.slug,
+        categoryName: category.name,
+        bodyType: input.bodyType ?? null,
+        headType: input.headType ?? null,
+        subjectType: input.subjectType ?? null,
+        personCount: input.personCount ?? null,
+        petCount: input.petCount ?? null,
+        sizeCm: input.sizeCm,
+        multiplier: size.multiplier,
+        selectedOptions: selected.map((o) => ({ section: o.section, slug: o.slug, name: o.name, priceMinor: o.priceMinor })),
+      },
     };
   }
 
