@@ -165,24 +165,24 @@ export function ShopProductCard({ product, priority = false }: ShopProductCardPr
           </p>
         ) : null}
 
-        <div className="mt-4 grid grid-cols-2 gap-2">
+        <div className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-2">
           <Button
             type="button"
             variant="primary"
             size="lg"
             onClick={handleAddToCart}
-            className="min-h-12 w-full text-xs font-semibold sm:text-sm"
+            className="min-h-11 w-full text-xs font-semibold sm:text-sm"
           >
             {added ? "Added" : "Add to Cart"}
           </Button>
 
           <Button
             type="button"
-            variant="primary"
+            variant="outline"
             size="lg"
             onClick={handleBuyNow}
             disabled={buying}
-            className="min-h-12 w-full text-xs font-semibold sm:text-sm"
+            className="min-h-11 w-full text-xs font-semibold sm:text-sm"
           >
             {buying ? "Opening…" : "Buy Now"}
           </Button>
