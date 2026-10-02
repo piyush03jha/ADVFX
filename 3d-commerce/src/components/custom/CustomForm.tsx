@@ -274,7 +274,29 @@ export function CustomForm({
         }
       }
 
-      if (modelFile) {\n        const formData = new FormData();\n        formData.append("file", modelFile);\n\n        const uploadResponse = await fetch(\n          `/api/custom-requests/${encodeURIComponent(requestBody.id)}/files`,\n          { method: "POST", body: formData },\n        );\n        const uploadBody = (await uploadResponse.json().catch(() => null)) as\n          | { message?: string | string[]; error?: string }\n          | null;\n        if (!uploadResponse.ok) {\n          const message =\n            uploadBody && "message" in uploadBody\n              ? Array.isArray(uploadBody.message)\n                ? uploadBody.message[0]\n                : uploadBody.message ?? "Unable to upload your 3D reference."\n              : uploadBody?.error ?? "Unable to upload your 3D reference.";\n          throw new Error(message);\n        }\n      }\n\n      onSubmit({
+      if (modelFile) {
+        const formData = new FormData();
+        formData.append("file", modelFile);
+
+        const uploadResponse = await fetch(
+          `/api/custom-requests/${encodeURIComponent(requestBody.id)}/files`,
+          { method: "POST", body: formData },
+        );
+        const uploadBody = (await uploadResponse.json().catch(() => null)) as
+          | { message?: string | string[]; error?: string }
+          | null;
+        if (!uploadResponse.ok) {
+          const message =
+            uploadBody && "message" in uploadBody
+              ? Array.isArray(uploadBody.message)
+                ? uploadBody.message[0]
+                : uploadBody.message ?? "Unable to upload your 3D reference."
+              : uploadBody?.error ?? "Unable to upload your 3D reference.";
+          throw new Error(message);
+        }
+      }
+
+      onSubmit({
         requestId: requestBody.id,
         category,
         price,
