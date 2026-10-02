@@ -409,8 +409,8 @@ export function CustomForm({
                     ))}
                   </div>
                 </CompactSection>
-
-                            ) : (
+              </>
+            ) : (
               <div className="rounded-2xl border border-border bg-surface/45 p-4">
                 <p className="text-xs font-semibold">
                   Built for {selectedCategory.label.toLowerCase()}
