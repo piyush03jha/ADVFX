@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 
-import { ShopProductGrid } from "@/components/shop/ShopProductGrid";
+import { ShopListing } from "@/components/shop/ShopListing";
 import { Navbar } from "@/components/layout/SiteNavbar";
 
 // Keys must match the `slug` values in src/config/shop-catogery.ts.
@@ -19,12 +19,15 @@ const SLUG_TO_CATEGORY: Record<string, string> = {
 
 export default async function ShopCategoryPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ catogery: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   // The folder is named `[catogery]`, so Next.js provides the route
   // parameter under the exact same key: `catogery`.
   const { catogery } = await params;
+  const query = await searchParams;
   const activeCategory = SLUG_TO_CATEGORY[catogery];
 
   if (!activeCategory) {
@@ -35,7 +38,11 @@ export default async function ShopCategoryPage({
     <>
       <Navbar />
       <main className="min-h-screen bg-background">
-        <ShopProductGrid activeCategory={activeCategory} />
+        <ShopListing
+          searchParams={query}
+          lockedCategory={activeCategory}
+          basePath={`/shop/${catogery}`}
+        />
       </main>
     </>
   );
