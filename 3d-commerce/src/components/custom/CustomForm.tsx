@@ -164,7 +164,7 @@ export function CustomForm({
     return () => {
       cancelled = true;
     };
-  }, [category, body, frame, hasBobbleHead, head, isPerson, size]);
+  }, [category, body, frame, hasHeadConnection, head, isPerson, size]);
 
   const price = serverPrice ?? localPrice;
 
