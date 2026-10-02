@@ -74,7 +74,8 @@ export function CustomForm({
   const [category, setCategory] = useState<CustomCategory>("person");
   const [size, setSize] = useState("15");
   const [frame, setFrame] = useState("single");
-  const [files, setFiles] = useState<File[]>([]);\n  const [modelFile, setModelFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [modelFile, setModelFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState("");
   const [details, setDetails] = useState("");
   const [activeImage, setActiveImage] = useState(0);
@@ -94,15 +95,16 @@ export function CustomForm({
     configured("body", body) ? { id: body, label: configured("body", body)!.name, description: configured("body", body)!.description ?? "", basePrice: configured("body", body)!.priceMinor / 100 } : (bodyOptions.find((option) => option.id === body) ?? bodyOptions[1]);
   const selectedHead =
     configured("head", head) ? { id: head, label: configured("head", head)!.name, description: configured("head", head)!.description ?? "", addPrice: configured("head", head)!.priceMinor / 100 } : (headOptions.find((option) => option.id === head) ?? headOptions[0]);
-  const selectedSize =
-    sizeOptions.find((option) => option.value === size) ?? sizeOptions[2];
+  const configuredSize = config?.sizeOptions.find((option) => option.slug === size);
+  const selectedSize = configuredSize ? { value: size, label: configuredSize.name, multiplier: configuredSize.multiplier ?? 1 } : (sizeOptions.find((option) => option.value === size) ?? sizeOptions[2]);
   const selectedFrame =
     configured("frame", frame) ? { id: frame, label: configured("frame", frame)!.name, description: configured("frame", frame)!.description ?? "", addPrice: configured("frame", frame)!.priceMinor / 100 } : (frameOptions.find((option) => option.id === frame) ?? frameOptions[0]);
 
   const hasBobbleHead =
     category === "person" || category === "pet" || category === "character";
   const isPerson = category === "person";
-  const selectedCategory = config?.categories.find((option) => option.slug === category) ?? categories.find((option) => option.id === category) ?? categories[0];
+  const rawCategory = config?.categories.find((option) => option.slug === category);
+  const selectedCategory = rawCategory ? { ...rawCategory, label: rawCategory.name } : (categories.find((option) => option.id === category) ?? categories[0]);
 
   const localPrice = useMemo(
     () =>
