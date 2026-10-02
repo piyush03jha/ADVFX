@@ -13,7 +13,7 @@ import {
 } from "./customOptions";
 import { CustomUploadZone } from "./CustomUploadZone";
 
-type ConfigOption = { id:string; section:string; slug:string; name:string; description?:string|null; priceMinor:number; multiplier?:number|null; sortOrder:number; isActive:boolean };
+type ConfigOption = { id:string; section:string; slug:string; name:string; description?:string|null; imageUrl?:string|null; priceMinor:number; multiplier?:number|null; sortOrder:number; isActive:boolean };
 type ConfigCategory = { id:string; slug:CustomCategory; name:string; description?:string|null; imageUrl?:string|null; basePriceMinor:number; options:ConfigOption[] };
 
 export type CustomCategory =
@@ -98,7 +98,7 @@ export function CustomForm({
 
   const isPerson = category === "person";
   const rawCategory = config?.categories.find((option) => option.slug === category);
-  const selectedCategory = rawCategory ? { ...rawCategory, label: rawCategory.name } : (categories.find((option) => option.id === category) ?? categories[0]);
+  const selectedCategory = rawCategory\n    ? { label: rawCategory.name, description: rawCategory.description ?? "", image: rawCategory.imageUrl || "/catogeries/4.jpg" }\n    : (categories.find((option) => option.id === category) ?? categories[0]);
 
   const localPrice = useMemo(
     () =>
@@ -384,7 +384,7 @@ export function CustomForm({
                       )}
                     </div>
                     <div className="p-3">
-                      <p className="text-xs font-semibold">{option.name ?? option.label}</p>
+                      <p className="text-xs font-semibold">{option.label}</p>
                       <p className="mt-1 text-[10px] leading-4 text-muted">{option.description}</p>
                     </div>
                   </button>
