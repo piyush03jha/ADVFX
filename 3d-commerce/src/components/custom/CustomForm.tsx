@@ -98,7 +98,13 @@ export function CustomForm({
 
   const isPerson = category === "person";
   const rawCategory = config?.categories.find((option) => option.slug === category);
-  const selectedCategory = rawCategory\n    ? { label: rawCategory.name, description: rawCategory.description ?? "", image: rawCategory.imageUrl || "/catogeries/4.jpg" }\n    : (categories.find((option) => option.id === category) ?? categories[0]);
+  const selectedCategory = rawCategory
+    ? {
+        label: rawCategory.name,
+        description: rawCategory.description ?? "",
+        image: rawCategory.imageUrl || "/catogeries/4.jpg",
+      }
+    : (categories.find((option) => option.id === category) ?? categories[0]);
 
   const localPrice = useMemo(
     () =>
