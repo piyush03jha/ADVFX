@@ -881,6 +881,10 @@ export class ProductsService {
       );
     }
 
+    const storageUrl = stored.storageUrl;
+    // Narrowed above: ProductMedia.url is intentionally non-null because
+    // storefront product media must have a browser-accessible URL.
+
     try {
       return await this.prisma.$transaction(async (tx) => {
         const imageCount = await tx.productMedia.count({
@@ -892,7 +896,7 @@ export class ProductsService {
           data: {
             productId: id,
             type: 'IMAGE',
-            url: stored.storageUrl,
+            url: storageUrl,
             altText: file.originalname,
             sortOrder: imageCount,
             isPrimary: isFirstImage,
