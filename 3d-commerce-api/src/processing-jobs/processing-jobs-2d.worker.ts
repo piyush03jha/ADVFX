@@ -1,10 +1,11 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ProductFileFormat, ProductFileType } from "@prisma/client";
-import { promises as fs } from "node:fs";
-import path from "node:path";
+import { StorageService } from "../storage/storage.service";
 
 @Injectable()
 export class ProcessingJobs2DWorker {
+  constructor(private readonly storage: StorageService) {}
+
   private readonly logger = new Logger(ProcessingJobs2DWorker.name);
 
   /**
@@ -43,8 +44,7 @@ export class ProcessingJobs2DWorker {
     format: ProductFileFormat;
     storageKey: string;
   }): Promise<void> {
-    const filePath = this.resolveStoragePath(productFile.storageKey);
-    const buffer = await this.readFile(filePath, productFile.id);
+    const buffer = await this.readStoredFile(productFile.storageKey, productFile.id);
 
     switch (productFile.format) {
       case ProductFileFormat.PNG:
@@ -86,8 +86,7 @@ export class ProcessingJobs2DWorker {
       );
     }
 
-    const filePath = this.resolveStoragePath(productFile.storageKey);
-    const buffer = await this.readFile(filePath, productFile.id);
+    const buffer = await this.readStoredFile(productFile.storageKey, productFile.id);
 
     this.validatePdf(buffer);
 
@@ -96,14 +95,14 @@ export class ProcessingJobs2DWorker {
     );
   }
 
-  private async readFile(
-    filePath: string,
+  private async readStoredFile(
+    storageKey: string,
     fileId: string,
   ): Promise<Buffer> {
     let buffer: Buffer;
 
     try {
-      buffer = await fs.readFile(filePath);
+      buffer = await this.storage.read(storageKey);
     } catch {
       throw new Error(
         `Unable to read stored file for ${fileId}`,
