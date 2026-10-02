@@ -232,7 +232,7 @@ export function CustomForm({
           notes: details.trim() || undefined,
           category,
           bodyType: isPerson ? body : undefined,
-          headType: hasBobbleHead ? head : undefined,
+          headType: hasHeadConnection ? head : undefined,
           subjectType: isPerson ? frame : undefined,
           personCount:
             frame === "single" ? 1 : frame === "couple" ? 2 : frame === "group" ? 3 : 1,
@@ -310,7 +310,7 @@ export function CustomForm({
         category,
         price,
         bodyLabel: isPerson ? selectedBody.label : "Not applicable",
-        headLabel: hasBobbleHead ? selectedHead.label : "Not applicable",
+        headLabel: hasHeadConnection ? selectedHead.label : "Not applicable",
         sizeLabel: selectedSize.label,
         frameLabel: isPerson ? selectedFrame.label : "Not applicable",
       });
