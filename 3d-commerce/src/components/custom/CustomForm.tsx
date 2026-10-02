@@ -8,7 +8,6 @@ import {
   calculateCategoryPrice,
   calculatePrice,
   frameOptions,
-  headOptions,
   processSteps,
   sizeOptions,
 } from "./customOptions";
@@ -92,15 +91,11 @@ export function CustomForm({
   const configured = (section:string, slug:string|undefined) => configuredCategory?.options.find((option)=>option.section===section && option.slug===slug);
   const selectedBody =
     configured("body", body) ? { id: body, label: configured("body", body)!.name, description: configured("body", body)!.description ?? "", basePrice: configured("body", body)!.priceMinor / 100, image: configured("body", body)!.imageUrl ?? "/catogeries/1.jpg" } : (bodyOptions.find((option) => option.id === body) ?? bodyOptions[1]);
-  const selectedHead =
-    configured("head", head) ? { id: head, label: configured("head", head)!.name, description: configured("head", head)!.description ?? "", addPrice: configured("head", head)!.priceMinor / 100, image: configured("head", head)!.imageUrl ?? "/catogeries/4.jpg" } : (headOptions.find((option) => option.id === head) ?? headOptions[0]);
   const configuredSize = config?.sizeOptions.find((option) => option.slug === size);
   const selectedSize = configuredSize ? { value: size, label: configuredSize.name, multiplier: configuredSize.multiplier ?? 1 } : (sizeOptions.find((option) => option.value === size) ?? sizeOptions[2]);
   const selectedFrame =
     configured("frame", frame) ? { id: frame, label: configured("frame", frame)!.name, description: configured("frame", frame)!.description ?? "", addPrice: configured("frame", frame)!.priceMinor / 100, image: configured("frame", frame)!.imageUrl ?? "/catogeries/4.jpg" } : (frameOptions.find((option) => option.id === frame) ?? frameOptions[0]);
 
-  const hasHeadConnection =
-    category === "person" || category === "pet" || category === "character";
   const isPerson = category === "person";
   const rawCategory = config?.categories.find((option) => option.slug === category);
   const selectedCategory = rawCategory ? { ...rawCategory, label: rawCategory.name } : (categories.find((option) => option.id === category) ?? categories[0]);
@@ -110,13 +105,13 @@ export function CustomForm({
       isPerson
         ? calculatePrice({
             body: selectedBody,
-            head: selectedHead,
+            head: { addPrice: 0 },
             frame: selectedFrame,
             size: selectedSize,
           })
         : calculateCategoryPrice({
             category,
-            head: selectedHead,
+            head: { addPrice: 0 },
             size: selectedSize,
           }),
     [category, isPerson, selectedBody, selectedFrame, selectedHead, selectedSize],
@@ -133,7 +128,6 @@ export function CustomForm({
       body: JSON.stringify({
         category,
         bodyType: isPerson ? body : undefined,
-        headType: hasHeadConnection ? head : undefined,
         subjectType: isPerson ? frame : undefined,
         sizeCm: Number(size),
       }),
@@ -164,13 +158,14 @@ export function CustomForm({
     return () => {
       cancelled = true;
     };
-  }, [category, body, frame, hasHeadConnection, head, isPerson, size]);
+  }, [category, body, frame, isPerson, size]);
 
   const price = serverPrice ?? localPrice;
 
   const displayCategories = config?.categories.map((item) => ({ id: item.slug, label: item.name, description: item.description ?? "", image: item.imageUrl || "/catogeries/4.jpg" })) ?? categories;
   const hasReference = files.length > 0;
-  const activeGallery = gallery[activeImage];
+  const selectedPreview = selectedBody?.image || selectedFrame?.image || selectedCategory.image;
+  const activeGallery = { id: "selected", label: isPerson ? selectedBody.label : selectedCategory.label, image: selectedPreview };
 
   function showGalleryImage(id: string) {
     const index = gallery.findIndex((item) => item.id === id);
@@ -180,7 +175,6 @@ export function CustomForm({
   function selectCategory(value: CustomCategory) {
     setCategory(value);
     if (value === "person") showGalleryImage(body);
-    else if (value === "pet" || value === "character") showGalleryImage("stationary");
     else {
       setActiveImage(
         Math.max(0, categories.findIndex((item) => item.id === value)) %
@@ -192,11 +186,6 @@ export function CustomForm({
   function handleBodyChange(value: string) {
     onBodyChange(value);
     if (isPerson) showGalleryImage(value);
-  }
-
-  function handleHeadChange(value: string) {
-    onHeadChange(value);
-    if (isPerson || hasHeadConnection) showGalleryImage(value);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -212,7 +201,6 @@ export function CustomForm({
       const requirements = [
         `Category: ${selectedCategory.label}`,
         `Body type: ${isPerson ? selectedBody.label : "Not applicable"}`,
-        `Head connection: ${hasHeadConnection ? selectedHead.label : "Not applicable"}`,
         `Person in frame: ${isPerson ? selectedFrame.label : "Not applicable"}`,
         `Size: ${selectedSize.label}`,
         details.trim() ? `Additional requirements:\\n${details.trim()}` : "",
@@ -232,7 +220,6 @@ export function CustomForm({
           notes: details.trim() || undefined,
           category,
           bodyType: isPerson ? body : undefined,
-          headType: hasHeadConnection ? head : undefined,
           subjectType: isPerson ? frame : undefined,
           personCount:
             frame === "single" ? 1 : frame === "couple" ? 2 : frame === "group" ? 3 : 1,
@@ -310,7 +297,7 @@ export function CustomForm({
         category,
         price,
         bodyLabel: isPerson ? selectedBody.label : "Not applicable",
-        headLabel: hasHeadConnection ? selectedHead.label : "Not applicable",
+        headLabel: "Default",
         sizeLabel: selectedSize.label,
         frameLabel: isPerson ? selectedFrame.label : "Not applicable",
       });
@@ -325,10 +312,6 @@ export function CustomForm({
     }
   }
 
-  const nextImage = () =>
-    setActiveImage((current) => (current + 1) % gallery.length);
-  const previousImage = () =>
-    setActiveImage((current) => (current - 1 + gallery.length) % gallery.length);
 
   return (
     <form onSubmit={handleSubmit} className="mx-auto max-w-[1380px]">
@@ -346,10 +329,10 @@ export function CustomForm({
             <div className="absolute left-4 top-4 rounded-full border border-white/15 bg-foreground/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-foreground/80 backdrop-blur-md">
               Custom 3D Studio
             </div>
-            <button type="button" onClick={previousImage} aria-label="Previous product example" className="absolute left-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl border border-white/15 bg-black/35 text-white backdrop-blur-md sm:left-5">
+            <button type="button" onClick={() => {}} aria-label="Previous product example" className="absolute left-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl border border-white/15 bg-black/35 text-white backdrop-blur-md sm:left-5">
               <span className="text-xl">‹</span>
             </button>
-            <button type="button" onClick={nextImage} aria-label="Next product example" className="absolute right-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl border border-white/15 bg-black/35 text-white backdrop-blur-md sm:right-5">
+            <button type="button" onClick={() => {}} aria-label="Next product example" className="absolute right-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl border border-white/15 bg-black/35 text-white backdrop-blur-md sm:right-5">
               <span className="text-xl">›</span>
             </button>
             <div className="absolute bottom-4 left-4 right-4 sm:bottom-5 sm:left-5 sm:right-5">
@@ -448,49 +431,7 @@ export function CustomForm({
                   </div>
                 </CompactSection>
 
-                <CompactSection label="Head connection">
-                  <div className="grid grid-cols-2 gap-2">
-                    {headOptions.map((option) => (
-                      <SelectionButton
-                        key={option.id}
-                        image={option.image}
-                        label={option.label}
-                        price={option.priceLabel}
-                        description={option.description}
-                        selected={head === option.id}
-                        onClick={() => handleHeadChange(option.id)}
-                      />
-                    ))}
-                  </div>
-                </CompactSection>
-
-                <CompactSection label="Person in frame">
-                  <div className="relative">
-                    <select value={frame} onChange={(event) => setFrame(event.target.value)} className="h-12 w-full appearance-none rounded-xl border border-border bg-surface px-3.5 pr-10 text-sm font-medium outline-none focus:border-primary/60">
-                      {frameOptions.map((option) => (
-                        <option key={option.id} value={option.id}>{option.label} — {option.priceLabel}</option>
-                      ))}
-                    </select>
-                    <IconChevronDown size={17} className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-muted" />
-                  </div>
-                </CompactSection>
-              </>
-            ) : hasHeadConnection ? (
-              <CompactSection label="Head connection">
-                <div className="grid grid-cols-2 gap-2">
-                  {headOptions.map((option) => (
-                    <SelectionButton
-                      key={option.id}
-                      label={option.label}
-                      price={option.priceLabel}
-                      description={option.description}
-                      selected={head === option.id}
-                      onClick={() => handleHeadChange(option.id)}
-                    />
-                  ))}
-                </div>
-              </CompactSection>
-            ) : (
+                            ) : (
               <div className="rounded-2xl border border-border bg-surface/45 p-4">
                 <p className="text-xs font-semibold">
                   Built for {selectedCategory.label.toLowerCase()}
