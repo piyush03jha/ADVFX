@@ -25,22 +25,30 @@ export async function GET(
 
   if (
     !Array.isArray(path) ||
-    path.length < 2 ||
+    path.length < 3 ||
+    path[0] !== "products" ||
     path.some((segment) => !segment || segment === "." || segment === "..")
   ) {
     return NextResponse.json({ error: "Asset not found." }, { status: 404 });
   }
 
   try {
-    const backendPath = path.map(encodeURIComponent).join("/");
+    // The public URL already contains the "products" namespace. The backend
+    // controller owns that route prefix, so only forward the product id/key.
+    const backendPath = path.slice(1).map(encodeURIComponent).join("/");
     const response = await fetch(
       getBackendApiUrl(`assets/products/${backendPath}`),
-      { cache: "no-store" },
+      { next: { revalidate: 3600 } },
     );
+
+    const headers = copyAssetHeaders(response);
+    if (!headers.has("cache-control") && response.ok) {
+      headers.set("cache-control", "public, max-age=3600, stale-while-revalidate=86400");
+    }
 
     return new NextResponse(response.body, {
       status: response.status,
-      headers: copyAssetHeaders(response),
+      headers,
     });
   } catch {
     return NextResponse.json(
