@@ -45,7 +45,6 @@ interface CustomFormProps {
 
 const gallery = [
   { id: "full", label: "Full body", image: "/catogeries/2.jpg" },
-  { id: "bobble", label: "Bobble head", image: "/catogeries/3.jpg" },
   { id: "half", label: "Half body", image: "/catogeries/1.jpg" },
   { id: "stationary", label: "Stationary head", image: "/catogeries/4.jpg" },
 ];
@@ -56,7 +55,7 @@ const categories: Array<{
   description: string;
   image: string;
 }> = [
-  { id: "person", label: "Person", description: "Portraits, figurines & bobble heads", image: "/catogeries/2.jpg" },
+  { id: "person", label: "Person", description: "Portraits and figurines", image: "/catogeries/2.jpg" },
   { id: "pet", label: "Pet / Animal", description: "Turn your companion into a keepsake", image: "/catogeries/1.jpg" },
   { id: "object", label: "Product / Object", description: "Replicas, parts, sculptures & more", image: "/catogeries/4.jpg" },
   { id: "vehicle", label: "Vehicle", description: "Cars, bikes and display models", image: "/catogeries/2.jpg" },
@@ -100,7 +99,7 @@ export function CustomForm({
   const selectedFrame =
     configured("frame", frame) ? { id: frame, label: configured("frame", frame)!.name, description: configured("frame", frame)!.description ?? "", addPrice: configured("frame", frame)!.priceMinor / 100 } : (frameOptions.find((option) => option.id === frame) ?? frameOptions[0]);
 
-  const hasBobbleHead =
+  const hasHeadConnection =
     category === "person" || category === "pet" || category === "character";
   const isPerson = category === "person";
   const rawCategory = config?.categories.find((option) => option.slug === category);
@@ -134,7 +133,7 @@ export function CustomForm({
       body: JSON.stringify({
         category,
         bodyType: isPerson ? body : undefined,
-        headType: hasBobbleHead ? head : undefined,
+        headType: hasHeadConnection ? head : undefined,
         subjectType: isPerson ? frame : undefined,
         sizeCm: Number(size),
       }),
@@ -181,7 +180,7 @@ export function CustomForm({
   function selectCategory(value: CustomCategory) {
     setCategory(value);
     if (value === "person") showGalleryImage(body);
-    else if (value === "pet" || value === "character") showGalleryImage("bobble");
+    else if (value === "pet" || value === "character") showGalleryImage("stationary");
     else {
       setActiveImage(
         Math.max(0, categories.findIndex((item) => item.id === value)) %
@@ -197,7 +196,7 @@ export function CustomForm({
 
   function handleHeadChange(value: string) {
     onHeadChange(value);
-    if (isPerson || hasBobbleHead) showGalleryImage(value);
+    if (isPerson || hasHeadConnection) showGalleryImage(value);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -213,7 +212,7 @@ export function CustomForm({
       const requirements = [
         `Category: ${selectedCategory.label}`,
         `Body type: ${isPerson ? selectedBody.label : "Not applicable"}`,
-        `Head connection: ${hasBobbleHead ? selectedHead.label : "Not applicable"}`,
+        `Head connection: ${hasHeadConnection ? selectedHead.label : "Not applicable"}`,
         `Person in frame: ${isPerson ? selectedFrame.label : "Not applicable"}`,
         `Size: ${selectedSize.label}`,
         details.trim() ? `Additional requirements:\\n${details.trim()}` : "",
@@ -474,8 +473,8 @@ export function CustomForm({
                   </div>
                 </CompactSection>
               </>
-            ) : hasBobbleHead ? (
-              <CompactSection label="Head connection" hint="Available">
+            ) : hasHeadConnection ? (
+              <CompactSection label="Head connection">
                 <div className="grid grid-cols-2 gap-2">
                   {headOptions.map((option) => (
                     <SelectionButton
