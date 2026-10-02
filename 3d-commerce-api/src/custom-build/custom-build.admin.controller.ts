@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Param, Patch, Post, UseGuards } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Res, UseGuards } from "@nestjs/common";
 import { AdminGuard } from "../auth/guards/admin.guard";
 import { AuthGuard } from "../auth/guards/auth.guard";
 import { CustomBuildService } from "./custom-build.service";
