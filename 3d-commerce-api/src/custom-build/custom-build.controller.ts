@@ -23,6 +23,9 @@ import { CustomBuildService } from './custom-build.service';
 export class CustomBuildController {
   constructor(private readonly customBuildService: CustomBuildService) {}
 
+  @Get("config")
+  config() { return this.customBuildService.getPublicConfig(); }
+
   @UseGuards(CustomerAuthGuard)
   @Post("quote")
   quote(@Body() dto: CustomPricingDto) {
