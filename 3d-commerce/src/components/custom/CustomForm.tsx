@@ -114,7 +114,7 @@ export function CustomForm({
             head: { addPrice: 0 },
             size: selectedSize,
           }),
-    [category, isPerson, selectedBody, selectedFrame, selectedHead, selectedSize],
+    [category, isPerson, selectedBody, selectedFrame, selectedSize],
   );
 
   useEffect(() => {
@@ -164,28 +164,24 @@ export function CustomForm({
 
   const displayCategories = config?.categories.map((item) => ({ id: item.slug, label: item.name, description: item.description ?? "", image: item.imageUrl || "/catogeries/4.jpg" })) ?? categories;
   const hasReference = files.length > 0;
-  const selectedPreview = selectedBody?.image || selectedFrame?.image || selectedCategory.image;
-  const activeGallery = { id: "selected", label: isPerson ? selectedBody.label : selectedCategory.label, image: selectedPreview };
-
-  function showGalleryImage(id: string) {
-    const index = gallery.findIndex((item) => item.id === id);
-    if (index >= 0) setActiveImage(index);
-  }
+  const [previewImage, setPreviewImage] = useState(selectedCategory.image);
+  const [previewLabel, setPreviewLabel] = useState(selectedCategory.label);
+  const activeGallery = { id: "selected", label: previewLabel, image: previewImage };
 
   function selectCategory(value: CustomCategory) {
     setCategory(value);
-    if (value === "person") showGalleryImage(body);
-    else {
-      setActiveImage(
-        Math.max(0, categories.findIndex((item) => item.id === value)) %
-          gallery.length,
-      );
-    }
+    const nextCategory = config?.categories.find((item) => item.slug === value);
+    setPreviewImage(nextCategory?.imageUrl || categories.find((item) => item.id === value)?.image || "/catogeries/4.jpg");
+    setPreviewLabel(nextCategory?.name || categories.find((item) => item.id === value)?.label || value);
   }
 
   function handleBodyChange(value: string) {
     onBodyChange(value);
-    if (isPerson) showGalleryImage(value);
+    if (isPerson) {
+      const option = configured("body", value);
+      setPreviewImage(option?.imageUrl || bodyOptions.find((item) => item.id === value)?.image || selectedCategory.image);
+      setPreviewLabel(option?.name || bodyOptions.find((item) => item.id === value)?.label || value);
+    }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -329,10 +325,10 @@ export function CustomForm({
             <div className="absolute left-4 top-4 rounded-full border border-white/15 bg-foreground/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-foreground/80 backdrop-blur-md">
               Custom 3D Studio
             </div>
-            <button type="button" onClick={() => {}} aria-label="Previous product example" className="absolute left-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl border border-white/15 bg-black/35 text-white backdrop-blur-md sm:left-5">
+            <button type="button" disabled aria-label="Previous product example" className="absolute left-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl border border-white/15 bg-black/35 text-white backdrop-blur-md sm:left-5">
               <span className="text-xl">‹</span>
             </button>
-            <button type="button" onClick={() => {}} aria-label="Next product example" className="absolute right-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl border border-white/15 bg-black/35 text-white backdrop-blur-md sm:right-5">
+            <button type="button" disabled aria-label="Next product example" className="absolute right-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl border border-white/15 bg-black/35 text-white backdrop-blur-md sm:right-5">
               <span className="text-xl">›</span>
             </button>
             <div className="absolute bottom-4 left-4 right-4 sm:bottom-5 sm:left-5 sm:right-5">
@@ -345,24 +341,7 @@ export function CustomForm({
             </div>
           </div>
 
-          <div className="mt-3 grid shrink-0 grid-cols-4 gap-2 sm:mt-4 sm:gap-3">
-            {gallery.map((item, index) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setActiveImage(index)}
-                aria-label={`Show ${item.label} example`}
-                className={`relative aspect-[4/3] overflow-hidden rounded-xl border transition ${activeImage === index ? "border-primary ring-1 ring-primary/30" : "border-white/10 opacity-65 hover:opacity-100"}`}
-              >
-                <img src={item.image} alt="" className="h-full w-full object-cover" />
-                {activeImage === index && (
-                  <span className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-white">
-                    <IconCheck size={12} />
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
+
         </div>
 
         <div className="flex flex-col bg-surface/80 p-5 sm:p-7 lg:max-h-[calc(100svh-120px)] lg:overflow-y-auto lg:p-9">
@@ -444,7 +423,7 @@ export function CustomForm({
 
             <CompactSection label="Size">
               <div className="relative">
-                <select value={size} onChange={(event) => setSize(event.target.value)} className="h-12 w-full appearance-none rounded-xl border border-border bg-surface px-3.5 pr-10 text-sm font-medium outline-none focus:border-primary/60">
+                <select value={size} onChange={(event) => { const value = event.target.value; setSize(value); const option = config?.sizeOptions.find((item) => item.slug === value); setPreviewImage(option?.imageUrl || selectedCategory.image); setPreviewLabel(option?.name || `${value} cm`); }} className="h-12 w-full appearance-none rounded-xl border border-border bg-surface px-3.5 pr-10 text-sm font-medium outline-none focus:border-primary/60">
                   {sizeOptions.map((option) => (
                     <option key={option.value} value={option.value}>{option.label}</option>
                   ))}
