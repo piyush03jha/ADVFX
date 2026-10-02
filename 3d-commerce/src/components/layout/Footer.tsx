@@ -12,13 +12,10 @@ import {
 } from "@tabler/icons-react";
 
 const collections = [
-  { label: "Custom Miniatures", href: "/categories/custom-miniatures" },
-  { label: "Anime", href: "/categories/anime" },
-  { label: "Gaming", href: "/categories/gaming" },
-  { label: "Mobile / TV", href: "/categories/mobile-tv" },
-  { label: "Heroes & Characters", href: "/categories/heroes" },
-  { label: "Weapon Props", href: "/categories/weapon-props" },
-  { label: "Desk Toys", href: "/categories/desk-toys" },
+  { label: "Bestsellers", href: "/bestsellers" },
+  { label: "New Arrivals", href: "/new-arrivals" },
+  { label: "Categories", href: "/categories" },
+  { label: "Bulk Order", href: "/bulk-order" },
 ];
 
 const helpLinks = [
