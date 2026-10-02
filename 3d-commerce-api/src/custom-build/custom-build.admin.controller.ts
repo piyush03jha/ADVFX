@@ -39,6 +39,17 @@ export class CustomBuildAdminController {
     return this.service.deleteConfigOption(id);
   }
 
+  @Post("options/:id/image")
+  async uploadOptionImage(@Param("id") id: string, @Res() reply: FastifyReply) {
+    const request = reply.request as FastifyRequest & { file?: () => Promise<any> };
+    if (typeof request.file !== "function") throw new BadRequestException("Multipart upload support is not available");
+    const file = await request.file();
+    if (!file) throw new BadRequestException("Image file is required");
+    return reply.send(await this.service.uploadConfigOptionImage(id, {
+      originalname: file.filename, mimetype: file.mimetype, buffer: await file.toBuffer(),
+    }));
+  }
+
   @Post("categories/:id/image")
   async uploadCategoryImage(@Param("id") id: string, @Res() reply: FastifyReply) {
     const request = reply.request as FastifyRequest & { file?: () => Promise<any> };
