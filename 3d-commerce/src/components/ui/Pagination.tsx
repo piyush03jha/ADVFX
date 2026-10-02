@@ -81,7 +81,7 @@ function PageArrow({
       onClick={onClick}
       aria-label={direction === "prev" ? "Previous page" : "Next page"}
       className="
-        flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border
+        flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border sm:h-9 sm:w-9
         text-muted transition-all duration-300
         hover:border-primary/30 hover:text-foreground
         disabled:pointer-events-none disabled:opacity-30
