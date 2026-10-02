@@ -150,51 +150,21 @@ export class ProductFilesController {
         fileId,
       );
 
-    const absolutePath =
-      this.storage.getAbsolutePath(
-        file.storageKey,
-      );
-
     try {
-      const {
-        createReadStream,
-      } = await import(
-        "node:fs"
+      const buffer = await this.storage.read(file.storageKey);
+      const safeName = file.originalName.replace(
+        /[\\/\r\n"']/g,
+        "_",
       );
 
-      const stream =
-        createReadStream(
-          absolutePath,
-        );
-
-      stream.once(
-        "error",
-        () => {
-          // Missing-file errors occurring
-          // after stream creation are handled
-          // by the HTTP stream lifecycle.
-        },
-      );
-
-      const safeName =
-        file.originalName.replace(
-          /[\\/\r\n"']/g,
-          "_",
-        );
-
-      return new StreamableFile(
-        stream,
-        {
-          type:
-            file.mimeType ??
-            "application/octet-stream",
-
-          disposition:
-            `inline; filename="${encodeURIComponent(
-              safeName,
-            )}"`,
-        },
-      );
+      return new StreamableFile(buffer, {
+        type:
+          file.mimeType ??
+          this.storage.getContentTypeForStorageKey(file.storageKey),
+        length: buffer.length,
+        disposition:
+          `inline; filename="${encodeURIComponent(safeName)}"`,
+      });
     } catch {
       throw new NotFoundException(
         "Stored file could not be found",
