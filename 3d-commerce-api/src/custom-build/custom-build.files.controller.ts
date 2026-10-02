@@ -57,6 +57,8 @@ export class CustomBuildFilesController {
     });
     if (!request) throw new BadRequestException('Custom request not found');
 
+    const uploaded = await this.readMultipart(req, MAX_MODEL_FILE_SIZE);
+
     const extension = uploaded.filename.toLowerCase().match(/\\.([a-z0-9]+)$/)?.[1] ?? '';
     const isImage = REFERENCE_MIME_TYPES.has(uploaded.mimetype);
     const isModel = MODEL_EXTENSIONS.has(extension);
