@@ -16,11 +16,11 @@ export class AssetController {
     private readonly storage: StorageService,
   ) {}
 
-  @Get("products/*")
+  @Get("products/*splat")
   async getProductAsset(
     @Param() params: Record<string, string | undefined>,
   ): Promise<StreamableFile> {
-    const wildcard = params["*"] ?? params["0"] ?? "";
+    const wildcard = params["splat"] ?? params["*"] ?? params["0"] ?? "";
     const normalized = decodeURIComponent(wildcard).replace(/^\/+/, "");
 
     if (!normalized || normalized.includes("\0")) {
