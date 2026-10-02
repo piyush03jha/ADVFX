@@ -1,6 +1,6 @@
 export interface StoredFile {
   storageKey: string;
-  storageUrl: string;
+  storageUrl: string | null;
   storagePath: string;
   size: number;
 }
