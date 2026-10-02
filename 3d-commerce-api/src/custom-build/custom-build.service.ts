@@ -1,3 +1,4 @@
+import { CreateCustomBuildOptionDto, UpdateCustomBuildCategoryDto, UpdateCustomBuildOptionDto } from "./custom-build.config.dto";
 import {
   BadRequestException,
   Injectable,
@@ -131,22 +132,68 @@ export class CustomBuildService {
   }
 
   async quote(input: CustomPricingInput) {
-    const priceMinor = this.calculatePrice(input) * 100;
+    const calculated = await this.calculateConfiguredPrice(input);
+    return { currency: calculated.currency, amountMinor: calculated.amountMinor, priceMinor: calculated.amountMinor, breakdown: calculated.breakdown };
+  }
 
+  private async calculateConfiguredPrice(input: CustomPricingInput) {
+    const category = await this.prisma.customBuildCategory.findUnique({
+      where: { slug: input.category },
+      include: { options: { where: { isActive: true }, orderBy: [{ section: "asc" }, { sortOrder: "asc" }] } },
+    });
+    if (!category || !category.isActive) throw new BadRequestException("Custom category is unavailable");
+    const size = await this.prisma.customBuildOption.findFirst({
+      where: { categoryId: category.id, section: "size", slug: String(input.sizeCm), isActive: true },
+    });
+    if (!size?.multiplier) throw new BadRequestException("Unsupported custom size");
+    const by = (section: string, slug?: string) => slug ? category.options.find((o) => o.section === section && o.slug === slug) : undefined;
+    let baseMinor = category.basePriceMinor;
+    const selected: any[] = [];
+    if (category.slug === "person") {
+      const body = by("body", input.bodyType), head = by("head", input.headType), frame = by("frame", input.subjectType);
+      if (!body || !head || !frame) throw new BadRequestException("Person build has an invalid configuration");
+      baseMinor = body.priceMinor + head.priceMinor + frame.priceMinor;
+      selected.push(body, head, frame);
+    } else if (input.headType) {
+      const head = by("head", input.headType);
+      if (!head) throw new BadRequestException("Invalid head configuration");
+      baseMinor += head.priceMinor; selected.push(head);
+    }
     return {
-      currency: "INR",
-      amountMinor: priceMinor,
-      priceMinor,
-      breakdown: {
-        category: input.category,
-        bodyType: input.bodyType ?? null,
-        headType: input.headType ?? null,
-        subjectType: input.subjectType ?? null,
-        personCount: input.personCount ?? null,
-        petCount: input.petCount ?? null,
-        sizeCm: input.sizeCm,
-      },
+      amountMinor: Math.round(baseMinor * size.multiplier), currency: category.currency,
+      breakdown: { category: category.slug, categoryName: category.name, bodyType: input.bodyType ?? null, headType: input.headType ?? null, subjectType: input.subjectType ?? null, personCount: input.personCount ?? null, petCount: input.petCount ?? null, sizeCm: input.sizeCm, multiplier: size.multiplier, selectedOptions: selected.map((o) => ({ section: o.section, slug: o.slug, name: o.name, priceMinor: o.priceMinor })) },
     };
+  }
+
+  async getPublicConfig() {
+    const [categories, sizeOptions] = await Promise.all([
+      this.prisma.customBuildCategory.findMany({ where: { isActive: true }, include: { options: { where: { isActive: true }, orderBy: [{ section: "asc" }, { sortOrder: "asc" }] } }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }] }),
+      this.prisma.customBuildOption.findMany({ where: { category: { slug: "person" }, section: "size", isActive: true }, orderBy: { sortOrder: "asc" } }),
+    ]);
+    return { categories, sizeOptions };
+  }
+
+  async getAdminConfig() {
+    return this.prisma.customBuildCategory.findMany({ include: { options: { orderBy: [{ section: "asc" }, { sortOrder: "asc" }] } }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }] });
+  }
+
+  async createConfigCategory(data: { slug: string; name: string; description?: string; basePriceMinor?: number; sortOrder?: number; isActive?: boolean }) {
+    return this.prisma.customBuildCategory.create({ data: { slug: data.slug.trim().toLowerCase(), name: data.name.trim(), description: data.description?.trim() || null, basePriceMinor: data.basePriceMinor ?? 0, sortOrder: data.sortOrder ?? 0, isActive: data.isActive !== false } });
+  }
+  async updateConfigCategory(id: string, dto: UpdateCustomBuildCategoryDto) { return this.prisma.customBuildCategory.update({ where: { id }, data: dto }); }
+  async createConfigOption(categoryId: string, dto: CreateCustomBuildOptionDto) { return this.prisma.customBuildOption.create({ data: { ...dto, categoryId, priceMinor: dto.priceMinor ?? 0, sortOrder: dto.sortOrder ?? 0, isActive: dto.isActive !== false } }); }
+  async updateConfigOption(id: string, dto: UpdateCustomBuildOptionDto) { return this.prisma.customBuildOption.update({ where: { id }, data: dto }); }
+  async deleteConfigOption(id: string) { return this.prisma.customBuildOption.delete({ where: { id } }); }
+
+  async uploadConfigCategoryImage(id: string, file: { originalname: string; mimetype: string; buffer: Buffer }) {
+    const category = await this.prisma.customBuildCategory.findUnique({ where: { id } });
+    if (!category) throw new NotFoundException("Custom category not found");
+    if (!file.buffer?.length || file.buffer.length > 5 * 1024 * 1024) throw new BadRequestException("Category image must be between 1 byte and 5 MB");
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.mimetype)) throw new BadRequestException("Only JPG, PNG and WebP are supported");
+    const stored = await this.storage.saveCustomBuildCategoryImage(id, file.originalname, file.buffer);
+    const updated = await this.prisma.customBuildCategory.update({ where: { id }, data: { imageUrl: stored.storageUrl } });
+    if (category.imageUrl?.startsWith("/storage/")) { try { await this.storage.delete(category.imageUrl.replace(/^\/storage\//, "")); } catch {} }
+    return updated;
   }
 
   async checkout(
@@ -244,7 +291,8 @@ export class CustomBuildService {
     });
     if (!user) throw new NotFoundException("User not found");
 
-    const price = this.calculatePrice(dto);
+    const configured = await this.calculateConfiguredPrice(dto);
+    const price = configured.amountMinor / 100;
     const sizeLabel = `${dto.sizeCm} cm`;
     const requirements = [
       dto.requirements.trim(),
@@ -277,6 +325,7 @@ export class CustomBuildService {
         priceCurrency: "INR",
         pricedAt: new Date(),
         referenceFileCount: 0,
+        configurationSnapshot: JSON.stringify(configured.breakdown),
         status: "SUBMITTED",
       },
       include: { media: true, quote: true, order: true },
