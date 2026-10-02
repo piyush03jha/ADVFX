@@ -11,7 +11,6 @@ import {
 import { Container } from "@/components/ui/Container";
 import { HERO_MODEL_ROTATION_MS } from "@/config/hero-motion";
 import type { HeroProduct } from "@/config/hero-products";
-import { getBackendApiUrl } from "@/lib/backend-api";
 
 import { HeroContent } from "./HeroContent";
 import { HeroPagination } from "./HeroPagination";
@@ -35,7 +34,7 @@ export function Hero() {
         setIsLoading(true);
         setHasError(false);
 
-        const response = await fetch(getBackendApiUrl("products/hero"), {
+        const response = await fetch("/api/products/hero", {
           cache: "no-store",
         });
 
@@ -162,12 +161,11 @@ export function Hero() {
             <h1 className="mt-3 text-3xl font-semibold tracking-tight text-foreground sm:text-5xl">
               Explore our collection
             </h1>
-            <p className="mt-4 text-sm leading-6 text-muted">
-              {message}
-            </p>
+            <p className="mt-4 text-sm leading-6 text-muted">{message}</p>
             {hasError && (
               <p className="mt-2 text-xs text-muted/70">
-                The storefront will use featured catalog products as soon as the catalog service is available.
+                The storefront will use featured catalog products as soon as
+                the catalog service is available.
               </p>
             )}
           </div>
@@ -179,7 +177,7 @@ export function Hero() {
   const activeProduct = heroProducts[activeIndex] ?? heroProducts[0];
 
   return (
-    <section className="relative isolate overflow-hidden min-h-[720px] pb-10 lg:min-h-[calc(100svh-5rem)] lg:pb-0">
+    <section className="relative isolate min-h-[720px] overflow-hidden pb-10 lg:min-h-[calc(100svh-5rem)] lg:pb-0">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_55%_25%,rgba(139,92,246,0.13),transparent_35%),linear-gradient(180deg,rgba(255,255,255,0.025),transparent_48%)] lg:bg-[radial-gradient(circle_at_60%_40%,rgba(139,92,246,0.14),transparent_40%),linear-gradient(180deg,rgba(255,255,255,0.025),transparent_48%)]"
