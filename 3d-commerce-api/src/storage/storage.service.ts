@@ -22,8 +22,8 @@ export class StorageService {
   private readonly region = process.env.STORAGE_REGION ?? (this.provider === "r2" ? "auto" : "us-east-1");
 
   constructor() {
-    if (this.provider !== "local" && (!this.bucket || !this.endpoint || !this.accessKey || !this.secretKey || !this.publicBaseUrl)) {
-      throw new Error("Remote storage requires STORAGE_BUCKET, STORAGE_ENDPOINT, STORAGE_ACCESS_KEY_ID, STORAGE_SECRET_ACCESS_KEY and STORAGE_PUBLIC_BASE_URL");
+    if (this.provider !== "local" && (!this.bucket || !this.endpoint || !this.accessKey || !this.secretKey)) {
+      throw new Error("Remote storage requires STORAGE_BUCKET, STORAGE_ENDPOINT, STORAGE_ACCESS_KEY_ID and STORAGE_SECRET_ACCESS_KEY");
     }
   }
 
@@ -93,7 +93,9 @@ export class StorageService {
     await this.putObject(storageKey, buffer, this.contentType(extension));
     return {
       storageKey,
-      storageUrl: `${this.publicBaseUrl}/${storageKey.split("/").map(encodeURIComponent).join("/")}`,
+      storageUrl: this.publicBaseUrl
+        ? `${this.publicBaseUrl}/${storageKey.split("/").map(encodeURIComponent).join("/")}`
+        : null,
       storagePath: "",
       size: buffer.length,
     };
