@@ -170,7 +170,7 @@ export class StorageService {
     return types[extension] ?? "application/octet-stream";
   }
 
-  private normalizePathSegment(value: string, name: string) {
+  private normalizePathSegment(value: string, name: string): string {
     const normalized = value.trim();
     if (!normalized || normalized === "." || normalized === ".." || normalized.includes("/") || normalized.includes("\") || normalized.includes(" ")) throw new BadRequestException(`Invalid ${name}`);
     return normalized;
