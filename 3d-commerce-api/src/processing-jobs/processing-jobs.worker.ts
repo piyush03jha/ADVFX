@@ -288,42 +288,33 @@ export class ProcessingJobsWorker
         job.id,
       );
 
+      // Mark the source successful before cleanup, but do not complete the
+      // processing job until the original storage object and DB row are gone.
       await this.prisma.productFile.update({
-        where: {
-          id: job.productFileId,
-        },
+        where: { id: job.productFileId },
         data: {
-          processingStatus:
-            ProcessingStatus.COMPLETED,
+          processingStatus: ProcessingStatus.COMPLETED,
           processingError: null,
         },
       });
 
-      await this.prisma.productFileProcessingJob.update(
-        {
-          where: {
-            id: job.id,
-          },
-          data: {
-            status:
-              ProcessingJobStatus.COMPLETED,
-            completedAt: new Date(),
-            errorMessage: null,
-          },
-        },
-      );
-
-      // For uploaded GLBs, the validated optimized output is now the
-      // canonical customer-facing asset. Remove the original source only
-      // after the output and processing job have been committed successfully.
-      //
-      // cleanupOptimizedGlbSource is deliberately idempotent: if the storage
-      // object is already gone, the DB source row is still removed.
+      // If cleanup fails, this throws and the job is re-queued. On retry,
+      // convert() sees outputFileId and skips expensive re-conversion.
       await this.cleanupOptimizedGlbSource(job.productFileId);
+
+      await this.prisma.productFileProcessingJob.update({
+        where: { id: job.id },
+        data: {
+          status: ProcessingJobStatus.COMPLETED,
+          completedAt: new Date(),
+          errorMessage: null,
+        },
+      });
 
       this.logger.log(
         `Processing job ${job.id} completed successfully`,
       );
+
     } catch (error) {
       await this.handleProcessingFailure(
         job,
@@ -371,10 +362,13 @@ export class ProcessingJobsWorker
         `Removed original GLB source ${source.id} after successful optimization`,
       );
     } catch (error) {
-      this.logger.error(
-        `Optimized GLB source ${source.id} was removed from storage but its DB record could not be deleted.`,
-        error instanceof Error ? error.stack : String(error),
+      // Storage has already been deleted. Throw so the job is retried; the
+      // next cleanup pass treats the missing object as already deleted.
+      throw new Error(
+        "Original GLB storage was deleted but source DB cleanup failed: " +
+          (error instanceof Error ? error.message : String(error)),
       );
+    }
     }
   }
 
