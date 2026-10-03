@@ -1027,7 +1027,7 @@ model ProductFile {
   imageColorSpace String?
 
   convertedFromId String?
-  convertedFrom   ProductFile? @relation("ConvertedFiles", fields: [convertedFromId], references: [id])
+  convertedFrom   ProductFile? @relation("ConvertedFiles", fields: [convertedFromId], references: [id], onDelete: SetNull)
   convertedFiles ProductFile[] @relation("ConvertedFiles")
 
   processingJobs ProductFileProcessingJob[]
