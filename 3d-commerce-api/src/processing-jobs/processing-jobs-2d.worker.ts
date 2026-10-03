@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ProductFileFormat, ProductFileType } from "@prisma/client";
 import { StorageService } from "../storage/storage.service";
+import path from "node:path";
 
 @Injectable()
 export class ProcessingJobs2DWorker {
