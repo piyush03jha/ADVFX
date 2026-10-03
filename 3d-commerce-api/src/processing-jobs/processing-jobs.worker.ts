@@ -313,6 +313,11 @@ export class ProcessingJobsWorker
         },
       );
 
+      // For uploaded GLBs, the validated optimized output is now the
+      // canonical customer-facing asset. Remove the original source only
+      // after the output and processing job have been committed successfully.
+      await this.cleanupOptimizedGlbSource(job.productFileId);
+
       this.logger.log(
         `Processing job ${job.id} completed successfully`,
       );
@@ -320,6 +325,52 @@ export class ProcessingJobsWorker
       await this.handleProcessingFailure(
         job,
         error,
+      );
+    }
+  }
+
+  /**
+   * Remove a successfully processed GLB source.
+   *
+   * Storage deletion is intentionally attempted before the DB row is removed.
+   * The operation is idempotent: a missing object is treated as already
+   * cleaned, while a DB delete can safely be retried if the process restarts.
+   */
+  private async cleanupOptimizedGlbSource(productFileId: string): Promise<void> {
+    const source = await this.prisma.productFile.findUnique({
+      where: { id: productFileId },
+      select: {
+        id: true,
+        format: true,
+        storageKey: true,
+      },
+    });
+
+    if (!source || source.format !== ProductFileFormat.GLB) {
+      return;
+    }
+
+    try {
+      await this.storage.delete(source.storageKey);
+    } catch (error) {
+      this.logger.error(
+        `Unable to delete optimized GLB source ${source.id} from storage; retaining DB record for retry.`,
+        error instanceof Error ? error.stack : String(error),
+      );
+      return;
+    }
+
+    try {
+      await this.prisma.productFile.delete({
+        where: { id: source.id },
+      });
+      this.logger.log(
+        `Removed original GLB source ${source.id} after successful optimization`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Optimized GLB source ${source.id} was removed from storage but its DB record could not be deleted.`,
+        error instanceof Error ? error.stack : String(error),
       );
     }
   }
