@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 declare global {
   interface Window {
@@ -11,7 +11,8 @@ declare global {
         theme?: "auto" | "light" | "dark";
         callback?: (token: string) => void;
         "expired-callback"?: () => void;
-        "error-callback"?: () => void;
+        "timeout-callback"?: () => void;
+        "error-callback"?: (errorCode?: string) => void | boolean;
       }) => string;
       reset: (widgetId?: string) => void;
       remove?: (widgetId?: string) => void;
@@ -25,64 +26,73 @@ type AuthCaptchaProps = {
   siteKey?: string;
 };
 
-export function AuthCaptcha({ purpose, onTokenChange, siteKey }: AuthCaptchaProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const widgetIdRef = useRef<string | undefined>(undefined);
+const TURNSTILE_SRC = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+const TURNSTILE_SCRIPT_ID = "cf-turnstile-script";
 
-  useEffect(() => {
-    if (!siteKey || !containerRef.current) return;
-
-    let cancelled = false;
-
-    const render = () => {
-      if (cancelled || !containerRef.current || !window.turnstile) return;
-      containerRef.current.innerHTML = "";
-      widgetIdRef.current = window.turnstile.render(containerRef.current, {
-        sitekey: siteKey,
-        action: purpose,
-        theme: "auto",
-        callback: onTokenChange,
-        "expired-callback": () => onTokenChange(""),
-        "error-callback": () => onTokenChange(""),
-      });
-    };
-
-    if (window.turnstile) {
-      render();
-      return () => {
-        cancelled = true;
-        if (widgetIdRef.current && window.turnstile?.remove) window.turnstile.remove(widgetIdRef.current);
-        widgetIdRef.current = undefined;
-      };
-    }
-
-    const existing = document.querySelector<HTMLScriptElement>('script[src="https://challenges.cloudflare.com/turnstile/v0/api.js"]');
-    if (existing) {
-      existing.addEventListener("load", render);
-    } else {
-      const script = document.createElement("script");
-      script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js";
+function loadTurnstile(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (window.turnstile) return resolve();
+    let script = document.getElementById(TURNSTILE_SCRIPT_ID) as HTMLScriptElement | null;
+    if (!script) {
+      script = document.createElement("script");
+      script.id = TURNSTILE_SCRIPT_ID;
+      script.src = TURNSTILE_SRC;
       script.async = true;
       script.defer = true;
-      script.addEventListener("load", render);
       document.head.appendChild(script);
     }
+    script.addEventListener("load", () => resolve(), { once: true });
+    script.addEventListener("error", () => reject(new Error("Turnstile script failed to load")), { once: true });
+  });
+}
+
+function describeError(code?: string) {
+  if (code?.startsWith("110200")) return "This domain is not allowed for the Turnstile widget. Add it in the Cloudflare Turnstile dashboard.";
+  if (code?.startsWith("1101") || code?.startsWith("400020")) return "The Turnstile site key is invalid.";
+  return `Security check failed${code ? ` (code ${code})` : ""}. Please reload and try again.`;
+}
+
+export function AuthCaptcha({ purpose, onTokenChange, siteKey }: AuthCaptchaProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const onTokenChangeRef = useRef(onTokenChange);
+  const [message, setMessage] = useState("");
+
+  useEffect(() => { onTokenChangeRef.current = onTokenChange; }, [onTokenChange]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!siteKey || !container) return;
+    let cancelled = false;
+    let widgetId: string | undefined;
+
+    loadTurnstile()
+      .then(() => {
+        if (cancelled || !window.turnstile) return;
+        container.innerHTML = "";
+        widgetId = window.turnstile.render(container, {
+          sitekey: siteKey,
+          action: purpose,
+          theme: "auto",
+          callback: (token) => { setMessage(""); onTokenChangeRef.current(token); },
+          "expired-callback": () => onTokenChangeRef.current(""),
+          "timeout-callback": () => onTokenChangeRef.current(""),
+          "error-callback": (code) => {
+            onTokenChangeRef.current("");
+            setMessage(describeError(code));
+            return true;
+          },
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setMessage("Could not load the security check. Disable ad blockers and reload.");
+      });
 
     return () => {
       cancelled = true;
-      if (existing) existing.removeEventListener("load", render);
-      if (widgetIdRef.current && window.turnstile?.remove) window.turnstile.remove(widgetIdRef.current);
-      widgetIdRef.current = undefined;
+      if (widgetId && window.turnstile?.remove) window.turnstile.remove(widgetId);
     };
-  }, [onTokenChange, purpose, siteKey]);
+  }, [purpose, siteKey]);
 
-  if (!siteKey) {
-    return (
-      <div className="rounded-xl border border-red-400/15 bg-red-400/[0.05] px-3 py-3 text-xs leading-5 text-red-200">
-        Turnstile site key is not configured.
-      </div>
-    );
-  }
-
-  return <div ref={containerRef} className="min-h-[65px]" aria-label="Security verification" />;
+  if (!siteKey) return <div className="rounded-xl border border-red-400/15 bg-red-400/[0.05] px-3 py-3 text-xs leading-5 text-red-200">Turnstile site key is not configured.</div>;
+  return <div><div ref={containerRef} className="min-h-[65px]" aria-label="Security verification" /></div>;
 }
