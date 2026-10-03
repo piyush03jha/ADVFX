@@ -16,7 +16,6 @@ import { UpsertPriceDto } from './dto/upsert-price.dto';
 import { CreateProductReviewDto } from './dto/create-product-review.dto';
 import { StorageService } from '../storage/storage.service';
 import sharp from 'sharp';
-import { createHash } from 'node:crypto';
 
 export interface ShopListQuery {
   page: number;
