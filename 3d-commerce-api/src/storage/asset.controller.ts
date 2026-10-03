@@ -16,7 +16,7 @@ export class AssetController {
     private readonly storage: StorageService,
   ) {}
 
-  @Get("categories/*splat")
+  @Get("categories/*")
   async getCategoryAsset(
     @Param() params: Record<string, string | undefined>,
   ): Promise<StreamableFile> {
@@ -67,7 +67,7 @@ export class AssetController {
     }
   }
 
-  @Get("products/*splat")
+  @Get("products/*")
   async getProductAsset(
     @Param() params: Record<string, string | undefined>,
   ): Promise<StreamableFile> {
