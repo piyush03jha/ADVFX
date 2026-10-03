@@ -106,11 +106,9 @@ export class CategoriesService {
         data: { imageUrl: stored.storageUrl },
       });
 
-      if (category.imageUrl?.startsWith('/storage/')) {
-        const oldKey = category.imageUrl.replace(/^\/storage\//, '');
-        if (oldKey !== stored.storageKey) {
-          try { await this.storage.delete(oldKey); } catch { /* preserve successful update */ }
-        }
+      const oldKey = this.storageKeyFromImageUrl(category.imageUrl);
+      if (oldKey && oldKey !== stored.storageKey) {
+        try { await this.storage.delete(oldKey); } catch { /* preserve successful update */ }
       }
 
       return updated;
@@ -118,6 +116,28 @@ export class CategoriesService {
       try { await this.storage.delete(stored.storageKey); } catch { /* preserve database error */ }
       throw error;
     }
+  }
+
+  private storageKeyFromImageUrl(url?: string | null): string | null {
+    if (!url) return null;
+
+    if (url.startsWith('/api/assets/')) {
+      try {
+        return url
+          .slice('/api/assets/'.length)
+          .split('/')
+          .map((segment) => decodeURIComponent(segment))
+          .join('/');
+      } catch {
+        return null;
+      }
+    }
+
+    if (url.startsWith('/storage/')) {
+      return url.slice('/storage/'.length);
+    }
+
+    return null;
   }
 
   async remove(id: string) {
