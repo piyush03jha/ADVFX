@@ -14,6 +14,7 @@ export type CaptchaChallenge = {
 export function useAuthCaptcha(purpose: CaptchaPurpose) {
   const [provider, setProvider] = useState<CaptchaProvider | null>(null);
   const [challenge, setChallenge] = useState<CaptchaChallenge | null>(null);
+  const [siteKey, setSiteKey] = useState("");
   const [token, setToken] = useState("");
   const [answer, setAnswer] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -30,6 +31,7 @@ export function useAuthCaptcha(purpose: CaptchaPurpose) {
       const response = await fetch(`/api/auth/captcha?purpose=${purpose}`, { cache: "no-store" });
       const data = (await response.json()) as {
         provider?: CaptchaProvider;
+        siteKey?: string;
         token?: string;
         first?: number;
         second?: number;
@@ -39,6 +41,8 @@ export function useAuthCaptcha(purpose: CaptchaPurpose) {
       if (!response.ok || !data.provider) throw new Error(data.error ?? "Unable to prepare security check.");
 
       setProvider(data.provider);
+      setSiteKey(data.siteKey?.trim() ?? "");
+
       if (data.provider === "math" && data.token && data.first !== undefined && data.second !== undefined && data.operator) {
         setChallenge({ token: data.token, first: data.first, second: data.second, operator: data.operator });
       } else {
@@ -47,6 +51,7 @@ export function useAuthCaptcha(purpose: CaptchaPurpose) {
     } catch (loadError) {
       setProvider(null);
       setChallenge(null);
+      setSiteKey("");
       setError(loadError instanceof Error ? loadError.message : "Unable to prepare security check.");
     } finally {
       setIsLoading(false);
@@ -66,6 +71,7 @@ export function useAuthCaptcha(purpose: CaptchaPurpose) {
   return {
     provider,
     challenge,
+    siteKey,
     token,
     setTurnstileToken,
     answer,
