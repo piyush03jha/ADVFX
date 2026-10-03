@@ -28,13 +28,7 @@ export class StorageService {
   }
 
   async saveProductFile(options: SaveProductFileOptions): Promise<StoredFile> {
-    return this.saveScopedFile(
-      ["products", options.productId.trim()],
-      options.filename.trim(),
-      options.buffer,
-      true,
-      true,
-    );
+    return this.saveScopedFile(["products", options.productId.trim()], options.filename.trim(), options.buffer, true, true);
   }
 
   async saveCategoryImage(categoryId: string, filename: string, buffer: Buffer): Promise<StoredFile> {
@@ -42,63 +36,38 @@ export class StorageService {
   }
 
   async saveCustomBuildCategoryImage(categoryId: string, originalName: string, buffer: Buffer): Promise<StoredFile> { return this.saveScopedFile(["custom-build-categories", categoryId.trim()], originalName.trim(), buffer); }
-
   async saveCustomBuildOptionImage(optionId: string, originalName: string, buffer: Buffer): Promise<StoredFile> { return this.saveScopedFile(["custom-build-options", optionId.trim()], originalName.trim(), buffer); }
-
-  async saveCustomRequestFile(requestId: string, originalName: string, buffer: Buffer) {
-    return this.saveScopedFile(["custom-requests", requestId.trim()], originalName.trim(), buffer);
-  }
-
-  async saveReviewImage(reviewScope: string, filename: string, buffer: Buffer): Promise<StoredFile> {
-    return this.saveScopedFile(["reviews", reviewScope.trim()], filename.trim(), buffer);
-  }
-
-  async saveGeneratedFile(buffer: Buffer, productId: string, fileName: string) {
-    return this.saveScopedFile(["products", productId.trim(), "generated"], fileName.trim(), buffer);
-  }
+  async saveCustomRequestFile(requestId: string, originalName: string, buffer: Buffer) { return this.saveScopedFile(["custom-requests", requestId.trim()], originalName.trim(), buffer); }
+  async saveReviewImage(reviewScope: string, filename: string, buffer: Buffer): Promise<StoredFile> { return this.saveScopedFile(["reviews", reviewScope.trim()], filename.trim(), buffer); }
+  async saveGeneratedFile(buffer: Buffer, productId: string, fileName: string) { return this.saveScopedFile(["products", productId.trim(), "generated"], fileName.trim(), buffer); }
 
   async saveBundleFile(productId: string, bundleId: string, relativePath: string, buffer: Buffer): Promise<StoredFile> {
     const normalizedProductId = this.normalizePathSegment(productId, "productId");
     const normalizedBundleId = this.normalizePathSegment(bundleId, "bundleId");
     const normalizedPath = relativePath.replace(/\\/g, "/").replace(/^\/+/, "");
-
     if (!normalizedPath || normalizedPath.includes("\0") || normalizedPath.split("/").some((segment) => segment === "." || segment === "..")) {
       throw new BadRequestException("Unsafe bundle file path");
     }
-
     return this.saveScopedFile(["products", normalizedProductId, "bundles", normalizedBundleId], normalizedPath, buffer);
   }
 
-  private async saveScopedFile(
-    segments: string[],
-    originalName: string,
-    buffer: Buffer,
-    exposeThroughAssetRoute = false,
-    deterministic = false,
-  ): Promise<StoredFile> {
+  private async saveScopedFile(segments: string[], originalName: string, buffer: Buffer, exposeThroughAssetRoute = false, deterministic = false): Promise<StoredFile> {
     if (!originalName || !buffer?.length) throw new BadRequestException("File name and non-empty file are required");
-
     const extension = extname(originalName).toLowerCase();
     if (!extension) throw new BadRequestException("File extension is required");
 
-    const safeBaseName = basename(originalName, extension)
-      .normalize("NFKC")
-      .replace(/[^a-zA-Z0-9_-]/g, "-")
-      .replace(/-+/g, "-")
-      .replace(/^-|-$/g, "")
-      .slice(0, 100);
-    const filename = deterministic\n      ? `${createHash("sha256").update(buffer).digest("hex")}${extension}`\n      : `${randomUUID()}-${safeBaseName || "file"}${extension}`;
+    const safeBaseName = basename(originalName, extension).normalize("NFKC").replace(/[^a-zA-Z0-9_-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "").slice(0, 100);
+    const filename = deterministic
+      ? `${createHash("sha256").update(buffer).digest("hex")}${extension}`
+      : `${randomUUID()}-${safeBaseName || "file"}${extension}`;
     const storageKey = [...segments, filename].join("/");
 
     if (this.provider === "local") {
       const directory = join(this.root, ...segments);
       await mkdir(directory, { recursive: true });
       const absolutePath = join(directory, filename);
-      try {
-        await writeFile(absolutePath, buffer);
-      } catch {
-        throw new InternalServerErrorException("Unable to store uploaded file");
-      }
+      try { await writeFile(absolutePath, buffer); }
+      catch { throw new InternalServerErrorException("Unable to store uploaded file"); }
       return { storageKey, storageUrl: `/storage/${storageKey}`, storagePath: absolutePath, size: buffer.length };
     }
 
@@ -107,15 +76,12 @@ export class StorageService {
       storageKey,
       storageUrl: this.publicBaseUrl
         ? `${this.publicBaseUrl}/${storageKey.split("/").map(encodeURIComponent).join("/")}`
-        : exposeThroughAssetRoute
-          ? this.getPublicAssetUrl(storageKey)
-          : null,
+        : exposeThroughAssetRoute ? this.getPublicAssetUrl(storageKey) : null,
       storagePath: "",
       size: buffer.length,
     };
   }
 
-  /** Browser-accessible URL for product assets stored in a private bucket. */
   getPublicAssetUrl(storageKey: string): string {
     const normalizedKey = this.normalizeRemoteKey(storageKey);
     return `/api/assets/${normalizedKey.split("/").map(encodeURIComponent).join("/")}`;
@@ -127,29 +93,17 @@ export class StorageService {
 
   private normalizeRemoteKey(storageKey: string): string {
     const normalized = storageKey.replace(/\\/g, "/").replace(/^\/+/, "");
-    if (
-      !normalized ||
-      normalized.includes("\0") ||
-      normalized.split("/").some((segment) => segment === "." || segment === "..")
-    ) {
-      throw new BadRequestException("Invalid storage key");
-    }
+    if (!normalized || normalized.includes("\0") || normalized.split("/").some((segment) => segment === "." || segment === "..")) throw new BadRequestException("Invalid storage key");
     return normalized;
   }
 
   async read(storageKey: string): Promise<Buffer> {
     if (this.provider === "local") {
-      try {
-        return await readFile(this.getAbsolutePath(storageKey));
-      } catch {
-        throw new InternalServerErrorException("Unable to read stored file");
-      }
+      try { return await readFile(this.getAbsolutePath(storageKey)); }
+      catch { throw new InternalServerErrorException("Unable to read stored file"); }
     }
-
     const response = await this.requestObject("GET", storageKey);
-    if (!(response instanceof Buffer)) {
-      throw new InternalServerErrorException("Unable to read stored file");
-    }
+    if (!(response instanceof Buffer)) throw new InternalServerErrorException("Unable to read stored file");
     return response;
   }
 
@@ -175,19 +129,12 @@ export class StorageService {
     if (this.provider !== "local") throw new BadRequestException("Remote storage does not expose local paths");
     const normalizedKey = storageKey.replace(/\\/g, "/");
     const absolutePath = resolve(this.root, normalizedKey);
-    if (absolutePath !== this.root && !absolutePath.startsWith(`${this.root}${sep}`)) {
-      throw new BadRequestException("Invalid storage key");
-    }
+    if (absolutePath !== this.root && !absolutePath.startsWith(`${this.root}${sep}`)) throw new BadRequestException("Invalid storage key");
     return absolutePath;
   }
 
-  private async putObject(key: string, body: Buffer, contentType: string) {
-    await this.requestObject("PUT", key, body, contentType);
-  }
-
-  private async deleteObject(key: string) {
-    await this.requestObject("DELETE", key);
-  }
+  private async putObject(key: string, body: Buffer, contentType: string) { await this.requestObject("PUT", key, body, contentType); }
+  private async deleteObject(key: string) { await this.requestObject("DELETE", key); }
 
   private async requestObject(method: "PUT" | "DELETE" | "HEAD" | "GET", key: string, body?: Buffer, contentType?: string): Promise<Buffer | void> {
     const hostUrl = `${this.endpoint}/${encodeURIComponent(this.bucket)}/${key.split("/").map(encodeURIComponent).join("/")}`;
@@ -195,36 +142,20 @@ export class StorageService {
     const payloadHash = createHash("sha256").update(body ?? Buffer.alloc(0)).digest("hex");
     const amzDate = new Date().toISOString().replace(/[:-]|\.\d{3}/g, "");
     const dateStamp = amzDate.slice(0, 8);
-    const headers: Record<string, string> = {
-      host: url.host,
-      "x-amz-content-sha256": payloadHash,
-      "x-amz-date": amzDate,
-    };
+    const headers: Record<string, string> = { host: url.host, "x-amz-content-sha256": payloadHash, "x-amz-date": amzDate };
     if (contentType) headers["content-type"] = contentType;
-
     const canonicalHeaders = Object.keys(headers).sort().map((name) => `${name}:${headers[name].trim()}\n`).join("");
     const signedHeaders = Object.keys(headers).sort().join(";");
     const canonicalRequest = [method, url.pathname, "", canonicalHeaders, signedHeaders, payloadHash].join("\n");
     const credentialScope = `${dateStamp}/${this.region}/s3/aws4_request`;
     const stringToSign = ["AWS4-HMAC-SHA256", amzDate, credentialScope, createHash("sha256").update(canonicalRequest).digest("hex")].join("\n");
-
     const signingKey = this.deriveSigningKey(dateStamp);
     const signature = createHmac("sha256", signingKey).update(stringToSign).digest("hex");
     headers.authorization = `AWS4-HMAC-SHA256 Credential=${this.accessKey}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
 
-    const response = await fetch(url, {
-      method,
-      headers,
-      body: method === "PUT" ? new Uint8Array(body ?? Buffer.alloc(0)) : undefined,
-    });
-
-    if (!response.ok && !(method === "DELETE" && response.status === 404)) {
-      throw new InternalServerErrorException(`Remote storage request failed (${response.status})`);
-    }
-
-    if (method === "GET") {
-      return Buffer.from(await response.arrayBuffer());
-    }
+    const response = await fetch(url, { method, headers, body: method === "PUT" ? new Uint8Array(body ?? Buffer.alloc(0)) : undefined });
+    if (!response.ok && !(method === "DELETE" && response.status === 404)) throw new InternalServerErrorException(`Remote storage request failed (${response.status})`);
+    if (method === "GET") return Buffer.from(await response.arrayBuffer());
   }
 
   private deriveSigningKey(dateStamp: string) {
@@ -235,27 +166,13 @@ export class StorageService {
   }
 
   private contentType(extension: string) {
-    const types: Record<string, string> = {
-      ".glb": "model/gltf-binary",
-      ".gltf": "model/gltf+json",
-      ".bin": "application/octet-stream",
-      ".png": "image/png",
-      ".jpg": "image/jpeg",
-      ".jpeg": "image/jpeg",
-      ".webp": "image/webp",
-      ".pdf": "application/pdf",
-      ".obj": "text/plain",
-      ".mtl": "text/plain",
-      ".svg": "image/svg+xml",
-    };
+    const types: Record<string, string> = { ".glb":"model/gltf-binary",".gltf":"model/gltf+json",".bin":"application/octet-stream",".png":"image/png",".jpg":"image/jpeg",".jpeg":"image/jpeg",".webp":"image/webp",".pdf":"application/pdf",".obj":"text/plain",".mtl":"text/plain",".svg":"image/svg+xml" };
     return types[extension] ?? "application/octet-stream";
   }
 
   private normalizePathSegment(value: string, name: string) {
     const normalized = value.trim();
-    if (!normalized || normalized === "." || normalized === ".." || normalized.includes("/") || normalized.includes("\\") || normalized.includes("\0")) {
-      throw new BadRequestException(`Invalid ${name}`);
-    }
+    if (!normalized || normalized === "." || normalized === ".." || normalized.includes("/") || normalized.includes("\") || normalized.includes(" ")) throw new BadRequestException(`Invalid ${name}`);
     return normalized;
   }
 }
