@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { createHmac, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
 
 const CAPTCHA_TTL_MS = 5 * 60 * 1000;
@@ -59,19 +64,15 @@ export class AuthCaptchaService {
     const secret = process.env.TURNSTILE_SECRET?.trim() || process.env.TURNSTILE_SECRET_KEY?.trim();
     if (!secret) {
       this.logger.error('Turnstile verification is not configured: missing secret.');
-      throw new Error('TURNSTILE_SECRET is not configured');
+      throw new ServiceUnavailableException('Security check is temporarily unavailable.');
     }
 
-    const expectedHostnames = new Set(
-      (process.env.TURNSTILE_HOSTNAMES ?? '')
-        .split(',')
-        .map((hostname) => hostname.trim().toLowerCase())
-        .filter(Boolean),
-    );
-
+    const expectedHostnames = this.allowedHostnames();
     if (expectedHostnames.size === 0) {
-      this.logger.error('Turnstile verification is not configured: TURNSTILE_HOSTNAMES is empty.');
-      throw new Error('TURNSTILE_HOSTNAMES is not configured');
+      this.logger.error(
+        'Turnstile verification is not configured: set TURNSTILE_HOSTNAMES (or FRONTEND_URL / CORS_ORIGINS).',
+      );
+      throw new ServiceUnavailableException('Security check is temporarily unavailable.');
     }
 
     const controller = new AbortController();
@@ -82,10 +83,7 @@ export class AuthCaptchaService {
       response = await fetch(TURNSTILE_VERIFY_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          secret,
-          response: token,
-        }).toString(),
+        body: new URLSearchParams({ secret, response: token }).toString(),
         signal: controller.signal,
       });
     } catch (error) {
@@ -93,9 +91,7 @@ export class AuthCaptchaService {
         purpose,
         error: error instanceof Error ? error.message : String(error),
       });
-      throw new BadRequestException(
-        'Security check could not be verified. Please try again.',
-      );
+      throw new BadRequestException('Security check could not be verified. Please try again.');
     } finally {
       clearTimeout(timeout);
     }
@@ -116,12 +112,7 @@ export class AuthCaptchaService {
     };
 
     try {
-      result = (await response.json()) as {
-        success?: boolean;
-        action?: string;
-        hostname?: string;
-        'error-codes'?: string[];
-      };
+      result = (await response.json()) as typeof result;
     } catch (error) {
       this.logger.warn('Turnstile Siteverify returned invalid JSON', {
         purpose,
@@ -135,15 +126,23 @@ export class AuthCaptchaService {
       : [];
 
     if (!result.success) {
-      this.logger.warn('Turnstile verification rejected the token', {
-        purpose,
-        errorCodes,
-      });
+      if (errorCodes.includes('invalid-input-secret') || errorCodes.includes('missing-input-secret')) {
+        this.logger.error('Turnstile secret key was rejected. Check TURNSTILE_SECRET_KEY matches the site key.', {
+          purpose,
+          errorCodes,
+        });
+        throw new ServiceUnavailableException('Security check is temporarily unavailable.');
+      }
+
+      this.logger.warn('Turnstile verification rejected the token', { purpose, errorCodes });
+
+      if (errorCodes.includes('timeout-or-duplicate')) {
+        throw new BadRequestException('Security check expired. Please complete it again.');
+      }
       throw new BadRequestException('Security check failed. Please try again.');
     }
 
     const hostname = result.hostname?.trim().toLowerCase() || '';
-
     if (result.action !== purpose || !hostname || !expectedHostnames.has(hostname)) {
       this.logger.warn('Turnstile verification metadata mismatch', {
         purpose,
@@ -153,6 +152,34 @@ export class AuthCaptchaService {
       });
       throw new BadRequestException('Security check failed. Please try again.');
     }
+  }
+
+  private allowedHostnames(): Set<string> {
+    const toHostname = (value: string) => {
+      const trimmed = value.trim().toLowerCase();
+      if (!trimmed) return '';
+      try {
+        return new URL(trimmed.includes('://') ? trimmed : `https://${trimmed}`).hostname;
+      } catch {
+        return '';
+      }
+    };
+
+    const explicit = (process.env.TURNSTILE_HOSTNAMES ?? '')
+      .split(',')
+      .map(toHostname)
+      .filter(Boolean);
+    if (explicit.length > 0) return new Set(explicit);
+
+    return new Set(
+      [process.env.FRONTEND_URL ?? '', ...(process.env.CORS_ORIGINS ?? '').split(',')]
+        .map(toHostname)
+        .filter(Boolean),
+    );
+  }
+
+  siteKey(): string | undefined {
+    return process.env.TURNSTILE_SITE_KEY?.trim() || undefined;
   }
 
   provider(): 'math' | 'turnstile' {
@@ -205,9 +232,7 @@ export class AuthCaptchaService {
 
   private secret() {
     const secret = process.env.AUTH_CAPTCHA_SECRET;
-    if (!secret) {
-      throw new Error('AUTH_CAPTCHA_SECRET is not configured');
-    }
+    if (!secret) throw new Error('AUTH_CAPTCHA_SECRET is not configured');
     return secret;
   }
 }
