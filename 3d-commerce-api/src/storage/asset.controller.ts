@@ -91,4 +91,6 @@ export class AssetController {
       });
     } catch {
       throw new NotFoundException("Asset not found");
-    }\n}
+    }
+  }
+}
