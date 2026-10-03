@@ -24,7 +24,15 @@ export async function POST(request: Request) {
     const result = NextResponse.json({ user: data.user });
     result.cookies.set(ADMIN_COOKIE, data.token, { httpOnly:true, sameSite:"lax", secure:process.env.NODE_ENV==="production", path:"/", maxAge:60*60*12 });
     return result;
-  } catch {
-    return NextResponse.json({ error:"Admin authentication service is unavailable." }, { status:503 });
+  } catch (error) {
+    console.error("Admin login backend request failed", {
+      error: error instanceof Error ? error.message : String(error),
+      backendUrl: getBackendApiUrl("auth/admin/login"),
+    });
+
+    return NextResponse.json(
+      { error: "Admin authentication service is unavailable." },
+      { status: 503 },
+    );
   }
 }
