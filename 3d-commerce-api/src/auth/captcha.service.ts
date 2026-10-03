@@ -52,18 +52,32 @@ export class AuthCaptchaService {
 
   private async verifyTurnstile(token: string, purpose: CaptchaPurpose) {
     if (!token || token.length > 4096) throw new BadRequestException('Security check is invalid. Please try again.');
-    const secret = process.env.TURNSTILE_SECRET_KEY;
-    if (!secret) throw new Error('TURNSTILE_SECRET_KEY is not configured');
+    const secret = process.env.TURNSTILE_SECRET?.trim() || process.env.TURNSTILE_SECRET_KEY?.trim();
+    if (!secret) throw new Error('TURNSTILE_SECRET is not configured');
+
+    const expectedHostnames = new Set(
+      (process.env.TURNSTILE_HOSTNAMES ?? '')
+        .split(',')
+        .map((hostname) => hostname.trim().toLowerCase())
+        .filter(Boolean),
+    );
+
+    if (expectedHostnames.size === 0) {
+      throw new Error('TURNSTILE_HOSTNAMES is not configured');
+    }
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
+    const timeout = setTimeout(() => controller.abort(), 10_000);
 
     let response: Response;
     try {
       response = await fetch(TURNSTILE_VERIFY_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ secret, response: token }).toString(),
+        body: new URLSearchParams({
+          secret,
+          response: token,
+        }).toString(),
         signal: controller.signal,
       });
     } catch {
@@ -74,9 +88,22 @@ export class AuthCaptchaService {
       clearTimeout(timeout);
     }
 
-    if (!response.ok) throw new BadRequestException('Security check could not be verified. Please try again.');
-    const result = (await response.json()) as { success?: boolean; action?: string };
-    if (!result.success || (result.action && result.action !== purpose)) {
+    if (!response.ok) {
+      throw new BadRequestException('Security check could not be verified. Please try again.');
+    }
+
+    const result = (await response.json()) as {
+      success?: boolean;
+      action?: string;
+      hostname?: string;
+    };
+
+    if (
+      !result.success ||
+      result.action !== purpose ||
+      !result.hostname ||
+      !expectedHostnames.has(result.hostname.toLowerCase())
+    ) {
       throw new BadRequestException('Security check failed. Please try again.');
     }
   }
