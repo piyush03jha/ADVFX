@@ -14,19 +14,23 @@ function isSafeRequestOrigin(request: Request) {
   }
 }
 
-
 export async function POST(request: Request) {
   if (!isSafeRequestOrigin(request)) {
     return NextResponse.json({ error: "Invalid request origin." }, { status: 403 });
   }
   try {
-    const body = (await request.json()) as { email?: string; password?: string; captchaToken?: string; captchaAnswer?: string };
+    const body = (await request.json()) as {
+      email?: string;
+      password?: string;
+      captchaToken?: string;
+      captchaAnswer?: string;
+    };
     const email = body.email?.trim().toLowerCase();
     const password = body.password ?? "";
     const captchaToken = body.captchaToken?.trim() ?? "";
     const captchaAnswer = body.captchaAnswer?.trim() ?? "";
 
-    if (!email || !password || !captchaToken || !captchaAnswer) {
+    if (!email || !password || !captchaToken) {
       return NextResponse.json({ error: "Email, password, and CAPTCHA are required." }, { status: 400 });
     }
 
