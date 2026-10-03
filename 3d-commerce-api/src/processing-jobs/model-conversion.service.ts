@@ -109,6 +109,10 @@ export class ModelConversionService {
       await this.validateGlb(optimizedGlb);
 
       const outputBuffer = await fs.readFile(optimizedGlb);
+
+      // The optimized GLB is the only customer-facing 3D asset. Keep the
+      // uploaded source until the optimized artifact has been validated and
+      // persisted successfully; the worker removes the source afterwards.
       const generated = await this.storage.saveGeneratedFile(
         outputBuffer,
         file.productId,
