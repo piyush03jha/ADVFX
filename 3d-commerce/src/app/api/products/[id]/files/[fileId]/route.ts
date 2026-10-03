@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { ADMIN_COOKIE } from "@/app/api/auth/admin/login/route";
 import { getBackendApiUrl } from "@/lib/backend-api";
+import { revalidateProductCatalog } from "@/lib/revalidate-catalog";
 
 export async function DELETE(request: Request, context: { params: Promise<{ id: string; fileId: string }> }) {
   const token = (await cookies()).get(ADMIN_COOKIE)?.value;
@@ -15,8 +16,13 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
       cache: "no-store",
     });
     const data = await response.json().catch(() => null);
+
+    if (response.ok) {
+      revalidateProductCatalog(id);
+    }
+
     return NextResponse.json(data ?? { error: "File deletion failed." }, { status: response.status });
   } catch {
-    return NextResponse.json({ error: "Catalog service is unavailable." }, { status: 503 });
+    return NextResponse.json({ error: "Catalog service is unavailable.", }, { status: 503 });
   }
 }
