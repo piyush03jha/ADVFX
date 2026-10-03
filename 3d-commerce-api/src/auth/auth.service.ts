@@ -88,9 +88,17 @@ export class AuthService {
     try {
       await this.emailService.sendVerificationEmail(user.email, verificationToken);
     } catch (error) {
+      this.logger.error('Verification email could not be sent after registration', {
+        userId: user.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+
       if (process.env.NODE_ENV === 'production') {
-        await this.revokeVerificationToken(verificationToken);
-        throw error;
+        return {
+          user: this.serializeUser(user),
+          verificationRequired: true,
+          emailDeliveryPending: true,
+        };
       }
 
       // In development, keep the token usable so the auth flow can be tested
