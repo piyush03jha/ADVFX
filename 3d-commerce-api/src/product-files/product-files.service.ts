@@ -76,6 +76,15 @@ export class ProductFilesService {
       buffer: file.buffer,
     });
 
+    // Product file keys are content-addressed. Reuse an existing database row
+    // when the exact same binary has already been uploaded for this product.
+    const existingFile = await this.prisma.productFile.findFirst({
+      where: { productId, storageKey: stored.storageKey },
+    });
+    if (existingFile) {
+      return this.serializeFile(existingFile);
+    }
+
     let createdFileId: string | null = null;
 
     try {
