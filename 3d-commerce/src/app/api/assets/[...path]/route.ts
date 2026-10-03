@@ -38,12 +38,12 @@ export async function GET(
     const backendPath = path.slice(1).map(encodeURIComponent).join("/");
     const response = await fetch(
       getBackendApiUrl(`assets/products/${backendPath}`),
-      { next: { revalidate: 3600 } },
+      { cache: "no-store" },
     );
 
     const headers = copyAssetHeaders(response);
     if (!headers.has("cache-control") && response.ok) {
-      headers.set("cache-control", "public, max-age=3600, stale-while-revalidate=86400");
+      headers.set("cache-control", "no-store");
     }
 
     return new NextResponse(response.body, {
