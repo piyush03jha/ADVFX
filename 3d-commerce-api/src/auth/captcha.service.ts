@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { createHmac, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
 
 const CAPTCHA_TTL_MS = 5 * 60 * 1000;
@@ -18,6 +18,7 @@ type CaptchaPayload = {
 @Injectable()
 export class AuthCaptchaService {
   private readonly usedNonces = new Set<string>();
+  private readonly logger = new Logger(AuthCaptchaService.name);
 
   issue(purpose: string) {
     if (!PURPOSES.has(purpose)) throw new BadRequestException('Invalid CAPTCHA purpose.');
@@ -51,9 +52,15 @@ export class AuthCaptchaService {
   }
 
   private async verifyTurnstile(token: string, purpose: CaptchaPurpose) {
-    if (!token || token.length > 4096) throw new BadRequestException('Security check is invalid. Please try again.');
+    if (!token || token.length > 4096) {
+      throw new BadRequestException('Security check is invalid. Please try again.');
+    }
+
     const secret = process.env.TURNSTILE_SECRET?.trim() || process.env.TURNSTILE_SECRET_KEY?.trim();
-    if (!secret) throw new Error('TURNSTILE_SECRET is not configured');
+    if (!secret) {
+      this.logger.error('Turnstile verification is not configured: missing secret.');
+      throw new Error('TURNSTILE_SECRET is not configured');
+    }
 
     const expectedHostnames = new Set(
       (process.env.TURNSTILE_HOSTNAMES ?? '')
@@ -63,6 +70,7 @@ export class AuthCaptchaService {
     );
 
     if (expectedHostnames.size === 0) {
+      this.logger.error('Turnstile verification is not configured: TURNSTILE_HOSTNAMES is empty.');
       throw new Error('TURNSTILE_HOSTNAMES is not configured');
     }
 
@@ -80,7 +88,11 @@ export class AuthCaptchaService {
         }).toString(),
         signal: controller.signal,
       });
-    } catch {
+    } catch (error) {
+      this.logger.warn('Turnstile Siteverify request failed', {
+        purpose,
+        error: error instanceof Error ? error.message : String(error),
+      });
       throw new BadRequestException(
         'Security check could not be verified. Please try again.',
       );
@@ -89,21 +101,56 @@ export class AuthCaptchaService {
     }
 
     if (!response.ok) {
+      this.logger.warn('Turnstile Siteverify returned a non-success HTTP status', {
+        purpose,
+        status: response.status,
+      });
       throw new BadRequestException('Security check could not be verified. Please try again.');
     }
 
-    const result = (await response.json()) as {
+    let result: {
       success?: boolean;
       action?: string;
       hostname?: string;
+      'error-codes'?: string[];
     };
 
-    if (
-      !result.success ||
-      result.action !== purpose ||
-      !result.hostname ||
-      !expectedHostnames.has(result.hostname.toLowerCase())
-    ) {
+    try {
+      result = (await response.json()) as {
+        success?: boolean;
+        action?: string;
+        hostname?: string;
+        'error-codes'?: string[];
+      };
+    } catch (error) {
+      this.logger.warn('Turnstile Siteverify returned invalid JSON', {
+        purpose,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw new BadRequestException('Security check could not be verified. Please try again.');
+    }
+
+    const errorCodes = Array.isArray(result['error-codes'])
+      ? result['error-codes'].slice(0, 8)
+      : [];
+
+    if (!result.success) {
+      this.logger.warn('Turnstile verification rejected the token', {
+        purpose,
+        errorCodes,
+      });
+      throw new BadRequestException('Security check failed. Please try again.');
+    }
+
+    const hostname = result.hostname?.trim().toLowerCase() || '';
+
+    if (result.action !== purpose || !hostname || !expectedHostnames.has(hostname)) {
+      this.logger.warn('Turnstile verification metadata mismatch', {
+        purpose,
+        receivedAction: result.action ?? null,
+        receivedHostname: hostname || null,
+        expectedHostnames: [...expectedHostnames],
+      });
       throw new BadRequestException('Security check failed. Please try again.');
     }
   }
@@ -134,10 +181,7 @@ export class AuthCaptchaService {
 
     this.usedNonces.add(payload.nonce);
     if (this.usedNonces.size > 10_000) {
-      // Keep the in-memory replay cache bounded.
       for (const nonce of this.usedNonces) {
-        // Nonces do not encode creation time, so cap size rather than attempting
-        // inaccurate age-based pruning.
         if (this.usedNonces.size <= 5_000) break;
         this.usedNonces.delete(nonce);
       }
