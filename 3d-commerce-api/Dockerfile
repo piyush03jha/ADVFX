@@ -17,6 +17,7 @@ FROM node:22-bookworm-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3001
+ENV NODE_OPTIONS=--dns-result-order=ipv4first
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends openssl \
