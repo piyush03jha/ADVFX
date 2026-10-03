@@ -221,6 +221,20 @@ export class ProductFilesService {
       );
     }
 
+    const mediaUrls = [
+      file.storageUrl,
+      this.storage.getPublicAssetUrl(file.storageKey),
+    ].filter((value): value is string => Boolean(value));
+
+    if (mediaUrls.length) {
+      await this.prisma.productMedia.deleteMany({
+        where: {
+          productId,
+          url: { in: mediaUrls },
+        },
+      });
+    }
+
     /**
      * If this file is the root of a bundle, deleting the root
      * also deletes the ProductFileBundle and its assets because
