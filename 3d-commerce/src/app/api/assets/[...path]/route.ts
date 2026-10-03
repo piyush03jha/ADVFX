@@ -26,18 +26,19 @@ export async function GET(
   if (
     !Array.isArray(path) ||
     path.length < 3 ||
-    path[0] !== "products" ||
+    !["products", "categories"].includes(path[0]) ||
     path.some((segment) => !segment || segment === "." || segment === "..")
   ) {
     return NextResponse.json({ error: "Asset not found." }, { status: 404 });
   }
 
   try {
-    // The public URL already contains the "products" namespace. The backend
-    // controller owns that route prefix, so only forward the product id/key.
+    // The public URL already contains the asset namespace. The backend
+    // controller owns that route prefix, so only forward the id/key.
+    const namespace = path[0];
     const backendPath = path.slice(1).map(encodeURIComponent).join("/");
     const response = await fetch(
-      getBackendApiUrl(`assets/products/${backendPath}`),
+      getBackendApiUrl(`assets/${namespace}/${backendPath}`),
       { cache: "no-store" },
     );
 
