@@ -71,7 +71,7 @@ export class AssetController {
     }
 
     const buffer = await this.storage.read(storageKey);
-    const file = new StreamableFile(buffer, {
+    return new StreamableFile(buffer, {
       type:
         productFile?.mimeType ??
         bundleAsset?.mimeType ??
