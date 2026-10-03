@@ -16,6 +16,7 @@ import { UpsertPriceDto } from './dto/upsert-price.dto';
 import { CreateProductReviewDto } from './dto/create-product-review.dto';
 import { StorageService } from '../storage/storage.service';
 import sharp from 'sharp';
+import { createHash } from 'node:crypto';
 
 export interface ShopListQuery {
   page: number;
@@ -871,9 +872,9 @@ export class ProductsService {
       buffer: file.buffer,
     });
 
-    // ProductMedia.url is a public storefront URL. A private remote bucket
-    // intentionally does not provide one, so fail clearly and remove the
-    // uploaded object instead of persisting an unusable URL.
+    // Product assets use content-addressed storage keys. If the exact same
+    // image is uploaded again for this product, reuse the existing media row
+    // instead of creating another database record for the same object.
     if (!stored.storageUrl) {
       try { await this.storage.delete(stored.storageKey); } catch { /* preserve configuration error */ }
       throw new InternalServerErrorException(
@@ -884,6 +885,13 @@ export class ProductsService {
     const storageUrl = stored.storageUrl;
     // Narrowed above: ProductMedia.url is intentionally non-null because
     // storefront product media must have a browser-accessible URL.
+
+    const existingMedia = await this.prisma.productMedia.findFirst({
+      where: { productId: id, type: 'IMAGE', url: storageUrl },
+    });
+    if (existingMedia) {
+      return existingMedia;
+    }
 
     try {
       return await this.prisma.$transaction(async (tx) => {
@@ -950,13 +958,67 @@ export class ProductsService {
   async removeMedia(id: string, mediaId: string) {
     const media = await this.prisma.productMedia.findFirst({
       where: { id: mediaId, productId: id },
-      select: { id: true },
+      select: { id: true, url: true },
     });
 
     if (!media) throw new NotFoundException(`Product media "${mediaId}" not found`);
 
+    const storageKey = this.storageKeyFromMediaUrl(media.url);
+    const assetUrl = storageKey ? this.storage.getPublicAssetUrl(storageKey) : null;
+
     await this.prisma.productMedia.delete({ where: { id: mediaId } });
+
+    // Remove the object only when no other database record still references it.
+    // This is important for deduplicated assets shared by multiple media rows.
+    if (storageKey) {
+      const [otherMedia, productFile, bundleAsset] = await Promise.all([
+        this.prisma.productMedia.count({
+          where: {
+            productId: id,
+            ...(assetUrl ? { url: assetUrl } : { url: media.url }),
+          },
+        }),
+        this.prisma.productFile.count({
+          where: { productId: id, storageKey },
+        }),
+        this.prisma.productFileBundleAsset.count({
+          where: {
+            storageKey,
+            bundle: { is: { productId: id } },
+          },
+        }),
+      ]);
+
+      if (otherMedia === 0 && productFile === 0 && bundleAsset === 0) {
+        try {
+          await this.storage.delete(storageKey);
+        } catch {
+          // Preserve successful database deletion; storage cleanup can be retried.
+        }
+      }
+    }
+
     return { message: 'Product media removed successfully' };
+  }
+
+  private storageKeyFromMediaUrl(url: string): string | null {
+    if (url.startsWith('/api/assets/')) {
+      try {
+        return url
+          .slice('/api/assets/'.length)
+          .split('/')
+          .map((segment) => decodeURIComponent(segment))
+          .join('/');
+      } catch {
+        return null;
+      }
+    }
+
+    if (url.startsWith('/storage/')) {
+      return url.slice('/storage/'.length);
+    }
+
+    return null;
   }
 
   private async ensureActiveProduct(id: string) {
