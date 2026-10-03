@@ -51,32 +51,44 @@ export class AssetController {
     });
     if (!product) throw new NotFoundException("Asset not found");
 
-    const [productFile, productMedia, bundleAsset] = await Promise.all([
-      this.prisma.productFile.findFirst({
-        where: { productId, storageKey },
-        select: { mimeType: true },
-      }),
-      this.prisma.productMedia.findFirst({
-        where: { productId, url: assetUrl },
-        select: { id: true },
-      }),
-      this.prisma.productFileBundleAsset.findFirst({
-        where: { storageKey, bundle: { is: { productId } } },
-        select: { mimeType: true },
-      }),
-    ]);
+    let mimeType: string | undefined;
+    try {
+      const [productFile, productMedia, bundleAsset] = await Promise.all([
+        this.prisma.productFile.findFirst({
+          where: { productId, storageKey },
+          select: { mimeType: true },
+        }),
+        this.prisma.productMedia.findFirst({
+          where: { productId, url: assetUrl },
+          select: { id: true },
+        }),
+        this.prisma.productFileBundleAsset.findFirst({
+          where: { storageKey, bundle: { is: { productId } } },
+          select: { mimeType: true },
+        }),
+      ]);
 
-    if (!productFile && !productMedia && !bundleAsset) {
-      throw new NotFoundException("Asset not found");
-    }
-
-    const buffer = await this.storage.read(storageKey);
-    return new StreamableFile(buffer, {
-      type:
+      mimeType =
         productFile?.mimeType ??
         bundleAsset?.mimeType ??
-        this.storage.getContentTypeForStorageKey(storageKey),
-      length: buffer.length,
-    });
-  }
-}
+        undefined;
+
+      // Database metadata is useful for MIME information, but it must not be
+      // the gate for delivery. Existing objects can outlive or temporarily
+      // differ from metadata while an upload/delete transaction is repaired.
+      void productMedia;
+    } catch {
+      // Storage remains the source of truth for whether the object exists.
+    }
+
+    try {
+      const buffer = await this.storage.read(storageKey);
+      return new StreamableFile(buffer, {
+        type:
+          mimeType ??
+          this.storage.getContentTypeForStorageKey(storageKey),
+        length: buffer.length,
+      });
+    } catch {
+      throw new NotFoundException("Asset not found");
+    }\n}
