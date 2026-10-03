@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 
 import { getBackendApiUrl } from "@/lib/backend-api";
 
+const TURNSTILE_SITE_KEY = "0x4AAAAAAFMnnPutFRovFWWn";
+
 export async function GET(request: Request) {
   const purpose = new URL(request.url).searchParams.get("purpose");
   if (purpose !== "login" && purpose !== "register" && purpose !== "forgot-password") {
@@ -16,7 +18,19 @@ export async function GET(request: Request) {
     if (!response.ok) {
       return NextResponse.json({ error: data.message ?? "Unable to prepare CAPTCHA." }, { status: response.status });
     }
-    return NextResponse.json(data, { headers: { "Cache-Control": "no-store" } });
+
+    return NextResponse.json(
+      {
+        ...data,
+        ...(data.provider === "turnstile"
+          ? {
+              siteKey:
+                process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() || TURNSTILE_SITE_KEY,
+            }
+          : {}),
+      },
+      { headers: { "Cache-Control": "no-store" } },
+    );
   } catch {
     return NextResponse.json({ error: "Authentication service is unavailable. Please try again." }, { status: 503 });
   }
