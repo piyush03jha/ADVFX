@@ -75,25 +75,23 @@ export class AuthCaptchaService {
       throw new ServiceUnavailableException('Security check is temporarily unavailable.');
     }
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10_000);
-
     let response: Response;
     try {
-      response = await fetch(TURNSTILE_VERIFY_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ secret, response: token }).toString(),
-        signal: controller.signal,
-      });
-    } catch (error) {
-      this.logger.warn('Turnstile Siteverify request failed', {
-        purpose,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      throw new BadRequestException('Security check could not be verified. Please try again.');
-    } finally {
-      clearTimeout(timeout);
+      response = await this.postSiteverify(secret, token);
+    } catch (firstError) {
+      try {
+        response = await this.postSiteverify(secret, token);
+      } catch (error) {
+        const cause = (error as { cause?: { code?: string; message?: string } })?.cause;
+        this.logger.error('Turnstile Siteverify request failed', {
+          purpose,
+          error: error instanceof Error ? error.message : String(error),
+          causeCode: cause?.code ?? null,
+          causeMessage: cause?.message ?? null,
+          firstAttempt: firstError instanceof Error ? firstError.name : String(firstError),
+        });
+        throw new BadRequestException('Security check could not be verified. Please try again.');
+      }
     }
 
     if (!response.ok) {
@@ -151,6 +149,21 @@ export class AuthCaptchaService {
         expectedHostnames: [...expectedHostnames],
       });
       throw new BadRequestException('Security check failed. Please try again.');
+    }
+  }
+
+  private async postSiteverify(secret: string, token: string): Promise<Response> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10_000);
+    try {
+      return await fetch(TURNSTILE_VERIFY_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ secret, response: token }).toString(),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeout);
     }
   }
 
