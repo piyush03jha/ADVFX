@@ -348,10 +348,13 @@ export class ProcessingJobsWorker
       await this.storage.delete(source.storageKey);
     } catch (error) {
       this.logger.error(
-        `Unable to delete original GLB source ${source.id} from storage; retaining DB record so a later processing pass can retry cleanup.`,
+        `Unable to delete original GLB source ${source.id} from storage; cleanup will be retried.`,
         error instanceof Error ? error.stack : String(error),
       );
-      return;
+      throw new Error(
+        "Unable to delete original GLB source from storage: " +
+          (error instanceof Error ? error.message : String(error)),
+      );
     }
 
     try {
@@ -368,7 +371,6 @@ export class ProcessingJobsWorker
         "Original GLB storage was deleted but source DB cleanup failed: " +
           (error instanceof Error ? error.message : String(error)),
       );
-    }
     }
   }
 
