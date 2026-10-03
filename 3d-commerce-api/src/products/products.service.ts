@@ -963,7 +963,10 @@ export class ProductsService {
     if (!media) throw new NotFoundException(`Product media "${mediaId}" not found`);
 
     const storageKey = this.storageKeyFromMediaUrl(media.url);
-    const assetUrl = storageKey ? this.storage.getPublicAssetUrl(storageKey) : null;
+    const assetUrl = media.url.startsWith('/api/assets/') && storageKey
+      ? this.storage.getPublicAssetUrl(storageKey)
+      : null;
+    const mediaReferenceUrl = assetUrl ?? media.url;
 
     await this.prisma.productMedia.delete({ where: { id: mediaId } });
 
@@ -974,7 +977,7 @@ export class ProductsService {
         this.prisma.productMedia.count({
           where: {
             productId: id,
-            ...(assetUrl ? { url: assetUrl } : { url: media.url }),
+            url: mediaReferenceUrl,
           },
         }),
         this.prisma.productFile.count({
