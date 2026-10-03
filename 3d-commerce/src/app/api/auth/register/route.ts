@@ -11,7 +11,6 @@ function isSafeRequestOrigin(request: Request) {
   }
 }
 
-
 export async function POST(request: Request) {
   if (!isSafeRequestOrigin(request)) {
     return NextResponse.json({ error: "Invalid request origin." }, { status: 403 });
@@ -31,7 +30,7 @@ export async function POST(request: Request) {
     const captchaToken = body.captchaToken?.trim() ?? "";
     const captchaAnswer = body.captchaAnswer?.trim() ?? "";
 
-    if (!name || !email || password.length < 8 || !captchaToken || !captchaAnswer) {
+    if (!name || !email || password.length < 8 || !captchaToken) {
       return NextResponse.json(
         {
           error:
