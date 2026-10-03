@@ -66,6 +66,15 @@ export class ProcessingJobsWorker
     private readonly modelConversionService: ModelConversionService,
   ) {}
 
+  private getPositiveNumber(value: string | undefined, fallback: number): number {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
   /**
    * Start background processing automatically.
    */
