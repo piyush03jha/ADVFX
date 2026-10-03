@@ -17,7 +17,9 @@ export class AuthController {
   @Get('captcha')
   captcha(@Query('purpose') purpose?: string) {
     if (purpose !== 'login' && purpose !== 'register' && purpose !== 'forgot-password') throw new BadRequestException('A valid CAPTCHA purpose is required.');
-    if (this.captchaService.provider() === 'turnstile') return { provider: 'turnstile' as const };
+    if (this.captchaService.provider() === 'turnstile') {
+      return { provider: 'turnstile' as const, siteKey: this.captchaService.siteKey() };
+    }
     return { provider: 'math' as const, ...this.captchaService.issue(purpose) };
   }
 
