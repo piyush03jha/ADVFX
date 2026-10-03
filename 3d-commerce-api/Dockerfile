@@ -16,7 +16,7 @@ RUN npx prisma generate && npm run build
 FROM node:22-bookworm-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
-ENV PORT=3001
+ENV PORT=4000
 ENV NODE_OPTIONS=--dns-result-order=ipv4first
 
 RUN apt-get update \
@@ -30,17 +30,23 @@ RUN npm ci --omit=dev
 COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=build /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=build /app/dist ./dist
+COPY scripts ./scripts
 
-# 3D processing runs in the background worker. Pin the CLI versions so
-# production does not depend on a manually installed host binary.
+# Runtime 3D processing tools. Pin versions so production builds are
+# reproducible and do not depend on binaries installed on the host.
+# gltf-validator's published npm version is 2.0.0-dev.3.10, not 2.0.0.
 RUN npm install --global --no-audit --no-fund \
     @gltf-transform/cli@4.5.1 \
-    gltf-validator@2.0.0
+    gltf-validator@2.0.0-dev.3.10
 
 ENV NODE_PATH=/usr/local/lib/node_modules
+
+RUN gltf-transform --version \
+  && node -e "require('gltf-validator'); console.log('gltf-validator: OK')" \
+  && test -f /app/scripts/validate-glb.cjs
 
 RUN chown -R node:node /app
 USER node
 
-EXPOSE 3001
+EXPOSE 4000
 CMD ["node", "dist/main.js"]
