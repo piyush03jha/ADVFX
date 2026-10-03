@@ -3,7 +3,7 @@ import {
   Injectable,
   InternalServerErrorException,
 } from "@nestjs/common";
-import { createHash, createHmac, randomUUID } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 import { access, mkdir, unlink, writeFile, readFile } from "node:fs/promises";
 import { basename, extname, join, resolve, sep } from "node:path";
 import type { SaveProductFileOptions, StoredFile } from "./storage.types";
@@ -32,6 +32,7 @@ export class StorageService {
       ["products", options.productId.trim()],
       options.filename.trim(),
       options.buffer,
+      true,
       true,
     );
   }
@@ -73,6 +74,7 @@ export class StorageService {
     originalName: string,
     buffer: Buffer,
     exposeThroughAssetRoute = false,
+    deterministic = false,
   ): Promise<StoredFile> {
     if (!originalName || !buffer?.length) throw new BadRequestException("File name and non-empty file are required");
 
@@ -85,7 +87,7 @@ export class StorageService {
       .replace(/-+/g, "-")
       .replace(/^-|-$/g, "")
       .slice(0, 100);
-    const filename = `${randomUUID()}-${safeBaseName || "file"}${extension}`;
+    const filename = deterministic\n      ? `${createHash("sha256").update(buffer).digest("hex")}${extension}`\n      : `${createHash("sha256").update(buffer).digest("hex")}-${safeBaseName || "file"}${extension}`;
     const storageKey = [...segments, filename].join("/");
 
     if (this.provider === "local") {
