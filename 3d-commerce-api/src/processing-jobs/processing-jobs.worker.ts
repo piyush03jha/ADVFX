@@ -316,6 +316,9 @@ export class ProcessingJobsWorker
       // For uploaded GLBs, the validated optimized output is now the
       // canonical customer-facing asset. Remove the original source only
       // after the output and processing job have been committed successfully.
+      //
+      // cleanupOptimizedGlbSource is deliberately idempotent: if the storage
+      // object is already gone, the DB source row is still removed.
       await this.cleanupOptimizedGlbSource(job.productFileId);
 
       this.logger.log(
@@ -354,7 +357,7 @@ export class ProcessingJobsWorker
       await this.storage.delete(source.storageKey);
     } catch (error) {
       this.logger.error(
-        `Unable to delete optimized GLB source ${source.id} from storage; retaining DB record for retry.`,
+        `Unable to delete original GLB source ${source.id} from storage; retaining DB record so a later processing pass can retry cleanup.`,
         error instanceof Error ? error.stack : String(error),
       );
       return;
@@ -697,7 +700,7 @@ export class ProcessingJobsWorker
       }
 
       if (productFile.fileType === ProductFileType.MODEL) {
-        await this.modelConversionService.convert(productFile.id);
+        await this.modelConversionService.convert(productFile.id, jobId);
         return;
       }
 
