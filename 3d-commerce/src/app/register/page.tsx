@@ -35,7 +35,7 @@ function RegisterPageContent() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { provider, challenge, token: turnstileToken, setTurnstileToken, answer: captchaAnswer, setAnswer: setCaptchaAnswer, isLoading: isCaptchaLoading, error: captchaError, version: captchaVersion, refresh: refreshCaptcha } = useAuthCaptcha("register");
+  const { provider, challenge, siteKey: turnstileSiteKey, token: turnstileToken, setTurnstileToken, answer: captchaAnswer, setAnswer: setCaptchaAnswer, isLoading: isCaptchaLoading, error: captchaError, version: captchaVersion, refresh: refreshCaptcha } = useAuthCaptcha("register");
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -183,7 +183,7 @@ function RegisterPageContent() {
                   </label>
                 </div>
 
-                {provider === "turnstile" ? <AuthCaptcha key={captchaVersion} purpose="register" onTokenChange={setTurnstileToken} siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY} /> : challenge ? <MathCaptcha {...challenge} answer={captchaAnswer} onAnswerChange={setCaptchaAnswer} onRefresh={() => void refreshCaptcha()} /> : <CaptchaLoading error={captchaError} />}
+                {provider === "turnstile" ? <AuthCaptcha key={captchaVersion} purpose="register" onTokenChange={setTurnstileToken} siteKey={turnstileSiteKey} /> : challenge ? <MathCaptcha {...challenge} answer={captchaAnswer} onAnswerChange={setCaptchaAnswer} onRefresh={() => void refreshCaptcha()} /> : <CaptchaLoading error={captchaError} />}
 
                 <label className="flex cursor-pointer gap-3 rounded-xl border border-border bg-surface p-3.5 text-xs leading-5 text-muted">
                   <input type="checkbox" checked={acceptTerms} onChange={(event) => setAcceptTerms(event.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/20 bg-transparent accent-[hsl(var(--primary))]" />
