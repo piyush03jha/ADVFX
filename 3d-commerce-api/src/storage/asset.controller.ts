@@ -16,6 +16,57 @@ export class AssetController {
     private readonly storage: StorageService,
   ) {}
 
+  @Get("categories/*splat")
+  async getCategoryAsset(
+    @Param() params: Record<string, string | undefined>,
+  ): Promise<StreamableFile> {
+    const wildcard = params["splat"] ?? params["*"] ?? params["0"] ?? "";
+    const normalized = decodeURIComponent(wildcard).replace(/^\/+/, "");
+
+    if (!normalized || normalized.includes("\0")) {
+      throw new NotFoundException("Asset not found");
+    }
+
+    const segments = normalized.split("/");
+    if (
+      segments.length < 2 ||
+      segments.some(
+        (segment) =>
+          !segment ||
+          segment === "." ||
+          segment === ".." ||
+          segment.includes("\\"),
+      )
+    ) {
+      throw new NotFoundException("Asset not found");
+    }
+
+    const [categoryId, ...rest] = segments;
+    const storageKey = ["categories", categoryId, ...rest].join("/");
+    const assetUrl =
+      "/api/assets/" +
+      storageKey.split("/").map(encodeURIComponent).join("/");
+
+    const category = await this.prisma.category.findFirst({
+      where: { id: categoryId, isActive: true },
+      select: { imageUrl: true },
+    });
+
+    if (!category || category.imageUrl !== assetUrl) {
+      throw new NotFoundException("Asset not found");
+    }
+
+    try {
+      const buffer = await this.storage.read(storageKey);
+      return new StreamableFile(buffer, {
+        type: this.storage.getContentTypeForStorageKey(storageKey),
+        length: buffer.length,
+      });
+    } catch {
+      throw new NotFoundException("Asset not found");
+    }
+  }
+
   @Get("products/*splat")
   async getProductAsset(
     @Param() params: Record<string, string | undefined>,
