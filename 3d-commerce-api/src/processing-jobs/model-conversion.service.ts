@@ -109,46 +109,95 @@ export class ModelConversionService {
       await this.validateGlb(optimizedGlb);
 
       const outputBuffer = await fs.readFile(optimizedGlb);
+      const sourceSize = Number(file.fileSize);
+      const optimizedSize = outputBuffer.length;
+      const reductionBytes = sourceSize - optimizedSize;
+      const reductionPercent =
+        sourceSize > 0 ? ((reductionBytes / sourceSize) * 100).toFixed(2) : "0.00";
 
-      // The optimized GLB is the only customer-facing 3D asset. Keep the
-      // uploaded source until the optimized artifact has been validated and
-      // persisted successfully; the worker removes the source afterwards.
+      this.logger.log(
+        `model ${productFileId}: source=${sourceSize} bytes, optimized=${optimizedSize} bytes, reduction=${reductionPercent}%`,
+      );
+
+      // Persist the optimized artifact separately first. The storefront is
+      // switched to this URL before the original source is removed.
       const generated = await this.storage.saveGeneratedFile(
         outputBuffer,
         file.productId,
         `${this.safeBaseName(file.originalName)}.glb`,
       );
 
-      const output = await this.prisma.productFile.create({
-        data: {
-          productId: file.productId,
-          originalName: `${this.safeBaseName(file.originalName)}.glb`,
-          storageKey: generated.storageKey,
-          storageUrl: generated.storageUrl,
-          format: ProductFileFormat.GLB,
-          fileType: "MODEL",
-          mimeType: "model/gltf-binary",
-          fileSize: BigInt(outputBuffer.length),
-          processingStatus: "COMPLETED",
-          convertedFromId: file.id,
-        },
-      });
+      let output;
+      try {
+        output = await this.prisma.$transaction(async (tx) => {
+          const created = await tx.productFile.create({
+            data: {
+              productId: file.productId,
+              originalName: `${this.safeBaseName(file.originalName)}.glb`,
+              storageKey: generated.storageKey,
+              storageUrl: generated.storageUrl,
+              format: ProductFileFormat.GLB,
+              fileType: "MODEL",
+              mimeType: "model/gltf-binary",
+              fileSize: BigInt(optimizedSize),
+              processingStatus: "COMPLETED",
+              convertedFromId: file.id,
+            },
+          });
 
-      const job = await this.prisma.productFileProcessingJob.findFirst({
-        where: { productFileId: file.id, status: "PROCESSING" },
-        orderBy: { createdAt: "desc" },
-      });
+          const publicUrl =
+            generated.storageUrl ??
+            this.storage.getPublicAssetUrl(generated.storageKey);
 
-      if (job) {
+          const existingModelMedia = await tx.productMedia.findFirst({
+            where: { productId: file.productId, type: "MODEL_PREVIEW" },
+            orderBy: [{ isPrimary: "desc" }, { sortOrder: "asc" }],
+          });
+
+          if (existingModelMedia) {
+            await tx.productMedia.update({
+              where: { id: existingModelMedia.id },
+              data: { url: publicUrl, isPrimary: true },
+            });
+            await tx.productMedia.updateMany({
+              where: {
+                productId: file.productId,
+                type: "MODEL_PREVIEW",
+                id: { not: existingModelMedia.id },
+              },
+              data: { isPrimary: false },
+            });
+          } else {
+            await tx.productMedia.create({
+              data: {
+                productId: file.productId,
+                type: "MODEL_PREVIEW",
+                url: publicUrl,
+                altText: file.originalName,
+                sortOrder: 0,
+                isPrimary: true,
+              },
+            });
+          }
+
+          return created;
+        });
+      } catch (error) {
+        await this.storage.delete(generated.storageKey).catch(() => undefined);
+        throw error;
+      }
+
+      if (jobId) {
         await this.prisma.productFileProcessingJob.update({
-          where: { id: job.id },
+          where: { id: jobId },
           data: { outputFileId: output.id },
         });
       }
 
       this.logger.log(
-        `model ${productFileId}: READY -> ${output.id} (${outputBuffer.length} bytes)`,
+        `model ${productFileId}: READY -> ${output.id}; source=${sourceSize} bytes; optimized=${optimizedSize} bytes; reduction=${reductionPercent}%`,
       );
+
     } finally {
       await fs.rm(workDir, { recursive: true, force: true }).catch(() => undefined);
     }
