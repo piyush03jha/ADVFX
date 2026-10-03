@@ -12,25 +12,42 @@ import { AuthCaptchaService } from './captcha.service';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService, private readonly captchaService: AuthCaptchaService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly captchaService: AuthCaptchaService,
+  ) {}
 
   @Get('captcha')
   captcha(@Query('purpose') purpose?: string) {
-    if (purpose !== 'login' && purpose !== 'register' && purpose !== 'forgot-password') throw new BadRequestException('A valid CAPTCHA purpose is required.');
-    if (this.captchaService.provider() === 'turnstile') {
-      return { provider: 'turnstile' as const, siteKey: this.captchaService.siteKey() };
+    if (purpose !== 'login' && purpose !== 'register' && purpose !== 'forgot-password') {
+      throw new BadRequestException('A valid CAPTCHA purpose is required.');
     }
-    return { provider: 'math' as const, ...this.captchaService.issue(purpose) };
+
+    return {
+      provider: 'math' as const,
+      ...this.captchaService.issue(purpose),
+    };
   }
 
   @Post('register')
   registerCustomer(@Body() dto: CustomerRegisterDto) {
-    return this.authService.registerCustomer(dto.name, dto.email, dto.password, dto.captchaToken, dto.captchaAnswer);
+    return this.authService.registerCustomer(
+      dto.name,
+      dto.email,
+      dto.password,
+      dto.captchaToken,
+      dto.captchaAnswer,
+    );
   }
 
   @Post('login')
   loginCustomer(@Body() dto: CustomerLoginDto) {
-    return this.authService.customerLogin(dto.email, dto.password, dto.captchaToken, dto.captchaAnswer);
+    return this.authService.customerLogin(
+      dto.email,
+      dto.password,
+      dto.captchaToken,
+      dto.captchaAnswer,
+    );
   }
 
   @Get('session')
@@ -57,7 +74,11 @@ export class AuthController {
 
   @Post('forgot-password')
   forgotPassword(@Body() dto: ForgotPasswordDto) {
-    return this.authService.forgotCustomerPassword(dto.email, dto.captchaToken, dto.captchaAnswer);
+    return this.authService.forgotCustomerPassword(
+      dto.email,
+      dto.captchaToken,
+      dto.captchaAnswer,
+    );
   }
 
   @Post('reset-password')
