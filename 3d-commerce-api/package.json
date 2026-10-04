@@ -22,7 +22,8 @@
     "postinstall": "prisma generate",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:release": "prisma migrate deploy && npm run db:seed-admin",
-    "storage:smoke": "tsx scripts/smoke-neon-storage.ts"
+    "storage:smoke": "tsx scripts/smoke-neon-storage.ts",
+    "storage:configure-cors": "tsx scripts/configure-storage-cors.ts"
   },
   "dependencies": {
     "@fastify/multipart": "^10.1.1",
