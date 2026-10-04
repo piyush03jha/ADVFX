@@ -42,7 +42,7 @@ export class ProcessingJobsWorker
     Math.floor(
       this.getPositiveNumber(
         process.env.PROCESSING_WORKER_CONCURRENCY,
-        2,
+        1,
       ),
     ),
   );
