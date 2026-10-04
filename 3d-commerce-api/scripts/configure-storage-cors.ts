@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { createHash, createHmac } from "node:crypto";
 
 const encode = (value: string) =>
