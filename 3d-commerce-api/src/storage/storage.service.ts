@@ -164,7 +164,7 @@ export class StorageService {
     storageKey: string,
     start: number,
     end: number,
-  ): Promise<{ stream: Readable; size: number }> {
+  ): Promise<{ stream: Readable; size: number; totalSize: number; start: number; end: number }> {
     if (
       !Number.isInteger(start) ||
       !Number.isInteger(end) ||
@@ -185,6 +185,9 @@ export class StorageService {
       return {
         stream: createReadStream(path, { start, end: boundedEnd }),
         size: boundedEnd - start + 1,
+        totalSize: info.size,
+        start,
+        end: boundedEnd,
       };
     }
 
@@ -203,6 +206,9 @@ export class StorageService {
     return {
       stream: Readable.fromWeb(response.body as any),
       size: Number(match[1]) - start + 1,
+      totalSize: Number(match[2]),
+      start,
+      end: Number(match[1]),
     };
   }
 
