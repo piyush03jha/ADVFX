@@ -56,7 +56,7 @@ export function ProductGallery({ product }: ProductGalleryProps) {
     }));
 
   const media: MediaItem[] = [
-    ...imageItems,
+    ...(imageItems.length > 0 ? [imageItems[0]] : []),
     ...(product.model.trim()
       ? [{
           type: "model" as const,
@@ -64,6 +64,7 @@ export function ProductGallery({ product }: ProductGalleryProps) {
           label: "Interactive 3D",
         }]
       : []),
+    ...imageItems.slice(1),
   ];
 
   const active = media[Math.min(activeIndex, media.length - 1)];
@@ -224,7 +225,7 @@ export function ProductGallery({ product }: ProductGalleryProps) {
 
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
+      <div className="mt-3 hidden grid-cols-2 gap-2 sm:grid sm:grid-cols-4 sm:gap-3">
         {media.map((item, index) => {
           const selected = index === activeIndex;
 
