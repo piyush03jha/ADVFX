@@ -50,7 +50,7 @@ export function CustomBuild() {
               </Button>
             </div>
 
-            <div className="mt-7 border-t border-border pt-6 sm:mt-12 sm:pt-8">
+            <div className="mt-7 hidden border-t border-border pt-6 sm:mt-12 sm:block sm:pt-8">
               <p className="mb-5 text-[9px] font-medium uppercase tracking-[0.2em] text-muted">
                 From reference to finished piece
               </p>
