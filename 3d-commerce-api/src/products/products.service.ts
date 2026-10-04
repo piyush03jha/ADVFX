@@ -1108,11 +1108,13 @@ export class ProductsService {
         (price) => price.currency === 'INR',
       ) ?? product.prices[0];
 
+    const generatedModels = product.media.filter((media) =>
+      media.url.includes('/generated/'),
+    );
+
     const model =
-      product.media.find(
-        (media) => media.isPrimary,
-      )?.url ??
-      product.media[0]?.url ??
+      generatedModels.find((media) => media.isPrimary)?.url ??
+      generatedModels[0]?.url ??
       null;
 
     return {
