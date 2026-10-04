@@ -84,7 +84,7 @@ export function CustomBuild() {
             whileInView={reduceMotion ? undefined : { opacity: 1, scale: 1 }}
             viewport={{ once: true, amount: 0.15 }}
             transition={{ duration: 0.8 }}
-            className="relative flex min-h-[205px] items-center justify-center overflow-hidden bg-surface sm:min-h-[420px] lg:min-h-full"
+            className="relative flex min-h-[320px] items-center justify-center overflow-hidden bg-surface sm:min-h-[420px] lg:min-h-full"
           >
             <img
               src="/catogeries/couple.png"
