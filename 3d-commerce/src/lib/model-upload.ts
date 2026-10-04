@@ -22,12 +22,16 @@ export async function uploadModelDirect(
 ) {
   const base = `/api/products/${encodeURIComponent(productId)}/model-multipart`;
 
-  const post = async (path: string, body: unknown) => {
+  const post = async (
+    path: string,
+    body: unknown,
+    requestSignal: AbortSignal | undefined = signal,
+  ) => {
     const response = await fetch(base + path, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-      signal,
+      signal: requestSignal,
       cache: "no-store",
     });
 
@@ -164,6 +168,13 @@ export async function uploadModelDirect(
         }
       }),
     );
+  } catch (error) {
+    await post(
+      "/abort",
+      { key: session.key, uploadId: session.uploadId },
+      undefined,
+    ).catch(() => undefined);
+    throw error;
   } finally {
     signal?.removeEventListener("abort", onSessionAbort);
   }
