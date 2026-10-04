@@ -124,7 +124,11 @@ async function bootstrap() {
 
       // Razorpay webhooks are already authenticated with their HMAC signature
       // and must not share the public request bucket.
-      if (request.url.startsWith("/payments/razorpay/webhook")) return;
+      if (
+        request.url.startsWith("/payments/razorpay/webhook") ||
+        request.url.startsWith("/assets/") ||
+        request.url.startsWith("/api/assets/")
+      ) return;
 
       const routePath = request.routeOptions?.url ?? request.url.split("?")[0];
       const routeLimit = AUTH_RATE_LIMITS[routePath];
