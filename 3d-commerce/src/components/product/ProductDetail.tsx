@@ -35,7 +35,7 @@ export function ProductDetail({
       <Section
         className="
           relative
-          pt-10
+          pt-7
           sm:pt-8
           lg:pt-14
         "
@@ -80,10 +80,10 @@ export function ProductDetail({
           <div
             className="
               relative
-              mt-4
+              mt-3
               grid
               grid-cols-1
-              gap-7
+              gap-4
               sm:mt-5
               sm:gap-8
               lg:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]
@@ -131,7 +131,7 @@ export function ProductDetail({
 
           <div
             className="
-              mt-5
+              mt-3
               grid
               grid-cols-3
               overflow-hidden
@@ -176,7 +176,7 @@ export function ProductDetail({
 
       <Section
         className="
-          pt-6
+          pt-4
           sm:pt-8
           lg:pt-10
         "
@@ -231,7 +231,7 @@ function Benefit({
         border-r
         border-border
         px-1
-        py-3
+        py-2
         last:border-r-0
         sm:gap-2
         sm:px-3
