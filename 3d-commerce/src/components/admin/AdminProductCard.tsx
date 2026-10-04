@@ -1,6 +1,6 @@
 "use client";
 import type { Dispatch, SetStateAction } from "react";
-import ProductViewer from "@/components/product/ProductViewer";
+import { ProductViewer } from "@/components/product/ProductViewer";
 import { IconDownload, IconArchive, IconBox, IconEdit, IconTrash, IconUpload, IconX } from "@tabler/icons-react";
 
 type ProductVariant={id:string;name:string;size?:string|null;sku?:string|null;isActive:boolean;stock?:number;reserved?:number;lowStockAt?:number;trackStock?:boolean;allowBackorder?:boolean;price?:{amountMinor:number;compareAtMinor?:number|null;isActive:boolean}|null};
