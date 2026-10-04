@@ -147,7 +147,7 @@ export function RelatedProducts({
                   relative
                   aspect-[0.85/1]
                   overflow-hidden
-                  bg-[#0c0c0c]
+                  bg-[linear-gradient(145deg,rgb(from var(--foreground) r g b / 0.055),rgb(from var(--background) r g b / 0.018)_58%,rgb(from var(--primary) r g b / 0.065))]
                 "
               >
                 <img
