@@ -288,19 +288,36 @@ export class ProcessingJobsWorker
         job.id,
       );
 
-      // Mark the source successful before cleanup, but do not complete the
-      // processing job until the original storage object and DB row are gone.
-      await this.prisma.productFile.update({
-        where: { id: job.productFileId },
-        data: {
-          processingStatus: ProcessingStatus.COMPLETED,
-          processingError: null,
-        },
+      // Only model/PDF conversion jobs produce a replacement ProductFile.
+      // Validation-only image/document jobs must retain their source file.
+      const finished = await this.prisma.productFileProcessingJob.findUnique({
+        where: { id: job.id },
+        select: { outputFileId: true },
       });
 
-      // If cleanup fails, this throws and the job is re-queued. On retry,
-      // convert() sees outputFileId and skips expensive re-conversion.
-      await this.cleanupProcessedSource(job.productFileId);
+      if (finished?.outputFileId) {
+        // Mark the source successful before cleanup, but do not complete the
+        // processing job until the original storage object and DB row are gone.
+        await this.prisma.productFile.update({
+          where: { id: job.productFileId },
+          data: {
+            processingStatus: ProcessingStatus.COMPLETED,
+            processingError: null,
+          },
+        });
+
+        // If cleanup fails, this throws and the job is re-queued. On retry,
+        // convert() sees outputFileId and skips expensive re-conversion.
+        await this.cleanupProcessedSource(job.productFileId);
+      } else {
+        await this.prisma.productFile.update({
+          where: { id: job.productFileId },
+          data: {
+            processingStatus: ProcessingStatus.COMPLETED,
+            processingError: null,
+          },
+        });
+      }
 
       await this.prisma.productFileProcessingJob.update({
         where: { id: job.id },
