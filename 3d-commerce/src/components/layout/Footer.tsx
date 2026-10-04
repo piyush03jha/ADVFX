@@ -89,24 +89,24 @@ export function Footer() {
 
             <div className="grid grid-cols-2 gap-5 sm:col-span-2 lg:contents">
               <FooterColumn title="Collections">
-              {collections.map((item) => (
-                <FooterLink key={item.href} href={item.href}>
-                  {item.label}
-                </FooterLink>
-              ))}
-            </FooterColumn>
+                {collections.map((item) => (
+                  <FooterLink key={item.href} href={item.href}>
+                    {item.label}
+                  </FooterLink>
+                ))}
+              </FooterColumn>
 
               <FooterColumn title="Help">
-              {helpLinks.map((item) => (
-                <FooterLink key={item.href} href={item.href}>
-                  {item.label}
-                </FooterLink>
-              ))}
-            </FooterColumn>
+                {helpLinks.map((item) => (
+                  <FooterLink key={item.href} href={item.href}>
+                    {item.label}
+                  </FooterLink>
+                ))}
+              </FooterColumn>
 
               <div>
                 <FooterHeading>Contact</FooterHeading>
-              <div className="space-y-3.5">
+                <div className="space-y-3.5">
                 <ContactItem icon={IconMail} href="mailto:hello@voxel3d.in">
                   hello@voxel3d.in
                 </ContactItem>
