@@ -108,7 +108,7 @@ export class StorageService {
 
     const response = await this.requestObjectResponse("GET", storageKey);
     if (!response.body) throw new InternalServerErrorException("Unable to read stored file");
-    const stream = Readable.fromWeb(response.body as globalThis.ReadableStream<Uint8Array>);
+    const stream = Readable.fromWeb(response.body as any);
     const { createWriteStream } = await import("node:fs");
     await new Promise<void>((resolvePromise, reject) => {
       const output = createWriteStream(destination);
