@@ -9,7 +9,7 @@ import {
 } from "react";
 
 import { Container } from "@/components/ui/Container";
-import { useGLTF } from "@react-three/drei";
+import { loadModelBuffer } from "@/lib/model-loader";
 import { HERO_MODEL_ROTATION_MS } from "@/config/hero-motion";
 import type { HeroProduct } from "@/config/hero-products";
 
@@ -72,7 +72,7 @@ export function Hero() {
   // of making the user wait for the 3D canvas to mount.
   useEffect(() => {
     const url = heroProducts[0]?.model?.trim();
-    if (url) useGLTF.preload(url);
+    if (url) void loadModelBuffer(url).catch(() => undefined);
   }, [heroProducts]);
 
   const clearRotationTimer = useCallback(() => {
