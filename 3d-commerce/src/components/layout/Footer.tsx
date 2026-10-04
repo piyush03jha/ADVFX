@@ -50,7 +50,7 @@ export function Footer() {
 
       <div className="relative">
         <div className="mx-auto max-w-[1280px] px-5 py-12 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
-          <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-[1.25fr_0.85fr_0.85fr_1fr] lg:gap-10">
+          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-[1.25fr_0.85fr_0.85fr_1fr] lg:gap-10">
             <div className="max-w-sm sm:col-span-2 lg:col-span-1">
               <Link href="/" className="group inline-flex items-center">
                 <span className="font-serif text-2xl font-semibold tracking-[-0.04em] text-foreground transition-colors duration-300 group-hover:text-primary-hover sm:text-3xl">
@@ -87,7 +87,8 @@ export function Footer() {
               </div>
             </div>
 
-            <FooterColumn title="Collections">
+            <div className="grid grid-cols-2 gap-5 sm:col-span-2 lg:contents">
+              <FooterColumn title="Collections">
               {collections.map((item) => (
                 <FooterLink key={item.href} href={item.href}>
                   {item.label}
@@ -95,7 +96,7 @@ export function Footer() {
               ))}
             </FooterColumn>
 
-            <FooterColumn title="Help">
+              <FooterColumn title="Help">
               {helpLinks.map((item) => (
                 <FooterLink key={item.href} href={item.href}>
                   {item.label}
@@ -103,8 +104,8 @@ export function Footer() {
               ))}
             </FooterColumn>
 
-            <div>
-              <FooterHeading>Contact</FooterHeading>
+              <div>
+                <FooterHeading>Contact</FooterHeading>
               <div className="space-y-3.5">
                 <ContactItem icon={IconMail} href="mailto:hello@voxel3d.in">
                   hello@voxel3d.in
@@ -117,6 +118,7 @@ export function Footer() {
               <p className="mt-4 text-[9px] uppercase tracking-[0.1em] text-muted-foreground">
                 Mon–Sat · 10am–7pm IST
               </p>
+              </div>
             </div>
           </div>
 
