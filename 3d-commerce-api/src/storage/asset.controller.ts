@@ -20,8 +20,6 @@ export class AssetController {
   private readonly logger = new Logger(AssetController.name);
   private readonly validProducts = new Map<string, number>();
   private readonly productCacheTtlMs = 60_000;
-  private readonly validProducts = new Map<string, number>();
-  private readonly productCacheTtlMs = 60_000;
 
   constructor(
     private readonly prisma: PrismaService,
