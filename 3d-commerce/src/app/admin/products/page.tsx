@@ -146,7 +146,22 @@ export default function AdminProducts(){
       // Keep the raw upload private to the processing pipeline. The worker
       // publishes MODEL_PREVIEW only after optimization + validation succeeds.
       setAssetMessage("Source uploaded. Converting and optimizing to a web-ready GLB…");
-      const fr=await fetch("/api/products/"+id+"/files",{cache:"no-store"});if(fr.ok)setAssetFiles(await fr.json());
+
+      // The source is deleted after successful conversion, so poll until the
+      // generated optimized GLB appears in the admin asset list.
+      for(let attempt=0;attempt<60;attempt++){
+        await new Promise(resolve=>setTimeout(resolve,2000));
+        const fr=await fetch("/api/products/"+id+"/files",{cache:"no-store"});
+        if(!fr.ok) continue;
+        const files=await fr.json();
+        setAssetFiles(files);
+        const ready=files.some((item:any)=>item.format==="GLB"&&item.processingStatus==="COMPLETED");
+        if(ready){
+          setAssetMessage("Web-ready GLB generated successfully.");
+          break;
+        }
+        if(attempt===59)setAssetMessage("Conversion is still running. You can leave this page and check the product assets later.");
+      }
       await load();
     }catch(e){setAssetMessage(e instanceof Error?e.message:"GLB upload failed.")}
     finally{setAssetBusy(false)}
