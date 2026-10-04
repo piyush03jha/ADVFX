@@ -16,7 +16,9 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const response = await fetch(getBackendApiUrl("products/" + encodeURIComponent(id) + "/media/upload"), {
       method: "POST",
       headers,
-      body: await request.arrayBuffer(),
+      body: request.body,
+      // Keep image uploads streaming through the Cloudflare Worker.
+      duplex: "half",
       cache: "no-store",
     });
     const data = await response.json().catch(() => null);
