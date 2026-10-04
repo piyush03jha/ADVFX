@@ -111,7 +111,6 @@ export default function Product3DStage({
           minPolarAngle={0.12}
           maxPolarAngle={Math.PI - 0.12}
           target={[0, 0, 0]}
-          enableRotate
           rotateSpeed={0.75}
           zoomSpeed={0.8}
           touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }}
