@@ -197,10 +197,10 @@ export function ProductReviews({ product }: ProductReviewsProps) {
         ) : null}
       </div>
 
-      <div className="mt-6 space-y-4">
+      <div className="mt-4 space-y-3 sm:mt-6 sm:space-y-4">
         {hasReviews ? (
           data.reviews.map((review) => (
-            <article key={review.id} className="rounded-2xl border border-white/[0.07] bg-black/10 p-5 sm:p-6">
+            <article key={review.id} className="rounded-2xl border border-white/[0.07] bg-black/10 p-4 sm:p-6">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-1">
                   {Array.from({ length: 5 }).map((_, index) => (
@@ -238,7 +238,7 @@ export function ProductReviews({ product }: ProductReviewsProps) {
         )}
       </div>
 
-      <div className="mt-6 rounded-2xl border border-border bg-surface p-5 sm:p-6">
+      <div className="mt-4 rounded-2xl sm:mt-6 border border-border bg-surface p-5 sm:p-6">
         {eligibility === "loading" ? (
           <p className="text-sm text-muted">Checking review eligibility…</p>
         ) : eligibility === "unauthenticated" ? (
