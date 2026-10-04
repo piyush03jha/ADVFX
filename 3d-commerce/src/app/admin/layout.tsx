@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { IconChartBar, IconChevronRight, IconLayoutDashboard, IconLogout, IconMapPin, IconPackage, IconSettings, IconShoppingBag, IconSearch, IconMessageCircle, IconRotate2, IconTags, IconUsers, IconX, IconCategory, IconClipboardList, IconHistory, IconCpu } from "@tabler/icons-react";
+import { Button } from "@/components/ui/Button";
+import { IconButton } from "@/components/ui/IconButton";
 
 type AdminUser={id:string;name:string|null;email:string;role:string};
 
@@ -43,26 +45,26 @@ export default function AdminLayout({children}:{children:React.ReactNode}){
 
   return <div className="min-h-screen bg-background text-foreground">
     {open && <button aria-label="Close navigation" className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={()=>setOpen(false)}/>}
-    <div className="mx-auto flex min-h-screen max-w-[1600px]">
+    <div className="mx-auto flex min-h-screen max-w-[1600px] bg-background">
       <aside className={open?"fixed inset-y-0 left-0 z-50 flex w-[280px] shrink-0 flex-col border-r border-border bg-background/95 p-4 backdrop-blur-xl transition-transform duration-300 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0":"fixed inset-y-0 left-0 z-50 flex w-[280px] shrink-0 -translate-x-full flex-col border-r border-border bg-background/95 p-4 backdrop-blur-xl transition-transform duration-300 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0"}>
         <div className="flex items-start justify-between px-3 py-3">
           <Link href="/admin" className="min-w-0" onClick={()=>setOpen(false)}>
             <p className="text-[9px] uppercase tracking-[0.25em] text-primary">Voxel3D / ADMIN</p><p className="mt-1 text-base font-semibold tracking-[-0.02em]">Operations</p>
           </Link>
-          <button className="rounded-lg p-2 text-muted lg:hidden" onClick={()=>setOpen(false)}><IconX size={18}/></button>
+          <button className="lg:hidden" onClick={()=>setOpen(false)} aria-label="Close navigation" title="Close navigation"><IconX size={18}/></button>
         </div>
         <nav className="mt-5 space-y-1">
           {nav.map(({href,label,icon:Icon})=>{const active=href==="/admin"?pathname==="/admin":pathname.startsWith(href);return <Link key={href} href={href} onClick={()=>setOpen(false)} className={active?"flex items-center justify-between rounded-xl bg-primary/[0.08] px-3 py-2.5 text-xs text-primary":"flex items-center justify-between rounded-xl px-3 py-2.5 text-xs text-muted hover:bg-surface hover:text-foreground"}><span className="flex items-center gap-3"><Icon size={17} stroke={1.7}/>{label}</span><IconChevronRight size={14}/></Link>})}
         </nav>
         <div className="mt-auto space-y-3">
           <div className="rounded-2xl border border-border bg-surface p-4"><p className="text-[9px] uppercase tracking-[0.14em] text-muted">Signed in</p><p className="mt-1 truncate text-xs font-medium">{user.name||"Administrator"}</p><p className="mt-1 truncate text-[10px] text-muted">{user.email}</p></div>
-          <button onClick={logout} className="flex w-full items-center gap-2 rounded-xl border border-border px-3 py-2.5 text-xs text-muted hover:text-foreground"><IconLogout size={16}/> Sign out</button>
+          <Button type="button" variant="outline" size="sm" onClick={()=>void logout()} className="w-full"><IconLogout size={16}/> Sign out</Button>
         </div>
       </aside>
       <div className="min-w-0 flex-1">
         <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur-xl"><div className="flex h-16 items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-3"><button className="rounded-xl border border-border p-2 lg:hidden" onClick={()=>setOpen(true)} aria-label="Open navigation"><span className="block h-4 w-4 border-y border-foreground/70"/></button><div><p className="text-[9px] uppercase tracking-[0.18em] text-muted">Admin workspace</p><p className="mt-0.5 text-xs font-medium">{activeLabel}</p></div></div>
-          <Link href="/shop" className="text-[10px] uppercase tracking-[0.14em] text-muted hover:text-primary">View storefront ↗</Link>
+          <div className="flex items-center gap-3"><IconButton icon={<span className="block h-4 w-4 border-y border-foreground/70"/>} label="Open navigation" onClick={()=>setOpen(true)} className="lg:hidden"/><div><p className="text-[9px] uppercase tracking-[0.18em] text-muted">Admin workspace</p><p className="mt-0.5 text-xs font-medium">{activeLabel}</p></div></div>
+          <Button href="/shop" variant="ghost" size="sm">View storefront ↗</Button>
         </div></header>
         {children}
       </div>
