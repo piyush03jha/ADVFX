@@ -178,10 +178,10 @@ export default function AdminProducts(){
           fileType:"MODEL",
           mimeType:"model/gltf-binary",
           fileSize:data.size||String(file.size),
-          processingStatus:"COMPLETED",
+          processingStatus:data.processingStatus||"PENDING",
         },...prev]);
       }
-      setAssetMessage("GLB uploaded and published.");
+      setAssetMessage(data.processingStatus === "PENDING" ? "GLB uploaded. Web optimization is processing in the background." : "GLB uploaded and published.");
       await load();
     }catch(e){setAssetMessage(e instanceof Error?e.message:"GLB upload failed.")}
     finally{
