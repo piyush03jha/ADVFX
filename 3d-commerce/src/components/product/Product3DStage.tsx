@@ -4,7 +4,6 @@ import { Suspense, useEffect, useState } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
 import { Center, OrbitControls, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
-import { IconRotate, IconZoomIn } from "@tabler/icons-react";
 
 interface Product3DStageProps {
   model: string;
@@ -117,17 +116,6 @@ export default function Product3DStage({
           mouseButtons={{ LEFT: 0, MIDDLE: 1, RIGHT: 2 }}
         />
       </Canvas>
-
-      <div className="pointer-events-none absolute bottom-3 left-3 right-3 z-20 flex items-center justify-between gap-2 sm:bottom-4 sm:left-4 sm:right-4">
-        <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-black/45 px-2.5 py-1.5 text-[8px] uppercase tracking-[0.12em] text-white/70 backdrop-blur-xl sm:px-3 sm:py-2 sm:text-[9px]">
-          <IconRotate size={12} />
-          <span>Drag to rotate</span>
-        </div>
-        <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-black/45 px-2.5 py-1.5 text-[8px] uppercase tracking-[0.12em] text-white/70 backdrop-blur-xl sm:px-3 sm:py-2 sm:text-[9px]">
-          <IconZoomIn size={12} />
-          <span>Pinch to zoom</span>
-        </div>
-      </div>
 
       {contextLost && (
         <div className="absolute inset-0 z-30 flex items-center justify-center bg-inherit/90 px-6 text-center backdrop-blur-sm">
