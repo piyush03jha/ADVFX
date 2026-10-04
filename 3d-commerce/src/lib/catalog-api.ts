@@ -218,10 +218,25 @@ function primaryImage(product: CatalogProduct): string {
     ?? "/catogeries/1.jpg";
 }
 
+function isOptimizedModelUrl(url: string): boolean {
+  // Storefront 3D must only consume artifacts produced by the processing
+  // pipeline. Raw content-addressed uploads live directly under the product
+  // directory and must never be rendered in customer-facing WebGL.
+  return url.includes("/generated/");
+}
+
 function primaryModel(product: CatalogProduct): string {
-  return product.media.find((media) => media.type === "MODEL_PREVIEW" && media.isPrimary)?.url
-    ?? product.media.find((media) => media.type === "MODEL_PREVIEW")?.url
-    ?? "";
+  const models = product.media.filter(
+    (media) =>
+      media.type === "MODEL_PREVIEW" &&
+      isOptimizedModelUrl(media.url),
+  );
+
+  return (
+    models.find((media) => media.isPrimary)?.url ??
+    models[0]?.url ??
+    ""
+  );
 }
 
 export function mapCatalogProduct(product: CatalogProduct): StorefrontProduct {
@@ -255,7 +270,7 @@ export function mapCatalogProduct(product: CatalogProduct): StorefrontProduct {
       .sort((a, b) => a.sortOrder - b.sortOrder)
       .map((media) => media.url),
     model: primaryModel(product),
-    format: product.media.some((media) => media.type === "MODEL_PREVIEW") ? "GLB" : "Physical",
+    format: primaryModel(product) ? "GLB" : "Physical",
     fileSize: "",
     polygonCount: "",
     textureResolution: undefined,
