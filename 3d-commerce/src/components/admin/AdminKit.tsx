@@ -18,11 +18,11 @@ export function AdminPage({
   children: ReactNode;
 }) {
   return (
-    <main className="mx-auto max-w-[1500px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
-      <div className="flex flex-col gap-5 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between">
+    <main className="mx-auto w-full max-w-[1500px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
+      <div className="flex flex-col gap-5 rounded-3xl border border-border bg-surface p-5 shadow-[var(--shadow-card)] sm:p-7 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
           {eyebrow ? (
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
               {eyebrow}
             </p>
           ) : null}
@@ -30,12 +30,15 @@ export function AdminPage({
             {title}
           </h1>
           {description ? (
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">{description}</p>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">{description}</p>
           ) : null}
         </div>
-        {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
+        {actions ? (
+          <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>
+        ) : null}
       </div>
-      <div className="pt-6">{children}</div>
+
+      <div className="mt-6 space-y-5 sm:mt-7">{children}</div>
     </main>
   );
 }
@@ -47,7 +50,11 @@ export function AdminCard({
   children: ReactNode;
   className?: string;
 }) {
-  return <Card className={className}>{children}</Card>;
+  return (
+    <Card className={`overflow-hidden p-5 sm:p-6 ${className}`}>
+      {children}
+    </Card>
+  );
 }
 
 export function AdminTable({ children }: { children: ReactNode }) {
@@ -60,7 +67,7 @@ export function AdminTable({ children }: { children: ReactNode }) {
 
 export function AdminTableHeader({ children }: { children: ReactNode }) {
   return (
-    <thead className="border-b border-border bg-surface-elevated text-[11px] uppercase tracking-[0.12em] text-muted">
+    <thead className="border-b border-border bg-surface-elevated text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
       <tr>{children}</tr>
     </thead>
   );
