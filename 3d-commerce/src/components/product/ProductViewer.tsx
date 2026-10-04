@@ -33,7 +33,7 @@ function ProductModel({
 }: {
   model: string;
 }) {
-  const { scene } = useGLTF(model);
+  const { scene } = useGLTF(model, false, true);
 
   return (
     <Center>
