@@ -123,7 +123,7 @@ export class StorageService {
     });
   }
 
-  async createReadStream(storageKey: string): Promise<Readable> {
+  async openReadStream(storageKey: string): Promise<{ stream: Readable; size?: number }> {\n    if (this.provider === "local") {\n      const { stat } = await import("node:fs/promises");\n      const path = this.getAbsolutePath(storageKey);\n      const info = await stat(path).catch(() => {\n        throw new NotFoundException("Stored file not found");\n      });\n      return { stream: createReadStream(path), size: info.size };\n    }\n\n    const response = await this.requestObjectResponse("GET", storageKey);\n    if (!response.body) throw new NotFoundException("Stored file not found");\n    const len = response.headers.get("content-length");\n    return {\n      stream: Readable.fromWeb(response.body as any),\n      size: len ? Number(len) : undefined,\n    };\n  }\n\n  async createReadStream(storageKey: string): Promise<Readable> {
     if (this.provider === "local") {
       return createReadStream(this.getAbsolutePath(storageKey));
     }
