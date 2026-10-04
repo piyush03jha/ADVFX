@@ -90,7 +90,7 @@ export function ShopProductCard({ product, priority = false }: ShopProductCardPr
 
   return (
     <Card interactive className="group h-full rounded-2xl">
-      <div className="relative aspect-[0.8/1] overflow-hidden bg-[#0c0c0c]">
+      <div className="relative aspect-[0.75/1] overflow-hidden bg-[#0c0c0c]">
         <Link href={`/product/${product.slug}`} className="relative block h-full">
           <Image
             src={imageSrc}
@@ -137,20 +137,21 @@ export function ShopProductCard({ product, priority = false }: ShopProductCardPr
           {product.category}
         </p>
 
-        <Link href={`/product/${product.slug}`} className="block">
-          <h3 className="mt-1.5 line-clamp-2 min-h-[2.5rem] text-sm font-medium leading-5 tracking-[-0.015em] text-foreground transition-colors hover:text-primary-hover">
-            {product.name}
-          </h3>
-        </Link>
+        <div className="mt-1.5 flex items-center justify-between gap-2">
+          <Link href={`/product/${product.slug}`} className="min-w-0 flex-1">
+            <h3 className="line-clamp-2 text-sm font-medium leading-5 tracking-[-0.015em] text-foreground transition-colors hover:text-primary-hover">
+              {product.name}
+            </h3>
+          </Link>
 
-        <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-          <Price value={product.price} size="sm" />
-
-          {product.oldPrice !== undefined && (
-            <span className="text-[10px] text-muted line-through">
-              ₹{product.oldPrice.toLocaleString("en-IN")}
-            </span>
-          )}
+          <div className="flex shrink-0 flex-col items-end">
+            <Price value={product.price} size="sm" />
+            {product.oldPrice !== undefined && (
+              <span className="text-[10px] text-muted line-through">
+                ₹{product.oldPrice.toLocaleString("en-IN")}
+              </span>
+            )}
+          </div>
         </div>
 
         <Rating
