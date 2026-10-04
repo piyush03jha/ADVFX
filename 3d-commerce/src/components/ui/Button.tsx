@@ -14,7 +14,10 @@ type ButtonProps = {
   disabled?: boolean;
   ariaLabel?: string;
   ariaPressed?: boolean;
-  onClick?: () => void;
+  onClick?: ButtonHTMLAttributes<HTMLButtonElement>["onClick"];
+  form?: ButtonHTMLAttributes<HTMLButtonElement>["form"];
+  name?: ButtonHTMLAttributes<HTMLButtonElement>["name"];
+  value?: ButtonHTMLAttributes<HTMLButtonElement>["value"];
 };
 
 const variants: Record<ButtonVariant, string> = {
@@ -52,6 +55,9 @@ export function Button({
   ariaLabel,
   ariaPressed,
   onClick,
+  form,
+  name,
+  value,
 }: ButtonProps) {
   const classes = `
     inline-flex items-center justify-center gap-2 rounded-full font-medium
@@ -73,7 +79,7 @@ export function Button({
   }
 
   return (
-    <button type={type} className={classes} disabled={disabled} aria-label={ariaLabel} aria-pressed={ariaPressed} onClick={onClick}>
+    <button type={type} className={classes} disabled={disabled} aria-label={ariaLabel} aria-pressed={ariaPressed} onClick={onClick} form={form} name={name} value={value}>
       {children}
     </button>
   );
