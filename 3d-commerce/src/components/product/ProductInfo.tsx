@@ -26,11 +26,11 @@ export function ProductInfo({
   return (
     <div
       className="
-        rounded-[28px]
+        rounded-[22px]
         border
         border-border
         bg-surface
-        p-5
+        p-4
         shadow-[0_20px_80px_rgba(0,0,0,0.22)]
         sm:p-7
         lg:p-8
@@ -58,13 +58,14 @@ export function ProductInfo({
 
       <h1
         className="
-          mt-5
+          mt-3
           max-w-xl
           font-serif
-          text-4xl
+          text-[2rem]
           leading-[0.96]
           tracking-[-0.045em]
           text-foreground
+          sm:mt-5
           sm:text-5xl
           lg:text-[3.4rem]
         "
@@ -78,7 +79,7 @@ export function ProductInfo({
 
       <div
         className="
-          mt-5
+          mt-3
           flex
           flex-wrap
           items-center
@@ -114,7 +115,7 @@ export function ProductInfo({
           PRICE
       ================================================== */}
 
-      <div className="mt-7 flex flex-wrap items-center justify-between gap-4">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3">
           <div className="text-2xl font-bold tracking-tight text-foreground">
             ₹{selectedPrice.toLocaleString("en-IN")}
@@ -161,10 +162,10 @@ export function ProductInfo({
 
       <p
         className="
-          mt-5
+          mt-3
           max-w-xl
-          text-sm
-          leading-6
+          text-xs
+          leading-5
           text-muted
         "
       >
