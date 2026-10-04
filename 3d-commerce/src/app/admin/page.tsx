@@ -13,6 +13,8 @@ import {
   IconUsers,
 } from "@tabler/icons-react";
 
+import { Button } from "@/components/ui/Button";
+
 type Dashboard = {
   products: { total: number; active: number; archived: number };
   categories: number;
