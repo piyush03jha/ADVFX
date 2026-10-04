@@ -7,6 +7,9 @@ import { Navbar } from "@/components/layout/SiteNavbar";
 import { getBackendApiUrl } from "@/lib/backend-api";
 import { mapCatalogProduct, mapCatalogProducts, type CatalogProduct } from "@/lib/catalog-api";
 
+export const dynamic = "force-dynamic";
+export const dynamicParams = true;
+
 interface ProductPageProps {
   params: Promise<{ id: string }>;
 }
@@ -70,9 +73,6 @@ async function fetchProduct(idOrSlug: string): Promise<CatalogProduct | null> {
   }
 }
 
-export async function generateStaticParams() {
-  return [];
-}
 
 export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
   const { id } = await params;
