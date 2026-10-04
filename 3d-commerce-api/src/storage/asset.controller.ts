@@ -103,7 +103,7 @@ export class AssetController {
     const assetUrl = "/api/assets/" + storageKey.split("/").map(encodeURIComponent).join("/");
 
     const product = await this.prisma.product.findFirst({
-      where: { id: productId, status: "ACTIVE" },
+      where: { id: productId, status: { in: ["ACTIVE", "DRAFT"] } },
       select: { id: true },
     });
     if (!product) throw new NotFoundException("Asset not found");
@@ -141,6 +141,9 @@ export class AssetController {
     try {
       const { stream, size } = await this.storage.openReadStream(storageKey);
       reply.header("Cache-Control", "public, max-age=31536000, immutable");
+      reply.header("Access-Control-Allow-Origin", "*");
+      reply.header("Cross-Origin-Resource-Policy", "cross-origin");
+      reply.header("Access-Control-Expose-Headers", "Content-Length, Content-Range, Accept-Ranges");
       if (size !== undefined) {
         reply.header("Content-Length", String(size));
       }
