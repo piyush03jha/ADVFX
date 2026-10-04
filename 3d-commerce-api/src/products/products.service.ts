@@ -865,10 +865,29 @@ export class ProductsService {
       throw new BadRequestException('Uploaded file is not a valid image');
     }
 
+    // Never keep the original product image. Normalize raster uploads to
+    // web-ready WebP and cap the longest edge for fast storefront delivery.
+    let optimizedImage: Buffer;
+    try {
+      optimizedImage = await sharp(file.buffer)
+        .rotate()
+        .resize({
+          width: 2000,
+          height: 2000,
+          fit: 'inside',
+          withoutEnlargement: true,
+        })
+        .webp({ quality: 84, effort: 5 })
+        .toBuffer();
+    } catch {
+      throw new BadRequestException('Unable to optimize the uploaded image');
+    }
+
+    const baseName = file.originalname.replace(/\.[^/.]+$/, '') || 'product-image';
     const stored = await this.storage.saveProductFile({
       productId: id,
-      filename: file.originalname,
-      buffer: file.buffer,
+      filename: `${baseName}.webp`,
+      buffer: optimizedImage,
     });
 
     // Product assets use content-addressed storage keys. If the exact same
