@@ -98,7 +98,7 @@ export class ModelConversionService {
           "--texture-compress",
           "webp",
           "--texture-size",
-          "2048",
+          process.env.MODEL_TEXTURE_MAX_SIZE ?? "1024",
         ],
         workDir,
       );
