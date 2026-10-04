@@ -16,6 +16,14 @@ export class ModelMultipartController {
     return this.service.start(productId, body?.size);
   }
 
+  @Post("abort")
+  abort(
+    @Param("productId") productId: string,
+    @Body() body: { key: string; uploadId: string },
+  ) {
+    return this.service.abort(productId, body);
+  }
+
   @Post("complete")
   complete(
     @Param("productId") productId: string,
