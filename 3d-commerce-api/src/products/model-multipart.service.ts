@@ -174,8 +174,6 @@ export class ModelMultipartService {
       return file;
     });
 
-    const job = await this.processingJobs.create(created.id);
-
     // The staging object remains private-by-convention until the worker
     // publishes an optimized immutable model URL.
     const job = await this.processingJobs.create(created.id);
