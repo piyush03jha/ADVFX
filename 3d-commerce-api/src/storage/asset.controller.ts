@@ -18,6 +18,8 @@ import { StorageService } from "./storage.service";
 @Controller(["assets", "api/assets"])
 export class AssetController {
   private readonly logger = new Logger(AssetController.name);
+  private readonly validProducts = new Map<string, number>();
+  private readonly productCacheTtlMs = 60_000;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -104,11 +106,21 @@ export class AssetController {
     const storageKey = ["products", productId, ...rest].join("/");
     const assetUrl = "/api/assets/" + storageKey.split("/").map(encodeURIComponent).join("/");
 
-    const product = await this.prisma.product.findFirst({
-      where: { id: productId, status: { in: ["ACTIVE", "DRAFT"] } },
-      select: { id: true },
-    });
-    if (!product) throw new NotFoundException("Asset not found");
+    const now = Date.now();
+    const cachedUntil = this.validProducts.get(productId);
+
+    if (!cachedUntil || cachedUntil <= now) {
+      const product = await this.prisma.product.findFirst({
+        where: { id: productId, status: { in: ["ACTIVE", "DRAFT"] } },
+        select: { id: true },
+      });
+
+      if (!product) {
+        throw new NotFoundException("Asset not found");
+      }
+
+      this.validProducts.set(productId, now + this.productCacheTtlMs);
+    }
 
     try {
       const range = String(reply.request.headers.range ?? "").trim();
@@ -170,7 +182,7 @@ export class AssetController {
 
       return new StreamableFile(stream, { type: contentType });
     } catch (error) {
-      if (error instanceof NotFoundException) throw error;
+      if (error instanceof NotFoundException || error instanceof HttpException) throw error;
       this.logger.error(
         `Storage read failed for ${storageKey}`,
         error instanceof Error ? error.stack : String(error),
