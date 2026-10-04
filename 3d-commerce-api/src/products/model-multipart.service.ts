@@ -190,6 +190,29 @@ export class ModelMultipartService {
     };
   }
 
+  async abort(
+    productId: string,
+    body: { key: string; uploadId: string },
+  ) {
+    this.assertConfigured();
+
+    const prefix = `products/${productId}/models/staging/`;
+    const filename = body?.key?.slice(prefix.length) ?? "";
+
+    if (
+      !body?.key?.startsWith(prefix) ||
+      !/^[A-Za-z0-9_-]+\.glb$/.test(filename) ||
+      !body.uploadId
+    ) {
+      throw new BadRequestException("Invalid multipart abort request");
+    }
+
+    await this.abortMultipartUpload(body.key, body.uploadId);
+    await this.storage.delete(body.key).catch(() => undefined);
+
+    return { aborted: true };
+  }
+
   private objectUrl(key: string): URL {
     const url = new URL(
       `${this.endpoint}/${encodeURIComponent(this.bucket)}/${key
