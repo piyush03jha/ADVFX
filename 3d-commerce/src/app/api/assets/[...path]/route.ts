@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { getBackendApiUrl } from "@/lib/backend-api";
 
 function copyAssetHeaders(response: Response) {
@@ -18,7 +19,7 @@ function copyAssetHeaders(response: Response) {
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   context: { params: Promise<{ path: string[] }> },
 ) {
   const { path } = await context.params;
@@ -32,9 +33,12 @@ export async function GET(
     return NextResponse.json({ error: "Asset not found." }, { status: 404 });
   }
 
+  const cache = (globalThis as { caches?: { default?: Cache } }).caches?.default;
+  const cacheKey = new Request(new URL(request.url).toString());
+  const hit = await cache?.match(cacheKey);
+  if (hit) return hit;
+
   try {
-    // The public URL already contains the asset namespace. The backend
-    // controller owns that route prefix, so only forward the id/key.
     const namespace = path[0];
     const backendPath = path.slice(1).map(encodeURIComponent).join("/");
     const response = await fetch(
@@ -43,21 +47,28 @@ export async function GET(
     );
 
     const headers = copyAssetHeaders(response);
-    if (response.ok) {
-      // Product/category asset keys are immutable once published. Cache the
-      // streamed response at the edge instead of forcing every 3D load back
-      // through Railway.
-      headers.set(
-        "cache-control",
-        headers.get("cache-control") ??
-          "public, max-age=31536000, immutable",
-      );
+    if (!response.ok || !response.body) {
+      return new NextResponse(response.body, {
+        status: response.status,
+        headers,
+      });
     }
 
-    return new NextResponse(response.body, {
-      status: response.status,
+    headers.set(
+      "cache-control",
+      "public, max-age=31536000, immutable",
+    );
+
+    const out = new Response(response.body, {
+      status: 200,
       headers,
     });
+
+    if (cache) {
+      getCloudflareContext().ctx.waitUntil(cache.put(cacheKey, out.clone()));
+    }
+
+    return out;
   } catch {
     return NextResponse.json(
       { error: "Asset service is unavailable." },
