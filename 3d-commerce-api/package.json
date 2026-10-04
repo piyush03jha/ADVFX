@@ -21,7 +21,8 @@
     "db:seed-admin": "tsx src/prisma/seeds.ts",
     "postinstall": "prisma generate",
     "db:migrate:deploy": "prisma migrate deploy",
-    "db:release": "prisma migrate deploy && npm run db:seed-admin"
+    "db:release": "prisma migrate deploy && npm run db:seed-admin",
+    "storage:smoke": "tsx scripts/smoke-neon-storage.ts"
   },
   "dependencies": {
     "@fastify/multipart": "^10.1.1",
