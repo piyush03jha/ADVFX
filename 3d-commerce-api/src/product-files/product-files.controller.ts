@@ -151,19 +151,18 @@ export class ProductFilesController {
       );
 
     try {
-      const buffer = await this.storage.read(file.storageKey);
+      const stream = await this.storage.createReadStream(file.storageKey);
       const safeName = file.originalName.replace(
         /[\\/\r\n"']/g,
         "_",
       );
 
-      return new StreamableFile(buffer, {
+      return new StreamableFile(stream, {
         type:
           file.mimeType ??
           this.storage.getContentTypeForStorageKey(file.storageKey),
-        length: buffer.length,
         disposition:
-          `inline; filename="${encodeURIComponent(safeName)}"`,
+          `attachment; filename="${encodeURIComponent(safeName)}"`,
       });
     } catch {
       throw new NotFoundException(
