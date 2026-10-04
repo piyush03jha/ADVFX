@@ -3,7 +3,6 @@ import { createHash, createHmac, randomUUID } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
 import { StorageService } from "../storage/storage.service";
 import { ProcessingJobsService } from "../processing-jobs/processing-jobs.service";
-import { ProcessingJobsService } from "../processing-jobs/processing-jobs.service";
 
 const PART_SIZE = 8 * 1024 * 1024;
 const MAX_SIZE = Number(process.env.MAX_MODEL_MB ?? 150) * 1024 * 1024;
@@ -81,7 +80,7 @@ export class ModelMultipartService {
   ) {
     this.assertConfigured();
 
-    const prefix = `products/${productId}/models/`;
+    const prefix = `products/${productId}/models/staging/`;
     const filename = body?.key?.slice(prefix.length) ?? "";
 
     if (
