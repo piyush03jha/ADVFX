@@ -159,7 +159,7 @@ export function ProductCard3D({
           fov: 32,
         }}
         dpr={[1, 1.2]}
-        frameloop="always"
+        frameloop="demand"
         gl={{
           antialias: false,
           alpha: true,
