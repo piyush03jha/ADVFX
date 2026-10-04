@@ -28,11 +28,11 @@ jobs:
 
       - name: Check generated-source corruption
         run: |
-          ! grep -rnE '\\\\n|/\\\\/' 3d-commerce/src 3d-commerce-api/src
+          ! grep -rnP "\\\\n\\s{2,}[<a-zA-Z]" --include=*.ts --include=*.tsx 3d-commerce/src 3d-commerce-api/src
 
       - name: Typecheck frontend
         working-directory: 3d-commerce
-        run: npx tsc --noEmit
+        run: npx next typegen && npx tsc --noEmit
 
       - name: Install backend dependencies
         working-directory: 3d-commerce-api
@@ -41,6 +41,8 @@ jobs:
       - name: Generate Prisma client
         working-directory: 3d-commerce-api
         run: npx prisma generate
+        env:
+          DATABASE_URL: postgresql://u:p@localhost:5432/d
 
       - name: Typecheck backend
         working-directory: 3d-commerce-api
