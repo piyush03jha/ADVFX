@@ -66,7 +66,7 @@ export class ModelConversionService {
       const optimizedGlb = join(workDir, "optimized.glb");
 
       this.logger.log(`model ${productFileId}: downloading source`);
-      await fs.writeFile(sourcePath, await this.storage.read(file.storageKey));
+      await this.storage.downloadTo(file.storageKey, sourcePath);
 
       let blenderInput = sourcePath;
       if (file.format !== ProductFileFormat.GLB) {
@@ -94,7 +94,7 @@ export class ModelConversionService {
           rawGlb,
           optimizedGlb,
           "--compress",
-          "draco",
+          "meshopt",
           "--texture-compress",
           "webp",
           "--texture-size",
