@@ -41,7 +41,7 @@ async function signedRequest(method: "GET" | "PUT", body = "") {
   const headers: Record<string, string> = {
     host: url.host,
     "content-type": "application/xml",
-    "content-md5": md5(body),
+    ...(method === "PUT" ? { "content-md5": md5(body) } : {}),
     "x-amz-content-sha256": payloadHash,
     "x-amz-date": amzDate,
   };
