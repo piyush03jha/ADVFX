@@ -1,41 +1,105 @@
 "use client";
 
-import Image from "next/image";
-import Link from "next/link";
 import { motion, useReducedMotion } from "motion/react";
+import { IconArrowUpRight, IconCamera, IconBox, IconSparkles } from "@tabler/icons-react";
+
+import { Container } from "@/components/ui/Container";
+import { Button } from "@/components/ui/Button";
+
+const steps = [
+  { number: "01", icon: IconCamera, title: "Share", text: "Send a photo, sketch, or simply tell us what you have in mind." },
+  { number: "02", icon: IconSparkles, title: "We create", text: "Our team turns your reference into a production-ready design." },
+  { number: "03", icon: IconBox, title: "Made for you", text: "We produce the physical piece and arrange delivery." },
+];
 
 export function CustomBuild() {
   const reduceMotion = useReducedMotion();
 
   return (
-    <section className="relative overflow-hidden py-10 sm:py-16 lg:py-24">
-      <div className="mx-auto w-full max-w-[1664px] px-0 sm:px-5 lg:px-8">
-        <motion.div
-          initial={reduceMotion ? false : { opacity: 0, y: 16 }}
-          whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.15 }}
-          transition={{ duration: 0.65 }}
-          className="relative aspect-[16/9] w-full overflow-hidden sm:rounded-[1.5rem]"
-        >
-          <Image
-            src="/custom-3d-creation-studio.webp"
-            alt="Create a custom 3D model from your photos"
-            fill
-            sizes="(max-width: 1664px) 100vw, 1664px"
-            quality={100}
-            className="object-cover"
-            priority={false}
-          />
-
-          <Link
-            href="/custom"
-            aria-label="Create your custom 3D model"
-            className="absolute left-[4.7%] top-[72.8%] h-[8.2%] w-[26%] rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+    <section className="relative overflow-hidden py-16 sm:py-24 lg:py-32">
+      <Container>
+        <div className="grid overflow-hidden rounded-[1.5rem] border border-border bg-surface lg:grid-cols-[1.05fr_0.95fr]">
+          <motion.div
+            initial={reduceMotion ? false : { opacity: 0, y: 18 }}
+            whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={{ duration: 0.65 }}
+            className="flex flex-col justify-center px-5 py-7 sm:px-10 sm:py-14 lg:px-14 lg:py-16"
           >
-            <span className="sr-only">Create Your Custom 3D Model</span>
-          </Link>
-        </motion.div>
-      </div>
+            <p className="text-[9px] font-medium uppercase tracking-[0.25em] text-primary sm:text-[10px]">
+              Custom made
+            </p>
+
+            <h2 className="mt-3 max-w-xl font-serif text-[2rem] sm:mt-4 sm:text-[2.7rem] leading-[0.95] tracking-[-0.05em] text-foreground sm:text-5xl lg:text-[4.25rem]">
+              Your idea,
+              <span className="block text-muted">made tangible.</span>
+            </h2>
+
+            <p className="mt-4 max-w-lg text-xs leading-5 sm:mt-6 sm:text-sm sm:leading-6 text-muted sm:text-base sm:leading-7">
+              Have something personal in mind? Send us your reference and requirements. We handle the design, production, and physical delivery.
+            </p>
+
+            <div className="mt-6 sm:mt-8">
+              <Button href="/custom" size="lg" className="group">
+                Start a custom request
+                <IconArrowUpRight size={17} stroke={1.8} className="transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+              </Button>
+            </div>
+
+            <div className="mt-7 border-t border-border pt-6 sm:mt-12 sm:pt-8">
+              <p className="mb-5 text-[9px] font-medium uppercase tracking-[0.2em] text-muted">
+                From reference to finished piece
+              </p>
+
+              <div className="grid grid-cols-3 gap-2.5 sm:gap-6">
+                {steps.map((step, index) => {
+                  const Icon = step.icon;
+                  return (
+                    <motion.div
+                      key={step.number}
+                      initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+                      whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+                      viewport={{ once: true, amount: 0.2 }}
+                      transition={{ duration: 0.45, delay: reduceMotion ? 0 : index * 0.07 }}
+                    >
+                      <div className="flex items-center gap-2 text-muted">
+                        <span className="font-mono text-[9px] tracking-[0.16em]">{step.number}</span>
+                        <Icon size={15} stroke={1.5} className="text-primary" />
+                      </div>
+                      <h3 className="mt-2 text-sm font-semibold text-foreground">{step.title}</h3>
+                      <p className="mt-1.5 text-xs leading-5 text-muted">{step.text}</p>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={reduceMotion ? false : { opacity: 0, scale: 1.015 }}
+            whileInView={reduceMotion ? undefined : { opacity: 1, scale: 1 }}
+            viewport={{ once: true, amount: 0.15 }}
+            transition={{ duration: 0.8 }}
+            className="relative min-h-[205px] overflow-hidden bg-surface-elevated sm:min-h-[480px] lg:min-h-full"
+          >
+            <img
+              src="/catogeries/bobble_head.webp"
+              alt="Custom 3D printed collectible"
+              loading="lazy"
+              className="absolute inset-0 h-full w-full object-cover object-center"
+            />
+            <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/5 to-black/10" />
+            <div className="absolute bottom-4 left-4 right-4 sm:bottom-7 sm:left-7 sm:right-7">
+              <p className="text-[9px] font-medium uppercase tracking-[0.2em] text-white/65">
+                One piece. Made personally.
+              </p>
+              <p className="mt-1.5 max-w-sm font-serif text-base sm:mt-2 sm:text-xl tracking-[-0.02em] text-white sm:text-2xl">
+                Built from your story, not a template.
+              </p>
+            </div>
+          </motion.div>
+        </div>
+      </Container>
     </section>
   );
 }
