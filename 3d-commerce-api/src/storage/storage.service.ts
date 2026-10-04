@@ -78,7 +78,7 @@ export class StorageService {
       return { storageKey, storageUrl: `/storage/${storageKey}`, storagePath: absolutePath, size: buffer.length };
     }
 
-    await this.putObject(storageKey, buffer, this.contentType(extension));
+    await this.putObject(storageKey, buffer, this.contentType(extension), exposeThroughAssetRoute ? "public, max-age=31536000, immutable" : undefined);
     return {
       storageKey,
       storageUrl: this.publicBaseUrl
@@ -189,7 +189,7 @@ export class StorageService {
     return absolutePath;
   }
 
-  private async putObject(key: string, body: Buffer, contentType: string) { await this.requestObject("PUT", key, body, contentType); }
+  private async putObject(key: string, body: Buffer, contentType: string, cacheControl?: string) { await this.requestObject("PUT", key, body, contentType, cacheControl); }
   private async deleteObject(key: string) { await this.requestObject("DELETE", key); }
 
   private async requestObjectResponse(method: "GET" | "HEAD", key: string): Promise<Response> {
@@ -235,7 +235,7 @@ export class StorageService {
     return response;
   }
 
-  private async requestObject(method: "PUT" | "DELETE" | "HEAD" | "GET", key: string, body?: Buffer, contentType?: string): Promise<Buffer | void> {
+  private async requestObject(method: "PUT" | "DELETE" | "HEAD" | "GET", key: string, body?: Buffer, contentType?: string, cacheControl?: string): Promise<Buffer | void> {
     const hostUrl = `${this.endpoint}/${encodeURIComponent(this.bucket)}/${key.split("/").map(encodeURIComponent).join("/")}`;
     const url = new URL(hostUrl);
     const payloadHash = createHash("sha256").update(body ?? Buffer.alloc(0)).digest("hex");
@@ -243,6 +243,7 @@ export class StorageService {
     const dateStamp = amzDate.slice(0, 8);
     const headers: Record<string, string> = { host: url.host, "x-amz-content-sha256": payloadHash, "x-amz-date": amzDate };
     if (contentType) headers["content-type"] = contentType;
+    if (cacheControl) headers["cache-control"] = cacheControl;
     const canonicalHeaders = Object.keys(headers).sort().map((name) => `${name}:${headers[name].trim()}\n`).join("");
     const signedHeaders = Object.keys(headers).sort().join(";");
     const canonicalRequest = [method, url.pathname, "", canonicalHeaders, signedHeaders, payloadHash].join("\n");
