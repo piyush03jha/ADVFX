@@ -83,7 +83,7 @@ export function CustomBuild() {
             className="relative min-h-[205px] overflow-hidden bg-surface-elevated sm:min-h-[480px] lg:min-h-full"
           >
             <img
-              src="/catogeries/bobble_head.webp"
+              src="/catogeries/custom_section.png"
               alt="Custom 3D printed collectible"
               loading="lazy"
               className="absolute inset-0 h-full w-full object-cover object-center"
