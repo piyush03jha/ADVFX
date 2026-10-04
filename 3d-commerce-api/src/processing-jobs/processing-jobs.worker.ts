@@ -636,7 +636,6 @@ export class ProcessingJobsWorker
       );
     }
 
-    const buffer = await this.storage.read(productFile.storageKey);
     const tempDir = join("/tmp", "product-file-processing", randomUUID());
     const tempPath = join(
       tempDir,
@@ -644,13 +643,19 @@ export class ProcessingJobsWorker
     );
 
     await fs.mkdir(tempDir, { recursive: true });
-    await fs.writeFile(tempPath, buffer);
 
     try {
-      await this.contentValidator.validate(
-        productFile.format,
-        buffer,
-      );
+      // Large models are validated and downloaded by ModelConversionService
+      // directly to disk. Do not materialize a 25–100 MB GLB in the worker.
+      if (productFile.fileType === ProductFileType.MODEL ||
+          (productFile.fileType === ProductFileType.DOCUMENT && productFile.format === ProductFileFormat.PDF)) {
+        // ModelConversionService performs file-level validation after streaming
+        // the source to disk, avoiding a second in-memory copy.
+      } else {
+        const buffer = await this.storage.read(productFile.storageKey);
+        await fs.writeFile(tempPath, buffer);
+        await this.contentValidator.validate(productFile.format, buffer);
+      }
 
       if (productFile.fileType === ProductFileType.IMAGE) {
         switch (productFile.format) {
