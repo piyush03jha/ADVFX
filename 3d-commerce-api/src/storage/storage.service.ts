@@ -143,6 +143,23 @@ export class StorageService {
     };
   }
 
+  async getObjectSize(storageKey: string): Promise<number> {
+    if (this.provider === "local") {
+      const { stat } = await import("node:fs/promises");
+      const info = await stat(this.getAbsolutePath(storageKey)).catch(() => {
+        throw new NotFoundException("Stored file not found");
+      });
+      return info.size;
+    }
+
+    const response = await this.requestObjectResponse("HEAD", storageKey);
+    const size = Number(response.headers.get("content-length") ?? NaN);
+    if (!Number.isFinite(size)) {
+      throw new BadGatewayException("Remote storage did not return object size");
+    }
+    return size;
+  }
+
   async openReadStreamRange(
     storageKey: string,
     start: number,
