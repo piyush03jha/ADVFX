@@ -1,6 +1,8 @@
 import {
   BadGatewayException,
   Controller,
+  HttpException,
+  HttpStatus,
   Get,
   Logger,
   NotFoundException,
@@ -108,40 +110,9 @@ export class AssetController {
     });
     if (!product) throw new NotFoundException("Asset not found");
 
-    let mimeType: string | undefined;
-    try {
-      const [productFile, productMedia, bundleAsset] = await Promise.all([
-        this.prisma.productFile.findFirst({
-          where: { productId, storageKey },
-          select: { mimeType: true },
-        }),
-        this.prisma.productMedia.findFirst({
-          where: { productId, url: assetUrl },
-          select: { id: true },
-        }),
-        this.prisma.productFileBundleAsset.findFirst({
-          where: { storageKey, bundle: { is: { productId } } },
-          select: { mimeType: true },
-        }),
-      ]);
-
-      mimeType =
-        productFile?.mimeType ??
-        bundleAsset?.mimeType ??
-        undefined;
-
-      // Database metadata is useful for MIME information, but it must not be
-      // the gate for delivery. Existing objects can outlive or temporarily
-      // differ from metadata while an upload/delete transaction is repaired.
-      void productMedia;
-    } catch {
-      // Storage remains the source of truth for whether the object exists.
-    }
-
     try {
       const range = String(reply.request.headers.range ?? "").trim();
-      const contentType =
-        mimeType ?? this.storage.getContentTypeForStorageKey(storageKey);
+      const contentType = this.storage.getContentTypeForStorageKey(storageKey);
 
       reply.header("Cache-Control", "public, max-age=31536000, immutable");
       reply.header("Access-Control-Allow-Origin", "*");
@@ -163,17 +134,26 @@ export class AssetController {
 
         const start = Number(match[1]);
 
-        if (!Number.isSafeInteger(start) || start < 0) {
-          throw new NotFoundException("Invalid byte range");
-        }
-
-        const requestedEnd = match[2] ? Number(match[2]) : Number.MAX_SAFE_INTEGER;
-        if (!Number.isSafeInteger(requestedEnd) || requestedEnd < start) {
-          throw new NotFoundException("Invalid byte range");
+        const requestedEnd = match[2] ? Number(match[2]) : undefined;
+        if (
+          !Number.isSafeInteger(start) ||
+          start < 0 ||
+          (requestedEnd !== undefined &&
+            (!Number.isSafeInteger(requestedEnd) || requestedEnd < start))
+        ) {
+          reply.header("Content-Range", "bytes */0");
+          throw new HttpException(
+            { error: "Invalid byte range" },
+            HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE,
+          );
         }
 
         const { stream, size, totalSize, start: actualStart, end: actualEnd } =
-          await this.storage.openReadStreamRange(storageKey, start, requestedEnd);
+          await this.storage.openReadStreamRange(
+            storageKey,
+            start,
+            requestedEnd,
+          );
 
         reply
           .code(206)
