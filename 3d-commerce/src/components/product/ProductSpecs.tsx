@@ -61,10 +61,10 @@ export function ProductSpecs({
               grid
               grid-cols-[100px_minmax(0,1fr)]
               items-center
-              gap-5
+              gap-3
               border-b
               border-white/[0.07]
-              py-4
+              py-2.5
               last:border-b-0
               sm:grid-cols-[140px_minmax(0,1fr)]
               sm:py-5
