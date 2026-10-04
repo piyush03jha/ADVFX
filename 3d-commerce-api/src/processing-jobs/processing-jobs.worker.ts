@@ -300,7 +300,7 @@ export class ProcessingJobsWorker
 
       // If cleanup fails, this throws and the job is re-queued. On retry,
       // convert() sees outputFileId and skips expensive re-conversion.
-      await this.cleanupOptimizedGlbSource(job.productFileId);
+      await this.cleanupProcessedSource(job.productFileId);
 
       await this.prisma.productFileProcessingJob.update({
         where: { id: job.id },
@@ -330,45 +330,34 @@ export class ProcessingJobsWorker
    * The operation is idempotent: a missing object is treated as already
    * cleaned, while a DB delete can safely be retried if the process restarts.
    */
-  private async cleanupOptimizedGlbSource(productFileId: string): Promise<void> {
+  private async cleanupProcessedSource(productFileId: string): Promise<void> {
     const source = await this.prisma.productFile.findUnique({
       where: { id: productFileId },
-      select: {
-        id: true,
-        format: true,
-        storageKey: true,
-      },
+      select: { id: true, storageKey: true },
     });
 
-    if (!source || source.format !== ProductFileFormat.GLB) {
-      return;
-    }
+    // The source row may already be gone after a previous successful cleanup.
+    if (!source) return;
 
     try {
       await this.storage.delete(source.storageKey);
     } catch (error) {
       this.logger.error(
-        `Unable to delete original GLB source ${source.id} from storage; cleanup will be retried.`,
+        `Unable to delete processed source ${source.id} from storage; cleanup will be retried.`,
         error instanceof Error ? error.stack : String(error),
       );
       throw new Error(
-        "Unable to delete original GLB source from storage: " +
+        "Unable to delete processed source from storage: " +
           (error instanceof Error ? error.message : String(error)),
       );
     }
 
     try {
-      await this.prisma.productFile.delete({
-        where: { id: source.id },
-      });
-      this.logger.log(
-        `Removed original GLB source ${source.id} after successful optimization`,
-      );
+      await this.prisma.productFile.delete({ where: { id: source.id } });
+      this.logger.log(`Removed original source ${source.id} after GLB conversion`);
     } catch (error) {
-      // Storage has already been deleted. Throw so the job is retried; the
-      // next cleanup pass treats the missing object as already deleted.
       throw new Error(
-        "Original GLB storage was deleted but source DB cleanup failed: " +
+        "Source storage was deleted but source DB cleanup failed: " +
           (error instanceof Error ? error.message : String(error)),
       );
     }
