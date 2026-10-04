@@ -119,14 +119,14 @@ export class StorageService {
     });
   }
 
-  async createReadStream(storageKey: string): Promise<NodeJS.ReadableStream> {
+  async createReadStream(storageKey: string): Promise<Readable> {
     if (this.provider === "local") {
       return createReadStream(this.getAbsolutePath(storageKey));
     }
 
     const response = await this.requestObjectResponse("GET", storageKey);
     if (!response.body) throw new InternalServerErrorException("Stored file not found");
-    return Readable.fromWeb(response.body as globalThis.ReadableStream<Uint8Array>);
+    return Readable.fromWeb(response.body as any);
   }
 
   async read(storageKey: string): Promise<Buffer> {
@@ -167,6 +167,49 @@ export class StorageService {
 
   private async putObject(key: string, body: Buffer, contentType: string) { await this.requestObject("PUT", key, body, contentType); }
   private async deleteObject(key: string) { await this.requestObject("DELETE", key); }
+
+  private async requestObjectResponse(method: "GET" | "HEAD", key: string): Promise<Response> {
+    const hostUrl = `${this.endpoint}/${encodeURIComponent(this.bucket)}/${key.split("/").map(encodeURIComponent).join("/")}`;
+    const url = new URL(hostUrl);
+    const payloadHash = createHash("sha256").update(Buffer.alloc(0)).digest("hex");
+    const amzDate = new Date().toISOString().replace(/[:-]|\.\d{3}/g, "");
+    const dateStamp = amzDate.slice(0, 8);
+    const headers: Record<string, string> = {
+      host: url.host,
+      "x-amz-content-sha256": payloadHash,
+      "x-amz-date": amzDate,
+    };
+    const canonicalHeaders = Object.keys(headers)
+      .sort()
+      .map((name) => `${name}:${headers[name].trim()}\n`)
+      .join("");
+    const signedHeaders = Object.keys(headers).sort().join(";");
+    const canonicalRequest = [
+      method,
+      url.pathname,
+      "",
+      canonicalHeaders,
+      signedHeaders,
+      payloadHash,
+    ].join("\n");
+    const credentialScope = `${dateStamp}/${this.region}/s3/aws4_request`;
+    const stringToSign = [
+      "AWS4-HMAC-SHA256",
+      amzDate,
+      credentialScope,
+      createHash("sha256").update(canonicalRequest).digest("hex"),
+    ].join("\n");
+    const signingKey = this.deriveSigningKey(dateStamp);
+    const signature = createHmac("sha256", signingKey).update(stringToSign).digest("hex");
+    headers.authorization =
+      `AWS4-HMAC-SHA256 Credential=${this.accessKey}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+
+    const response = await fetch(url, { method, headers });
+    if (!response.ok) {
+      throw new InternalServerErrorException(`Remote storage request failed (${response.status})`);
+    }
+    return response;
+  }
 
   private async requestObject(method: "PUT" | "DELETE" | "HEAD" | "GET", key: string, body?: Buffer, contentType?: string): Promise<Buffer | void> {
     const hostUrl = `${this.endpoint}/${encodeURIComponent(this.bucket)}/${key.split("/").map(encodeURIComponent).join("/")}`;
