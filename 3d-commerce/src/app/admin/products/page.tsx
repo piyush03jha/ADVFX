@@ -138,6 +138,18 @@ export default function AdminProducts(){
     try{
       if(file.size===0)throw new Error("The selected GLB file is empty.");
       const supported=[".glb",".gltf",".obj",".ply",".stl",".fbx",".abc",".usd",".usda",".usdc",".bvh",".svg",".pdf"]; if(!supported.some(ext=>file.name.toLowerCase().endsWith(ext)))throw new Error("Unsupported model source format.");
+      // Capture the currently published GLB ids so replacing a model does not
+      // report an older completed GLB as the newly generated result.
+      const previousResponse=await fetch("/api/products/"+id+"/files",{cache:"no-store"});
+      const previousFiles=previousResponse.ok?await previousResponse.json().catch(()=>[]):[];
+      const previousReadyIds=new Set(
+        Array.isArray(previousFiles)
+          ? previousFiles
+              .filter((item:any)=>item.format==="GLB"&&item.processingStatus==="COMPLETED")
+              .map((item:any)=>item.id)
+          : [],
+      );
+
       const fd=new FormData();fd.append("file",file);
       const response=await fetch("/api/products/"+id+"/files",{method:"POST",body:fd});
       const data=await response.json().catch(()=>null);
@@ -155,7 +167,7 @@ export default function AdminProducts(){
         if(!fr.ok) continue;
         const files=await fr.json();
         setAssetFiles(files);
-        const ready=files.some((item:any)=>item.format==="GLB"&&item.processingStatus==="COMPLETED");
+        const ready=files.some((item:any)=>item.format==="GLB"&&item.processingStatus==="COMPLETED"&&!previousReadyIds.has(item.id));
         if(ready){
           setAssetMessage("Web-ready GLB generated successfully.");
           break;
