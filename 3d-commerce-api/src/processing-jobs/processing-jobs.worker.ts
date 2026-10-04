@@ -17,16 +17,12 @@ import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 
 import { PrismaService } from "../prisma/prisma.service";
 import { StorageService } from "../storage/storage.service";
 import { FileContentValidationService } from "../product-files/file-content-validation.service";
 import { ProcessingJobs2DWorker } from "./processing-jobs-2d.worker";
 import { ImageProcessingService } from "./image-processing.service";
-
-const execFileAsync = promisify(execFile);
 
 const execFileAsync = promisify(execFile);
 
@@ -85,6 +81,11 @@ export class ProcessingJobsWorker
    * Start background processing automatically.
    */
   onModuleInit(): void {
+    if (process.env.PROCESSING_WORKER_ENABLED === "false") {
+      this.logger.log("Processing worker disabled by PROCESSING_WORKER_ENABLED=false");
+      return;
+    }
+
     if (this.isRunning) {
       return;
     }
@@ -737,6 +738,87 @@ export class ProcessingJobsWorker
     }
   }
 
+
+  private async publishSourceModelFallback(
+    productFile: any,
+    jobId: string,
+    previousMediaUrl: string | null,
+    reason: string,
+  ): Promise<void> {
+    const sourceUrl = productFile.storageUrl;
+    if (!sourceUrl) {
+      throw new Error("Source GLB has no storage URL for fallback publication.");
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.productMedia.deleteMany({
+        where: {
+          productId: productFile.productId,
+          type: "MODEL_PREVIEW",
+        },
+      });
+
+      await tx.productMedia.create({
+        data: {
+          productId: productFile.productId,
+          type: "MODEL_PREVIEW",
+          url: sourceUrl,
+          altText: productFile.originalName || "GLB model",
+          sortOrder: 0,
+          isPrimary: true,
+        },
+      });
+
+      await tx.productFile.update({
+        where: { id: productFile.id },
+        data: {
+          processingStatus: ProcessingStatus.COMPLETED,
+          processingError: reason,
+        },
+      });
+
+      // No outputFileId is set intentionally: the original staging file is now
+      // the published model and must not be cleaned up as a processed source.
+      await tx.productFileProcessingJob.update({
+        where: { id: jobId },
+        data: {
+          errorMessage: reason,
+        },
+      });
+    });
+
+    if (previousMediaUrl && previousMediaUrl !== sourceUrl) {
+      const replacedFiles = await this.prisma.productFile.findMany({
+        where: {
+          productId: productFile.productId,
+          fileType: ProductFileType.MODEL,
+          format: ProductFileFormat.GLB,
+          id: { not: productFile.id },
+          storageUrl: previousMediaUrl,
+        },
+        select: { id: true, storageKey: true },
+      });
+
+      for (const replaced of replacedFiles) {
+        await this.storage.delete(replaced.storageKey).catch((error) => {
+          this.logger.warn(
+            `Unable to delete replaced model ${replaced.id}: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        });
+
+        await this.prisma.productFile.delete({ where: { id: replaced.id } }).catch((error) => {
+          this.logger.warn(
+            `Unable to delete replaced model row ${replaced.id}: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        });
+      }
+    }
+
+    this.logger.warn(
+      `Published unoptimized source model ${productFile.id}: ${reason}`,
+    );
+  }
+
   private async optimizeGlbModel(
     productFile: any,
     jobId: string,
@@ -786,29 +868,47 @@ export class ProcessingJobsWorker
       Number(process.env.MODEL_OPTIMIZATION_TIMEOUT_MS ?? 10 * 60_000),
     );
 
-    await execFileAsync(
-      "gltf-transform",
-      [
-        "optimize",
-        sourcePath,
-        optimizedPath,
-        "--compress",
-        "meshopt",
-        "--texture-compress",
-        "webp",
-        "--texture-size",
-        String(Number(process.env.MODEL_TEXTURE_MAX_SIZE ?? 2048)),
-      ],
-      {
-        timeout: timeoutMs,
-        maxBuffer: 8 * 1024 * 1024,
-      },
-    );
+    try {
+      await execFileAsync(
+        "gltf-transform",
+        [
+          "optimize",
+          sourcePath,
+          optimizedPath,
+          "--compress",
+          "meshopt",
+          "--texture-compress",
+          "webp",
+          "--texture-size",
+          String(Number(process.env.MODEL_TEXTURE_MAX_SIZE ?? 2048)),
+          "--simplify",
+          "false",
+        ],
+        {
+          timeout: timeoutMs,
+          maxBuffer: 8 * 1024 * 1024,
+        },
+      );
+    } catch (error) {
+      await this.publishSourceModelFallback(
+        productFile,
+        jobId,
+        previousMedia?.url ?? null,
+        "GLB optimization failed; published original",
+      );
+      throw error;
+    }
 
     const optimizedStats = await fs.stat(optimizedPath);
     if (optimizedStats.size >= sourceStats.size) {
+      await this.publishSourceModelFallback(
+        productFile,
+        jobId,
+        previousMedia?.url ?? null,
+        "Optimization did not reduce file size",
+      );
       this.logger.log(
-        `Optimization kept original ${productFile.id}: ${sourceStats.size} -> ${optimizedStats.size} bytes`,
+        `Optimization kept original ${productFile.id}: ${sourceStats.size} -> ${optimizedStats.size} bytes; published original`,
       );
       return;
     }
