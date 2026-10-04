@@ -332,7 +332,7 @@ export default function AdminCategories() {
 
         <button
           disabled={saving}
-          className="mt-4 rounded-xl bg-foreground px-4 py-2.5 text-xs font-semibold text-background"
+          className="mt-4 rounded-full bg-primary px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-primary-hover"
         >
           {saving ? "Saving…" : editing ? "Save changes" : "Create category"}
         </button>
