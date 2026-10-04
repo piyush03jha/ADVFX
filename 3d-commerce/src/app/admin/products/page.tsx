@@ -88,8 +88,6 @@ export default function AdminProducts(){
         const gd=await gr.json().catch(()=>null);
         if(!gr.ok)throw new Error(gd?.message||gd?.error||"Product created, but GLB upload failed.");
 
-        // Do not publish the raw upload as MODEL_PREVIEW.
-        // The processing worker will replace it with the optimized GLB when ready.
       }
       setForm({name:"",slug:"",description:"",categoryId:"",status:"ACTIVE",stock:"0",isFeatured:false,material:"",scale:"",dimensions:"",height:"",base:"",packaging:"",weight:""});
       setProductImages([]);
