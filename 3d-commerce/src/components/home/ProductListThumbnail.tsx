@@ -14,6 +14,8 @@ import {
 
 import * as THREE from "three";
 import { useIntroDone } from "@/lib/introGate";
+import { ModelErrorBoundary } from "@/components/3d/ModelErrorBoundary";
+import { useInView } from "@/components/3d/useInView";
 
 interface ProductListThumbnailProps {
   model: string;
@@ -82,6 +84,7 @@ export function ProductListThumbnail({
   model,
 }: ProductListThumbnailProps) {
   const introDone = useIntroDone();
+  const [ref, inView] = useInView<HTMLDivElement>();
   if (!model) {
     return (
       <div
@@ -104,6 +107,7 @@ export function ProductListThumbnail({
 
   return (
     <div
+      ref={ref}
       className="
         h-[72px]
         w-[72px]
@@ -113,7 +117,14 @@ export function ProductListThumbnail({
         bg-[#0b0b0b]
       "
     >
-      {introDone && (
+      {introDone && inView && (
+      <ModelErrorBoundary
+        fallback={
+          <div className="flex h-full w-full items-center justify-center text-[9px] text-muted">
+            —
+          </div>
+        }
+      >
       <Canvas
         camera={{
           position: [0, 0, 5],
@@ -140,6 +151,7 @@ export function ProductListThumbnail({
           <Model model={model} />
         </Suspense>
       </Canvas>
+      </ModelErrorBoundary>
       )}
     </div>
   );
