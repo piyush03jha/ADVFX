@@ -240,24 +240,6 @@ export function Navbar() {
           <NavbarLogo />
 
           <div className="flex items-center gap-1">
-            <NavIconLink
-              href={user ? "/wishlist" : "/login?returnTo=%2Fwishlist"}
-              label={wishlistCount > 0 ? `Wishlist, ${wishlistCount} saved` : "Wishlist"}
-            >
-              <IconHeart size={18} stroke={1.7} />
-              <NavCountBadge count={wishlistCount} isLoaded={isWishlistLoaded} />
-            </NavIconLink>
-
-            <NavIconLink href={accountHref} label={accountLabel}>
-              <IconUserCircle size={19} stroke={1.7} />
-
-              <span
-                className={`absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-primary transition-opacity ${
-                  isLoading || !user ? "opacity-0" : "opacity-100"
-                }`}
-              />
-            </NavIconLink>
-
             <ThemeToggle />
 
             <CartLink itemCount={itemCount} isLoaded={isLoaded} />
@@ -335,7 +317,7 @@ export function Navbar() {
             ))}
           </div>
 
-          <div className="mt-6 grid grid-cols-2 gap-3">
+          <div className="mt-5 grid grid-cols-2 gap-2.5">
             <MobileActionLink
               href={user ? "/wishlist" : "/login?returnTo=%2Fwishlist"}
               onClick={closeMobileMenu}
@@ -348,7 +330,7 @@ export function Navbar() {
               <button
                 type="button"
                 onClick={() => void handleLogout()}
-                className="flex h-11 items-center justify-center gap-2 rounded-full border border-border bg-surface text-sm text-muted transition-all duration-300 hover:border-primary hover:bg-surface-elevated hover:text-foreground"
+                className="flex h-10 items-center justify-center gap-2 rounded-full border border-border bg-surface px-4 text-sm text-muted transition-all duration-300 hover:border-primary hover:bg-surface-elevated hover:text-foreground"
               >
                 <IconUserCircle size={17} stroke={1.7} />
                 <span>Sign out</span>
@@ -402,7 +384,7 @@ function MobileActionLink({
     <Link
       href={href}
       onClick={onClick}
-      className="flex h-11 items-center justify-center gap-2 rounded-full border border-border bg-surface text-sm text-muted transition-all duration-300 hover:border-primary hover:bg-surface-elevated hover:text-foreground"
+      className="flex h-10 items-center justify-center gap-2 rounded-full border border-border bg-surface px-4 text-sm text-muted transition-all duration-300 hover:border-primary hover:bg-surface-elevated hover:text-foreground"
     >
       {children}
     </Link>
