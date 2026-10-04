@@ -196,48 +196,86 @@ export async function loadModelBuffer(
       return cached;
     }
 
-    const header = await fetchRange(normalizedUrl, 0, CHUNK_SIZE - 1, signal);
-    const total = validateGlbHeader(header);
+    // Start with a normal GET so small models can be delivered as one cacheable
+    // 200 response. For larger models, only consume the 12-byte GLB header and
+    // continue with resumable ranges; this avoids downloading the first 4 MiB twice.
+    const firstResponse = await fetchWithRetry(
+      normalizedUrl,
+      {
+        headers: {
+          Accept: "model/gltf-binary,application/octet-stream",
+        },
+      },
+      signal,
+    );
 
-    let buffer: ArrayBuffer;
-
-    // Small optimized models benefit from one complete GET: it is cacheable by
-    // Cloudflare as a 200 response and avoids multiple range round trips.
-    // If that request fails, fall back to the resumable range path below.
-    let usedCompleteDownload = false;
-
-    if (total <= SMALL_MODEL_FULL_DOWNLOAD_SIZE && header.byteLength < total) {
-      try {
-        const response = await fetchWithRetry(
-          normalizedUrl,
-          {
-            headers: {
-              Accept: "model/gltf-binary,application/octet-stream",
-            },
-          },
-          signal,
-        );
-        const complete = await response.arrayBuffer();
-        const declaredTotal = validateGlbHeader(complete);
-        if (complete.byteLength !== declaredTotal || declaredTotal !== total) {
-          throw new Error("Complete GLB response size does not match its header");
-        }
-        buffer = complete;
-        usedCompleteDownload = true;
-      } catch {
-        // Fall through to the resumable range path.
-      }
+    if (firstResponse.status !== 200) {
+      throw new Error("Asset CDN did not return a complete model response");
     }
 
-    if (usedCompleteDownload) {
-      // The complete response is already validated and assigned.
-    } else if (header.byteLength >= total) {
-      buffer = header.slice(0, total);
-    } else {
-      const output = new Uint8Array(total);
-      output.set(new Uint8Array(header.slice(0, Math.min(header.byteLength, total))), 0);
+    const contentLength = Number(firstResponse.headers.get("content-length") ?? 0);
+    const contentEncoding = (firstResponse.headers.get("content-encoding") ?? "identity").toLowerCase();
 
-      let completed = Math.min(header.byteLength, total);
+    let buffer: ArrayBuffer | undefined;
+    let header: ArrayBuffer;
+    let total: number;
+
+    // A complete, unencoded response with a known size <= 12 MiB is the fast path:
+    // keep the single 200 response so both the browser and Cloudflare can cache it.
+    if (
+      Number.isFinite(contentLength) &&
+      contentLength > 0 &&
+      contentLength <= SMALL_MODEL_FULL_DOWNLOAD_SIZE &&
+      (contentEncoding === "" || contentEncoding === "identity")
+    ) {
+      const complete = await firstResponse.arrayBuffer();
+      total = validateGlbHeader(complete);
+      if (complete.byteLength !== total || total !== contentLength) {
+        throw new Error("Complete GLB response size does not match its headers");
+      }
+      buffer = complete;
+      header = complete.slice(0, Math.min(12, complete.byteLength));
+    } else {
+      // Consume only the GLB header from the first 200 response, then cancel it.
+      // The subsequent range request starts at byte 12, so even this fallback does
+      // not redownload the header.
+      const reader = firstResponse.body?.getReader();
+      if (!reader) {
+        throw new Error("Asset CDN returned a response without a readable body");
+      }
+
+      const headerBytes = new Uint8Array(12);
+      let received = 0;
+      try {
+        while (received < headerBytes.byteLength) {
+          const chunk = await reader.read();
+          if (chunk.done) break;
+          const bytes = chunk.value;
+          const copyLength = Math.min(bytes.byteLength, headerBytes.byteLength - received);
+          headerBytes.set(bytes.subarray(0, copyLength), received);
+          received += copyLength;
+        }
+      } finally {
+        try {
+          await reader.cancel();
+        } catch {
+          // The response is intentionally cancelled after reading the GLB header.
+        }
+      }
+
+      if (received < headerBytes.byteLength) {
+        throw new Error("GLB header is incomplete");
+      }
+
+      header = headerBytes.buffer;
+      total = validateGlbHeader(header);
+    }
+
+    if (!buffer) {
+      const output = new Uint8Array(total);
+      output.set(new Uint8Array(header), 0);
+
+      let completed = header.byteLength;
       onProgress?.(Math.round((completed / total) * 100));
 
       const ranges: Array<{ start: number; end: number }> = [];
@@ -274,7 +312,6 @@ export async function loadModelBuffer(
 
       buffer = output.buffer;
     }
-
     validateGlbHeader(buffer);
     await storeModel(normalizedUrl, buffer);
 
