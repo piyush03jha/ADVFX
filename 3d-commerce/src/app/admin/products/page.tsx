@@ -138,9 +138,36 @@ export default function AdminProducts(){
       if(!file.name.toLowerCase().endsWith(".glb"))throw new Error("Only .glb files are accepted.");
       if(file.size>150*1024*1024)throw new Error("GLB files must be 150 MB or smaller.");
 
-      const data=await uploadModelDirect(id,file,(percent)=>{
-        setUploadProgress((prev)=>({...prev,[id]:percent}));
-      });
+      let data;
+      try {
+        data=await uploadModelDirect(id,file,(percent)=>{
+          setUploadProgress((prev)=>({...prev,[id]:percent}));
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "";
+        if (!message.includes("Remote storage is not configured")) throw error;
+
+        const fd = new FormData();
+        fd.append("file", file);
+        const fallback = await fetch("/api/products/"+id+"/files", {
+          method:"POST",
+          body:fd,
+        });
+        const fallbackData = await fallback.json().catch(()=>null);
+        if (!fallback.ok) {
+          throw new Error(
+            fallbackData?.message ||
+            fallbackData?.error ||
+            "Unable to upload GLB using local storage fallback."
+          );
+        }
+        data = {
+          id:fallbackData?.id,
+          url:fallbackData?.storageUrl || fallbackData?.url || "",
+          size:fallbackData?.fileSize || file.size,
+          originalName:fallbackData?.originalName || file.name,
+        };
+      }
 
       if(data?.id){
         setAssetFiles(prev=>[{
@@ -154,7 +181,7 @@ export default function AdminProducts(){
           processingStatus:"COMPLETED",
         },...prev]);
       }
-      setAssetMessage("GLB uploaded and published. No conversion or compression is running.");
+      setAssetMessage("GLB uploaded and published.");
       await load();
     }catch(e){setAssetMessage(e instanceof Error?e.message:"GLB upload failed.")}
     finally{
