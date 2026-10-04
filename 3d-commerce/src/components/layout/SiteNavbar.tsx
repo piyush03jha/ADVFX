@@ -330,6 +330,7 @@ export function Navbar() {
               <button
                 type="button"
                 onClick={() => void handleLogout()}
+                aria-label="Sign out"
                 className="flex h-10 items-center justify-center gap-2 rounded-full border border-border bg-surface px-4 text-sm text-muted transition-all duration-300 hover:border-primary hover:bg-surface-elevated hover:text-foreground"
               >
                 <IconUserCircle size={17} stroke={1.7} />
@@ -341,7 +342,7 @@ export function Navbar() {
                 onClick={closeMobileMenu}
               >
                 <IconUserCircle size={17} stroke={1.7} />
-                <span>Sign in</span>
+                <span>Account</span>
               </MobileActionLink>
             )}
           </div>
