@@ -45,7 +45,7 @@ export function ProductDetailsTabs({
     <section
       className="
         overflow-hidden
-        rounded-[28px]
+        rounded-[22px]
         border
         border-border
         bg-surface
@@ -63,7 +63,7 @@ export function ProductDetailsTabs({
           overflow-x-auto
           border-b
           border-border
-          px-4
+          px-2
           sm:px-6
         "
       >
@@ -83,8 +83,8 @@ export function ProductDetailsTabs({
               className={`
                 relative
                 shrink-0
-                px-4
-                py-5
+                px-3
+                py-3.5
                 text-[10px]
                 font-medium
                 uppercase
@@ -122,7 +122,7 @@ export function ProductDetailsTabs({
           CONTENT
       ================================================== */}
 
-      <div className="px-5 py-6 sm:px-7 sm:py-7 lg:px-9 lg:py-8">
+      <div className="px-4 py-4 sm:px-7 sm:py-7 lg:px-9 lg:py-8">
         {activeTab === "description" && (
           <Description product={product} />
         )}
@@ -170,7 +170,7 @@ function Description({
 
       {product.tags &&
         product.tags.length > 0 && (
-          <div className="mt-6">
+          <div className="mt-4 sm:mt-6">
             <p
               className="
                 text-[9px]
@@ -183,7 +183,7 @@ function Description({
               Collections
             </p>
 
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="mt-2.5 flex flex-wrap gap-2">
               {product.tags.map((tag) => (
                 <Badge key={tag} className="px-3 py-1.5 normal-case tracking-normal">
                   {tag}
