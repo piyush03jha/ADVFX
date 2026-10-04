@@ -19,16 +19,11 @@ export class ModelMultipartService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
-  ) {
-    if (
-      !this.bucket ||
-      !this.endpoint ||
-      !this.accessKey ||
-      !this.secretKey
-    ) {
-      throw new Error(
-        "Remote storage credentials are required for multipart model uploads",
-      );
+  ) {}
+
+  private assertConfigured() {
+    if (!this.bucket || !this.endpoint || !this.accessKey || !this.secretKey) {
+      throw new BadRequestException("Remote storage is not configured");
     }
   }
 
@@ -49,6 +44,8 @@ export class ModelMultipartService {
         `GLB size must be between 12 bytes and ${MAX_SIZE / (1024 * 1024)} MB`,
       );
     }
+
+    this.assertConfigured();
 
     const key = `products/${productId}/models/${randomUUID()}.glb`;
     const uploadId = await this.createMultipartUpload(key);
@@ -79,6 +76,8 @@ export class ModelMultipartService {
       parts: UploadPart[];
     },
   ) {
+    this.assertConfigured();
+
     const prefix = `products/${productId}/models/`;
     const filename = body?.key?.slice(prefix.length) ?? "";
 
@@ -317,15 +316,6 @@ export class ModelMultipartService {
       { uploads: "" },
     );
 
-    const query = {
-      uploads: "",
-      "X-Amz-Algorithm": "AWS4-HMAC-SHA256",
-      "X-Amz-Credential": `${this.accessKey}/${signed.credentialScope}`,
-      "X-Amz-Date": signed.amzDate,
-      "X-Amz-Expires": "3600",
-      "X-Amz-SignedHeaders": signed.signedHeaders,
-    };
-
     // For the initial multipart request, use the normal Authorization header
     // rather than a presigned query so providers only need standard SigV4 support.
     const auth = `AWS4-HMAC-SHA256 Credential=${this.accessKey}/${signed.credentialScope}, SignedHeaders=${signed.signedHeaders}, Signature=${signed.signature}`;
@@ -347,7 +337,6 @@ export class ModelMultipartService {
       throw new Error("Storage did not return a multipart upload ID");
     }
 
-    void query;
     return uploadId;
   }
 
