@@ -16,7 +16,10 @@ async function proxy(request: Request, context: { params: Promise<{ id: string }
     const response = await fetch(getBackendApiUrl("products/" + encodeURIComponent(id) + "/files"), {
       method,
       headers,
-      body: method === "POST" ? await request.arrayBuffer() : undefined,
+      body: method === "POST" ? request.body : undefined,
+      // Forward the multipart stream without materializing a 25–100 MB GLB
+      // in the Cloudflare Worker memory.
+      ...(method === "POST" ? { duplex: "half" as const } : {}),
       cache: "no-store",
     });
     const data = await response.json().catch(() => null);
