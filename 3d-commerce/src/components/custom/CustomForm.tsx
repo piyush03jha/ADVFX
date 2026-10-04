@@ -201,7 +201,7 @@ export function CustomForm({
         `Body type: ${isPerson ? selectedBody.label : "Not applicable"}`,
         `Person in frame: ${isPerson ? selectedFrame.label : "Not applicable"}`,
         `Size: ${selectedSize.label}`,
-        details.trim() ? `Additional requirements:\\n${details.trim()}` : "",
+        details.trim() ? `Additional requirements:\n${details.trim()}` : "",
       ].filter(Boolean).join("\n");
 
       if (serverPrice == null || pricingLoading || pricingError) {
