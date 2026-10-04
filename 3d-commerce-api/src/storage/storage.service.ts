@@ -1,5 +1,8 @@
 import {
+  BadGatewayException,
   BadRequestException,
+  HttpException,
+  HttpStatus,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -179,7 +182,12 @@ export class StorageService {
       const info = await stat(path).catch(() => {
         throw new NotFoundException("Stored file not found");
       });
-      if (start >= info.size) throw new NotFoundException("Stored file not found");
+      if (start >= info.size) {
+        throw new HttpException(
+          { error: "Requested byte range is not satisfiable" },
+          HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE,
+        );
+      }
       const boundedEnd = end === undefined ? info.size - 1 : Math.min(end, info.size - 1);
       return {
         stream: createReadStream(path, { start, end: boundedEnd }),
@@ -192,11 +200,22 @@ export class StorageService {
 
     const rangeHeader =
       end === undefined ? `bytes=${start}-` : `bytes=${start}-${end}`;
-    const response = await this.requestObjectResponse(
-      "GET",
-      storageKey,
-      { range: rangeHeader },
-    );
+    let response: Response;
+    try {
+      response = await this.requestObjectResponse(
+        "GET",
+        storageKey,
+        { range: rangeHeader },
+      );
+    } catch (error) {
+      if (error instanceof InternalServerErrorException && /\(416\)/.test(error.message)) {
+        throw new HttpException(
+          { error: "Requested byte range is not satisfiable" },
+          HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE,
+        );
+      }
+      throw error;
+    }
     if (!response.body) throw new NotFoundException("Stored file not found");
 
     const contentRange = response.headers.get("content-range") ?? "";
