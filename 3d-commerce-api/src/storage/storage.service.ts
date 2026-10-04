@@ -180,7 +180,7 @@ export class StorageService {
     if (!response.body) throw new NotFoundException("Stored file not found");
 
     const contentRange = response.headers.get("content-range") ?? "";
-    const match = /^bytes \\d+-(\\d+)\\/(\\d+)$/.exec(contentRange);
+    const match = /^bytes \d+-(\d+)\/(\d+)$/.exec(contentRange);
     if (!match) throw new BadGatewayException("Remote storage returned an invalid byte range");
 
     return {
