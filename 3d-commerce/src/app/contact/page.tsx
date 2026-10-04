@@ -2,12 +2,17 @@ import Link from "next/link";
 import {
   IconArrowRight,
   IconBrandWhatsapp,
+  IconCheck,
   IconMail,
   IconMessageCircle,
   IconPackage,
+  IconSparkles,
 } from "@tabler/icons-react";
 
+import { Navbar } from "@/components/layout/SiteNavbar";
+
 const whatsappUrl = process.env.NEXT_PUBLIC_WHATSAPP_URL || "/contact";
+
 async function getContactEmail() {
   try {
     const api = process.env.BACKEND_API_URL || "http://localhost:4000";
@@ -22,89 +27,168 @@ async function getContactEmail() {
 
 export default async function ContactPage() {
   const contactEmail = await getContactEmail();
+
   return (
-    <main className="min-h-screen bg-background px-6 py-28 text-foreground sm:px-10 lg:px-16">
-      <div className="mx-auto max-w-6xl">
-        <div className="max-w-3xl">
-          <p className="mb-4 text-xs font-semibold uppercase tracking-[0.22em] text-primary">
-            Contact us
-          </p>
-          <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl">
-            Let&apos;s build something worth displaying.
-          </h1>
-          <p className="mt-6 max-w-2xl text-base leading-7 text-muted sm:text-lg">
-            Have a custom 3D product in mind, need help with an order, or want to discuss a project? Our team is here to help.
-          </p>
+    <div className="min-h-screen overflow-x-clip bg-background text-foreground">
+      <Navbar />
+
+      <main className="relative">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 top-0 -z-0 h-[520px] overflow-hidden"
+        >
+          <div className="absolute left-1/2 top-0 h-[420px] w-[min(900px,90vw)] -translate-x-1/2 rounded-full bg-primary/[0.08] blur-3xl" />
+          <div className="absolute inset-x-0 top-0 h-full bg-[radial-gradient(circle_at_50%_0%,color-mix(in_srgb,var(--primary)_7%,transparent),transparent_52%)]" />
         </div>
 
-        <div className="mt-14 grid gap-4 md:grid-cols-2">
-          <a
-            href={`mailto:${contactEmail}`}
-            className="group rounded-3xl border border-border bg-surface p-7 transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:bg-surface-elevated"
-          >
-            <div className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background text-primary">
-              <IconMail size={20} stroke={1.7} />
-            </div>
-            <h2 className="mt-6 text-xl font-semibold">Email our team</h2>
-            <p className="mt-2 text-sm leading-6 text-muted">For custom requests, product questions, and order assistance.</p>
-            <span className="mt-7 inline-flex items-center gap-2 text-sm font-medium text-foreground">
-              {contactEmail} <IconArrowRight size={16} />
-            </span>
-          </a>
+        <section className="relative px-5 pb-14 pt-28 sm:px-8 sm:pb-20 sm:pt-36 lg:px-12 lg:pb-24 lg:pt-40">
+          <div className="mx-auto max-w-6xl">
+            <div className="grid gap-10 lg:grid-cols-[1.15fr_0.85fr] lg:items-end">
+              <div>
+                <div className="inline-flex items-center gap-2 rounded-full border border-border bg-surface/80 px-3.5 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted backdrop-blur-md">
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_10px_var(--glow-primary)]" />
+                  Contact Voxel3D
+                </div>
 
-          <div className="rounded-3xl border border-border bg-surface p-7">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background text-primary">
-              <IconMessageCircle size={20} stroke={1.7} />
-            </div>
-            <h2 className="mt-6 text-xl font-semibold">Custom product?</h2>
-            <p className="mt-2 text-sm leading-6 text-muted">Share your reference images, dimensions, and requirements through our custom product workflow.</p>
-            <Link href="/custom" className="mt-7 inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm font-medium transition-all duration-300 hover:border-primary hover:bg-primary hover:text-primary-foreground">
-              Start a custom request <IconArrowRight size={16} />
-            </Link>
-          </div>
-        </div>
+                <h1 className="mt-6 max-w-4xl font-serif text-[2.75rem] leading-[0.94] tracking-[-0.055em] text-foreground sm:text-6xl lg:text-[5.5rem]">
+                  Let&apos;s make your
+                  <span className="block text-muted">idea tangible.</span>
+                </h1>
 
-        <section className="mt-4 rounded-3xl border border-border bg-surface p-7 sm:p-9">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="max-w-2xl">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">Bulk orders</p>
-              <h2 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">Need multiple pieces?</h2>
-              <p className="mt-3 text-sm leading-6 text-muted">
-                Tell us the product, quantity, sizes, and deadline. We&apos;ll help plan production and delivery for your event, team, business, or campaign.
+                <p className="mt-6 max-w-2xl text-sm leading-6 text-muted sm:mt-7 sm:text-base sm:leading-7">
+                  Have a custom 3D product in mind, need help with an order, or want to discuss a project?
+                  Tell us what you&apos;re building and we&apos;ll help you find the right next step.
+                </p>
+              </div>
+
+              <div className="relative overflow-hidden rounded-3xl border border-border bg-surface p-6 sm:p-7">
+                <div
+                  aria-hidden="true"
+                  className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-primary/[0.12] blur-3xl"
+                />
+                <div className="relative">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-border bg-surface-elevated text-primary">
+                      <IconSparkles size={20} stroke={1.6} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">What can we help with?</p>
+                      <p className="mt-0.5 text-xs text-muted">Choose the fastest route.</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 space-y-3">
+                    {[
+                      "Custom 3D product",
+                      "Existing order or delivery",
+                      "Bulk / business order",
+                    ].map((item) => (
+                      <div key={item} className="flex items-center gap-2.5 text-sm text-muted">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                          <IconCheck size={12} stroke={2.2} />
+                        </span>
+                        {item}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <a
+                href={`mailto:${contactEmail}`}
+                className="group rounded-3xl border border-border bg-surface p-6 transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:bg-surface-elevated sm:p-7"
+              >
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-border bg-background text-primary">
+                  <IconMail size={20} stroke={1.7} />
+                </div>
+                <h2 className="mt-6 text-lg font-semibold">Email our team</h2>
+                <p className="mt-2 text-sm leading-6 text-muted">
+                  For custom requests, product questions, and order assistance.
+                </p>
+                <span className="mt-6 inline-flex max-w-full items-center gap-2 break-all text-sm font-medium text-foreground">
+                  {contactEmail}
+                  <IconArrowRight size={15} className="shrink-0 transition-transform group-hover:translate-x-1" />
+                </span>
+              </a>
+
+              <Link
+                href="/custom"
+                className="group rounded-3xl border border-primary/25 bg-primary/[0.06] p-6 transition-all duration-300 hover:-translate-y-1 hover:border-primary/50 hover:bg-primary/[0.09] sm:p-7"
+              >
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary text-white shadow-[0_0_24px_var(--glow-primary)]">
+                  <IconMessageCircle size={20} stroke={1.7} />
+                </div>
+                <h2 className="mt-6 text-lg font-semibold">Start a custom request</h2>
+                <p className="mt-2 text-sm leading-6 text-muted">
+                  Share your reference images, dimensions, and requirements with our team.
+                </p>
+                <span className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-foreground">
+                  Start building
+                  <IconArrowRight size={15} className="transition-transform group-hover:translate-x-1" />
+                </span>
+              </Link>
+
+              <a
+                href={whatsappUrl}
+                target={whatsappUrl.startsWith("http") ? "_blank" : undefined}
+                rel={whatsappUrl.startsWith("http") ? "noreferrer" : undefined}
+                className="group rounded-3xl border border-border bg-surface p-6 transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:bg-surface-elevated sm:p-7"
+              >
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-border bg-background text-primary">
+                  <IconBrandWhatsapp size={20} stroke={1.7} />
+                </div>
+                <h2 className="mt-6 text-lg font-semibold">Chat on WhatsApp</h2>
+                <p className="mt-2 text-sm leading-6 text-muted">
+                  For quick questions about custom work, bulk orders, sizes, and production.
+                </p>
+                <span className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-foreground">
+                  Start a chat
+                  <IconArrowRight size={15} className="transition-transform group-hover:translate-x-1" />
+                </span>
+              </a>
+            </div>
+
+            <section className="mt-4 overflow-hidden rounded-3xl border border-border bg-surface">
+              <div className="grid lg:grid-cols-[1fr_auto] lg:items-center">
+                <div className="p-6 sm:p-8 lg:p-10">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
+                    Bulk orders
+                  </p>
+                  <h2 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
+                    Need multiple pieces?
+                  </h2>
+                  <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">
+                    Tell us the product, quantity, sizes, and deadline. We&apos;ll help plan production and delivery
+                    for your event, team, business, or campaign.
+                  </p>
+                </div>
+
+                <div className="border-t border-border p-6 lg:border-l lg:border-t-0 lg:p-8">
+                  <Link
+                    href="/contact?subject=Bulk%20Order"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-foreground px-6 py-3 text-xs font-semibold text-background transition hover:opacity-90 sm:w-auto"
+                  >
+                    Discuss bulk order
+                    <IconPackage size={15} />
+                  </Link>
+                </div>
+              </div>
+            </section>
+
+            <div className="mt-10 text-center">
+              <p className="text-xs text-muted">
+                Not sure where to start?
+                <Link href="/custom" className="ml-1.5 font-medium text-foreground underline decoration-border underline-offset-4 transition-colors hover:text-primary">
+                  Send us your idea
+                </Link>
+                {" "}and we&apos;ll guide you.
               </p>
             </div>
-            <Link href="/contact?subject=Bulk%20Order" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-foreground px-5 py-3 text-xs font-semibold text-background transition hover:opacity-90">
-              Discuss bulk order <IconPackage size={15} />
-            </Link>
           </div>
         </section>
-
-        <section className="mt-4 grid gap-4 sm:grid-cols-2">
-          <a
-            href={whatsappUrl}
-            target={whatsappUrl.startsWith("http") ? "_blank" : undefined}
-            rel={whatsappUrl.startsWith("http") ? "noreferrer" : undefined}
-            className="group rounded-3xl border border-border bg-surface p-7 transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:bg-surface-elevated"
-          >
-            <div className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background text-primary">
-              <IconBrandWhatsapp size={20} stroke={1.7} />
-            </div>
-            <h2 className="mt-6 text-xl font-semibold">Chat on WhatsApp</h2>
-            <p className="mt-2 text-sm leading-6 text-muted">For quick questions about custom work, bulk orders, sizes, and production.</p>
-            <span className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-foreground">
-              Start a WhatsApp chat <IconArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
-            </span>
-          </a>
-
-          <div className="rounded-3xl border border-border bg-surface p-7">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background text-primary">
-              <IconMessageCircle size={20} stroke={1.7} />
-            </div>
-            <h2 className="mt-6 text-xl font-semibold">Not sure what to ask?</h2>
-            <p className="mt-2 text-sm leading-6 text-muted">Just send the product or idea you have in mind. We can guide you through the next step.</p>
-          </div>
-        </section>
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }
