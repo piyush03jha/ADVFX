@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { IconPlus, IconRefresh, IconSearch, IconUpload, IconBox } from "@tabler/icons-react";
 import AdminProductCard from "@/components/admin/AdminProductCard";
 import { Button } from "@/components/ui/Button";
+import { uploadModelDirect } from "@/lib/model-upload";
 
 type ProductVariant={id:string;name:string;size?:string|null;sku?:string|null;isActive:boolean;stock?:number;reserved?:number;lowStockAt?:number;trackStock?:boolean;allowBackorder?:boolean;price?:{amountMinor:number;compareAtMinor?:number|null;isActive:boolean}|null};
 type Product={id:string;name:string;slug:string;status:string;isFeatured:boolean;isTrending:boolean;isBestseller:boolean;category?:{id:string;name:string}|null;prices:any[];variants?:ProductVariant[];material?:string|null;scale?:string|null;dimensions?:string|null;height?:string|null;base?:string|null;packaging?:string|null;weight?:string|null;inventory?:{stock:number;reserved:number;lowStockAt:number}|null;media?:Array<{id:string;type:string;url:string;altText?:string|null;isPrimary:boolean;sortOrder:number}>};
@@ -83,11 +84,9 @@ export default function AdminProducts(){
       }
 
       if(productGlb){
-        const fd=new FormData();fd.append("file",productGlb);
-        const gr=await fetch("/api/products/"+p.id+"/files",{method:"POST",body:fd});
-        const gd=await gr.json().catch(()=>null);
-        if(!gr.ok)throw new Error(gd?.message||gd?.error||"Product created, but GLB upload failed.");
-
+        await uploadModelDirect(p.id, productGlb, (percent) =>
+          setUploadProgress((prev) => ({ ...prev, [p.id]: percent })),
+        );
       }
       setForm({name:"",slug:"",description:"",categoryId:"",status:"ACTIVE",stock:"0",isFeatured:false,material:"",scale:"",dimensions:"",height:"",base:"",packaging:"",weight:""});
       setProductImages([]);
@@ -133,32 +132,35 @@ export default function AdminProducts(){
   async function uploadGlb(id:string,file:File|null){
     if(!file)return;
     setAssetBusy(true);setAssetMessage("");
+    setUploadProgress((prev)=>({...prev,[id]:0}));
     try{
       if(file.size===0)throw new Error("The selected GLB file is empty.");
       if(!file.name.toLowerCase().endsWith(".glb"))throw new Error("Only .glb files are accepted.");
       if(file.size>150*1024*1024)throw new Error("GLB files must be 150 MB or smaller.");
 
-      const fd=new FormData();fd.append("file",file);
-      const response=await fetch("/api/products/"+id+"/files",{method:"POST",body:fd});
-      const data=await response.json().catch(()=>null);
-      if(!response.ok)throw new Error(data?.message||data?.error||"GLB upload failed");
+      const data=await uploadModelDirect(id,file,(percent)=>{
+        setUploadProgress((prev)=>({...prev,[id]:percent}));
+      });
 
       if(data?.id){
         setAssetFiles(prev=>[{
           id:data.id,
           originalName:data.originalName||file.name,
-          storageUrl:data.storageUrl||"",
+          storageUrl:data.url||"",
           format:"GLB",
           fileType:"MODEL",
           mimeType:"model/gltf-binary",
-          fileSize:data.fileSize||String(file.size),
+          fileSize:data.size||String(file.size),
           processingStatus:"COMPLETED",
         },...prev]);
       }
       setAssetMessage("GLB uploaded and published. No conversion or compression is running.");
       await load();
     }catch(e){setAssetMessage(e instanceof Error?e.message:"GLB upload failed.")}
-    finally{setAssetBusy(false)}
+    finally{
+      setAssetBusy(false);
+      setUploadProgress((prev)=>{const next={...prev};delete next[id];return next});
+    }
   }
   async function removeMedia(id:string,mediaId:string){
     if(!window.confirm("Remove this product media?"))return;setAssetBusy(true);
