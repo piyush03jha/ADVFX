@@ -114,7 +114,7 @@ export default function AdminSeoPage() {
                     type="button"
                     onClick={() => void save(product)}
                     disabled={saving === product.id}
-                    className="inline-flex items-center gap-2 rounded-xl bg-foreground px-3 py-2 text-[10px] font-semibold text-background disabled:opacity-50"
+                    className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-[10px] font-semibold text-white transition hover:bg-primary-hover disabled:opacity-50"
                   >
                     <IconCheck size={13} /> {saving === product.id ? "Saving…" : "Save SEO"}
                   </button>
