@@ -125,7 +125,7 @@ export class StorageService {
     }
 
     const response = await this.requestObjectResponse("GET", storageKey);
-    if (!response.body) throw new NotFoundException("Stored file not found");
+    if (!response.body) throw new InternalServerErrorException("Stored file not found");
     return Readable.fromWeb(response.body as globalThis.ReadableStream<Uint8Array>);
   }
 
