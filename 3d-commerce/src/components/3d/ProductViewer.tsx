@@ -56,7 +56,7 @@ function LoadedHeroModel({
   isInteractionPaused = false,
   onLoaded,
 }: HeroModelProps) {
-  const { scene } = useGLTF(path, false, true);
+  const { scene } = useGLTF(path, false, false);
   const groupRef = useRef<THREE.Group>(null);
   const rotationRef = useRef<THREE.Group>(null);
   const elapsedRef = useRef(0);
