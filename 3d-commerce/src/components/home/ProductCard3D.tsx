@@ -11,6 +11,8 @@ import {
 } from "@react-three/drei";
 import * as THREE from "three";
 import { useIntroDone } from "@/lib/introGate";
+import { ModelErrorBoundary } from "@/components/3d/ModelErrorBoundary";
+import { useInView } from "@/components/3d/useInView";
 
 import type { StorefrontProduct } from "@/lib/catalog-api";
 
@@ -93,6 +95,7 @@ export function ProductCard3D({
   product,
 }: ProductCard3DProps) {
   const introDone = useIntroDone();
+  const [ref, inView] = useInView<HTMLDivElement>();
   if (!product.model) {
     return (
       <div
@@ -113,6 +116,7 @@ export function ProductCard3D({
 
   return (
     <div
+      ref={ref}
       className="
         relative
         aspect-[1/0.92]
@@ -141,7 +145,14 @@ export function ProductCard3D({
         "
       />
 
-      {introDone && (
+      {introDone && inView && (
+      <ModelErrorBoundary
+        fallback={
+          <div className="absolute inset-0 z-10 flex items-center justify-center px-4 text-center text-[10px] uppercase tracking-[0.12em] text-white/45">
+            3D preview unavailable
+          </div>
+        }
+      >
       <Canvas
         camera={{
           position: [0, 0.2, 6],
@@ -176,6 +187,7 @@ export function ProductCard3D({
           <Model path={product.model} />
         </Suspense>
       </Canvas>
+      </ModelErrorBoundary>
       )}
     </div>
   );
