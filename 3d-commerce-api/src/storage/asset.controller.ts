@@ -139,17 +139,66 @@ export class AssetController {
     }
 
     try {
-      const { stream, size } = await this.storage.openReadStream(storageKey);
+      const range = String(reply.request.headers.range ?? "").trim();
+      const contentType =
+        mimeType ?? this.storage.getContentTypeForStorageKey(storageKey);
+
       reply.header("Cache-Control", "public, max-age=31536000, immutable");
       reply.header("Access-Control-Allow-Origin", "*");
       reply.header("Cross-Origin-Resource-Policy", "cross-origin");
-      reply.header("Access-Control-Expose-Headers", "Content-Length, Content-Range, Accept-Ranges");
+      reply.header(
+        "Access-Control-Expose-Headers",
+        "Content-Length, Content-Range, Accept-Ranges",
+      );
+      reply.header("Accept-Ranges", "bytes");
+
+      if (range) {
+        const match = /^bytes=(\\d+)-(\\d*)$/.exec(range);
+        if (!match) {
+          return reply
+            .code(416)
+            .header("Content-Range", "bytes */0")
+            .send({ error: "Invalid byte range" });
+        }
+
+        const totalSize = await this.storage.getObjectSize(storageKey);
+        const start = Number(match[1]);
+        const requestedEnd = match[2] ? Number(match[2]) : totalSize - 1;
+
+        if (
+          !Number.isSafeInteger(start) ||
+          !Number.isSafeInteger(requestedEnd) ||
+          start < 0 ||
+          start >= totalSize ||
+          requestedEnd < start
+        ) {
+          return reply
+            .code(416)
+            .header("Content-Range", `bytes */${totalSize}`)
+            .send({ error: "Requested range is not satisfiable" });
+        }
+
+        const end = Math.min(requestedEnd, totalSize - 1);
+        const { stream, size } = await this.storage.openReadStreamRange(
+          storageKey,
+          start,
+          end,
+        );
+
+        reply
+          .code(206)
+          .header("Content-Length", String(size))
+          .header("Content-Range", `bytes ${start}-${end}/${totalSize}`);
+
+        return new StreamableFile(stream, { type: contentType });
+      }
+
+      const { stream, size } = await this.storage.openReadStream(storageKey);
       if (size !== undefined) {
         reply.header("Content-Length", String(size));
       }
-      return new StreamableFile(stream, {
-        type: mimeType ?? this.storage.getContentTypeForStorageKey(storageKey),
-      });
+
+      return new StreamableFile(stream, { type: contentType });
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
       this.logger.error(
