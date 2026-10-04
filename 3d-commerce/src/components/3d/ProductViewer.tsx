@@ -9,9 +9,8 @@ import {
   useState,
 } from "react";
 
-import { Canvas, useFrame, useLoader } from "@react-three/fiber";
-import { Environment } from "@react-three/drei";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { Canvas, useFrame } from "@react-three/fiber";
+import { Environment, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 
 import { HERO_MODEL_ROTATION_MS } from "@/config/hero-motion";
@@ -56,7 +55,7 @@ function HeroModel({
   isInteractionPaused = false,
   onLoaded,
 }: HeroModelProps) {
-  const { scene } = useLoader(GLTFLoader, path);
+  const { scene } = useGLTF(path, false, true);
   const groupRef = useRef<THREE.Group>(null);
   const rotationRef = useRef<THREE.Group>(null);
   const elapsedRef = useRef(0);
