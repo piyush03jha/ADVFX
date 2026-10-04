@@ -30,6 +30,24 @@ export default function AdminProducts(){
 
   async function load(){setLoading(true);try{const r=await fetch("/api/admin/catalog",{cache:"no-store"});if(!r.ok)throw new Error();setData(await r.json());setMessage("")}catch{setMessage("Unable to load catalog.")}finally{setLoading(false)}}
   useEffect(()=>{void load()},[]);
+  useEffect(()=>{
+    if(!assetProductId) return;
+    const hasPending=assetFiles.some(
+      (file)=>file.processingStatus==="PENDING" || file.processingStatus==="PROCESSING",
+    );
+    if(!hasPending) return;
+
+    const refresh=async()=>{
+      try{
+        const r=await fetch("/api/products/"+assetProductId+"/files",{cache:"no-store"});
+        if(r.ok) setAssetFiles(await r.json());
+      }catch{}
+    };
+
+    const timer=window.setInterval(refresh,5000);
+    return ()=>window.clearInterval(timer);
+  },[assetProductId,assetFiles]);
+
   const rows=useMemo(()=>data.products.filter(p=>[p.name,p.slug,p.category?.name||""].join(" ").toLowerCase().includes(search.trim().toLowerCase())),[data.products,search]);
 
   async function updateProduct(id:string,patch:Record<string,unknown>){setSaving(true);try{const r=await fetch("/api/products/"+id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(patch)});if(!r.ok)throw new Error();setMessage("Product updated.");await load()}catch{setMessage("Unable to update product.")}finally{setSaving(false)}}
