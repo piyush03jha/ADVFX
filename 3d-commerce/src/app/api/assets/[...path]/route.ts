@@ -43,8 +43,15 @@ export async function GET(
     );
 
     const headers = copyAssetHeaders(response);
-    if (!headers.has("cache-control") && response.ok) {
-      headers.set("cache-control", "no-store");
+    if (response.ok) {
+      // Product/category asset keys are immutable once published. Cache the
+      // streamed response at the edge instead of forcing every 3D load back
+      // through Railway.
+      headers.set(
+        "cache-control",
+        headers.get("cache-control") ??
+          "public, max-age=31536000, immutable",
+      );
     }
 
     return new NextResponse(response.body, {
