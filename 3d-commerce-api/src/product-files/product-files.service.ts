@@ -79,6 +79,8 @@ export class ProductFilesService {
     });
     if (existingFile) return this.serializeFile(existingFile);
 
+    let createdFileId: string | null = null;
+
     try {
       const created = await this.prisma.productFile.create({
         data: {
@@ -93,6 +95,7 @@ export class ProductFilesService {
           processingStatus: "COMPLETED",
         },
       });
+      createdFileId = created.id;
 
       await this.prisma.$transaction(async (tx) => {
         await tx.productMedia.deleteMany({
@@ -112,7 +115,9 @@ export class ProductFilesService {
 
       return this.serializeFile(created);
     } catch (error) {
-      await this.prisma.productFile.delete({ where: { id: (await this.prisma.productFile.findFirst({ where: { productId, storageKey: stored.storageKey }, select: { id: true } }))?.id ?? "" }).catch(() => undefined);
+      if (createdFileId) {
+        await this.prisma.productFile.delete({ where: { id: createdFileId } }).catch(() => undefined);
+      }
       await this.storage.delete(stored.storageKey).catch(() => undefined);
       throw error;
     }
