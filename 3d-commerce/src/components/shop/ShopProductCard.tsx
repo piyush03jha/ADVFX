@@ -89,7 +89,7 @@ export function ShopProductCard({ product, priority = false }: ShopProductCardPr
 
   return (
     <Card interactive className="group h-full rounded-2xl">
-      <div className="relative aspect-[0.88/1] overflow-hidden bg-[#0c0c0c]">
+      <div className="relative aspect-[0.94/1] overflow-hidden bg-[#0c0c0c]">
         <Link href={`/product/${product.slug}`} className="relative block h-full">
           <Image
             src={imageSrc}
@@ -131,7 +131,7 @@ export function ShopProductCard({ product, priority = false }: ShopProductCardPr
         )}
       </div>
 
-      <div className="p-3 sm:p-4 lg:p-5">
+      <div className="p-2.5 sm:p-4 lg:p-5">
         <p className="text-[9px] font-medium uppercase tracking-[0.16em] text-muted">
           {product.category}
         </p>
@@ -165,13 +165,13 @@ export function ShopProductCard({ product, priority = false }: ShopProductCardPr
           </p>
         ) : null}
 
-        <div className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-2">
+        <div className="mt-3 grid grid-cols-1 gap-1.5 md:grid-cols-2 sm:mt-4 sm:gap-2">
           <Button
             type="button"
             variant="primary"
             size="lg"
             onClick={handleAddToCart}
-            className="min-h-11 w-full text-xs font-semibold sm:text-sm"
+            className="min-h-9 w-full px-3 text-[10px] font-semibold sm:min-h-11 sm:text-sm"
           >
             {added ? "Added" : "Add to Cart"}
           </Button>
@@ -182,7 +182,7 @@ export function ShopProductCard({ product, priority = false }: ShopProductCardPr
             size="lg"
             onClick={handleBuyNow}
             disabled={buying}
-            className="min-h-11 w-full text-xs font-semibold sm:text-sm"
+            className="min-h-9 w-full px-3 text-[10px] font-semibold sm:min-h-11 sm:text-sm"
           >
             {buying ? "Opening…" : "Buy Now"}
           </Button>
