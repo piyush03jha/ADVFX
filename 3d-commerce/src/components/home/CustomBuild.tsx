@@ -21,7 +21,8 @@ export function CustomBuild() {
             src="/custom-3d-creation-studio.webp"
             alt="Create a custom 3D model from your photos"
             fill
-            sizes="100vw"
+            sizes="(max-width: 1664px) 100vw, 1664px"
+            quality={100}
             className="object-cover"
             priority={false}
           />
