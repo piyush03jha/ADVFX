@@ -167,9 +167,6 @@ export function ProductGallery({ product }: ProductGalleryProps) {
 
       </div>
 
-
-      </div>
-
       <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
         {media.map((item, index) => {
           const selected = index === activeIndex;
