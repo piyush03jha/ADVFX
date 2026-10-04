@@ -143,6 +143,52 @@ export class StorageService {
     };
   }
 
+  async openReadStreamRange(
+    storageKey: string,
+    start: number,
+    end: number,
+  ): Promise<{ stream: Readable; size: number }> {
+    if (
+      !Number.isInteger(start) ||
+      !Number.isInteger(end) ||
+      start < 0 ||
+      end < start
+    ) {
+      throw new BadRequestException("Invalid byte range");
+    }
+
+    if (this.provider === "local") {
+      const { stat } = await import("node:fs/promises");
+      const path = this.getAbsolutePath(storageKey);
+      const info = await stat(path).catch(() => {
+        throw new NotFoundException("Stored file not found");
+      });
+      if (start >= info.size) throw new NotFoundException("Stored file not found");
+      const boundedEnd = Math.min(end, info.size - 1);
+      return {
+        stream: createReadStream(path, { start, end: boundedEnd }),
+        size: boundedEnd - start + 1,
+      };
+    }
+
+    const boundedEnd = end;
+    const response = await this.requestObjectResponse(
+      "GET",
+      storageKey,
+      { range: `bytes=${start}-${boundedEnd}` },
+    );
+    if (!response.body) throw new NotFoundException("Stored file not found");
+
+    const contentRange = response.headers.get("content-range") ?? "";
+    const match = /^bytes \\d+-(\\d+)\\/(\\d+)$/.exec(contentRange);
+    if (!match) throw new BadGatewayException("Remote storage returned an invalid byte range");
+
+    return {
+      stream: Readable.fromWeb(response.body as any),
+      size: Number(match[1]) - start + 1,
+    };
+  }
+
   async createReadStream(storageKey: string): Promise<Readable> {
     if (this.provider === "local") {
       return createReadStream(this.getAbsolutePath(storageKey));
@@ -192,7 +238,7 @@ export class StorageService {
   private async putObject(key: string, body: Buffer, contentType: string, cacheControl?: string) { await this.requestObject("PUT", key, body, contentType, cacheControl); }
   private async deleteObject(key: string) { await this.requestObject("DELETE", key); }
 
-  private async requestObjectResponse(method: "GET" | "HEAD", key: string): Promise<Response> {
+  private async requestObjectResponse(method: "GET" | "HEAD", key: string, extraHeaders: Record<string, string> = {}): Promise<Response> {
     const hostUrl = `${this.endpoint}/${encodeURIComponent(this.bucket)}/${key.split("/").map(encodeURIComponent).join("/")}`;
     const url = new URL(hostUrl);
     const payloadHash = createHash("sha256").update(Buffer.alloc(0)).digest("hex");
@@ -200,6 +246,7 @@ export class StorageService {
     const dateStamp = amzDate.slice(0, 8);
     const headers: Record<string, string> = {
       host: url.host,
+      ...extraHeaders,
       "x-amz-content-sha256": payloadHash,
       "x-amz-date": amzDate,
     };
