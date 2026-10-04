@@ -30,19 +30,23 @@ export function CustomBuild() {
               Custom made
             </p>
 
-            <h2 className="mt-3 max-w-xl font-serif text-[2rem] sm:mt-4 sm:text-[2.7rem] leading-[0.95] tracking-[-0.05em] text-foreground sm:text-5xl lg:text-[4.25rem]">
+            <h2 className="mt-3 max-w-xl font-serif text-[2rem] leading-[0.95] tracking-[-0.05em] text-foreground sm:mt-4 sm:text-5xl lg:text-[4.25rem]">
               Your idea,
               <span className="block text-muted">made tangible.</span>
             </h2>
 
-            <p className="mt-4 max-w-lg text-xs leading-5 sm:mt-6 sm:text-sm sm:leading-6 text-muted sm:text-base sm:leading-7">
+            <p className="mt-4 max-w-lg text-xs leading-5 text-muted sm:mt-6 sm:text-base sm:leading-7">
               Have something personal in mind? Send us your reference and requirements. We handle the design, production, and physical delivery.
             </p>
 
             <div className="mt-6 sm:mt-8">
               <Button href="/custom" size="lg" className="group">
                 Start a custom request
-                <IconArrowUpRight size={17} stroke={1.8} className="transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+                <IconArrowUpRight
+                  size={17}
+                  stroke={1.8}
+                  className="transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+                />
               </Button>
             </div>
 
@@ -80,23 +84,14 @@ export function CustomBuild() {
             whileInView={reduceMotion ? undefined : { opacity: 1, scale: 1 }}
             viewport={{ once: true, amount: 0.15 }}
             transition={{ duration: 0.8 }}
-            className="relative min-h-[205px] overflow-hidden bg-surface-elevated sm:min-h-[480px] lg:min-h-full"
+            className="relative flex min-h-[205px] items-center justify-center overflow-hidden bg-[#eee7dd] sm:min-h-[420px] lg:min-h-full"
           >
             <img
-              src="/catogeries/custom_section.png"
-              alt="Custom 3D printed collectible"
+              src="/catogeries/custom_section.webp"
+              alt="Couple custom 3D figurine creation"
               loading="lazy"
-              className="absolute inset-0 h-full w-full object-cover object-center"
+              className="h-auto w-full object-contain"
             />
-            <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/5 to-black/10" />
-            <div className="absolute bottom-4 left-4 right-4 sm:bottom-7 sm:left-7 sm:right-7">
-              <p className="text-[9px] font-medium uppercase tracking-[0.2em] text-white/65">
-                One piece. Made personally.
-              </p>
-              <p className="mt-1.5 max-w-sm font-serif text-base sm:mt-2 sm:text-xl tracking-[-0.02em] text-white sm:text-2xl">
-                Built from your story, not a template.
-              </p>
-            </div>
           </motion.div>
         </div>
       </Container>
