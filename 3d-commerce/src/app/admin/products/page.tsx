@@ -137,7 +137,7 @@ export default function AdminProducts(){
     setAssetBusy(true);setAssetMessage("");
     try{
       if(file.size===0)throw new Error("The selected GLB file is empty.");
-      if(!file.name.toLowerCase().endsWith(".glb"))throw new Error("Please select a valid .glb file.");
+      const supported=[".glb",".gltf",".obj",".ply",".stl",".fbx",".abc",".usd",".usda",".usdc",".bvh",".svg",".pdf"]; if(!supported.some(ext=>file.name.toLowerCase().endsWith(ext)))throw new Error("Unsupported model source format.");
       const fd=new FormData();fd.append("file",file);
       const response=await fetch("/api/products/"+id+"/files",{method:"POST",body:fd});
       const data=await response.json().catch(()=>null);
@@ -145,7 +145,7 @@ export default function AdminProducts(){
       if(!data?.storageUrl)throw new Error("GLB upload succeeded but no storage URL was returned.");
       // Keep the raw upload private to the processing pipeline. The worker
       // publishes MODEL_PREVIEW only after optimization + validation succeeds.
-      setAssetMessage("3D model uploaded. Optimizing for web…");
+      setAssetMessage("Source uploaded. Converting and optimizing to a web-ready GLB…");
       const fr=await fetch("/api/products/"+id+"/files",{cache:"no-store"});if(fr.ok)setAssetFiles(await fr.json());
       await load();
     }catch(e){setAssetMessage(e instanceof Error?e.message:"GLB upload failed.")}
@@ -202,8 +202,8 @@ export default function AdminProducts(){
         <div className="flex items-center justify-between gap-3">
           <div><p className="text-xs font-medium">3D model</p><p className="mt-1 text-[9px] text-muted">GLB · web-ready 3D model for the product viewer</p></div>
           <label className="cursor-pointer rounded-lg border border-border px-3 py-2 text-[10px] font-semibold">
-            <IconBox size={13} className="mr-1 inline"/> Add GLB
-            <input type="file" accept=".glb,model/gltf-binary" className="hidden" disabled={saving} onChange={e=>setProductGlb(e.target.files?.[0]||null)}/>
+            <IconBox size={13} className="mr-1 inline"/> Add 3D source
+            <input type="file" accept=".glb,.gltf,.obj,.ply,.stl,.fbx,.abc,.usd,.usda,.usdc,.bvh,.svg,.pdf" className="hidden" disabled={saving} onChange={e=>setProductGlb(e.target.files?.[0]||null)}/>
           </label>
         </div>
         {productGlb&&<p className="mt-2 truncate text-[9px] text-muted">Selected: {productGlb.name}</p>}
