@@ -207,15 +207,6 @@ export function ProductGallery({ product }: ProductGalleryProps) {
         {active.type === "model" && (
           <>
             <Product3DStage model={product.model} name={product.name} theme={theme} />
-            <div
-              className={
-                "pointer-events-none absolute bottom-4 left-4 z-20 hidden items-center gap-2 rounded-full border px-3 py-2 text-[9px] uppercase tracking-[0.14em] backdrop-blur-xl sm:flex " +
-                overlayClass
-              }
-            >
-              <IconRotate size={12} />
-              Drag to rotate · Scroll to zoom
-            </div>
           </>
         )}
 
@@ -228,16 +219,6 @@ export function ProductGallery({ product }: ProductGalleryProps) {
           {active.label}
         </div>
 
-        {active.type === "model" && (
-          <div
-            className={
-              "pointer-events-none absolute bottom-12 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-full border px-2.5 py-1 text-[7px] uppercase tracking-[0.12em] backdrop-blur-xl sm:hidden " +
-              overlayClass
-            }
-          >
-            Drag to rotate · Pinch to zoom
-          </div>
-        )}
       </div>
 
 
