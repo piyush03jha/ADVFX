@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { Button } from "@/components/ui/Button";
 import {
   IconArrowRight,
   IconBrandWhatsapp,
@@ -101,7 +102,7 @@ function CustomPageSupport() {
               Don&apos;t worry. Send us your idea and photos and our team will guide you on the suitable size, format, and next steps.
             </p>
             <div className="mt-6 flex flex-wrap gap-2">
-              <Link href="/contact" className="inline-flex h-11 items-center gap-2 rounded-full bg-foreground px-5 text-xs font-semibold text-background transition hover:opacity-90">
+              <Button href="/contact" variant="primary" size="md">
                 Contact us <IconArrowRight size={15} />
               </Link>
               <a href={whatsappUrl} target={whatsappUrl.startsWith("http") ? "_blank" : undefined} rel={whatsappUrl.startsWith("http") ? "noreferrer" : undefined} className="inline-flex h-11 items-center gap-2 rounded-full border border-border bg-background px-5 text-xs font-semibold transition hover:border-primary hover:text-primary">
