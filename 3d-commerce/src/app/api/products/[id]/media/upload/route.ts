@@ -13,14 +13,19 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const headers: Record<string,string> = { Authorization: "Bearer " + token };
     const contentType = request.headers.get("content-type");
     if (contentType) headers["Content-Type"] = contentType;
-    const response = await fetch(getBackendApiUrl("products/" + encodeURIComponent(id) + "/media/upload"), {
+    const upstreamRequest = {
       method: "POST",
       headers,
       body: request.body,
       // Keep image uploads streaming through the Cloudflare Worker.
       duplex: "half",
       cache: "no-store",
-    });
+    } as RequestInit & { duplex: "half" };
+
+    const response = await fetch(
+      getBackendApiUrl("products/" + encodeURIComponent(id) + "/media/upload"),
+      upstreamRequest,
+    );
     const data = await response.json().catch(() => null);
 
     if (response.ok) {
