@@ -40,7 +40,7 @@ export const NavBody = ({ children, className, visible }: NavBodyProps) => (
     }}
     transition={{ type: "spring", stiffness: 220, damping: 32, mass: 0.8 }}
     className={cn(
-      "relative z-[60] mx-auto hidden w-full flex-row items-center justify-between rounded-full border border-border/70 bg-background/70 px-4 py-2 lg:flex",
+      "relative z-[60] mx-auto hidden w-full flex-row items-center justify-between rounded-full border border-border/70 bg-background/70 px-3 py-2 lg:flex",
       visible && "border-border bg-surface/90",
       className,
     )}
@@ -55,7 +55,7 @@ export const NavItems = ({ items, className, onItemClick }: NavItemsProps) => {
   return (
     <motion.div
       onMouseLeave={() => setHovered(null)}
-      className={cn("absolute inset-0 hidden flex-row items-center justify-center gap-0.5 text-sm font-medium lg:flex", className)}
+      className={cn("pointer-events-none absolute inset-0 hidden flex-row items-center justify-center gap-0.5 text-sm font-medium lg:flex", className)}
     >
       {items.map((item, idx) => (
         <Link
@@ -63,7 +63,7 @@ export const NavItems = ({ items, className, onItemClick }: NavItemsProps) => {
           href={item.link}
           onMouseEnter={() => setHovered(idx)}
           onClick={onItemClick}
-          className="relative rounded-full px-3.5 py-2 text-muted transition-colors duration-300 hover:text-foreground"
+          className="pointer-events-auto relative rounded-full px-2.5 py-2 text-muted transition-colors duration-300 hover:text-foreground xl:px-3.5"
         >
           {hovered === idx && (
             <motion.div
