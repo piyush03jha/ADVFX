@@ -3,6 +3,7 @@ import { createHash, createHmac, randomUUID } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
 import { StorageService } from "../storage/storage.service";
 import { ProcessingJobsService } from "../processing-jobs/processing-jobs.service";
+import { ProcessingJobsService } from "../processing-jobs/processing-jobs.service";
 
 const PART_SIZE = 8 * 1024 * 1024;
 const MAX_SIZE = Number(process.env.MAX_MODEL_MB ?? 150) * 1024 * 1024;
@@ -186,6 +187,8 @@ export class ModelMultipartService {
 
     // The staging object remains private-by-convention until the worker
     // publishes an optimized immutable model URL.
+    const job = await this.processingJobs.create(created.id);
+
     for (const old of oldFiles) {
       if (old.storageKey === body.key) continue;
       try {
