@@ -329,7 +329,7 @@ export class ModelMultipartService {
     // For the initial multipart request, use the normal Authorization header
     // rather than a presigned query so providers only need standard SigV4 support.
     const auth = `AWS4-HMAC-SHA256 Credential=${this.accessKey}/${signed.credentialScope}, SignedHeaders=${signed.signedHeaders}, Signature=${signed.signature}`;
-    const response = await fetch(`${url}?uploads`, {
+    const response = await fetch(`${url}?uploads=`, {
       method: "POST",
       headers: {
         ...signed.headers,
