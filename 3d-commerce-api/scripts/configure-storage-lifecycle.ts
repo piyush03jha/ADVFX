@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { createHash, createHmac } from "node:crypto";
 
 const encode = (value: string) =>
@@ -99,10 +100,11 @@ const managedRule = `  <Rule>
   </Rule>`;
 
 function mergeLifecycleConfiguration(existingXml: string): string {
-  const rules = existingXml.match(/<Rule(?:\\s[^>]*)?>[\\s\\S]*?<\\/Rule>/g) ?? [];
+  const rules =
+    existingXml.match(/<Rule(?:\s[^>]*)?>[\s\S]*?<\/Rule>/g) ?? [];
   const managedId = "abort-incomplete-product-multipart-uploads";
   const managedIndex = rules.findIndex((rule) =>
-    new RegExp(`<ID>\\s*${managedId}\\s*</ID>`).test(rule),
+    rule.includes(`<ID>${managedId}</ID>`),
   );
 
   if (managedIndex >= 0) {
