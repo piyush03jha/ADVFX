@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
 import { Center, OrbitControls, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
+import { ModelErrorBoundary } from "@/components/3d/ModelErrorBoundary";
 
 interface Product3DStageProps {
   model: string;
@@ -94,9 +95,17 @@ export default function Product3DStage({
         <directionalLight position={[4, 6, 5]} intensity={isDark ? 1.6 : 1.8} />
         <directionalLight position={[-4, 2, -3]} intensity={isDark ? 0.7 : 0.85} />
 
-        <Suspense fallback={<ModelLoadingFallback />}>
-          <ProductModel model={model} />
-        </Suspense>
+        <ModelErrorBoundary
+          fallback={
+            <mesh>
+              <planeGeometry args={[0, 0]} />
+            </mesh>
+          }
+        >
+          <Suspense fallback={<ModelLoadingFallback />}>
+            <ProductModel model={model} />
+          </Suspense>
+        </ModelErrorBoundary>
 
         <OrbitControls
           makeDefault
