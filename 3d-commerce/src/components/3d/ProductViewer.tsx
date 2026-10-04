@@ -402,7 +402,7 @@ export function ProductViewer({
 
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute bottom-4 left-1/2 z-20 -translate-x-1/2 rounded-full border border-foreground/10 bg-background/55 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.16em] text-muted backdrop-blur-md transition-opacity"
+        className="pointer-events-none absolute bottom-4 left-1/2 z-20 hidden -translate-x-1/2 rounded-full border border-foreground/10 bg-background/55 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.16em] text-muted backdrop-blur-md transition-opacity sm:block"
         style={{ opacity: isInteracting ? 0 : 0.72 }}
       >
         Hold & drag to explore
