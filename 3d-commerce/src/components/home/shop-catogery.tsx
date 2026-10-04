@@ -94,7 +94,7 @@ export function ShopByCategory() {
                   duration: 0.5,
                   delay: shouldReduceMotion ? 0 : Math.min(index * 0.04, 0.25),
                 }}
-                className="w-[68vw] shrink-0 snap-start min-[400px]:w-[58vw] sm:w-[42vw]"
+                className="w-[50vw] shrink-0 snap-start min-[400px]:w-[44vw] sm:w-[42vw]"
               >
                 <CategoryCard category={category} index={index} />
               </motion.div>
@@ -138,7 +138,7 @@ function CategoryCard({
     >
       <Card
         interactive
-        className="relative aspect-[1/1.28] rounded-2xl sm:aspect-[1/1.38] lg:aspect-[1/1.32]"
+        className="relative aspect-[1/1.38] rounded-2xl sm:aspect-[1/1.38] lg:aspect-[1/1.32]"
       >
         {resolveMediaUrl(category.imageUrl) ? (
           <img
@@ -160,13 +160,13 @@ function CategoryCard({
             size="sm"
             variant="default"
             tabIndex={-1}
-            className="h-8 w-8 !border-white/20 !bg-black/80 !text-white backdrop-blur-md sm:h-9 sm:w-9"
+            className="h-7 w-7 !border-white/20 !bg-black/80 !text-white backdrop-blur-md sm:h-9 sm:w-9"
           >
             <IconArrowUpRight size={14} stroke={1.7} />
           </IconButton>
         </div>
 
-        <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 lg:p-5">
+        <div className="absolute bottom-0 left-0 right-0 p-2.5 sm:p-4 lg:p-5">
           <Badge
             variant="default"
             className="!border-stone-200 !bg-[#f5f3ef] !px-2 !py-0.5 !text-[8px] !text-stone-900 shadow-md backdrop-blur-md dark:!border-white/20 dark:!bg-black/90 dark:!text-white sm:!px-2.5 sm:!py-1 sm:!text-[10px]"
