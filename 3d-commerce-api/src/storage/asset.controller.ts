@@ -104,10 +104,12 @@ export class AssetController {
 
     const [productId, ...rest] = segments;
     const storageKey = ["products", productId, ...rest].join("/");
-    const assetUrl = "/api/assets/" + storageKey.split("/").map(encodeURIComponent).join("/");
-
     const now = Date.now();
     const cachedUntil = this.validProducts.get(productId);
+
+    if (cachedUntil && cachedUntil <= now) {
+      this.validProducts.delete(productId);
+    }
 
     if (!cachedUntil || cachedUntil <= now) {
       const product = await this.prisma.product.findFirst({
