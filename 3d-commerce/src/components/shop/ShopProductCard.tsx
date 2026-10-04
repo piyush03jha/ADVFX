@@ -174,8 +174,7 @@ export function ShopProductCard({ product, priority = false }: ShopProductCardPr
             onClick={handleAddToCart}
             className="min-h-9 w-full px-2 text-[10px] font-semibold sm:min-h-11 sm:px-3 sm:text-sm"
           >
-            <IconShoppingBag size={14} stroke={1.8} aria-hidden="true" />
-            <span>{added ? "Added" : "Add to Cart"}</span>
+            <IconShoppingBag size={17} stroke={1.8} aria-hidden="true" />
           </Button>
 
           <Button
@@ -186,8 +185,7 @@ export function ShopProductCard({ product, priority = false }: ShopProductCardPr
             disabled={buying}
             className="min-h-9 w-full px-2 text-[10px] font-semibold sm:min-h-11 sm:px-3 sm:text-sm"
           >
-            <IconBolt size={14} stroke={1.8} aria-hidden="true" />
-            <span>{buying ? "Opening…" : "Buy Now"}</span>
+            <IconBolt size={17} stroke={1.8} aria-hidden="true" />
           </Button>
         </div>
       </div>
