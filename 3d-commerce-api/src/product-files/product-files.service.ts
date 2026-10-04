@@ -8,7 +8,6 @@ import { randomUUID } from "node:crypto";
 import { ProductFileFormat } from "@prisma/client";
 
 import { PrismaService } from "../prisma/prisma.service";
-import { ProcessingJobsService } from "../processing-jobs/processing-jobs.service";
 import { StorageService } from "../storage/storage.service";
 
 import {
@@ -40,7 +39,6 @@ export class ProductFilesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
-    private readonly processingJobs: ProcessingJobsService,
     private readonly contentValidator: FileContentValidationService,
   ) {}
 
@@ -57,16 +55,9 @@ export class ProductFilesService {
     await this.ensureProductExists(productId);
 
     const prepared = await this.validateUploadedFile(file);
-
-    if (!prepared.format) {
+    if (prepared.format !== ProductFileFormat.GLB) {
       throw new BadRequestException(
-        "Unable to determine product file format",
-      );
-    }
-
-    if (!prepared.fileType) {
-      throw new BadRequestException(
-        "Unable to determine product file type",
+        "Only GLB files are accepted for customer-facing 3D product models. Upload a web-ready .glb file.",
       );
     }
 
@@ -76,65 +67,56 @@ export class ProductFilesService {
       buffer: file.buffer,
     });
 
-    // Product file keys are content-addressed. Reuse an existing database row
-    // when the exact same binary has already been uploaded for this product.
+    if (!stored.storageUrl) {
+      await this.storage.delete(stored.storageKey).catch(() => undefined);
+      throw new BadRequestException(
+        "3D model storage is not publicly configured. Set STORAGE_PUBLIC_BASE_URL to the CDN asset URL.",
+      );
+    }
+
     const existingFile = await this.prisma.productFile.findFirst({
       where: { productId, storageKey: stored.storageKey },
     });
-    if (existingFile) {
-      return this.serializeFile(existingFile);
-    }
-
-    let createdFileId: string | null = null;
+    if (existingFile) return this.serializeFile(existingFile);
 
     try {
-      const created =
-        await this.prisma.productFile.create({
+      const created = await this.prisma.productFile.create({
+        data: {
+          productId,
+          originalName: prepared.originalName,
+          storageKey: stored.storageKey,
+          storageUrl: stored.storageUrl,
+          format: ProductFileFormat.GLB,
+          fileType: "MODEL",
+          mimeType: "model/gltf-binary",
+          fileSize: BigInt(file.buffer.length),
+          processingStatus: "COMPLETED",
+        },
+      });
+
+      await this.prisma.$transaction(async (tx) => {
+        await tx.productMedia.deleteMany({
+          where: { productId, type: "MODEL_PREVIEW" },
+        });
+        await tx.productMedia.create({
           data: {
             productId,
-            originalName: prepared.originalName,
-            storageKey: stored.storageKey,
-            storageUrl: stored.storageUrl,
-            format: prepared.format,
-            fileType: prepared.fileType,
-            mimeType: prepared.mimeType,
-            fileSize: BigInt(file.buffer.length),
-            processingStatus: "PENDING",
+            type: "MODEL_PREVIEW",
+            url: stored.storageUrl!,
+            altText: file.originalname,
+            sortOrder: 0,
+            isPrimary: true,
           },
         });
-
-      createdFileId = created.id;
-
-      await this.processingJobs.create(
-        created.id,
-      );
+      });
 
       return this.serializeFile(created);
     } catch (error) {
-      if (createdFileId) {
-        try {
-          await this.prisma.productFile.delete({
-            where: {
-              id: createdFileId,
-            },
-          });
-        } catch {
-          // Preserve original error.
-        }
-      }
-
-      try {
-        await this.storage.delete(
-          stored.storageKey,
-        );
-      } catch {
-        // Preserve original error.
-      }
-
+      await this.prisma.productFile.delete({ where: { id: (await this.prisma.productFile.findFirst({ where: { productId, storageKey: stored.storageKey }, select: { id: true } }))?.id ?? "" }).catch(() => undefined);
+      await this.storage.delete(stored.storageKey).catch(() => undefined);
       throw error;
     }
   }
-
   async findAll(
     productId: string,
   ) {
