@@ -48,7 +48,7 @@ export function ProductSpecs({
 
       <div
         className="
-          mt-7
+          mt-4
           overflow-hidden
           border-y
           border-white/[0.07]
