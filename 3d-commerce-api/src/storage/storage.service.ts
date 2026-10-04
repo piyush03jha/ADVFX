@@ -10,7 +10,7 @@ import { Readable } from "node:stream";
 import { basename, extname, join, resolve, sep } from "node:path";
 import type { SaveProductFileOptions, StoredFile } from "./storage.types";
 
-type StorageProvider = "local" | "s3" | "r2";
+type StorageProvider = "local" | "s3";
 
 @Injectable()
 export class StorageService {
@@ -21,11 +21,15 @@ export class StorageService {
   private readonly publicBaseUrl = (process.env.STORAGE_PUBLIC_BASE_URL ?? "").replace(/\/$/, "");
   private readonly accessKey = process.env.STORAGE_ACCESS_KEY_ID ?? "";
   private readonly secretKey = process.env.STORAGE_SECRET_ACCESS_KEY ?? "";
-  private readonly region = process.env.STORAGE_REGION ?? (this.provider === "r2" ? "auto" : "us-east-1");
+  private readonly region = process.env.STORAGE_REGION ?? "us-east-1";
 
   constructor() {
-    if (this.provider !== "local" && (!this.bucket || !this.endpoint || !this.accessKey || !this.secretKey)) {
-      throw new Error("Remote storage requires STORAGE_BUCKET, STORAGE_ENDPOINT, STORAGE_ACCESS_KEY_ID and STORAGE_SECRET_ACCESS_KEY");
+    if (!["local", "s3"].includes(this.provider)) {
+      throw new Error(`Unsupported storage provider: ${this.provider}`);
+    }
+
+    if (this.provider === "s3" && (!this.bucket || !this.endpoint || !this.accessKey || !this.secretKey)) {
+      throw new Error("S3-compatible storage requires STORAGE_BUCKET, STORAGE_ENDPOINT, STORAGE_ACCESS_KEY_ID and STORAGE_SECRET_ACCESS_KEY");
     }
   }
 
