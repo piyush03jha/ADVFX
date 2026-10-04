@@ -254,7 +254,7 @@ export default function AdminOrdersPage() {
                       {NEXT[order.status].map((status) => <option key={status} value={status}>{label(status)}</option>)}
                     </select>
                   ) : null}
-                  <Link href={`/admin/orders/${order.id}`} className="inline-flex items-center gap-2 rounded-xl bg-foreground px-3 py-2 text-[10px] font-semibold text-background">
+                  <Link href={`/admin/orders/${order.id}`} className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-[10px] font-semibold text-white transition hover:bg-primary-hover">
                     <IconTruck size={13} /> Fulfill
                   </Link>
                 </div>
