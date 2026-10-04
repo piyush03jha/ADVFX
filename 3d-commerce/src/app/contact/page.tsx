@@ -10,6 +10,7 @@ import {
 } from "@tabler/icons-react";
 
 import { Navbar } from "@/components/layout/SiteNavbar";
+import { Button } from "@/components/ui/Button";
 
 const whatsappUrl = process.env.NEXT_PUBLIC_WHATSAPP_URL || "/contact";
 
@@ -166,13 +167,10 @@ export default async function ContactPage() {
                 </div>
 
                 <div className="border-t border-border p-6 lg:border-l lg:border-t-0 lg:p-8">
-                  <Link
-                    href="/contact?subject=Bulk%20Order"
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-foreground px-6 py-3 text-xs font-semibold text-background transition hover:opacity-90 sm:w-auto"
-                  >
+                  <Button href="/contact?subject=Bulk%20Order" variant="primary" size="md" className="w-full sm:w-auto">
                     Discuss bulk order
                     <IconPackage size={15} />
-                  </Link>
+                  </Button>
                 </div>
               </div>
             </section>
