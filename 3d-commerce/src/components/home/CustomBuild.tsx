@@ -87,10 +87,11 @@ export function CustomBuild() {
             className="relative flex min-h-[205px] items-center justify-center overflow-hidden bg-[#eee7dd] sm:min-h-[420px] lg:min-h-full"
           >
             <img
-              src="/catogeries/custom_section.webp"
-              alt="Couple custom 3D figurine creation"
-              loading="lazy"
-              className="h-auto w-full object-contain"
+              src="/catogeries/coupl.png"
+              alt="Custom 3D printed collectible"
+              loading="eager"
+              decoding="async"
+              className="absolute inset-0 h-full w-full object-contain object-center"
             />
           </motion.div>
         </div>
