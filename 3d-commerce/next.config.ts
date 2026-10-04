@@ -10,6 +10,7 @@ const nextConfig: NextConfig = {
       { pathname: "/storage/**" },
       { pathname: "/catogeries/**" },
       { pathname: "/api/assets/**" },
+      { pathname: "/custom-3d-creation-studio.webp" },
     ],
     formats: ["image/avif", "image/webp"],
     deviceSizes: [360, 480, 640, 768, 1024, 1280, 1536],
