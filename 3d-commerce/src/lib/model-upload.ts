@@ -45,6 +45,9 @@ export async function uploadModelDirect(
   const session = (await post("", { size: file.size })) as UploadSession;
   const etags: UploadedPart[] = [];
   let doneBytes = 0;
+  const sessionController = new AbortController();
+  const onSessionAbort = () => sessionController.abort();
+  signal?.addEventListener("abort", onSessionAbort, { once: true });
 
   const putPart = async (part: UploadSession["parts"][number]) => {
     const start = (part.partNumber - 1) * session.partSize;
@@ -55,13 +58,15 @@ export async function uploadModelDirect(
 
     for (let attempt = 0; ; attempt += 1) {
       const controller = new AbortController();
-      const timer = window.setTimeout(() => controller.abort(), 90_000);
+      const timer = window.setTimeout(() => controller.abort(), 180_000);
 
       const onAbort = () => controller.abort();
+      const onSession = () => controller.abort();
       signal?.addEventListener("abort", onAbort, { once: true });
+      sessionController.signal.addEventListener("abort", onSession, { once: true });
 
       try {
-        if (signal?.aborted) {
+        if (signal?.aborted || sessionController.signal.aborted) {
           throw new DOMException("Upload cancelled", "AbortError");
         }
 
@@ -122,11 +127,12 @@ export async function uploadModelDirect(
             ? Number((error as { status?: number }).status)
             : undefined;
 
-        if (signal?.aborted) {
+        if (signal?.aborted || sessionController.signal.aborted) {
           throw error;
         }
 
         if (status === 400 || status === 403 || attempt >= 6) {
+          sessionController.abort();
           throw error;
         }
 
@@ -140,6 +146,7 @@ export async function uploadModelDirect(
       } finally {
         window.clearTimeout(timer);
         signal?.removeEventListener("abort", onAbort);
+        sessionController.signal.removeEventListener("abort", onSession);
       }
     }
   };
@@ -147,15 +154,19 @@ export async function uploadModelDirect(
   let nextPart = 0;
   const workers = Math.min(3, session.parts.length);
 
-  await Promise.all(
-    Array.from({ length: workers }, async () => {
-      while (nextPart < session.parts.length) {
-        const part = session.parts[nextPart];
-        nextPart += 1;
-        await putPart(part);
-      }
-    }),
-  );
+  try {
+    await Promise.all(
+      Array.from({ length: workers }, async () => {
+        while (nextPart < session.parts.length) {
+          const part = session.parts[nextPart];
+          nextPart += 1;
+          await putPart(part);
+        }
+      }),
+    );
+  } finally {
+    signal?.removeEventListener("abort", onSessionAbort);
+  }
 
   return post("/complete", {
     key: session.key,
