@@ -212,6 +212,25 @@ function activePrice(product: CatalogProduct): CatalogPrice | undefined {
   );
 }
 
+function assetUrl(url: string): string {
+  const value = url.trim();
+  if (!value) return "";
+
+  const configuredBase = process.env.NEXT_PUBLIC_ASSET_BASE_URL?.trim().replace(/\\/$/, "");
+  if (configuredBase) {
+    try {
+      const parsed = new URL(value, "https://voxel3d.org");
+      if (parsed.pathname.startsWith("/api/assets/")) {
+        return configuredBase + parsed.pathname + parsed.search;
+      }
+    } catch {
+      return value;
+    }
+  }
+
+  return value;
+}
+
 function primaryImage(product: CatalogProduct): string {
   return product.media.find((media) => media.type === "IMAGE" && media.isPrimary)?.url
     ?? product.media.find((media) => media.type === "IMAGE")?.url
@@ -224,8 +243,8 @@ function primaryModel(product: CatalogProduct): string {
   );
 
   return (
-    models.find((media) => media.isPrimary)?.url ??
-    models[0]?.url ??
+    assetUrl(models.find((media) => media.isPrimary)?.url ?? "") ||
+    assetUrl(models[0]?.url ?? "") ||
     ""
   );
 }
