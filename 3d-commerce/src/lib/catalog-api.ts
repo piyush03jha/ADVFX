@@ -218,18 +218,9 @@ function primaryImage(product: CatalogProduct): string {
     ?? "/catogeries/1.jpg";
 }
 
-function isOptimizedModelUrl(url: string): boolean {
-  // Storefront 3D must only consume artifacts produced by the processing
-  // pipeline. Raw content-addressed uploads live directly under the product
-  // directory and must never be rendered in customer-facing WebGL.
-  return url.includes("/generated/");
-}
-
 function primaryModel(product: CatalogProduct): string {
   const models = product.media.filter(
-    (media) =>
-      media.type === "MODEL_PREVIEW" &&
-      isOptimizedModelUrl(media.url),
+    (media) => media.type === "MODEL_PREVIEW" && media.url.trim(),
   );
 
   return (
