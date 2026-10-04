@@ -21,7 +21,6 @@ import { StorageService } from "../storage/storage.service";
 import { FileContentValidationService } from "../product-files/file-content-validation.service";
 import { ProcessingJobs2DWorker } from "./processing-jobs-2d.worker";
 import { ImageProcessingService } from "./image-processing.service";
-import { ModelConversionService } from "./model-conversion.service";
 
 @Injectable()
 export class ProcessingJobsWorker
@@ -63,7 +62,6 @@ export class ProcessingJobsWorker
     private readonly contentValidator: FileContentValidationService,
     private readonly processingJobs2DWorker: ProcessingJobs2DWorker,
     private readonly imageProcessingService: ImageProcessingService,
-    private readonly modelConversionService: ModelConversionService,
   ) {}
 
   private getPositiveNumber(value: string | undefined, fallback: number): number {
@@ -651,8 +649,6 @@ export class ProcessingJobsWorker
     await fs.mkdir(tempDir, { recursive: true });
 
     try {
-      // Large models are validated and downloaded by ModelConversionService
-      // directly to disk. Do not materialize a 25–100 MB GLB in the worker.
       if (productFile.fileType === ProductFileType.MODEL ||
           (productFile.fileType === ProductFileType.DOCUMENT && productFile.format === ProductFileFormat.PDF)) {
         // ModelConversionService performs file-level validation after streaming
@@ -698,8 +694,7 @@ export class ProcessingJobsWorker
 
       if (productFile.fileType === ProductFileType.DOCUMENT) {
         if (productFile.format === ProductFileFormat.PDF) {
-          await this.modelConversionService.convert(productFile.id, jobId);
-          return;
+          throw new Error("PDF/model conversion has been removed from the product-file pipeline.");
         }
 
         await this.processingJobs2DWorker.processFile(productFile);
@@ -707,8 +702,7 @@ export class ProcessingJobsWorker
       }
 
       if (productFile.fileType === ProductFileType.MODEL) {
-        await this.modelConversionService.convert(productFile.id, jobId);
-        return;
+        throw new Error("3D model conversion has been removed. Upload a web-ready GLB directly.");
       }
 
       throw new Error(
