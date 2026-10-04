@@ -88,11 +88,8 @@ export default function AdminProducts(){
         const gd=await gr.json().catch(()=>null);
         if(!gr.ok)throw new Error(gd?.message||gd?.error||"Product created, but GLB upload failed.");
 
-        const mr=await fetch("/api/products/"+p.id+"/media",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({type:"MODEL_PREVIEW",url:gd.storageUrl,isPrimary:true,altText:productGlb.name})});
-        if(!mr.ok){
-          const md=await mr.json().catch(()=>null);
-          throw new Error(md?.message||"GLB uploaded, but model preview could not be linked.");
-        }
+        // Do not publish the raw upload as MODEL_PREVIEW.
+        // The processing worker will replace it with the optimized GLB when ready.
       }
       setForm({name:"",slug:"",description:"",categoryId:"",status:"ACTIVE",stock:"0",isFeatured:false,material:"",scale:"",dimensions:"",height:"",base:"",packaging:"",weight:""});
       setProductImages([]);
@@ -146,10 +143,9 @@ export default function AdminProducts(){
       const data=await response.json().catch(()=>null);
       if(!response.ok)throw new Error(data?.message||data?.error||"GLB upload failed");
       if(!data?.storageUrl)throw new Error("GLB upload succeeded but no storage URL was returned.");
-      const media=await fetch("/api/products/"+id+"/media",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({type:"MODEL_PREVIEW",url:data.storageUrl,isPrimary:true,altText:file.name})});
-      const mediaData=await media.json().catch(()=>null);
-      if(!media.ok)throw new Error(mediaData?.message||"GLB uploaded but model preview could not be linked.");
-      setAssetMessage("3D model uploaded and linked to the product.");
+      // Keep the raw upload private to the processing pipeline. The worker
+      // publishes MODEL_PREVIEW only after optimization + validation succeeds.
+      setAssetMessage("3D model uploaded. Optimizing for web…");
       const fr=await fetch("/api/products/"+id+"/files",{cache:"no-store"});if(fr.ok)setAssetFiles(await fr.json());
       await load();
     }catch(e){setAssetMessage(e instanceof Error?e.message:"GLB upload failed.")}
