@@ -56,7 +56,7 @@ export function ProductGallery({ product }: ProductGalleryProps) {
     }));
 
   const media: MediaItem[] = [
-    ...(imageItems.length > 0 ? [imageItems[0]] : []),
+    ...imageItems,
     ...(product.model.trim()
       ? [{
           type: "model" as const,
@@ -64,7 +64,6 @@ export function ProductGallery({ product }: ProductGalleryProps) {
           label: "Interactive 3D",
         }]
       : []),
-    ...imageItems.slice(1),
   ];
 
   const active = media[Math.min(activeIndex, media.length - 1)];
@@ -93,62 +92,8 @@ export function ProductGallery({ product }: ProductGalleryProps) {
     ? "border-white/10 bg-black/45 text-white/65"
     : "border-black/10 bg-white/80 text-foreground/70 shadow-sm";
 
-  const renderMedia = (item: MediaItem, index: number) => (
-    <div
-      key={item.label + "-" + index}
-      className={
-        "relative overflow-hidden rounded-[22px] border border-border " +
-        (isDark
-          ? "bg-[#08080a] shadow-[0_24px_80px_rgba(0,0,0,0.24)]"
-          : "bg-surface-elevated shadow-[0_18px_60px_rgba(24,24,27,0.08)]")
-      }
-    >
-      <div
-        aria-hidden="true"
-        className={
-          "pointer-events-none absolute inset-0 z-10 " +
-          (isDark
-            ? "bg-[radial-gradient(circle_at_50%_45%,rgba(139,92,246,0.16),transparent_58%)]"
-            : "bg-[radial-gradient(circle_at_50%_45%,rgba(139,92,246,0.10),transparent_62%)]")
-        }
-      />
-
-      {item.type === "image" ? (
-        <div className="relative aspect-[4/3] w-full">
-          <Image
-            src={item.src}
-            alt={product.name + " — " + item.label}
-            fill
-            priority={index === 0}
-            sizes="100vw"
-            className="object-contain p-3"
-            onError={() => undefined}
-          />
-        </div>
-      ) : (
-        <div className="relative aspect-[4/3] w-full">
-          <Product3DStage model={item.src} name={product.name} theme={theme} />
-        </div>
-      )}
-
-      <div
-        className={
-          "pointer-events-none absolute bottom-3 left-3 z-20 rounded-full border px-3 py-1.5 text-[8px] uppercase tracking-[0.14em] backdrop-blur-xl " +
-          overlayClass
-        }
-      >
-        {item.label}
-      </div>
-    </div>
-  );
-
   return (
     <div className="w-full min-w-0">
-      <div className="space-y-3 sm:hidden">
-        {media.map((item, index) => renderMedia(item, index))}
-      </div>
-
-      <div className="hidden sm:block">
       <div
         id="product-media-stage"
         className={
@@ -225,7 +170,7 @@ export function ProductGallery({ product }: ProductGalleryProps) {
 
       </div>
 
-      <div className="mt-3 hidden grid-cols-2 gap-2 sm:grid sm:grid-cols-4 sm:gap-3">
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
         {media.map((item, index) => {
           const selected = index === activeIndex;
 
