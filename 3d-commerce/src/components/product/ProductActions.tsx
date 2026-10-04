@@ -121,7 +121,7 @@ export function ProductActions({ product, selectedVariantId, quantity, onVariant
   };
 
   return (
-    <div className="mt-7 w-full">
+    <div className="mt-5 w-full sm:mt-7">
       {variants.length > 0 ? (
         <div>
           <div className="mb-3 flex items-baseline justify-between gap-3">
@@ -168,7 +168,7 @@ export function ProductActions({ product, selectedVariantId, quantity, onVariant
         </div>
       )}
 
-      <div className="mt-5">
+      <div className="mt-4 sm:mt-5">
         <p className="mb-2 text-[9px] font-medium uppercase tracking-[0.18em] text-primary">
           Quantity
         </p>
@@ -199,7 +199,7 @@ export function ProductActions({ product, selectedVariantId, quantity, onVariant
         </div>
       </div>
 
-      <div className="mt-5 flex items-baseline gap-3">
+      <div className="mt-4 flex items-baseline gap-2 sm:mt-5 sm:gap-3">
         <p className="rounded-full bg-red-500 px-4 py-1.5 text-xl font-bold tracking-tight text-white shadow-[0_8px_24px_rgba(239,68,68,0.18)]">
           ₹{(displayPrice * quantity).toLocaleString("en-IN")}
         </p>
@@ -217,7 +217,7 @@ export function ProductActions({ product, selectedVariantId, quantity, onVariant
         </p>
       ) : null}
 
-      <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
+      <div className="mt-4 grid grid-cols-1 gap-2 sm:mt-5 sm:grid-cols-2">
         <Button
           type="button"
           onClick={() => void addToCart()}
