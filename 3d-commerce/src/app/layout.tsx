@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} h-full antialiased`}>
-      <body className="flex min-h-full flex-col">
+      <head>\n        <link rel="preconnect" href="https://assets.voxel3d.org" crossOrigin="anonymous" />\n        <link rel="dns-prefetch" href="https://assets.voxel3d.org" />\n      </head>\n      <body className="flex min-h-full flex-col">
         <AuthProvider>
           <ThemeProvider>
             <AddressProvider>
