@@ -51,8 +51,8 @@ export function AdminCard({
   className?: string;
 }) {
   return (
-    <Card className={`overflow-hidden p-5 sm:p-6 ${className}`}>
-      {children}
+    <Card className={`overflow-hidden ${className}`}>
+      <div className="p-5 sm:p-6">{children}</div>
     </Card>
   );
 }
