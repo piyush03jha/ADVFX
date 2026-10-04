@@ -10,11 +10,12 @@ import {
 } from "react";
 
 import { Canvas, useFrame } from "@react-three/fiber";
-import { Environment, useGLTF } from "@react-three/drei";
+import { Environment, Html, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 
 import { HERO_MODEL_ROTATION_MS } from "@/config/hero-motion";
 import type { HeroProduct } from "@/config/hero-products";
+import { useModelUrl } from "@/lib/useModelUrl";
 
 const ENTER_DURATION = 0.85;
 const EXIT_DURATION = 0.7;
@@ -48,7 +49,7 @@ interface HeroModelProps {
   onLoaded?: () => void;
 }
 
-function HeroModel({
+function LoadedHeroModel({
   path,
   mode,
   interactionRef,
@@ -196,6 +197,42 @@ function HeroModel({
         <primitive object={preparedModel.model} />
       </group>
     </group>
+  );
+}
+
+function HeroModel({
+  path,
+  mode,
+  interactionRef,
+  isInteractionPaused = false,
+  onLoaded,
+}: HeroModelProps) {
+  const { blobUrl, progress, error, retry } = useModelUrl(path);
+
+  if (error) {
+    return (
+      <Html center>
+        <button
+          type="button"
+          onClick={retry}
+          className="rounded-full border border-white/15 bg-black/70 px-4 py-2 text-[10px] font-medium uppercase tracking-[0.14em] text-white backdrop-blur-md"
+        >
+          Retry 3D · {Math.max(0, progress)}%
+        </button>
+      </Html>
+    );
+  }
+
+  if (!blobUrl) return null;
+
+  return (
+    <LoadedHeroModel
+      path={blobUrl}
+      mode={mode}
+      interactionRef={interactionRef}
+      isInteractionPaused={isInteractionPaused}
+      onLoaded={onLoaded}
+    />
   );
 }
 
