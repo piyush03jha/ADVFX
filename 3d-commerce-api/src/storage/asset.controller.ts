@@ -5,6 +5,8 @@ import { StorageService } from "./storage.service";
 
 @Controller("assets")
 export class AssetController {
+  private readonly logger = new Logger(AssetController.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
@@ -63,6 +65,7 @@ export class AssetController {
   @Get("products/*")
   async getProductAsset(
     @Param() params: Record<string, string | undefined>,
+    @Res({ passthrough: true }) reply: FastifyReply,
   ): Promise<StreamableFile> {
     const wildcard = params["splat"] ?? params["*"] ?? params["0"] ?? "";
     const normalized = decodeURIComponent(wildcard).replace(/^\/+/, "");
@@ -126,15 +129,21 @@ export class AssetController {
     }
 
     try {
-      const buffer = await this.storage.read(storageKey);
-      return new StreamableFile(buffer, {
-        type:
-          mimeType ??
-          this.storage.getContentTypeForStorageKey(storageKey),
-        length: buffer.length,
+      const { stream, size } = await this.storage.openReadStream(storageKey);
+      reply.header("Cache-Control", "public, max-age=31536000, immutable");
+      if (size !== undefined) {
+        reply.header("Content-Length", String(size));
+      }
+      return new StreamableFile(stream, {
+        type: mimeType ?? this.storage.getContentTypeForStorageKey(storageKey),
       });
-    } catch {
-      throw new NotFoundException("Asset not found");
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      this.logger.error(
+        `Storage read failed for ${storageKey}`,
+        error instanceof Error ? error.stack : String(error),
+      );
+      throw new BadGatewayException("Storage is unavailable");
     }
   }
 }
