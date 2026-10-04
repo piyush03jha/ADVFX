@@ -163,13 +163,12 @@ export class StorageService {
   async openReadStreamRange(
     storageKey: string,
     start: number,
-    end: number,
+    end?: number,
   ): Promise<{ stream: Readable; size: number; totalSize: number; start: number; end: number }> {
     if (
       !Number.isInteger(start) ||
-      !Number.isInteger(end) ||
       start < 0 ||
-      end < start
+      (end !== undefined && (!Number.isInteger(end) || end < start))
     ) {
       throw new BadRequestException("Invalid byte range");
     }
@@ -181,7 +180,7 @@ export class StorageService {
         throw new NotFoundException("Stored file not found");
       });
       if (start >= info.size) throw new NotFoundException("Stored file not found");
-      const boundedEnd = Math.min(end, info.size - 1);
+      const boundedEnd = end === undefined ? info.size - 1 : Math.min(end, info.size - 1);
       return {
         stream: createReadStream(path, { start, end: boundedEnd }),
         size: boundedEnd - start + 1,
@@ -191,11 +190,12 @@ export class StorageService {
       };
     }
 
-    const boundedEnd = end;
+    const rangeHeader =
+      end === undefined ? `bytes=${start}-` : `bytes=${start}-${end}`;
     const response = await this.requestObjectResponse(
       "GET",
       storageKey,
-      { range: `bytes=${start}-${boundedEnd}` },
+      { range: rangeHeader },
     );
     if (!response.body) throw new NotFoundException("Stored file not found");
 
