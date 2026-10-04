@@ -156,15 +156,6 @@ export class ModelMultipartService {
       .map(encodeURIComponent)
       .join("/")}`;
 
-    const oldFiles = await this.prisma.productFile.findMany({
-      where: {
-        productId,
-        fileType: "MODEL",
-        format: "GLB",
-      },
-      select: { id: true, storageKey: true },
-    });
-
     const created = await this.prisma.$transaction(async (tx) => {
       const file = await tx.productFile.create({
         data: {
@@ -188,16 +179,6 @@ export class ModelMultipartService {
     // The staging object remains private-by-convention until the worker
     // publishes an optimized immutable model URL.
     const job = await this.processingJobs.create(created.id);
-
-    for (const old of oldFiles) {
-      if (old.storageKey === body.key) continue;
-      try {
-        await this.storage.delete(old.storageKey);
-        await this.prisma.productFile.delete({ where: { id: old.id } });
-      } catch {
-        // Replacing a model must not fail after the new model is published.
-      }
-    }
 
     return {
       id: created.id,
