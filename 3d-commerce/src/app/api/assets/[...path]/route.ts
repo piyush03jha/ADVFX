@@ -35,10 +35,7 @@ export async function GET(
   }
 
   const cache = (globalThis as { caches?: { default?: Cache } }).caches?.default;
-  const range = request.headers.get("range");
-  const cacheUrl = new URL(request.url);
-  if (range) cacheUrl.searchParams.set("__range", range);
-  const cacheKey = new Request(cacheUrl.toString());
+  const cacheKey = new Request(request.url);
   const hit = await cache?.match(cacheKey);
   if (hit) return hit;
 
@@ -71,7 +68,9 @@ export async function GET(
       headers,
     });
 
-    if (cache) {
+    // Cloudflare Cache API does not use partial 206 responses as reusable
+    // full-object entries. Only cache complete responses.
+    if (cache && response.status === 200) {
       getCloudflareContext().ctx.waitUntil(cache.put(cacheKey, out.clone()));
     }
 
