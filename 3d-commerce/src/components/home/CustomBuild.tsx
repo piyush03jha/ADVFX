@@ -87,7 +87,7 @@ export function CustomBuild() {
             className="relative flex min-h-[205px] items-center justify-center overflow-hidden bg-surface sm:min-h-[420px] lg:min-h-full"
           >
             <img
-              src="/catogeries/coupl.png"
+              src="/catogeries/couple.png"
               alt="Custom 3D printed collectible"
               loading="eager"
               decoding="async"
