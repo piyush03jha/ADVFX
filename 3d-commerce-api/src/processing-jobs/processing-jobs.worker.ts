@@ -863,6 +863,32 @@ export class ProcessingJobsWorker
       this.logger.log(
         `Published optimized model ${created.id}: ${sourceStats.size} -> ${optimizedStats.size} bytes`,
       );
+
+      const replacedFiles = await this.prisma.productFile.findMany({
+        where: {
+          productId: productFile.productId,
+          fileType: ProductFileType.MODEL,
+          format: ProductFileFormat.GLB,
+          id: { notIn: [productFile.id, created.id] },
+        },
+        select: { id: true, storageKey: true },
+      });
+
+      for (const replaced of replacedFiles) {
+        await this.storage.delete(replaced.storageKey).catch((error) => {
+          this.logger.warn(
+            `Unable to delete replaced model ${replaced.id}: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        });
+
+        await this.prisma.productFile.delete({
+          where: { id: replaced.id },
+        }).catch((error) => {
+          this.logger.warn(
+            `Unable to delete replaced model row ${replaced.id}: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        });
+      }
     } catch (error) {
       await this.storage.delete(output.storageKey).catch(() => undefined);
       throw error;
