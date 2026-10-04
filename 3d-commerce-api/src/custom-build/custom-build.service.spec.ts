@@ -15,11 +15,12 @@ describe('CustomBuildService', () => {
     customRequestQuote: { upsert: jest.fn() },
   } as any;
   const notifications = { create: jest.fn() } as any;
+  const storage = {} as any;
   let service: CustomBuildService;
 
   beforeEach(() => {
     jest.resetAllMocks();
-    service = new CustomBuildService(prisma, notifications);
+    service = new CustomBuildService(prisma, notifications, storage);
   });
 
   it('creates a custom request with server-owned reference count', async () => {
