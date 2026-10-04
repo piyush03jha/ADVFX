@@ -12,7 +12,7 @@ interface Product3DStageProps {
 }
 
 function ProductModel({ model }: { model: string }) {
-  const { scene } = useGLTF(model);
+  const { scene } = useGLTF(model, false, true);
   return (
     <Center precise disableZ>
       <primitive object={scene} dispose={null} />
