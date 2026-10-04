@@ -22,6 +22,7 @@ import {
 } from "@tabler/icons-react";
 
 import { IconButton } from "@/components/ui/IconButton";
+import { ModelErrorBoundary } from "@/components/3d/ModelErrorBoundary";
 
 interface ProductViewerProps {
   model: string;
@@ -161,6 +162,13 @@ export function ProductViewer({
         "
       />
 
+      <ModelErrorBoundary
+        fallback={
+          <div className="flex h-full min-h-[420px] w-full items-center justify-center rounded-3xl border border-border bg-surface-elevated px-6 text-center text-xs text-muted">
+            3D preview unavailable
+          </div>
+        }
+      >
       <Canvas
         camera={{
           position: [0, 0, 4],
@@ -184,11 +192,20 @@ export function ProductViewer({
           intensity={1}
         />
 
-        <Suspense fallback={<ViewerLoader />}>
-          <ProductModel model={model} />
-
-          <Environment preset="studio" />
-        </Suspense>
+        <ModelErrorBoundary
+          fallback={
+            <Html center>
+              <div className="rounded-full border border-white/10 bg-black/60 px-3 py-2 text-[10px] uppercase tracking-[0.12em] text-white/60 backdrop-blur-md">
+                3D preview unavailable
+              </div>
+            </Html>
+          }
+        >
+          <Suspense fallback={<ViewerLoader />}>
+            <ProductModel model={model} />
+            <Environment preset="studio" />
+          </Suspense>
+        </ModelErrorBoundary>
 
         <OrbitControls
           enablePan={false}
@@ -204,6 +221,7 @@ export function ProductViewer({
 
         <CameraReset resetKey={resetKey} />
       </Canvas>
+      </ModelErrorBoundary>
 
       {/* Viewer label */}
 
