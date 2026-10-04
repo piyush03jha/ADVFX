@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from "@nestjs/comm
 import { createHash, createHmac, randomUUID } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
 import { StorageService } from "../storage/storage.service";
+import { ProcessingJobsService } from "../processing-jobs/processing-jobs.service";
 
 const PART_SIZE = 8 * 1024 * 1024;
 const MAX_SIZE = Number(process.env.MAX_MODEL_MB ?? 150) * 1024 * 1024;
@@ -19,6 +20,7 @@ export class ModelMultipartService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
+    private readonly processingJobs: ProcessingJobsService,
   ) {}
 
   private assertConfigured() {
@@ -47,7 +49,7 @@ export class ModelMultipartService {
 
     this.assertConfigured();
 
-    const key = `products/${productId}/models/${randomUUID()}.glb`;
+    const key = `products/${productId}/models/staging/${randomUUID()}.glb`;
     const uploadId = await this.createMultipartUpload(key);
     const total = Math.ceil(size / PART_SIZE);
 
@@ -173,28 +175,17 @@ export class ModelMultipartService {
           fileType: "MODEL",
           mimeType: "model/gltf-binary",
           fileSize: BigInt(body.size),
-          processingStatus: "COMPLETED",
-        },
-      });
-
-      await tx.productMedia.deleteMany({
-        where: { productId, type: "MODEL_PREVIEW" },
-      });
-
-      await tx.productMedia.create({
-        data: {
-          productId,
-          type: "MODEL_PREVIEW",
-          url,
-          altText: body.originalName?.trim() || "GLB model",
-          sortOrder: 0,
-          isPrimary: true,
+          processingStatus: "PENDING",
         },
       });
 
       return file;
     });
 
+    const job = await this.processingJobs.create(created.id);
+
+    // The staging object remains private-by-convention until the worker
+    // publishes an optimized immutable model URL.
     for (const old of oldFiles) {
       if (old.storageKey === body.key) continue;
       try {
@@ -210,6 +201,8 @@ export class ModelMultipartService {
       url,
       size: body.size,
       originalName: body.originalName?.trim() || "model.glb",
+      processingStatus: "PENDING",
+      jobId: job.id,
     };
   }
 
