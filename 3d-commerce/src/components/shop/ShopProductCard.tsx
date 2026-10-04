@@ -90,7 +90,7 @@ export function ShopProductCard({ product, priority = false }: ShopProductCardPr
 
   return (
     <Card interactive className="group h-full rounded-2xl">
-      <div className="relative aspect-[0.75/1] overflow-hidden bg-[#0c0c0c]">
+      <div className="relative aspect-[0.75/1] overflow-hidden bg-surface-elevated">
         <Link href={`/product/${product.slug}`} className="relative block h-full">
           <Image
             src={imageSrc}
