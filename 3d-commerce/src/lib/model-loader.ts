@@ -1,6 +1,7 @@
 const CHUNK_SIZE = 4 * 1024 * 1024;
 const MAX_RETRIES = 5;
 const CACHE_NAME = "voxel3d-glb-v1";
+const SMALL_MODEL_FULL_DOWNLOAD_SIZE = 12 * 1024 * 1024;
 
 const inFlight = new Map<string, Promise<string>>();
 const objectUrls = new Map<string, string>();
@@ -200,7 +201,37 @@ export async function loadModelBuffer(
 
     let buffer: ArrayBuffer;
 
-    if (header.byteLength >= total) {
+    // Small optimized models benefit from one complete GET: it is cacheable by
+    // Cloudflare as a 200 response and avoids multiple range round trips.
+    // If that request fails, fall back to the resumable range path below.
+    let usedCompleteDownload = false;
+
+    if (total <= SMALL_MODEL_FULL_DOWNLOAD_SIZE && header.byteLength < total) {
+      try {
+        const response = await fetchWithRetry(
+          normalizedUrl,
+          {
+            headers: {
+              Accept: "model/gltf-binary,application/octet-stream",
+            },
+          },
+          signal,
+        );
+        const complete = await response.arrayBuffer();
+        const declaredTotal = validateGlbHeader(complete);
+        if (complete.byteLength !== declaredTotal || declaredTotal !== total) {
+          throw new Error("Complete GLB response size does not match its header");
+        }
+        buffer = complete;
+        usedCompleteDownload = true;
+      } catch {
+        // Fall through to the resumable range path.
+      }
+    }
+
+    if (usedCompleteDownload) {
+      // The complete response is already validated and assigned.
+    } else if (header.byteLength >= total) {
       buffer = header.slice(0, total);
     } else {
       const output = new Uint8Array(total);
