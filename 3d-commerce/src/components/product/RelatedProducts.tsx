@@ -108,10 +108,22 @@ export function RelatedProducts({
 
       <div
         className="
-          grid
-          grid-cols-2
+          -mx-1
+          flex
+          snap-x
+          snap-mandatory
           gap-3
+          overflow-x-auto
+          px-1
+          pb-2
+          [scrollbar-width:none]
+          [&::-webkit-scrollbar]:hidden
+          sm:mx-0
+          sm:grid
           sm:grid-cols-3
+          sm:overflow-visible
+          sm:px-0
+          sm:pb-0
           lg:grid-cols-4
         "
       >
@@ -121,7 +133,7 @@ export function RelatedProducts({
             href={`/product/${product.slug}`}
             scroll={true}
             onClick={handleProductClick}
-            className="group"
+            className="group w-[190px] shrink-0 snap-start sm:w-auto"
           >
             <Card
               interactive
