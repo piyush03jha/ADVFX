@@ -53,9 +53,9 @@ export function NewArrivals() {
           </Button>
         </motion.div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4">
+        <div className="flex gap-3 overflow-x-auto overscroll-x-contain pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-2 sm:gap-5 sm:overflow-visible sm:pb-0 lg:grid-cols-4">
           {products.map((product, index) => (
-            <motion.div key={product.id} initial={animationInitial} whileInView={animationWhileInView} viewport={{ once: true, amount: 0.1 }} transition={{ duration: 0.55, delay: shouldReduceMotion ? 0 : index * 0.06, ease: [0.22, 1, 0.36, 1] }} className="min-w-0">
+            <motion.div key={product.id} initial={animationInitial} whileInView={animationWhileInView} viewport={{ once: true, amount: 0.1 }} transition={{ duration: 0.55, delay: shouldReduceMotion ? 0 : index * 0.06, ease: [0.22, 1, 0.36, 1] }} className="w-[190px] shrink-0 snap-start sm:w-auto">
               <ProductCard product={product} />
             </motion.div>
           ))}
