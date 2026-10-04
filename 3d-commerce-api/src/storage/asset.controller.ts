@@ -153,7 +153,7 @@ export class AssetController {
       reply.header("Accept-Ranges", "bytes");
 
       if (range) {
-        const match = /^bytes=(\\d+)-(\\d*)$/.exec(range);
+        const match = /^bytes=(\d+)-(\d*)$/.exec(range);
         if (!match) {
           return reply
             .code(416)
