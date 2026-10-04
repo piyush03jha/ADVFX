@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { IconChartBar, IconChevronRight, IconLayoutDashboard, IconLogout, IconMapPin, IconPackage, IconSettings, IconShoppingBag, IconSearch, IconMessageCircle, IconRotate2, IconTags, IconUsers, IconX, IconCategory, IconClipboardList, IconHistory, IconCpu } from "@tabler/icons-react";
 import { Button } from "@/components/ui/Button";
 import { IconButton } from "@/components/ui/IconButton";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 type AdminUser={id:string;name:string|null;email:string;role:string};
 
@@ -64,7 +65,7 @@ export default function AdminLayout({children}:{children:React.ReactNode}){
       <div className="min-w-0 flex-1">
         <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur-xl"><div className="flex h-16 items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3"><IconButton label="Open navigation" onClick={()=>setOpen(true)} className="lg:hidden"><span className="block h-4 w-4 border-y border-foreground/70"/></IconButton><div><p className="text-[9px] uppercase tracking-[0.18em] text-muted">Admin workspace</p><p className="mt-0.5 text-xs font-medium">{activeLabel}</p></div></div>
-          <Button href="/shop" variant="ghost" size="sm">View storefront ↗</Button>
+          <div className="flex items-center gap-1"><ThemeToggle /><Button href="/shop" variant="ghost" size="sm">View storefront ↗</Button></div>
         </div></header>
         {children}
       </div>
