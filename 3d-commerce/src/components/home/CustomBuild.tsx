@@ -18,40 +18,40 @@ export function CustomBuild() {
   return (
     <section className="relative overflow-hidden py-16 sm:py-24 lg:py-32">
       <Container>
-        <div className="grid overflow-hidden rounded-[1.75rem] border border-border bg-surface lg:grid-cols-[1.05fr_0.95fr]">
+        <div className="grid overflow-hidden rounded-[1.5rem] border border-border bg-surface lg:grid-cols-[1.05fr_0.95fr]">
           <motion.div
             initial={reduceMotion ? false : { opacity: 0, y: 18 }}
             whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.2 }}
             transition={{ duration: 0.65 }}
-            className="flex flex-col justify-center px-6 py-10 sm:px-10 sm:py-14 lg:px-14 lg:py-16"
+            className="flex flex-col justify-center px-5 py-7 sm:px-10 sm:py-14 lg:px-14 lg:py-16"
           >
             <p className="text-[9px] font-medium uppercase tracking-[0.25em] text-primary sm:text-[10px]">
               Custom made
             </p>
 
-            <h2 className="mt-4 max-w-xl font-serif text-[2.7rem] leading-[0.95] tracking-[-0.05em] text-foreground sm:text-5xl lg:text-[4.25rem]">
+            <h2 className="mt-3 max-w-xl font-serif text-[2rem] sm:mt-4 sm:text-[2.7rem] leading-[0.95] tracking-[-0.05em] text-foreground sm:text-5xl lg:text-[4.25rem]">
               Your idea,
               <span className="block text-muted">made tangible.</span>
             </h2>
 
-            <p className="mt-6 max-w-lg text-sm leading-6 text-muted sm:text-base sm:leading-7">
+            <p className="mt-4 max-w-lg text-xs leading-5 sm:mt-6 sm:text-sm sm:leading-6 text-muted sm:text-base sm:leading-7">
               Have something personal in mind? Send us your reference and requirements. We handle the design, production, and physical delivery.
             </p>
 
-            <div className="mt-8">
+            <div className="mt-6 sm:mt-8">
               <Button href="/custom" size="lg" className="group">
                 Start a custom request
                 <IconArrowUpRight size={17} stroke={1.8} className="transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
               </Button>
             </div>
 
-            <div className="mt-10 border-t border-border pt-7 sm:mt-12 sm:pt-8">
+            <div className="mt-7 border-t border-border pt-6 sm:mt-12 sm:pt-8">
               <p className="mb-5 text-[9px] font-medium uppercase tracking-[0.2em] text-muted">
                 From reference to finished piece
               </p>
 
-              <div className="grid gap-5 sm:grid-cols-3 sm:gap-6">
+              <div className="grid grid-cols-3 gap-2.5 sm:gap-6">
                 {steps.map((step, index) => {
                   const Icon = step.icon;
                   return (
@@ -80,7 +80,7 @@ export function CustomBuild() {
             whileInView={reduceMotion ? undefined : { opacity: 1, scale: 1 }}
             viewport={{ once: true, amount: 0.15 }}
             transition={{ duration: 0.8 }}
-            className="relative min-h-[360px] overflow-hidden bg-surface-elevated sm:min-h-[480px] lg:min-h-full"
+            className="relative min-h-[205px] overflow-hidden bg-surface-elevated sm:min-h-[480px] lg:min-h-full"
           >
             <img
               src="/catogeries/bobble_head.webp"
@@ -89,11 +89,11 @@ export function CustomBuild() {
               className="absolute inset-0 h-full w-full object-cover object-center"
             />
             <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/5 to-black/10" />
-            <div className="absolute bottom-5 left-5 right-5 sm:bottom-7 sm:left-7 sm:right-7">
+            <div className="absolute bottom-4 left-4 right-4 sm:bottom-7 sm:left-7 sm:right-7">
               <p className="text-[9px] font-medium uppercase tracking-[0.2em] text-white/65">
                 One piece. Made personally.
               </p>
-              <p className="mt-2 max-w-sm font-serif text-xl tracking-[-0.02em] text-white sm:text-2xl">
+              <p className="mt-1.5 max-w-sm font-serif text-base sm:mt-2 sm:text-xl tracking-[-0.02em] text-white sm:text-2xl">
                 Built from your story, not a template.
               </p>
             </div>
