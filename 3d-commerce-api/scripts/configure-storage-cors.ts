@@ -1,17 +1,5 @@
 import { createHash, createHmac } from "node:crypto";
 
-const endpoint = (process.env.STORAGE_ENDPOINT ?? "").replace(/\/$/, "");
-const bucket = process.env.STORAGE_BUCKET ?? "";
-const accessKey = process.env.STORAGE_ACCESS_KEY_ID ?? "";
-const secretKey = process.env.STORAGE_SECRET_ACCESS_KEY ?? "";
-const region = process.env.STORAGE_REGION ?? "us-east-1";
-
-if (!endpoint || !bucket || !accessKey || !secretKey) {
-  throw new Error(
-    "STORAGE_ENDPOINT, STORAGE_BUCKET, STORAGE_ACCESS_KEY_ID and STORAGE_SECRET_ACCESS_KEY are required",
-  );
-}
-
 const encode = (value: string) =>
   encodeURIComponent(value).replace(/[!'()*]/g, (char) =>
     `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
@@ -23,7 +11,23 @@ const hash = (value: string | Buffer) =>
 const md5 = (value: string | Buffer) =>
   createHash("md5").update(value).digest("base64");
 
-function signingKey(dateStamp: string) {
+function getConfig() {
+  const endpoint = (process.env.STORAGE_ENDPOINT ?? "").replace(/\/$/, "");
+  const bucket = process.env.STORAGE_BUCKET ?? "";
+  const accessKey = process.env.STORAGE_ACCESS_KEY_ID ?? "";
+  const secretKey = process.env.STORAGE_SECRET_ACCESS_KEY ?? "";
+  const region = process.env.STORAGE_REGION ?? "us-east-1";
+
+  if (!endpoint || !bucket || !accessKey || !secretKey) {
+    throw new Error(
+      "STORAGE_ENDPOINT, STORAGE_BUCKET, STORAGE_ACCESS_KEY_ID and STORAGE_SECRET_ACCESS_KEY are required",
+    );
+  }
+
+  return { endpoint, bucket, accessKey, secretKey, region };
+}
+
+function signingKey(secretKey: string, region: string, dateStamp: string) {
   const kDate = createHmac("sha256", `AWS4${secretKey}`).update(dateStamp).digest();
   const kRegion = createHmac("sha256", kDate).update(region).digest();
   const kService = createHmac("sha256", kRegion).update("s3").digest();
@@ -31,8 +35,8 @@ function signingKey(dateStamp: string) {
 }
 
 async function signedRequest(method: "GET" | "PUT", body = "") {
+  const { endpoint, bucket, accessKey, secretKey, region } = getConfig();
   const url = new URL(`${endpoint}/${encode(bucket)}`);
-  const query = { cors: "" };
   const amzDate = new Date().toISOString().replace(/[:-]|\.\d{3}/g, "");
   const dateStamp = amzDate.slice(0, 8);
   const scope = `${dateStamp}/${region}/s3/aws4_request`;
@@ -51,12 +55,10 @@ async function signedRequest(method: "GET" | "PUT", body = "") {
     .map((name) => `${name}:${headers[name].trim()}\n`)
     .join("");
   const signedHeaders = Object.keys(headers).sort().join(";");
-  const canonicalQuery = "cors=";
-
   const canonicalRequest = [
     method,
     url.pathname,
-    canonicalQuery,
+    "cors=",
     canonicalHeaders,
     signedHeaders,
     payloadHash,
@@ -69,18 +71,16 @@ async function signedRequest(method: "GET" | "PUT", body = "") {
     hash(canonicalRequest),
   ].join("\n");
 
-  const signature = createHmac("sha256", signingKey(dateStamp))
+  const signature = createHmac("sha256", signingKey(secretKey, region, dateStamp))
     .update(stringToSign)
     .digest("hex");
 
-  const auth = `AWS4-HMAC-SHA256 Credential=${accessKey}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+  const authorization =
+    `AWS4-HMAC-SHA256 Credential=${accessKey}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
 
   return fetch(`${url}?cors=`, {
     method,
-    headers: {
-      ...headers,
-      authorization: auth,
-    },
+    headers: { ...headers, authorization },
     body: method === "PUT" ? body : undefined,
   });
 }
@@ -97,14 +97,25 @@ const corsXml = `<?xml version="1.0" encoding="UTF-8"?>
   </CORSRule>
 </CORSConfiguration>`;
 
-const put = await signedRequest("PUT", corsXml);
-if (!put.ok) {
-  throw new Error(`Unable to configure bucket CORS (${put.status}): ${await put.text()}`);
+async function main() {
+  const put = await signedRequest("PUT", corsXml);
+  if (!put.ok) {
+    throw new Error(
+      `Unable to configure bucket CORS (${put.status}): ${await put.text()}`,
+    );
+  }
+
+  const get = await signedRequest("GET");
+  if (!get.ok) {
+    throw new Error(
+      `CORS was configured but could not be read back (${get.status}): ${await get.text()}`,
+    );
+  }
+
+  console.log(await get.text());
 }
 
-const get = await signedRequest("GET");
-if (!get.ok) {
-  throw new Error(`CORS was configured but could not be read back (${get.status})`);
-}
-
-console.log(await get.text());
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
