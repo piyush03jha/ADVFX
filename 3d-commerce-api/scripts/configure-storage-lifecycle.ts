@@ -1,17 +1,5 @@
 import { createHash, createHmac } from "node:crypto";
 
-const endpoint = (process.env.STORAGE_ENDPOINT ?? "").replace(/\/$/, "");
-const bucket = process.env.STORAGE_BUCKET ?? "";
-const accessKey = process.env.STORAGE_ACCESS_KEY_ID ?? "";
-const secretKey = process.env.STORAGE_SECRET_ACCESS_KEY ?? "";
-const region = process.env.STORAGE_REGION ?? "us-east-1";
-
-if (!endpoint || !bucket || !accessKey || !secretKey) {
-  throw new Error(
-    "STORAGE_ENDPOINT, STORAGE_BUCKET, STORAGE_ACCESS_KEY_ID and STORAGE_SECRET_ACCESS_KEY are required",
-  );
-}
-
 const encode = (value: string) =>
   encodeURIComponent(value).replace(/[!'()*]/g, (char) =>
     `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
@@ -23,14 +11,34 @@ const hash = (value: string | Buffer) =>
 const md5 = (value: string | Buffer) =>
   createHash("md5").update(value).digest("base64");
 
-function signingKey(dateStamp: string) {
+function getConfig() {
+  const endpoint = (process.env.STORAGE_ENDPOINT ?? "").replace(/\/$/, "");
+  const bucket = process.env.STORAGE_BUCKET ?? "";
+  const accessKey = process.env.STORAGE_ACCESS_KEY_ID ?? "";
+  const secretKey = process.env.STORAGE_SECRET_ACCESS_KEY ?? "";
+  const region = process.env.STORAGE_REGION ?? "us-east-1";
+
+  if (!endpoint || !bucket || !accessKey || !secretKey) {
+    throw new Error(
+      "STORAGE_ENDPOINT, STORAGE_BUCKET, STORAGE_ACCESS_KEY_ID and STORAGE_SECRET_ACCESS_KEY are required",
+    );
+  }
+
+  return { endpoint, bucket, accessKey, secretKey, region };
+}
+
+function signingKey(secretKey: string, region: string, dateStamp: string) {
   const kDate = createHmac("sha256", `AWS4${secretKey}`).update(dateStamp).digest();
   const kRegion = createHmac("sha256", kDate).update(region).digest();
   const kService = createHmac("sha256", kRegion).update("s3").digest();
   return createHmac("sha256", kService).update("aws4_request").digest();
 }
 
-async function putLifecycle(body: string) {
+async function signedLifecycleRequest(
+  method: "GET" | "PUT",
+  body = "",
+): Promise<Response> {
+  const { endpoint, bucket, accessKey, secretKey, region } = getConfig();
   const url = new URL(`${endpoint}/${encode(bucket)}`);
   const amzDate = new Date().toISOString().replace(/[:-]|\.\d{3}/g, "");
   const dateStamp = amzDate.slice(0, 8);
@@ -39,8 +47,7 @@ async function putLifecycle(body: string) {
 
   const headers: Record<string, string> = {
     host: url.host,
-    "content-type": "application/xml",
-    "content-md5": md5(body),
+    ...(method === "PUT" ? { "content-type": "application/xml", "content-md5": md5(body) } : {}),
     "x-amz-content-sha256": payloadHash,
     "x-amz-date": amzDate,
   };
@@ -51,7 +58,7 @@ async function putLifecycle(body: string) {
     .join("");
   const signedHeaders = Object.keys(headers).sort().join(";");
   const canonicalRequest = [
-    "PUT",
+    method,
     url.pathname,
     "lifecycle=",
     canonicalHeaders,
@@ -66,29 +73,21 @@ async function putLifecycle(body: string) {
     hash(canonicalRequest),
   ].join("\n");
 
-  const signature = createHmac("sha256", signingKey(dateStamp))
+  const signature = createHmac("sha256", signingKey(secretKey, region, dateStamp))
     .update(stringToSign)
     .digest("hex");
 
-  const auth =
+  const authorization =
     `AWS4-HMAC-SHA256 Credential=${accessKey}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
 
-  const response = await fetch(`${url}?lifecycle=`, {
-    method: "PUT",
-    headers: { ...headers, authorization: auth },
-    body,
+  return fetch(`${url}?lifecycle=`, {
+    method,
+    headers: { ...headers, authorization },
+    body: method === "PUT" ? body : undefined,
   });
-
-  if (!response.ok) {
-    throw new Error(
-      `Unable to configure multipart lifecycle (${response.status}): ${await response.text()}`,
-    );
-  }
 }
 
-const lifecycleXml = `<?xml version="1.0" encoding="UTF-8"?>
-<LifecycleConfiguration>
-  <Rule>
+const managedRule = `  <Rule>
     <ID>abort-incomplete-product-multipart-uploads</ID>
     <Filter>
       <Prefix>products/</Prefix>
@@ -97,11 +96,57 @@ const lifecycleXml = `<?xml version="1.0" encoding="UTF-8"?>
     <AbortIncompleteMultipartUpload>
       <DaysAfterInitiation>1</DaysAfterInitiation>
     </AbortIncompleteMultipartUpload>
-  </Rule>
+  </Rule>`;
+
+function mergeLifecycleConfiguration(existingXml: string): string {
+  const rules = existingXml.match(/<Rule(?:\\s[^>]*)?>[\\s\\S]*?<\\/Rule>/g) ?? [];
+  const managedId = "abort-incomplete-product-multipart-uploads";
+  const managedIndex = rules.findIndex((rule) =>
+    new RegExp(`<ID>\\s*${managedId}\\s*</ID>`).test(rule),
+  );
+
+  if (managedIndex >= 0) {
+    rules[managedIndex] = managedRule;
+  } else {
+    rules.push(managedRule);
+  }
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<LifecycleConfiguration>
+${rules.join("\n")}
 </LifecycleConfiguration>`;
+}
 
-await putLifecycle(lifecycleXml);
+async function main() {
+  const response = await signedLifecycleRequest("GET");
 
-console.log(
-  "Configured S3 lifecycle: incomplete multipart uploads under products/ are aborted after 1 day.",
-);
+  let existingXml = "";
+  if (response.ok) {
+    existingXml = await response.text();
+  } else if (response.status !== 404) {
+    throw new Error(
+      `Unable to read existing bucket lifecycle (${response.status}): ${await response.text()}`,
+    );
+  }
+
+  const lifecycleXml = mergeLifecycleConfiguration(existingXml);
+  const put = await signedLifecycleRequest("PUT", lifecycleXml);
+
+  if (!put.ok) {
+    throw new Error(
+      `Unable to configure multipart lifecycle (${put.status}): ${await put.text()}`,
+    );
+  }
+
+  console.log(
+    "Configured S3 lifecycle: incomplete multipart uploads under products/ are aborted after 1 day.",
+  );
+  if (existingXml) {
+    console.log("Existing lifecycle rules were preserved; the managed rule was added or updated.");
+  }
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
