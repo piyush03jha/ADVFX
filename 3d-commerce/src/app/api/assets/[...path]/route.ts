@@ -6,9 +6,7 @@ function copyAssetHeaders(response: Response) {
   const headers = new Headers();
   for (const name of [
     "content-type",
-    "content-length",
     "cache-control",
-    "content-disposition",
     "etag",
     "last-modified",
   ]) {
