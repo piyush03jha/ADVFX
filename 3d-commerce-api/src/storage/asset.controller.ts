@@ -13,7 +13,7 @@ import type { FastifyReply } from "fastify";
 import { PrismaService } from "../prisma/prisma.service";
 import { StorageService } from "./storage.service";
 
-@Controller("assets")
+@Controller(["assets", "api/assets"])
 export class AssetController {
   private readonly logger = new Logger(AssetController.name);
 
@@ -161,34 +161,24 @@ export class AssetController {
             .send({ error: "Invalid byte range" });
         }
 
-        const totalSize = await this.storage.getObjectSize(storageKey);
         const start = Number(match[1]);
-        const requestedEnd = match[2] ? Number(match[2]) : totalSize - 1;
 
-        if (
-          !Number.isSafeInteger(start) ||
-          !Number.isSafeInteger(requestedEnd) ||
-          start < 0 ||
-          start >= totalSize ||
-          requestedEnd < start
-        ) {
-          return reply
-            .code(416)
-            .header("Content-Range", `bytes */${totalSize}`)
-            .send({ error: "Requested range is not satisfiable" });
+        if (!Number.isSafeInteger(start) || start < 0) {
+          throw new NotFoundException("Invalid byte range");
         }
 
-        const end = Math.min(requestedEnd, totalSize - 1);
-        const { stream, size } = await this.storage.openReadStreamRange(
-          storageKey,
-          start,
-          end,
-        );
+        const requestedEnd = match[2] ? Number(match[2]) : Number.MAX_SAFE_INTEGER;
+        if (!Number.isSafeInteger(requestedEnd) || requestedEnd < start) {
+          throw new NotFoundException("Invalid byte range");
+        }
+
+        const { stream, size, totalSize, start: actualStart, end: actualEnd } =
+          await this.storage.openReadStreamRange(storageKey, start, requestedEnd);
 
         reply
           .code(206)
           .header("Content-Length", String(size))
-          .header("Content-Range", `bytes ${start}-${end}/${totalSize}`);
+          .header("Content-Range", `bytes ${actualStart}-${actualEnd}/${totalSize}`);
 
         return new StreamableFile(stream, { type: contentType });
       }
