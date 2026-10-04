@@ -9,6 +9,7 @@ import {
 } from "react";
 
 import { Container } from "@/components/ui/Container";
+import { useGLTF } from "@react-three/drei";
 import { HERO_MODEL_ROTATION_MS } from "@/config/hero-motion";
 import type { HeroProduct } from "@/config/hero-products";
 
@@ -65,6 +66,14 @@ export function Hero() {
       cancelled = true;
     };
   }, []);
+
+  // Start downloading the first hero GLB as soon as the hero API returns.
+  // The logo/intro animation can therefore overlap the model transfer instead
+  // of making the user wait for the 3D canvas to mount.
+  useEffect(() => {
+    const url = heroProducts[0]?.model?.trim();
+    if (url) useGLTF.preload(url);
+  }, [heroProducts]);
 
   const clearRotationTimer = useCallback(() => {
     if (timeoutRef.current !== null) {
