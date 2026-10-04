@@ -161,7 +161,7 @@ export function Navbar() {
         <NavItems items={navItems} />
 
         <div className="pointer-events-auto ml-auto flex min-w-0 items-center gap-1 xl:gap-2">
-          <div className="relative hidden xl:block">
+          <div className="relative hidden lg:block">
             <form
               onSubmit={handleSearchSubmit}
               className="flex w-[190px] items-center rounded-full border border-border bg-surface/80 px-3"
