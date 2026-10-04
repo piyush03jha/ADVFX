@@ -35,7 +35,7 @@ export function ProductDetail({
       <Section
         className="
           relative
-          pt-16
+          pt-20
           sm:pt-8
           lg:pt-14
         "
