@@ -20,6 +20,9 @@ const encode = (value: string) =>
 const hash = (value: string | Buffer) =>
   createHash("sha256").update(value).digest("hex");
 
+const md5 = (value: string | Buffer) =>
+  createHash("md5").update(value).digest("base64");
+
 function signingKey(dateStamp: string) {
   const kDate = createHmac("sha256", `AWS4${secretKey}`).update(dateStamp).digest();
   const kRegion = createHmac("sha256", kDate).update(region).digest();
@@ -38,6 +41,7 @@ async function signedRequest(method: "GET" | "PUT", body = "") {
   const headers: Record<string, string> = {
     host: url.host,
     "content-type": "application/xml",
+    "content-md5": md5(body),
     "x-amz-content-sha256": payloadHash,
     "x-amz-date": amzDate,
   };
