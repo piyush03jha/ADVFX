@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
 import { Center, OrbitControls, useGLTF } from "@react-three/drei";
+import * as THREE from "three";
 import { IconRotate, IconZoomIn } from "@tabler/icons-react";
 
 interface Product3DStageProps {
@@ -113,7 +114,7 @@ export default function Product3DStage({
           enableRotate
           rotateSpeed={0.75}
           zoomSpeed={0.8}
-          touches={{ ONE: 1, TWO: 2 }}
+          touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }}
           mouseButtons={{ LEFT: 0, MIDDLE: 1, RIGHT: 2 }}
         />
       </Canvas>
