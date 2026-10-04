@@ -216,7 +216,7 @@ function assetUrl(url: string): string {
   const value = url.trim();
   if (!value) return "";
 
-  const configuredBase = process.env.NEXT_PUBLIC_ASSET_BASE_URL?.trim().replace(/\\/$/, "");
+  const configuredBase = process.env.NEXT_PUBLIC_ASSET_BASE_URL?.trim().replace(/\/$/, "");
   if (configuredBase) {
     try {
       const parsed = new URL(value, "https://voxel3d.org");
