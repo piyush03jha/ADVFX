@@ -137,43 +137,27 @@ export default function AdminProducts(){
     setAssetBusy(true);setAssetMessage("");
     try{
       if(file.size===0)throw new Error("The selected GLB file is empty.");
-      const supported=[".glb",".gltf",".obj",".ply",".stl",".fbx",".abc",".usd",".usda",".usdc",".bvh",".svg",".pdf"]; if(!supported.some(ext=>file.name.toLowerCase().endsWith(ext)))throw new Error("Unsupported model source format.");
-      // Capture the currently published GLB ids so replacing a model does not
-      // report an older completed GLB as the newly generated result.
-      const previousResponse=await fetch("/api/products/"+id+"/files",{cache:"no-store"});
-      const previousFiles=previousResponse.ok?await previousResponse.json().catch(()=>[]):[];
-      const previousReadyIds=new Set(
-        Array.isArray(previousFiles)
-          ? previousFiles
-              .filter((item:any)=>item.format==="GLB"&&item.processingStatus==="COMPLETED")
-              .map((item:any)=>item.id)
-          : [],
-      );
+      if(!file.name.toLowerCase().endsWith(".glb"))throw new Error("Only .glb files are accepted.");
+      if(file.size>150*1024*1024)throw new Error("GLB files must be 150 MB or smaller.");
 
       const fd=new FormData();fd.append("file",file);
       const response=await fetch("/api/products/"+id+"/files",{method:"POST",body:fd});
       const data=await response.json().catch(()=>null);
       if(!response.ok)throw new Error(data?.message||data?.error||"GLB upload failed");
-      if(!data?.storageUrl)throw new Error("GLB upload succeeded but no storage URL was returned.");
-      // Keep the raw upload private to the processing pipeline. The worker
-      // publishes MODEL_PREVIEW only after optimization + validation succeeds.
-      setAssetMessage("Source uploaded. Converting and optimizing to a web-ready GLB…");
 
-      // The source is deleted after successful conversion, so poll until the
-      // generated optimized GLB appears in the admin asset list.
-      for(let attempt=0;attempt<60;attempt++){
-        await new Promise(resolve=>setTimeout(resolve,2000));
-        const fr=await fetch("/api/products/"+id+"/files",{cache:"no-store"});
-        if(!fr.ok) continue;
-        const files=await fr.json();
-        setAssetFiles(files);
-        const ready=files.some((item:any)=>item.format==="GLB"&&item.processingStatus==="COMPLETED"&&!previousReadyIds.has(item.id));
-        if(ready){
-          setAssetMessage("Web-ready GLB generated successfully.");
-          break;
-        }
-        if(attempt===59)setAssetMessage("Conversion is still running. You can leave this page and check the product assets later.");
-      }
+      setAssetFiles(prev=>[
+        data?.id ? {
+          id:data.id,
+          originalName:data.originalName||file.name,
+          storageUrl:data.storageUrl||"",
+          format:"GLB",
+          fileType:"MODEL",
+          mimeType:"model/gltf-binary",
+          fileSize:data.fileSize||String(file.size),
+          processingStatus:"COMPLETED",
+        } : ...prev,
+      ]);
+      setAssetMessage("GLB uploaded and published. No conversion or compression is running.");
       await load();
     }catch(e){setAssetMessage(e instanceof Error?e.message:"GLB upload failed.")}
     finally{setAssetBusy(false)}
@@ -230,7 +214,7 @@ export default function AdminProducts(){
           <div><p className="text-xs font-medium">3D model</p><p className="mt-1 text-[9px] text-muted">GLB · web-ready 3D model for the product viewer</p></div>
           <label className="cursor-pointer rounded-lg border border-border px-3 py-2 text-[10px] font-semibold">
             <IconBox size={13} className="mr-1 inline"/> Add 3D source
-            <input type="file" accept=".glb,.gltf,.obj,.ply,.stl,.fbx,.abc,.usd,.usda,.usdc,.bvh,.svg,.pdf" className="hidden" disabled={saving} onChange={e=>setProductGlb(e.target.files?.[0]||null)}/>
+            <input type="file" accept=".glb" className="hidden" disabled={saving} onChange={e=>setProductGlb(e.target.files?.[0]||null)}/>
           </label>
         </div>
         {productGlb&&<p className="mt-2 truncate text-[9px] text-muted">Selected: {productGlb.name}</p>}
