@@ -93,7 +93,7 @@ export class AssetController {
     const assetUrl = "/api/assets/" + storageKey.split("/").map(encodeURIComponent).join("/");
 
     const product = await this.prisma.product.findFirst({
-      where: { id: productId },
+      where: { id: productId, status: "ACTIVE" },
       select: { id: true },
     });
     if (!product) throw new NotFoundException("Asset not found");
