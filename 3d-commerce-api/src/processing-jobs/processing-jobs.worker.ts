@@ -299,7 +299,7 @@ export class ProcessingJobsWorker
       // Validation-only image/document jobs must retain their source file.
       const finished = await this.prisma.productFileProcessingJob.findUnique({
         where: { id: job.id },
-        select: { outputFileId: true },
+        select: { outputFileId: true, errorMessage: true },
       });
 
       if (finished?.outputFileId) {
@@ -307,7 +307,7 @@ export class ProcessingJobsWorker
           where: { id: job.productFileId },
           data: {
             processingStatus: ProcessingStatus.COMPLETED,
-            processingError: null,
+            processingError: finished.errorMessage ?? null,
           },
         });
 
@@ -316,7 +316,7 @@ export class ProcessingJobsWorker
           data: {
             status: ProcessingJobStatus.COMPLETED,
             completedAt: new Date(),
-            errorMessage: null,
+            errorMessage: finished.errorMessage ?? null,
           },
         });
 
@@ -336,7 +336,7 @@ export class ProcessingJobsWorker
           where: { id: job.productFileId },
           data: {
             processingStatus: ProcessingStatus.COMPLETED,
-            processingError: null,
+            processingError: finished?.errorMessage ?? null,
           },
         });
       }
@@ -346,7 +346,7 @@ export class ProcessingJobsWorker
         data: {
           status: ProcessingJobStatus.COMPLETED,
           completedAt: new Date(),
-          errorMessage: null,
+          errorMessage: finished?.errorMessage ?? null,
         },
       });
 
@@ -883,6 +883,10 @@ export class ProcessingJobsWorker
           String(Number(process.env.MODEL_TEXTURE_MAX_SIZE ?? 2048)),
           "--simplify",
           "false",
+          "--join",
+          "false",
+          "--flatten",
+          "false",
         ],
         {
           timeout: timeoutMs,
@@ -896,7 +900,7 @@ export class ProcessingJobsWorker
         previousMedia?.url ?? null,
         "GLB optimization failed; published original",
       );
-      throw error;
+      return;
     }
 
     const optimizedStats = await fs.stat(optimizedPath);
