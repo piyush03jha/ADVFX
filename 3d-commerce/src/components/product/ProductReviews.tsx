@@ -229,7 +229,7 @@ export function ProductReviews({ product }: ProductReviewsProps) {
             </article>
           ))
         ) : (
-          <div className="rounded-2xl border border-white/[0.07] bg-black/10 p-5 sm:p-6">
+          <div className="rounded-2xl border border-white/[0.07] bg-black/10 p-4 sm:p-6">
             <p className="text-sm font-medium text-foreground">No reviews yet</p>
             <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
               Verified customer reviews will appear here after a completed purchase.
