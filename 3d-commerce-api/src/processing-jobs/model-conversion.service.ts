@@ -264,6 +264,7 @@ export class ModelConversionService {
         maxBuffer: 4 * 1024 * 1024,
         env: {
           ...process.env,
+          NODE_OPTIONS: process.env.MODEL_PROCESSING_NODE_OPTIONS ?? "--max-old-space-size=384",
           BLENDER_USER_CONFIG: "/tmp/blender-config",
           BLENDER_USER_SCRIPTS: "/tmp/blender-scripts",
         },
