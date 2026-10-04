@@ -772,6 +772,14 @@ export class ProcessingJobsWorker
       await sourceHandle.close();
     }
 
+    const previousMedia = await this.prisma.productMedia.findFirst({
+      where: {
+        productId: productFile.productId,
+        type: "MODEL_PREVIEW",
+      },
+      select: { url: true },
+    });
+
     const optimizedPath = sourcePath.replace(/\.glb$/i, ".optimized.glb");
     const timeoutMs = Math.max(
       60_000,
@@ -870,6 +878,9 @@ export class ProcessingJobsWorker
           fileType: ProductFileType.MODEL,
           format: ProductFileFormat.GLB,
           id: { notIn: [productFile.id, created.id] },
+          ...(previousMedia?.url
+            ? { storageUrl: previousMedia.url }
+            : { id: "__no_previous_model__" }),
         },
         select: { id: true, storageKey: true },
       });
