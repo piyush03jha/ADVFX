@@ -120,7 +120,8 @@ async function fetchRange(
   }
 
   const contentRange = response.headers.get("Content-Range") ?? "";
-  if (!contentRange.startsWith(`bytes ${start}-`)) {
+  const match = /^bytes (\d+)-(\d+)\/(\d+)$/.exec(contentRange);
+  if (!match || Number(match[1]) !== start) {
     throw new Error("Asset CDN returned an invalid byte range");
   }
 
@@ -194,22 +195,22 @@ export async function loadModelBuffer(
       return cached;
     }
 
-    const header = await fetchRange(normalizedUrl, 0, 11, signal);
+    const header = await fetchRange(normalizedUrl, 0, CHUNK_SIZE - 1, signal);
     const total = validateGlbHeader(header);
 
     let buffer: ArrayBuffer;
 
     if (header.byteLength >= total) {
-      buffer = header;
+      buffer = header.slice(0, total);
     } else {
       const output = new Uint8Array(total);
-      output.set(new Uint8Array(header), 0);
+      output.set(new Uint8Array(header.slice(0, Math.min(header.byteLength, total))), 0);
 
-      let completed = 12;
+      let completed = Math.min(header.byteLength, total);
       onProgress?.(Math.round((completed / total) * 100));
 
       const ranges: Array<{ start: number; end: number }> = [];
-      for (let start = 12; start < total; start += CHUNK_SIZE) {
+      for (let start = completed; start < total; start += CHUNK_SIZE) {
         ranges.push({
           start,
           end: Math.min(total - 1, start + CHUNK_SIZE - 1),
