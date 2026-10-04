@@ -126,8 +126,8 @@ export default function AdminDashboard() {
     : [];
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+    <main className="relative mx-auto max-w-[1500px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
+      <div className="relative flex flex-wrap items-end justify-between gap-4 overflow-hidden rounded-3xl border border-border bg-surface p-5 sm:p-7">
         <div>
           <p className="text-[9px] uppercase tracking-[0.2em] text-primary">
             Operations
@@ -141,18 +141,14 @@ export default function AdminDashboard() {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => void load()}
-          className="rounded-xl border border-border p-2 text-muted hover:text-foreground"
-          aria-label="Refresh dashboard"
-        >
-          <IconRefresh size={16} />
-        </button>
+        <Button type="button" variant="outline" size="sm" onClick={() => void load()}>
+          <IconRefresh size={15} />
+          Refresh
+        </Button>
       </div>
 
       {loading ? (
-        <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3, 4, 5, 6].map((item) => (
             <div
               key={item}
@@ -166,7 +162,7 @@ export default function AdminDashboard() {
             <Link
               key={label}
               href={href}
-              className="group rounded-2xl border border-border bg-surface p-4 transition hover:-translate-y-0.5 hover:border-primary/30"
+              className="group rounded-2xl border border-border bg-surface p-5 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/40 hover:bg-surface-elevated"
             >
               <div className="flex items-center justify-between">
                 <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
