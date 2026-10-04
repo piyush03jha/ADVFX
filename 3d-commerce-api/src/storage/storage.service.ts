@@ -5,6 +5,8 @@ import {
 } from "@nestjs/common";
 import { createHash, createHmac, randomUUID } from "node:crypto";
 import { access, mkdir, unlink, writeFile, readFile } from "node:fs/promises";
+import { createReadStream } from "node:fs";
+import { Readable } from "node:stream";
 import { basename, extname, join, resolve, sep } from "node:path";
 import type { SaveProductFileOptions, StoredFile } from "./storage.types";
 
@@ -95,6 +97,36 @@ export class StorageService {
     const normalized = storageKey.replace(/\\/g, "/").replace(/^\/+/, "");
     if (!normalized || normalized.includes("\0") || normalized.split("/").some((segment) => segment === "." || segment === "..")) throw new BadRequestException("Invalid storage key");
     return normalized;
+  }
+
+  async downloadTo(storageKey: string, destination: string): Promise<void> {
+    if (this.provider === "local") {
+      const { copyFile } = await import("node:fs/promises");
+      await copyFile(this.getAbsolutePath(storageKey), destination);
+      return;
+    }
+
+    const response = await this.requestObjectResponse("GET", storageKey);
+    if (!response.body) throw new InternalServerErrorException("Unable to read stored file");
+    const stream = Readable.fromWeb(response.body as globalThis.ReadableStream<Uint8Array>);
+    const { createWriteStream } = await import("node:fs");
+    await new Promise<void>((resolvePromise, reject) => {
+      const output = createWriteStream(destination);
+      stream.pipe(output);
+      output.on("finish", () => resolvePromise());
+      output.on("error", reject);
+      stream.on("error", reject);
+    });
+  }
+
+  async createReadStream(storageKey: string): Promise<NodeJS.ReadableStream> {
+    if (this.provider === "local") {
+      return createReadStream(this.getAbsolutePath(storageKey));
+    }
+
+    const response = await this.requestObjectResponse("GET", storageKey);
+    if (!response.body) throw new NotFoundException("Stored file not found");
+    return Readable.fromWeb(response.body as globalThis.ReadableStream<Uint8Array>);
   }
 
   async read(storageKey: string): Promise<Buffer> {
