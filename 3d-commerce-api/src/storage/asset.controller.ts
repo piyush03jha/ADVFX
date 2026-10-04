@@ -1,10 +1,4 @@
-import {
-  Controller,
-  Get,
-  NotFoundException,
-  Param,
-  StreamableFile,
-} from "@nestjs/common";
+import {\n  BadGatewayException,\n  Controller,\n  Get,\n  Logger,\n  NotFoundException,\n  Param,\n  Res,\n  StreamableFile,\n} from "@nestjs/common";\nimport type { FastifyReply } from "fastify";
 
 import { PrismaService } from "../prisma/prisma.service";
 import { StorageService } from "./storage.service";
