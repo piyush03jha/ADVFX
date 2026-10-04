@@ -57,10 +57,9 @@ export class AssetController {
     }
 
     try {
-      const buffer = await this.storage.read(storageKey);
-      return new StreamableFile(buffer, {
+      const stream = await this.storage.createReadStream(storageKey);
+      return new StreamableFile(stream, {
         type: this.storage.getContentTypeForStorageKey(storageKey),
-        length: buffer.length,
       });
     } catch {
       throw new NotFoundException("Asset not found");
