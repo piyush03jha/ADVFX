@@ -10,14 +10,13 @@ const nextConfig: NextConfig = {
       { pathname: "/storage/**" },
       { pathname: "/catogeries/**" },
       { pathname: "/api/assets/**" },
-      { pathname: "/custom-3d-creation-studio.webp" },
     ],
     formats: ["image/avif", "image/webp"],
-    deviceSizes: [360, 480, 640, 768, 1024, 1280, 1536, 1664, 1920],
+    deviceSizes: [360, 480, 640, 768, 1024, 1280, 1536],
     imageSizes: [96, 160, 256, 384],
   },
 };
 
 export default nextConfig;
 
-import("@opennextjs-cloudflare").then((m) => m.initOpenNextCloudflareForDev());
+import("@opennextjs/cloudflare").then((m) => m.initOpenNextCloudflareForDev());
