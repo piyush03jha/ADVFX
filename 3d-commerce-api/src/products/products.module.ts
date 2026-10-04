@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { StorageModule } from '../storage/storage.module';
 import { ProcessingJobsModule } from '../processing-jobs/processing-jobs.module';
+import { ProcessingJobsModule } from '../processing-jobs/processing-jobs.module';
 
 import { ProductsController } from './products.controller';
 import { ProductsService } from './products.service';
