@@ -69,7 +69,7 @@ export default function AdminCommerceRulesPage() {
         <div className="mt-4 grid gap-3">
           {["name","countryCode","stateCode","rate","priority"].map((field)=><input key={field} value={tax[field as keyof typeof tax] as string} onChange={e=>setTax({...tax,[field]:e.target.value})} placeholder={field} className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>)}
           <label className="flex items-center gap-2 text-xs text-muted"><input type="checkbox" checked={tax.applyToShipping} onChange={e=>setTax({...tax,applyToShipping:e.target.checked})}/> Apply tax to shipping</label>
-          <button type="button" onClick={()=>void createTax()} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-foreground text-xs font-semibold text-background"><IconPlus size={14}/> Add tax rule</button>
+          <button type="button" onClick={()=>void createTax()} className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-primary px-5 text-xs font-semibold text-white transition hover:bg-primary-hover"><IconPlus size={14}/> Add tax rule</button>
         </div>
         <div className="mt-5 space-y-2">{taxRules.map(t=><div key={t.id} className="flex items-center justify-between gap-3 rounded-xl border border-border p-3"><div><p className="text-xs font-medium">{t.name}</p><p className="mt-1 text-[10px] text-muted">{t.countryCode}{t.stateCode ? " / "+t.stateCode : ""} · {(t.rateBps/100).toFixed(2)}% · priority {t.priority}</p></div><button type="button" onClick={()=>void toggle("tax-rules",t.id,t.isActive)} className="text-[10px] text-muted">{t.isActive?"Disable":"Enable"}</button></div>)}</div>
       </section>
