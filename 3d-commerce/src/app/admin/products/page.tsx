@@ -145,8 +145,8 @@ export default function AdminProducts(){
       const data=await response.json().catch(()=>null);
       if(!response.ok)throw new Error(data?.message||data?.error||"GLB upload failed");
 
-      setAssetFiles(prev=>[
-        data?.id ? {
+      if(data?.id){
+        setAssetFiles(prev=>[{
           id:data.id,
           originalName:data.originalName||file.name,
           storageUrl:data.storageUrl||"",
@@ -155,8 +155,8 @@ export default function AdminProducts(){
           mimeType:"model/gltf-binary",
           fileSize:data.fileSize||String(file.size),
           processingStatus:"COMPLETED",
-        } : ...prev,
-      ]);
+        },...prev]);
+      }
       setAssetMessage("GLB uploaded and published. No conversion or compression is running.");
       await load();
     }catch(e){setAssetMessage(e instanceof Error?e.message:"GLB upload failed.")}
