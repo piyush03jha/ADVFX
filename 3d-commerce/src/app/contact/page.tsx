@@ -12,7 +12,11 @@ import {
 import { Navbar } from "@/components/layout/SiteNavbar";
 import { Button } from "@/components/ui/Button";
 
-const whatsappUrl = process.env.NEXT_PUBLIC_WHATSAPP_URL || "/contact";
+const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "";
+
+function createWhatsAppUrl(message: string) {
+  return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+}
 
 async function getContactEmail() {
   try {
@@ -28,6 +32,12 @@ async function getContactEmail() {
 
 export default async function ContactPage() {
   const contactEmail = await getContactEmail();
+  const whatsappUrl = createWhatsAppUrl(
+    "Hi Voxel3D team, I would like to discuss a bulk order."
+  );
+  const customWhatsappUrl = createWhatsAppUrl(
+    "Hi Voxel3D team, I have a question about custom 3D products."
+  );
 
   return (
     <div className="min-h-screen overflow-x-clip bg-background text-foreground">
@@ -132,9 +142,9 @@ export default async function ContactPage() {
               </Link>
 
               <a
-                href={whatsappUrl}
-                target={whatsappUrl.startsWith("http") ? "_blank" : undefined}
-                rel={whatsappUrl.startsWith("http") ? "noreferrer" : undefined}
+                href={customWhatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="group rounded-3xl border border-border bg-surface p-6 transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:bg-surface-elevated sm:p-7"
               >
                 <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-border bg-background text-primary">
@@ -167,9 +177,9 @@ export default async function ContactPage() {
                 </div>
 
                 <div className="border-t border-border p-6 lg:border-l lg:border-t-0 lg:p-8">
-                  <Button href="/contact?subject=Bulk%20Order" variant="primary" size="md" className="w-full sm:w-auto">
+                  <Button href={whatsappUrl} variant="primary" size="md" className="w-full sm:w-auto">
                     Discuss bulk order
-                    <IconPackage size={15} />
+                    <IconBrandWhatsapp size={15} />
                   </Button>
                 </div>
               </div>
