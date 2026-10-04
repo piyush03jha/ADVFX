@@ -107,7 +107,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         />
       )}
 
-      <div className="mx-auto flex min-h-screen max-w-[1600px] bg-background">
+      <div className="flex min-h-screen w-full bg-background">
         <aside
           className={
             open
