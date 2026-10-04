@@ -60,7 +60,7 @@ export default function AdminCommerceRulesPage() {
         <div className="mt-4 grid gap-3">
           {["name","code","value","minSubtotalMinor","maxDiscountMinor","usageLimit"].map((field)=><input key={field} value={promo[field as keyof typeof promo]} onChange={e=>setPromo({...promo,[field]:e.target.value})} placeholder={field} className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>)}
           <select value={promo.type} onChange={e=>setPromo({...promo,type:e.target.value})} className="h-10 rounded-xl border border-border bg-background px-3 text-xs"><option value="PERCENTAGE">Percentage</option><option value="FIXED">Fixed amount</option></select>
-          <button type="button" onClick={()=>void createPromotion()} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-foreground text-xs font-semibold text-background"><IconPlus size={14}/> Add promotion</button>
+          <button type="button" onClick={()=>void createPromotion()} className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-primary px-5 text-xs font-semibold text-white transition hover:bg-primary-hover"><IconPlus size={14}/> Add promotion</button>
         </div>
         <div className="mt-5 space-y-2">{promotions.map(p=><div key={p.id} className="flex items-center justify-between gap-3 rounded-xl border border-border p-3"><div><p className="text-xs font-medium">{p.name}{p.code ? " · "+p.code : ""}</p><p className="mt-1 text-[10px] text-muted">{p.type} · {p.value} · used {p.usageCount}{p.usageLimit!=null ? "/"+p.usageLimit : ""}</p></div><button type="button" onClick={()=>void toggle("promotions",p.id,p.isActive)} className="text-[10px] text-muted">{p.isActive?"Disable":"Enable"}</button></div>)}</div>
       </section>
