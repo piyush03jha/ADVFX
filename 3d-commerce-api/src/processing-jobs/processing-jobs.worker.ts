@@ -17,12 +17,16 @@ import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 
 import { PrismaService } from "../prisma/prisma.service";
 import { StorageService } from "../storage/storage.service";
 import { FileContentValidationService } from "../product-files/file-content-validation.service";
 import { ProcessingJobs2DWorker } from "./processing-jobs-2d.worker";
 import { ImageProcessingService } from "./image-processing.service";
+
+const execFileAsync = promisify(execFile);
 
 const execFileAsync = promisify(execFile);
 
@@ -861,6 +865,119 @@ export class ProcessingJobsWorker
       this.logger.log(
         `Published optimized model ${created.id}: ${sourceStats.size} -> ${optimizedStats.size} bytes`,
       );
+    } catch (error) {
+      await this.storage.delete(output.storageKey).catch(() => undefined);
+      throw error;
+    }
+  }
+
+  private async optimizeGlbModel(
+    productFile: any,
+    jobId: string,
+    sourcePath: string,
+  ): Promise<void> {
+    if (productFile.format !== ProductFileFormat.GLB) {
+      throw new Error("Only GLB models can enter the web optimization pipeline.");
+    }
+
+    const job = await this.prisma.productFileProcessingJob.findUnique({
+      where: { id: jobId },
+      select: { outputFileId: true },
+    });
+    if (job?.outputFileId) return;
+
+    await this.storage.downloadTo(productFile.storageKey, sourcePath);
+    const sourceStats = await fs.stat(sourcePath);
+
+    const header = Buffer.alloc(12);
+    const sourceHandle = await fs.open(sourcePath, "r");
+    try {
+      const { bytesRead } = await sourceHandle.read(header, 0, 12, 0);
+      if (
+        bytesRead !== 12 ||
+        header.toString("ascii", 0, 4) !== "glTF" ||
+        header.readUInt32LE(4) !== 2 ||
+        header.readUInt32LE(8) !== sourceStats.size
+      ) {
+        throw new Error("Source GLB failed structural validation.");
+      }
+    } finally {
+      await sourceHandle.close();
+    }
+
+    const optimizedPath = sourcePath.replace(/\.glb$/i, ".optimized.glb");
+    await execFileAsync(
+      "gltf-transform",
+      [
+        "optimize",
+        sourcePath,
+        optimizedPath,
+        "--compress", "meshopt",
+        "--texture-compress", "webp",
+        "--texture-size", String(Number(process.env.MODEL_TEXTURE_MAX_SIZE ?? 2048)),
+      ],
+      {
+        timeout: Math.max(60_000, Number(process.env.MODEL_OPTIMIZATION_TIMEOUT_MS ?? 600_000)),
+        maxBuffer: 8 * 1024 * 1024,
+      },
+    );
+
+    const optimizedStats = await fs.stat(optimizedPath);
+    if (optimizedStats.size >= sourceStats.size) {
+      this.logger.log(`Optimization kept original ${productFile.id}: ${sourceStats.size} -> ${optimizedStats.size} bytes`);
+      return;
+    }
+
+    const optimizedBuffer = await fs.readFile(optimizedPath);
+    const output = await this.storage.saveProductFile({
+      productId: productFile.productId,
+      filename: "optimized-model.glb",
+      buffer: optimizedBuffer,
+    });
+
+    if (!output.storageUrl) {
+      await this.storage.delete(output.storageKey).catch(() => undefined);
+      throw new Error("Optimized model has no public storage URL.");
+    }
+
+    try {
+      const created = await this.prisma.$transaction(async (tx) => {
+        const file = await tx.productFile.create({
+          data: {
+            productId: productFile.productId,
+            originalName: productFile.originalName || "model.glb",
+            storageKey: output.storageKey,
+            storageUrl: output.storageUrl,
+            format: ProductFileFormat.GLB,
+            fileType: ProductFileType.MODEL,
+            mimeType: "model/gltf-binary",
+            fileSize: BigInt(optimizedStats.size),
+            processingStatus: ProcessingStatus.COMPLETED,
+            convertedFromId: productFile.id,
+          },
+        });
+
+        await tx.productMedia.deleteMany({
+          where: { productId: productFile.productId, type: "MODEL_PREVIEW" },
+        });
+        await tx.productMedia.create({
+          data: {
+            productId: productFile.productId,
+            type: "MODEL_PREVIEW",
+            url: output.storageUrl!,
+            altText: productFile.originalName || "GLB model",
+            sortOrder: 0,
+            isPrimary: true,
+          },
+        });
+        await tx.productFileProcessingJob.update({
+          where: { id: jobId },
+          data: { outputFileId: file.id },
+        });
+        return file;
+      });
+
+      this.logger.log(`Published optimized model ${created.id}: ${sourceStats.size} -> ${optimizedStats.size} bytes`);
     } catch (error) {
       await this.storage.delete(output.storageKey).catch(() => undefined);
       throw error;
