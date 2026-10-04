@@ -85,8 +85,9 @@ export function CustomBuild() {
             <img
               src="/catogeries/custom_section.png"
               alt="Custom 3D printed collectible"
-              loading="lazy"
-              className="absolute inset-0 h-full w-full object-cover object-center"
+              loading="eager"
+              decoding="async"
+              className="absolute inset-0 h-full w-full object-contain object-center"
             />
             <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/5 to-black/10" />
             <div className="absolute bottom-4 left-4 right-4 sm:bottom-7 sm:left-7 sm:right-7">
