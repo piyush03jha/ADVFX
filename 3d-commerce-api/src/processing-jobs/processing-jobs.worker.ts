@@ -924,10 +924,7 @@ export class ProcessingJobsWorker
       buffer: optimizedBuffer,
     });
 
-    if (!output.storageUrl) {
-      await this.storage.delete(output.storageKey).catch(() => undefined);
-      throw new Error("Optimized model has no public storage URL.");
-    }
+    const publishedUrl = this.storage.getPublicAssetUrl(output.storageKey);
 
     try {
       const created = await this.prisma.$transaction(async (tx) => {
@@ -936,7 +933,7 @@ export class ProcessingJobsWorker
             productId: productFile.productId,
             originalName: productFile.originalName || "model.glb",
             storageKey: output.storageKey,
-            storageUrl: output.storageUrl,
+            storageUrl: publishedUrl,
             format: ProductFileFormat.GLB,
             fileType: ProductFileType.MODEL,
             mimeType: "model/gltf-binary",
@@ -957,7 +954,7 @@ export class ProcessingJobsWorker
           data: {
             productId: productFile.productId,
             type: "MODEL_PREVIEW",
-            url: output.storageUrl!,
+            url: publishedUrl,
             altText: productFile.originalName || "GLB model",
             sortOrder: 0,
             isPrimary: true,
@@ -973,7 +970,7 @@ export class ProcessingJobsWorker
       });
  
       this.logger.log(
-        `Published optimized model ${created.id}: ${sourceStats.size} -> ${optimizedStats.size} bytes`,
+        `Published optimized model ${created.id}: ${sourceStats.size} -> ${optimizedStats.size} bytes (${Math.round((1 - optimizedStats.size / sourceStats.size) * 10000) / 100}% reduction)`,
       );
 
       const replacedFiles = await this.prisma.productFile.findMany({
