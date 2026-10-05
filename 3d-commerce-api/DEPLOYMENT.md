@@ -57,7 +57,7 @@ Before deployment, verify the bucket with a small S3-compatible smoke test:
 4. DELETE it.
 5. Repeat the test through `StorageService`.
 
-The application keeps the bucket private. Browser requests use the authenticated/public asset endpoints exposed by the API and Next.js; Neon S3 credentials must never reach the browser.
+The application keeps the bucket private. Browser requests use the asset endpoints exposed by the API and Next.js; B2 application credentials must never reach the browser.
 
 ## Asset delivery
 
