@@ -20,6 +20,7 @@ import { ShippingModule } from "./shipping/shipping.module";
 import { PricingModule } from "./pricing/pricing.module";
 import { WishlistModule } from "./wishlist/wishlist.module";
 import { ObservabilityModule } from "./observability/observability.module";
+import { ThreeDConversionModule } from "./3d-conversion/three-d-conversion.module";
 import { ScheduleModule } from "@nestjs/schedule";
 
 @Module({
@@ -44,6 +45,7 @@ import { ScheduleModule } from "@nestjs/schedule";
     CheckoutModule,
     WishlistModule,
     ObservabilityModule,
+    ThreeDConversionModule,
   ],
   controllers: [AppController],
   providers: [AppService],
