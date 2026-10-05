@@ -197,6 +197,9 @@ export class ThreeDConversionService {
     if (!(await this.storage.exists(job.sourceStorageKey))) {
       throw new BadRequestException("Original source file is no longer available");
     }
+    if (job.outputStorageKey) {
+      await this.storage.delete(job.outputStorageKey).catch(() => undefined);
+    }
 
     const updated = await this.prisma.threeDConversionJob.update({
       where: { id },
