@@ -267,8 +267,38 @@ function primaryModel(product: CatalogProduct): string {
 
 export function mapCatalogProduct(product: CatalogProduct): StorefrontProduct {
   const price = activePrice(product);
-  const amount = price?.amountMinor ?? 0;
-  const compareAt = price?.compareAtMinor ?? undefined;
+  const variantPrices = (product.variants ?? [])
+    .filter((variant) => variant.isActive)
+    .map((variant) => {
+      const variantPrice = variant.price;
+      if (!variantPrice?.isActive) return null;
+
+      return {
+        amountMinor: variantPrice.amountMinor,
+        compareAtMinor: variantPrice.compareAtMinor ?? undefined,
+        currency: variantPrice.currency,
+      };
+    })
+    .filter(
+      (
+        variantPrice,
+      ): variantPrice is {
+        amountMinor: number;
+        compareAtMinor: number | undefined;
+        currency: string;
+      } => variantPrice !== null,
+    );
+
+  // Show the lowest currently active variant price for products with sizes.
+  const lowestVariantPrice = variantPrices
+    .filter((variantPrice) => variantPrice.currency === "INR")
+    .sort((a, b) => a.amountMinor - b.amountMinor)[0]
+    ?? variantPrices.sort((a, b) => a.amountMinor - b.amountMinor)[0];
+
+  const amount = lowestVariantPrice?.amountMinor ?? price?.amountMinor ?? 0;
+  const compareAt =
+    lowestVariantPrice?.compareAtMinor ?? price?.compareAtMinor ?? undefined;
+  const currency = lowestVariantPrice?.currency ?? price?.currency ?? "INR";
 
   return {
     id: product.id,
@@ -286,7 +316,7 @@ export function mapCatalogProduct(product: CatalogProduct): StorefrontProduct {
     categorySlug: product.category?.slug,
     description: product.description ?? "",
     price: amount / 100,
-    currency: price?.currency ?? "INR",
+    currency,
     oldPrice: compareAt !== undefined ? compareAt / 100 : undefined,
     rating: 0,
     reviewCount: 0,
