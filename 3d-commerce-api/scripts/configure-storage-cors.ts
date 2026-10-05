@@ -166,7 +166,7 @@ async function configureB2Cors() {
 async function main() {
   const { endpoint } = getConfig();
 
-  if (/backblazeb2\\.com/i.test(endpoint)) {
+  if (/backblazeb2\.com/i.test(endpoint)) {
     await configureB2Cors();
     return;
   }
