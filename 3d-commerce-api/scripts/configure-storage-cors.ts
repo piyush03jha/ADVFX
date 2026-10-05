@@ -1,133 +1,180 @@
 import "dotenv/config";
 import { createHash, createHmac } from "node:crypto";
 
-const encode = (value: string) =>
-  encodeURIComponent(value).replace(/[!'()*]/g, (char) =>
-    `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
-  );
+type B2Bucket = {
+  bucketId: string;
+  bucketName: string;
+  bucketType: string;
+};
+
+type B2AuthorizeResponse = {
+  accountId: string;
+  authorizationToken: string;
+  apiUrl: string;
+};
 
 const hash = (value: string | Buffer) =>
   createHash("sha256").update(value).digest("hex");
 
-const md5 = (value: string | Buffer) =>
-  createHash("md5").update(value).digest("base64");
+const corsRules = [
+  {
+    corsRuleName: "voxel-browser-uploads",
+    allowedOrigins: [
+      "https://voxel3d.org",
+      "https://www.voxel3d.org",
+      "http://localhost:3000",
+    ],
+    allowedOperations: ["s3_put", "s3_get", "s3_head"],
+    allowedHeaders: ["*"],
+    exposeHeaders: [
+      "ETag",
+      "Content-Length",
+      "Content-Range",
+      "Accept-Ranges",
+    ],
+    maxAgeSeconds: 3600,
+  },
+];
 
 function getConfig() {
   const endpoint = (process.env.STORAGE_ENDPOINT ?? "").replace(/\/$/, "");
   const bucket = process.env.STORAGE_BUCKET ?? "";
-  const accessKey = process.env.STORAGE_ACCESS_KEY_ID ?? "";
-  const secretKey = process.env.STORAGE_SECRET_ACCESS_KEY ?? "";
-  const region = process.env.STORAGE_REGION ?? "us-east-1";
+  const storageAccessKey = process.env.STORAGE_ACCESS_KEY_ID ?? "";
+  const storageSecretKey = process.env.STORAGE_SECRET_ACCESS_KEY ?? "";
 
-  if (!endpoint || !bucket || !accessKey || !secretKey) {
+  if (!bucket) {
+    throw new Error("STORAGE_BUCKET is required");
+  }
+
+  return {
+    endpoint,
+    bucket,
+    b2KeyId: process.env.B2_CORS_KEY_ID ?? storageAccessKey,
+    b2ApplicationKey:
+      process.env.B2_CORS_APPLICATION_KEY ?? storageSecretKey,
+  };
+}
+
+async function b2Authorize(keyId: string, applicationKey: string) {
+  if (!keyId || !applicationKey) {
     throw new Error(
-      "STORAGE_ENDPOINT, STORAGE_BUCKET, STORAGE_ACCESS_KEY_ID and STORAGE_SECRET_ACCESS_KEY are required",
+      "B2_CORS_KEY_ID and B2_CORS_APPLICATION_KEY are required for Backblaze B2 bucket administration. " +
+        "They may be provided through STORAGE_ACCESS_KEY_ID/STORAGE_SECRET_ACCESS_KEY when that key has writeBuckets capability.",
     );
   }
 
-  return { endpoint, bucket, accessKey, secretKey, region };
+  const credentials = Buffer.from(`${keyId}:${applicationKey}`).toString(
+    "base64",
+  );
+
+  const response = await fetch(
+    "https://api.backblazeb2.com/b2api/v4/b2_authorize_account",
+    {
+      headers: {
+        Authorization: `Basic ${credentials}`,
+      },
+    },
+  );
+
+  const body = await response.text();
+  if (!response.ok) {
+    throw new Error(
+      `B2 authorization failed (${response.status}): ${body}`,
+    );
+  }
+
+  return JSON.parse(body) as B2AuthorizeResponse;
 }
 
-function signingKey(secretKey: string, region: string, dateStamp: string) {
-  const kDate = createHmac("sha256", `AWS4${secretKey}`).update(dateStamp).digest();
-  const kRegion = createHmac("sha256", kDate).update(region).digest();
-  const kService = createHmac("sha256", kRegion).update("s3").digest();
-  return createHmac("sha256", kService).update("aws4_request").digest();
+async function b2Request<T>(
+  apiUrl: string,
+  authorizationToken: string,
+  action: string,
+  payload: Record<string, unknown>,
+) {
+  const response = await fetch(
+    `${apiUrl}/b2api/v4/${action}`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: authorizationToken,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    },
+  );
+
+  const body = await response.text();
+  if (!response.ok) {
+    throw new Error(`B2 ${action} failed (${response.status}): ${body}`);
+  }
+
+  return JSON.parse(body) as T;
 }
 
-async function signedRequest(method: "GET" | "PUT", body = "") {
-  const { endpoint, bucket, accessKey, secretKey, region } = getConfig();
-  const url = new URL(`${endpoint}/${encode(bucket)}`);
-  const amzDate = new Date().toISOString().replace(/[:-]|\.\d{3}/g, "");
-  const dateStamp = amzDate.slice(0, 8);
-  const scope = `${dateStamp}/${region}/s3/aws4_request`;
-  const payloadHash = hash(body);
+async function configureB2Cors() {
+  const { bucket, b2KeyId, b2ApplicationKey } = getConfig();
 
-  const headers: Record<string, string> = {
-    host: url.host,
-    "content-type": "application/xml",
-    ...(method === "PUT" ? { "content-md5": md5(body) } : {}),
-    "x-amz-content-sha256": payloadHash,
-    "x-amz-date": amzDate,
-  };
+  console.log(`Configuring native Backblaze B2 CORS for bucket: ${bucket}`);
 
-  const canonicalHeaders = Object.keys(headers)
-    .sort()
-    .map((name) => `${name}:${headers[name].trim()}\n`)
-    .join("");
-  const signedHeaders = Object.keys(headers).sort().join(";");
-  const canonicalRequest = [
-    method,
-    url.pathname,
-    "cors=",
-    canonicalHeaders,
-    signedHeaders,
-    payloadHash,
-  ].join("\n");
+  const auth = await b2Authorize(b2KeyId, b2ApplicationKey);
 
-  const stringToSign = [
-    "AWS4-HMAC-SHA256",
-    amzDate,
-    scope,
-    hash(canonicalRequest),
-  ].join("\n");
+  const buckets = await b2Request<{ buckets: B2Bucket[] }>(
+    auth.apiUrl,
+    auth.authorizationToken,
+    "b2_list_buckets",
+    {
+      accountId: auth.accountId,
+    },
+  );
 
-  const signature = createHmac("sha256", signingKey(secretKey, region, dateStamp))
-    .update(stringToSign)
-    .digest("hex");
+  const target = buckets.buckets.find((item) => item.bucketName === bucket);
+  if (!target) {
+    throw new Error(`Backblaze bucket not found: ${bucket}`);
+  }
 
-  const authorization =
-    `AWS4-HMAC-SHA256 Credential=${accessKey}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+  await b2Request(
+    auth.apiUrl,
+    auth.authorizationToken,
+    "b2_update_bucket",
+    {
+      accountId: auth.accountId,
+      bucketId: target.bucketId,
+      bucketType: target.bucketType,
+      corsRules,
+    },
+  );
 
-  return fetch(`${url}?cors=`, {
-    method,
-    headers: { ...headers, authorization },
-    body: method === "PUT" ? body : undefined,
-  });
+  const verify = await b2Request<{ buckets: B2Bucket[] }>(
+    auth.apiUrl,
+    auth.authorizationToken,
+    "b2_list_buckets",
+    {
+      accountId: auth.accountId,
+    },
+  );
+
+  const verified = verify.buckets.find(
+    (item) => item.bucketId === target.bucketId,
+  );
+
+  console.log(
+    `B2 bucket CORS configuration applied successfully to ${verified?.bucketName ?? bucket}.`,
+  );
 }
-
-const corsXml = `<?xml version="1.0" encoding="UTF-8"?>
-<CORSConfiguration>
-  <CORSRule>
-    <AllowedOrigin>https://voxel3d.org</AllowedOrigin>
-    <AllowedOrigin>https://www.voxel3d.org</AllowedOrigin>
-    <AllowedOrigin>http://localhost:3000</AllowedOrigin>
-    <AllowedMethod>PUT</AllowedMethod>
-    <AllowedMethod>GET</AllowedMethod>
-    <AllowedMethod>HEAD</AllowedMethod>
-    <AllowedHeader>*</AllowedHeader>
-    <ExposeHeader>ETag</ExposeHeader>
-    <ExposeHeader>Content-Length</ExposeHeader>
-    <ExposeHeader>Content-Range</ExposeHeader>
-    <ExposeHeader>Accept-Ranges</ExposeHeader>
-    <MaxAgeSeconds>3600</MaxAgeSeconds>
-  </CORSRule>
-</CORSConfiguration>`;
 
 async function main() {
   const { endpoint } = getConfig();
 
   if (/backblazeb2\\.com/i.test(endpoint)) {
-    console.log(
-      "Configuring CORS through Backblaze B2's S3-compatible PutBucketCors API.",
-    );
+    await configureB2Cors();
+    return;
   }
 
-  const put = await signedRequest("PUT", corsXml);
-  if (!put.ok) {
-    throw new Error(
-      `Unable to configure bucket CORS (${put.status}): ${await put.text()}`,
-    );
-  }
-
-  const get = await signedRequest("GET");
-  if (!get.ok) {
-    throw new Error(
-      `CORS was configured but could not be read back (${get.status}): ${await get.text()}`,
-    );
-  }
-
-  console.log(await get.text());
+  throw new Error(
+    "This script currently supports Backblaze B2 bucket CORS administration only. " +
+      "Use storage:configure-cors for other S3-compatible providers.",
+  );
 }
 
 main().catch((error) => {
