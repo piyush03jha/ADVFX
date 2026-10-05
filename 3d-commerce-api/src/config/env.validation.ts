@@ -24,8 +24,13 @@ export function validateEnvironment() {
   if (nodeEnv === 'production' && storageProvider === 'local') throw new Error('Local filesystem storage is not allowed in production');
 
   if (storageProvider !== 'local') {
-    for (const key of ['STORAGE_BUCKET','STORAGE_ENDPOINT','STORAGE_ACCESS_KEY_ID','STORAGE_SECRET_ACCESS_KEY']) {
+    for (const key of ['STORAGE_BUCKET','STORAGE_ENDPOINT','STORAGE_ACCESS_KEY_ID','STORAGE_SECRET_ACCESS_KEY','STORAGE_REGION']) {
       if (!process.env[key]) throw new Error(`${key} must be configured for remote storage`);
+    }
+
+    const endpoint = process.env.STORAGE_ENDPOINT.trim();
+    if (!/^https:\\/\\//i.test(endpoint)) {
+      throw new Error('STORAGE_ENDPOINT must be an HTTPS URL for remote storage');
     }
   }
 
