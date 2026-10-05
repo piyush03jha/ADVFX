@@ -6,7 +6,6 @@ import {
   IconBox,
   IconCheck,
   IconDownload,
-  IconBox,
   IconRefresh,
   IconTrash,
   IconUpload,
@@ -33,8 +32,19 @@ type Job = {
   completedAt: string | null;
 };
 
-const ACCEPT = ".abc,.usd,.usda,.usdc,.usdz,.fbx,.obj,.ply,.stl,.gltf";
-const FORMATS = ["FBX", "OBJ", "STL", "PLY", "GLTF", "USD", "USDZ", "ABC"];
+const ACCEPT = ".abc,.usd,.usda,.usdc,.usdz,.svg,.pdf,.obj,.ply,.stl,.bvh,.fbx,.glb,.gltf";
+const FORMATS = [
+  "Alembic (.abc)",
+  "Universal Scene Description (.usd*)",
+  "Grease Pencil as SVG (.svg)",
+  "Grease Pencil as PDF (.pdf)",
+  "Wavefront (.obj)",
+  "Stanford PLY (.ply)",
+  "STL (.stl)",
+  "Motion Capture (.bvh)",
+  "FBX (.fbx)",
+  "glTF 2.0 (.glb/.gltf)",
+];
 
 export default function ThreeDConversionPage() {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -133,13 +143,11 @@ export default function ThreeDConversionPage() {
           </div>
           <h2 className="mt-5 text-lg font-semibold">Drop a 3D file here</h2>
           <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-muted">
-            Upload a single source asset. For OBJ/GLTF/FBX files that reference external MTL, BIN or texture files, bundle support will be added separately; this first implementation keeps the upload path deterministic and safe.
+            Supported formats are limited to the formats approved for this conversion tool. Upload one source file at a time; external dependency bundles are not accepted in this version.
           </p>
           <div className="mt-5 flex flex-wrap justify-center gap-2">
             {FORMATS.map((format) => (
-              <span key={format} className="rounded-full border border-border bg-surface px-2.5 py-1 text-[10px] font-medium text-muted">
-                {format}
-              </span>
+              <span key={format} className="rounded-full border border-border bg-surface px-2.5 py-1 text-[10px] font-medium text-muted">{format}</span>
             ))}
           </div>
           <AdminButton className="mt-7" variant="primary" onClick={() => inputRef.current?.click()} disabled={uploading}>
