@@ -10,7 +10,11 @@ type B2Bucket = {
 type B2AuthorizeResponse = {
   accountId: string;
   authorizationToken: string;
-  apiUrl: string;
+  apiInfo?: {
+    storageApi?: {
+      apiUrl?: string;
+    };
+  };
 };
 
 const CORS_RULES = [
@@ -79,7 +83,16 @@ async function authorizeB2(
     );
   }
 
-  return JSON.parse(body) as B2AuthorizeResponse;
+  const parsed = JSON.parse(body) as B2AuthorizeResponse;
+  const apiUrl = parsed.apiInfo?.storageApi?.apiUrl;
+
+  if (!apiUrl) {
+    throw new Error(
+      "B2 authorization succeeded, but apiInfo.storageApi.apiUrl was not returned by b2_authorize_account.",
+    );
+  }
+
+  return parsed;
 }
 
 async function b2Request<T>(
@@ -88,7 +101,7 @@ async function b2Request<T>(
   payload: Record<string, unknown>,
 ): Promise<T> {
   const response = await fetch(
-    `${auth.apiUrl}/b2api/v4/${action}`,
+    `${auth.apiInfo?.storageApi?.apiUrl}/b2api/v4/${action}`,
     {
       method: "POST",
       headers: {
@@ -122,6 +135,7 @@ async function configureB2Cors() {
     "b2_list_buckets",
     {
       accountId: auth.accountId,
+      bucketName: bucket,
     },
   );
 
@@ -155,6 +169,7 @@ async function configureB2Cors() {
     "b2_list_buckets",
     {
       accountId: auth.accountId,
+      bucketName: bucket,
     },
   );
 
