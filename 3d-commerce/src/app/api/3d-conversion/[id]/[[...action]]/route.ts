@@ -24,11 +24,12 @@ async function proxy(request: NextRequest, path: string) {
 
     const contentType = response.headers.get("content-type") ?? "application/json";
     if (contentType.includes("application/octet-stream") || contentType.includes("model/gltf-binary")) {
-      return new NextResponse(await response.arrayBuffer(), {
+      return new NextResponse(response.body, {
         status: response.status,
         headers: {
           "Content-Type": contentType,
           "Content-Disposition": response.headers.get("content-disposition") ?? "attachment",
+          ...(response.headers.get("content-length") ? { "Content-Length": response.headers.get("content-length")! } : {}),
         },
       });
     }
