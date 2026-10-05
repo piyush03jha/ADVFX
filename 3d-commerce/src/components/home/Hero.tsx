@@ -28,6 +28,8 @@ export function Hero() {
   const rotationStartedAtRef = useRef(initialRotationStart);
   const remainingTimeRef = useRef(HERO_MODEL_ROTATION_MS);
   const timeoutRef = useRef<number | null>(null);
+  const readyModelsRef = useRef(new Set<string>());
+  const preloadPromisesRef = useRef(new Map<string, Promise<void>>());
 
   useEffect(() => {
     let cancelled = false;
@@ -75,13 +77,40 @@ export function Hero() {
     };
   }, []);
 
-  // Start downloading the first hero GLB as soon as the hero API returns.
-  // The logo/intro animation can therefore overlap the model transfer instead
-  // of making the user wait for the 3D canvas to mount.
-  useEffect(() => {
-    const url = heroProducts[0]?.model?.trim();
-    if (url) void loadModelBuffer(url).catch(() => undefined);
+  const preloadModel = useCallback((index: number) => {
+    const url = heroProducts[index]?.model?.trim();
+    if (!url) return Promise.resolve();
+
+    if (readyModelsRef.current.has(url)) return Promise.resolve();
+
+    const running = preloadPromisesRef.current.get(url);
+    if (running) return running;
+
+    const promise = loadModelBuffer(url)
+      .then(() => {
+        readyModelsRef.current.add(url);
+      })
+      .finally(() => {
+        preloadPromisesRef.current.delete(url);
+      });
+
+    preloadPromisesRef.current.set(url, promise);
+    return promise;
   }, [heroProducts]);
+
+  // Preload the current model and the next model. The next model is allowed
+  // to download in the background, but the hero never switches to it until
+  // the complete GLB is available in the browser cache.
+  useEffect(() => {
+    if (!heroProducts.length) return;
+
+    void preloadModel(activeIndex).catch(() => undefined);
+
+    if (heroProducts.length > 1) {
+      const nextIndex = (activeIndex + 1) % heroProducts.length;
+      void preloadModel(nextIndex).catch(() => undefined);
+    }
+  }, [activeIndex, heroProducts.length, preloadModel]);
 
   const clearRotationTimer = useCallback(() => {
     if (timeoutRef.current !== null) {
@@ -99,14 +128,35 @@ export function Hero() {
 
       timeoutRef.current = window.setTimeout(() => {
         timeoutRef.current = null;
-        remainingTimeRef.current = HERO_MODEL_ROTATION_MS;
 
-        startTransition(() => {
-          setActiveIndex((current) => (current + 1) % heroProducts.length);
-        });
+        const expectedIndex = activeIndex;
+        const nextIndex = (expectedIndex + 1) % heroProducts.length;
+
+        void preloadModel(nextIndex)
+          .then(() => {
+            if (
+              isModelHeldRef.current ||
+              activeIndex !== expectedIndex
+            ) {
+              return;
+            }
+
+            remainingTimeRef.current = HERO_MODEL_ROTATION_MS;
+
+            startTransition(() => {
+              setActiveIndex(nextIndex);
+            });
+          })
+          .catch(() => {
+            // Keep the current model visible if the next model cannot be
+            // downloaded. A later rotation attempt can retry it.
+            if (!isModelHeldRef.current && activeIndex === expectedIndex) {
+              scheduleNextProduct(HERO_MODEL_ROTATION_MS);
+            }
+          });
       }, Math.max(0, delay));
     },
-    [clearRotationTimer, heroProducts.length],
+    [activeIndex, clearRotationTimer, heroProducts.length, preloadModel],
   );
 
   useEffect(() => {
@@ -138,14 +188,26 @@ export function Hero() {
 
   const handleProductChange = useCallback(
     (index: number) => {
-      setActiveIndex(index);
-      remainingTimeRef.current = HERO_MODEL_ROTATION_MS;
+      if (index === activeIndex) return;
 
-      if (!isModelHeldRef.current) {
-        scheduleNextProduct();
-      }
+      const previousIndex = activeIndex;
+
+      void preloadModel(index)
+        .then(() => {
+          if (isModelHeldRef.current || activeIndex !== previousIndex) return;
+
+          remainingTimeRef.current = HERO_MODEL_ROTATION_MS;
+          startTransition(() => {
+            setActiveIndex(index);
+          });
+
+          if (!isModelHeldRef.current) {
+            scheduleNextProduct();
+          }
+        })
+        .catch(() => undefined);
     },
-    [scheduleNextProduct],
+    [activeIndex, preloadModel, scheduleNextProduct],
   );
 
   if (isLoading) {
