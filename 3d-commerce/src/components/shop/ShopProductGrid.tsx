@@ -192,7 +192,17 @@ export function ShopProductGrid({
                     <span className="text-foreground">{total}</span> models
                   </p>
                 </div>
-                <Pagination page={page} totalPages={result.totalPages} onChange={handlePageChange} />
+                <Pagination
+                  page={page}
+                  totalPages={result.totalPages}
+                  onChange={handlePageChange}
+                  getHref={(target) =>
+                    `${pathname || basePath}${buildShopSearch(
+                      { ...state, page: target },
+                      { omitCategory: Boolean(lockedCategory) },
+                    )}`
+                  }
+                />
               </div>
             ) : (
               <EmptyProducts onClear={clearAll} />

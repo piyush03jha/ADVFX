@@ -1,9 +1,9 @@
 /**
- * Resolve media URLs returned by the API to a URL the storefront can load.
+ * Resolve catalog media URLs to storefront-safe URLs.
  *
- * Local storage is exposed through the Next.js /storage proxy. If the API
- * returns an absolute backend URL (for example http://localhost:4000/storage/...),
- * keep the storage key but serve it from the current storefront origin instead.
+ * The storefront has a cacheable same-origin /api/assets proxy. When the API
+ * returns an absolute API URL for one of those assets, normalize it back to
+ * the proxy so Next/Image, crawlers, and browsers all use the same origin.
  */
 export function resolveMediaUrl(value?: string | null): string | null {
   if (!value) return null;
@@ -11,27 +11,25 @@ export function resolveMediaUrl(value?: string | null): string | null {
   const raw = value.trim();
   if (!raw) return null;
 
-  if (
-    raw.startsWith("data:") ||
-    raw.startsWith("blob:") ||
-    raw.startsWith("https://") ||
-    raw.startsWith("http://")
-  ) {
-    try {
-      const parsed = new URL(raw);
-
-      if (parsed.pathname.startsWith("/storage/")) {
-        return parsed.pathname + parsed.search + parsed.hash;
-      }
-    } catch {
-      // Keep malformed/unknown URLs unchanged so the browser can report them.
-    }
-
+  if (raw.startsWith("data:") || raw.startsWith("blob:")) {
     return raw;
   }
 
-  if (raw.startsWith("/storage/")) return raw;
-  if (raw.startsWith("storage/")) return "/" + raw;
+  try {
+    const parsed = new URL(raw);
 
-  return raw.startsWith("/") ? raw : "/" + raw;
+    if (parsed.pathname.startsWith("/api/assets/")) {
+      return parsed.pathname + parsed.search + parsed.hash;
+    }
+
+    if (parsed.pathname.startsWith("/storage/")) {
+      return parsed.pathname + parsed.search + parsed.hash;
+    }
+
+    return raw;
+  } catch {
+    if (raw.startsWith("/api/assets/") || raw.startsWith("/storage/")) return raw;
+    if (raw.startsWith("api/assets/") || raw.startsWith("storage/")) return "/" + raw;
+    return raw.startsWith("/") ? raw : "/" + raw;
+  }
 }
