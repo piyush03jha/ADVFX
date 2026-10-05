@@ -320,8 +320,8 @@ export class ModelMultipartService {
   private async storageFailure(action: string, response: Response): Promise<BadGatewayException> {
     let body = "";
     try { body = (await response.text()).trim(); } catch { /* ignore */ }
-    const code = /<Code>([^<]+)<\\/Code>/i.exec(body)?.[1];
-    const message = /<Message>([^<]+)<\\/Message>/i.exec(body)?.[1];
+    const code = /<Code>([^<]+)<\/Code>/i.exec(body)?.[1];
+    const message = /<Message>([^<]+)<\/Message>/i.exec(body)?.[1];
     const requestId =
       response.headers.get("x-amz-request-id") ??
       response.headers.get("x-bz-request-id") ??
