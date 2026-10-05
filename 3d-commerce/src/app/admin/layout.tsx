@@ -22,6 +22,7 @@ import {
   IconClipboardList,
   IconHistory,
   IconCpu,
+  IconBox,
 } from "@tabler/icons-react";
 import { Button } from "@/components/ui/Button";
 import { IconButton } from "@/components/ui/IconButton";
@@ -45,6 +46,7 @@ const nav = [
   { href: "/admin/returns", label: "Returns", icon: IconRotate2 },
   { href: "/admin/commerce", label: "Promotions & tax", icon: IconTags },
   { href: "/admin/processing", label: "3D processing", icon: IconCpu },
+  { href: "/admin/3d-conversion", label: "3D Conversion", icon: IconBox },
   { href: "/admin/audit", label: "Audit log", icon: IconHistory },
   { href: "/admin/analytics", label: "Analytics", icon: IconChartBar },
   { href: "/admin/notifications", label: "Notifications", icon: IconMessageCircle },
