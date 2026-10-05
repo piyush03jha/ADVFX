@@ -1,3 +1,5 @@
+import { resolveMediaUrl } from "@/lib/media-url";
+
 
 export interface CatalogMedia {
   id: string;
