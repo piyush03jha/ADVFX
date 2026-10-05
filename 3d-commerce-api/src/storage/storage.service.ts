@@ -302,23 +302,39 @@ export class StorageService {
   private async putObject(key: string, body: Buffer, contentType: string, cacheControl?: string) { await this.requestObject("PUT", key, body, contentType, cacheControl); }
   private async deleteObject(key: string) { await this.requestObject("DELETE", key); }
 
-  private async requestObjectResponse(method: "GET" | "HEAD", key: string, extraHeaders: Record<string, string> = {}): Promise<Response> {
-    const hostUrl = `${this.endpoint}/${encodeURIComponent(this.bucket)}/${key.split("/").map(encodeURIComponent).join("/")}`;
+  private buildSignedRequest(
+    method: "PUT" | "DELETE" | "HEAD" | "GET",
+    key: string,
+    body?: Buffer,
+    extraHeaders: Record<string, string> = {},
+  ): { url: URL; headers: Record<string, string> } {
+    const normalizedKey = this.normalizeRemoteKey(key);
+    const hostUrl = `${this.endpoint}/${encodeURIComponent(this.bucket)}/${normalizedKey
+      .split("/")
+      .map(encodeURIComponent)
+      .join("/")}`;
     const url = new URL(hostUrl);
-    const payloadHash = createHash("sha256").update(Buffer.alloc(0)).digest("hex");
-    const amzDate = new Date().toISOString().replace(/[:-]|\.\d{3}/g, "");
+    const payload = body ?? Buffer.alloc(0);
+    const payloadHash = createHash("sha256").update(payload).digest("hex");
+    const amzDate = new Date().toISOString().replace(/[:-]|\\.\\d{3}/g, "");
     const dateStamp = amzDate.slice(0, 8);
+
     const headers: Record<string, string> = {
       host: url.host,
       ...extraHeaders,
       "x-amz-content-sha256": payloadHash,
       "x-amz-date": amzDate,
     };
+
     const canonicalHeaders = Object.keys(headers)
       .sort()
-      .map((name) => `${name}:${headers[name].trim()}\n`)
+      .map((name) => `${name.toLowerCase()}:${headers[name].trim()}\\n`)
       .join("");
-    const signedHeaders = Object.keys(headers).sort().join(";");
+    const signedHeaders = Object.keys(headers)
+      .map((name) => name.toLowerCase())
+      .sort()
+      .join(";");
+
     const canonicalRequest = [
       method,
       url.pathname,
@@ -326,46 +342,97 @@ export class StorageService {
       canonicalHeaders,
       signedHeaders,
       payloadHash,
-    ].join("\n");
+    ].join("\\n");
+
     const credentialScope = `${dateStamp}/${this.region}/s3/aws4_request`;
     const stringToSign = [
       "AWS4-HMAC-SHA256",
       amzDate,
       credentialScope,
       createHash("sha256").update(canonicalRequest).digest("hex"),
-    ].join("\n");
+    ].join("\\n");
+
     const signingKey = this.deriveSigningKey(dateStamp);
-    const signature = createHmac("sha256", signingKey).update(stringToSign).digest("hex");
+    const signature = createHmac("sha256", signingKey)
+      .update(stringToSign)
+      .digest("hex");
+
     headers.authorization =
       `AWS4-HMAC-SHA256 Credential=${this.accessKey}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
 
-    const response = await fetch(url, { method, headers });
-    if (!response.ok) {
-      throw new InternalServerErrorException(`Remote storage request failed (${response.status})`);
+    return { url, headers };
+  }
+
+  private async readRemoteError(response: Response): Promise<string> {
+    const requestId =
+      response.headers.get("x-amz-request-id") ??
+      response.headers.get("x-bz-request-id") ??
+      undefined;
+
+    let body = "";
+    try {
+      body = (await response.text()).trim();
+    } catch {
+      // Ignore a response body that cannot be read.
     }
+
+    // B2 returns S3-style XML errors. Keep only diagnostic fields so secrets
+    // or large upstream responses are never copied into our API error.
+    const code = /<Code>([^<]+)<\\/Code>/i.exec(body)?.[1];
+    const message = /<Message>([^<]+)<\\/Message>/i.exec(body)?.[1];
+    const detail = code && message
+      ? `${code}: ${message}`
+      : code ?? message ?? body.replace(/\\s+/g, " ").slice(0, 300);
+
+    return requestId ? `${detail || "Remote storage request failed"} [requestId: ${requestId}]` : detail || "Remote storage request failed";
+  }
+
+  private async requestObjectResponse(
+    method: "GET" | "HEAD",
+    key: string,
+    extraHeaders: Record<string, string> = {},
+  ): Promise<Response> {
+    const { url, headers } = this.buildSignedRequest(method, key, undefined, extraHeaders);
+    const response = await fetch(url, { method, headers });
+
+    if (!response.ok) {
+      const detail = await this.readRemoteError(response);
+      if (response.status === 404) {
+        throw new NotFoundException(`Stored file not found: ${detail}`);
+      }
+      throw new BadGatewayException(
+        `Remote storage request failed (${response.status}): ${detail}`,
+      );
+    }
+
     return response;
   }
 
-  private async requestObject(method: "PUT" | "DELETE" | "HEAD" | "GET", key: string, body?: Buffer, contentType?: string, cacheControl?: string): Promise<Buffer | void> {
-    const hostUrl = `${this.endpoint}/${encodeURIComponent(this.bucket)}/${key.split("/").map(encodeURIComponent).join("/")}`;
-    const url = new URL(hostUrl);
-    const payloadHash = createHash("sha256").update(body ?? Buffer.alloc(0)).digest("hex");
-    const amzDate = new Date().toISOString().replace(/[:-]|\.\d{3}/g, "");
-    const dateStamp = amzDate.slice(0, 8);
-    const headers: Record<string, string> = { host: url.host, "x-amz-content-sha256": payloadHash, "x-amz-date": amzDate };
-    if (contentType) headers["content-type"] = contentType;
-    if (cacheControl) headers["cache-control"] = cacheControl;
-    const canonicalHeaders = Object.keys(headers).sort().map((name) => `${name}:${headers[name].trim()}\n`).join("");
-    const signedHeaders = Object.keys(headers).sort().join(";");
-    const canonicalRequest = [method, url.pathname, "", canonicalHeaders, signedHeaders, payloadHash].join("\n");
-    const credentialScope = `${dateStamp}/${this.region}/s3/aws4_request`;
-    const stringToSign = ["AWS4-HMAC-SHA256", amzDate, credentialScope, createHash("sha256").update(canonicalRequest).digest("hex")].join("\n");
-    const signingKey = this.deriveSigningKey(dateStamp);
-    const signature = createHmac("sha256", signingKey).update(stringToSign).digest("hex");
-    headers.authorization = `AWS4-HMAC-SHA256 Credential=${this.accessKey}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+  private async requestObject(
+    method: "PUT" | "DELETE" | "HEAD" | "GET",
+    key: string,
+    body?: Buffer,
+    contentType?: string,
+    cacheControl?: string,
+  ): Promise<Buffer | void> {
+    const extraHeaders: Record<string, string> = {};
+    if (contentType) extraHeaders["content-type"] = contentType;
+    if (cacheControl) extraHeaders["cache-control"] = cacheControl;
 
-    const response = await fetch(url, { method, headers, body: method === "PUT" ? new Uint8Array(body ?? Buffer.alloc(0)) : undefined });
-    if (!response.ok && !(method === "DELETE" && response.status === 404)) throw new InternalServerErrorException(`Remote storage request failed (${response.status})`);
+    const { url, headers } = this.buildSignedRequest(method, key, body, extraHeaders);
+    const response = await fetch(url, {
+      method,
+      headers,
+      body: method === "PUT" ? new Uint8Array(body ?? Buffer.alloc(0)) : undefined,
+    });
+
+    if (!response.ok && !(method === "DELETE" && response.status === 404)) {
+      const detail = await this.readRemoteError(response);
+      throw new BadGatewayException(
+        `Remote storage request failed (${response.status}): ${detail}`,
+      );
+    }
+
     if (method === "GET") return Buffer.from(await response.arrayBuffer());
   }
 
