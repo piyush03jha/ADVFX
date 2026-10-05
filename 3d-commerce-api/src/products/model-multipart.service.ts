@@ -226,9 +226,9 @@ export class ModelMultipartService {
 
   private objectUrl(key: string): URL {
     const url = new URL(
-      `${this.endpoint}/${encodeURIComponent(this.bucket)}/${key
+      `${this.endpoint}/${this.awsEncode(this.bucket)}/${key
         .split("/")
-        .map(encodeURIComponent)
+        .map((segment) => this.awsEncode(segment))
         .join("/")}`,
     );
     return url;
@@ -313,6 +313,25 @@ export class ModelMultipartService {
     };
   }
 
+  /**
+   * Convert a failed B2/S3 response into a useful API error. B2 returns
+   * S3-compatible XML with Code/Message and request IDs.
+   */
+  private async storageFailure(action: string, response: Response): Promise<BadGatewayException> {
+    let body = "";
+    try { body = (await response.text()).trim(); } catch { /* ignore */ }
+    const code = /<Code>([^<]+)<\\/Code>/i.exec(body)?.[1];
+    const message = /<Message>([^<]+)<\\/Message>/i.exec(body)?.[1];
+    const requestId =
+      response.headers.get("x-amz-request-id") ??
+      response.headers.get("x-bz-request-id") ??
+      undefined;
+    const detail = code && message ? `${code}: ${message}` : code ?? message ?? body.slice(0, 200);
+    return new BadGatewayException(
+      `${action} failed (${response.status})${detail ? `: ${detail}` : ""}${requestId ? ` [requestId: ${requestId}]` : ""}`,
+    );
+  }
+
   private async createMultipartUpload(key: string): Promise<string> {
     const url = this.objectUrl(key);
     const payloadHash = createHash("sha256").update("").digest("hex");
@@ -339,7 +358,7 @@ export class ModelMultipartService {
     });
 
     if (!response.ok) {
-      throw new Error(`Unable to start multipart upload (${response.status})`);
+      throw await this.storageFailure("Start multipart upload", response);
     }
 
     const xml = await response.text();
@@ -432,7 +451,7 @@ export class ModelMultipartService {
     });
 
     if (!response.ok) {
-      throw new Error(`Unable to complete multipart upload (${response.status})`);
+      throw await this.storageFailure("Complete multipart upload", response);
     }
   }
 
@@ -467,7 +486,7 @@ export class ModelMultipartService {
       headers: { ...signed.headers, authorization: auth },
     });
 
-    if (!response.ok) throw new Error(`Unable to inspect uploaded model (${response.status})`);
+    if (!response.ok) throw await this.storageFailure("Inspect uploaded model", response);
     return response.headers;
   }
 
@@ -492,7 +511,7 @@ export class ModelMultipartService {
       },
     });
 
-    if (!response.ok) throw new Error(`Unable to inspect uploaded GLB (${response.status})`);
+    if (!response.ok) throw await this.storageFailure("Read uploaded GLB header", response);
     return Buffer.from(await response.arrayBuffer());
   }
 
