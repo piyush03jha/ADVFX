@@ -53,9 +53,6 @@ export class AssetController {
 
     const [categoryId, ...rest] = segments;
     const storageKey = ["categories", categoryId, ...rest].join("/");
-    const assetUrl =
-      "/api/assets/" +
-      storageKey.split("/").map(encodeURIComponent).join("/");
 
     const category = await this.prisma.category.findFirst({
       where: { id: categoryId, isActive: true },
@@ -66,10 +63,6 @@ export class AssetController {
       throw new NotFoundException("Asset not found");
     }
 
-    // Validate the requested object against the category's stored image key.
-    // Do not compare the raw URL string: the same object may be stored as
-    // /api/assets/..., /categories/..., or an absolute API/storage URL
-    // depending on the deployment and when the image was uploaded.
     const storedImageKey = this.categoryImageStorageKey(category.imageUrl);
     if (storedImageKey !== storageKey) {
       throw new NotFoundException("Asset not found");
@@ -156,8 +149,8 @@ export class AssetController {
         }
 
         const start = Number(match[1]);
-
         const requestedEnd = match[2] ? Number(match[2]) : undefined;
+
         if (
           !Number.isSafeInteger(start) ||
           start < 0 ||
@@ -172,11 +165,7 @@ export class AssetController {
         }
 
         const { stream, size, totalSize, start: actualStart, end: actualEnd } =
-          await this.storage.openReadStreamRange(
-            storageKey,
-            start,
-            requestedEnd,
-          );
+          await this.storage.openReadStreamRange(storageKey, start, requestedEnd);
 
         reply
           .code(206)
@@ -201,13 +190,14 @@ export class AssetController {
       throw new BadGatewayException("Storage is unavailable");
     }
   }
+
   private categoryImageStorageKey(value?: string | null): string | null {
     const raw = value?.trim();
     if (!raw) return null;
 
     try {
       const parsed = new URL(raw, "https://voxel3d.org");
-      const pathname = decodeURIComponent(parsed.pathname).replace(/^\\/+/, "");
+      const pathname = decodeURIComponent(parsed.pathname).replace(/^\/+/, "");
       const candidates = ["api/assets/", "assets/", "storage/", ""];
       for (const prefix of candidates) {
         if (!pathname.startsWith(prefix)) continue;
@@ -219,5 +209,4 @@ export class AssetController {
       return null;
     }
   }
-
 }
