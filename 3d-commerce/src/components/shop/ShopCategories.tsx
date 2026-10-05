@@ -2,6 +2,7 @@
 
 import { IconArrowUpRight, IconCube } from "@tabler/icons-react";
 import { Container } from "@/components/ui/Container";
+import { resolveMediaUrl } from "@/lib/media-url";
 
 export interface ShopCategory { id: string; label: string; description: string; image: string; }
 
@@ -21,8 +22,8 @@ export function ShopCategories({ selected, onChange }: ShopCategoriesProps) {
       <h2 className="mt-1.5 text-lg font-semibold tracking-[-0.03em] text-foreground sm:text-xl">Explore categories</h2>
     </div><div className="hidden items-center gap-2 text-[10px] font-medium uppercase tracking-[0.14em] text-muted sm:flex"><IconCube size={13} />3D Asset Library</div></div>
     <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-      <CategoryCard active={selected === "all"} image="/catogeries/1.jpg" label="All Models" description="Complete collection" onClick={() => onChange("all")} />
-      {SHOP_CATEGORIES.map((category) => <CategoryCard key={category.id} active={selected === category.id} image={category.image} label={category.label} description={category.description} onClick={() => onChange(category.id)} />)}
+      <CategoryCard active={selected === "all"} image={resolveMediaUrl("/catogeries/1.jpg") ?? "/catogeries/1.jpg"} label="All Models" description="Complete collection" onClick={() => onChange("all")} />
+      {SHOP_CATEGORIES.map((category) => <CategoryCard key={category.id} active={selected === category.id} image={resolveMediaUrl(category.image) ?? category.image} label={category.label} description={category.description} onClick={() => onChange(category.id)} />)}
     </div>
   </Container></section>;
 }
