@@ -144,7 +144,7 @@ export class CategoriesService {
 
     try {
       const parsed = new URL(raw, "https://voxel3d.org");
-      let pathname = decodeURIComponent(parsed.pathname).replace(/^\\/+/, "");
+      let pathname = decodeURIComponent(parsed.pathname).replace(/^\/+/, "");
 
       const prefixes = ["api/assets/", "assets/", "storage/"];
       for (const prefix of prefixes) {
