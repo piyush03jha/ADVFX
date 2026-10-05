@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { resolveMediaUrl } from "@/lib/media-url";
 import {
   IconEdit,
   IconPhoto,
@@ -355,7 +356,7 @@ export default function AdminCategories() {
                 <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-border bg-background">
                   {c.imageUrl ? (
                     <img
-                      src={c.imageUrl}
+                      src={resolveMediaUrl(c.imageUrl) ?? ""}
                       alt={c.name}
                       className="h-full w-full object-cover"
                     />
