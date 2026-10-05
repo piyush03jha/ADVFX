@@ -26,13 +26,18 @@ export class CategoriesService {
   }
 
   async findAll(includeInactive = false) {
-    return this.prisma.category.findMany({
+    const categories = await this.prisma.category.findMany({
       where: includeInactive ? undefined : { isActive: true },
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
       include: {
         _count: { select: { products: true } },
       },
     });
+
+    return categories.map((category) => ({
+      ...category,
+      imageUrl: this.canonicalCategoryImageUrl(category.imageUrl),
+    }));
   }
 
   async findOne(id: string) {
@@ -47,7 +52,10 @@ export class CategoriesService {
       throw new NotFoundException(`Category "${id}" not found`);
     }
 
-    return category;
+    return {
+      ...category,
+      imageUrl: this.canonicalCategoryImageUrl(category.imageUrl),
+    };
   }
 
   async update(id: string, dto: UpdateCategoryDto) {
@@ -111,33 +119,51 @@ export class CategoriesService {
         try { await this.storage.delete(oldKey); } catch { /* preserve successful update */ }
       }
 
-      return updated;
+      return {
+        ...updated,
+        imageUrl: this.canonicalCategoryImageUrl(updated.imageUrl),
+      };
     } catch (error) {
       try { await this.storage.delete(stored.storageKey); } catch { /* preserve database error */ }
       throw error;
     }
   }
 
+  private canonicalCategoryImageUrl(url?: string | null): string | null {
+    const key = this.storageKeyFromImageUrl(url);
+    return key?.startsWith("categories/")
+      ? this.storage.getPublicAssetUrl(key)
+      : null;
+  }
+
   private storageKeyFromImageUrl(url?: string | null): string | null {
     if (!url) return null;
 
-    if (url.startsWith('/api/assets/')) {
-      try {
-        return url
-          .slice('/api/assets/'.length)
-          .split('/')
-          .map((segment) => decodeURIComponent(segment))
-          .join('/');
-      } catch {
-        return null;
+    const raw = url.trim();
+    if (!raw) return null;
+
+    try {
+      const parsed = new URL(raw, "https://voxel3d.org");
+      let pathname = decodeURIComponent(parsed.pathname).replace(/^\\/+/, "");
+
+      const prefixes = ["api/assets/", "assets/", "storage/"];
+      for (const prefix of prefixes) {
+        if (pathname.startsWith(prefix)) {
+          pathname = pathname.slice(prefix.length);
+          break;
+        }
       }
-    }
 
-    if (url.startsWith('/storage/')) {
-      return url.slice('/storage/'.length);
-    }
+      // B2/S3 URLs include the bucket name before the storage key.
+      const bucket = process.env.STORAGE_BUCKET?.trim();
+      if (bucket && pathname.startsWith(bucket + "/")) {
+        pathname = pathname.slice(bucket.length + 1);
+      }
 
-    return null;
+      return pathname.startsWith("categories/") ? pathname : null;
+    } catch {
+      return null;
+    }
   }
 
   async remove(id: string) {
