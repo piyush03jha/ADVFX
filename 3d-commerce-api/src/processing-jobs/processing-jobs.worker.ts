@@ -15,16 +15,11 @@ import {
 import { promises as fs } from "node:fs";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
-
 import { PrismaService } from "../prisma/prisma.service";
 import { StorageService } from "../storage/storage.service";
 import { FileContentValidationService } from "../product-files/file-content-validation.service";
 import { ProcessingJobs2DWorker } from "./processing-jobs-2d.worker";
 import { ImageProcessingService } from "./image-processing.service";
-
-const execFileAsync = promisify(execFile);
 
 @Injectable()
 export class ProcessingJobsWorker
@@ -726,7 +721,7 @@ export class ProcessingJobsWorker
       }
 
       if (productFile.fileType === ProductFileType.MODEL) {
-        await this.optimizeGlbModel(productFile, jobId, tempPath);
+        await this.publishSourceModelFallback(productFile, jobId, null, "GLB optimization is disabled; published original");
         return;
       }
 
@@ -819,192 +814,5 @@ export class ProcessingJobsWorker
     );
   }
 
-  private async optimizeGlbModel(
-    productFile: any,
-    jobId: string,
-    sourcePath: string,
-  ): Promise<void> {
-    if (productFile.format !== ProductFileFormat.GLB) {
-      throw new Error("Only GLB models can enter the web optimization pipeline.");
-    }
-
-    const job = await this.prisma.productFileProcessingJob.findUnique({
-      where: { id: jobId },
-      select: { outputFileId: true },
-    });
-
-    if (job?.outputFileId) return;
-
-    await this.storage.downloadTo(productFile.storageKey, sourcePath);
-
-    const sourceStats = await fs.stat(sourcePath);
-    const header = Buffer.alloc(12);
-    const sourceHandle = await fs.open(sourcePath, "r");
-    try {
-      const { bytesRead } = await sourceHandle.read(header, 0, header.length, 0);
-      if (
-        bytesRead !== 12 ||
-        header.toString("ascii", 0, 4) !== "glTF" ||
-        header.readUInt32LE(4) !== 2 ||
-        header.readUInt32LE(8) !== sourceStats.size
-      ) {
-        throw new Error("Source GLB failed structural validation.");
-      }
-    } finally {
-      await sourceHandle.close();
-    }
-
-    const previousMedia = await this.prisma.productMedia.findFirst({
-      where: {
-        productId: productFile.productId,
-        type: "MODEL_PREVIEW",
-      },
-      select: { url: true },
-    });
-
-    const optimizedPath = sourcePath.replace(/\.glb$/i, ".optimized.glb");
-    const timeoutMs = Math.max(
-      60_000,
-      Number(process.env.MODEL_OPTIMIZATION_TIMEOUT_MS ?? 10 * 60_000),
-    );
-
-    try {
-      await execFileAsync(
-        "gltf-transform",
-        [
-          "optimize",
-          sourcePath,
-          optimizedPath,
-          "--compress",
-          "meshopt",
-          "--texture-compress",
-          "webp",
-          "--texture-size",
-          String(Number(process.env.MODEL_TEXTURE_MAX_SIZE ?? 2048)),
-          "--simplify",
-          "false",
-          "--join",
-          "false",
-          "--flatten",
-          "false",
-        ],
-        {
-          timeout: timeoutMs,
-          maxBuffer: 8 * 1024 * 1024,
-        },
-      );
-    } catch (error) {
-      await this.publishSourceModelFallback(
-        productFile,
-        jobId,
-        previousMedia?.url ?? null,
-        "GLB optimization failed; published original",
-      );
-      return;
-    }
-
-    const optimizedStats = await fs.stat(optimizedPath);
-    if (optimizedStats.size >= sourceStats.size) {
-      await this.publishSourceModelFallback(
-        productFile,
-        jobId,
-        previousMedia?.url ?? null,
-        "Optimization did not reduce file size",
-      );
-      this.logger.log(
-        `Optimization kept original ${productFile.id}: ${sourceStats.size} -> ${optimizedStats.size} bytes; published original`,
-      );
-      return;
-    }
-
-    const optimizedBuffer = await fs.readFile(optimizedPath);
-    const output = await this.storage.saveProductFile({
-      productId: productFile.productId,
-      filename: "optimized-model.glb",
-      buffer: optimizedBuffer,
-    });
-
-    const publishedUrl = this.storage.getPublicAssetUrl(output.storageKey);
-
-    try {
-      const created = await this.prisma.$transaction(async (tx) => {
-        const file = await tx.productFile.create({
-          data: {
-            productId: productFile.productId,
-            originalName: productFile.originalName || "model.glb",
-            storageKey: output.storageKey,
-            storageUrl: publishedUrl,
-            format: ProductFileFormat.GLB,
-            fileType: ProductFileType.MODEL,
-            mimeType: "model/gltf-binary",
-            fileSize: BigInt(optimizedStats.size),
-            processingStatus: ProcessingStatus.COMPLETED,
-            convertedFromId: productFile.id,
-          },
-        });
-
-        await tx.productMedia.deleteMany({
-          where: {
-            productId: productFile.productId,
-            type: "MODEL_PREVIEW",
-          },
-        });
-
-        await tx.productMedia.create({
-          data: {
-            productId: productFile.productId,
-            type: "MODEL_PREVIEW",
-            url: publishedUrl,
-            altText: productFile.originalName || "GLB model",
-            sortOrder: 0,
-            isPrimary: true,
-          },
-        });
-
-        await tx.productFileProcessingJob.update({
-          where: { id: jobId },
-          data: { outputFileId: file.id },
-        });
-
-        return file;
-      });
- 
-      this.logger.log(
-        `Published optimized model ${created.id}: ${sourceStats.size} -> ${optimizedStats.size} bytes (${Math.round((1 - optimizedStats.size / sourceStats.size) * 10000) / 100}% reduction)`,
-      );
-
-      const replacedFiles = await this.prisma.productFile.findMany({
-        where: {
-          productId: productFile.productId,
-          fileType: ProductFileType.MODEL,
-          format: ProductFileFormat.GLB,
-          id: { notIn: [productFile.id, created.id] },
-          ...(previousMedia?.url
-            ? { storageUrl: previousMedia.url }
-            : { id: "__no_previous_model__" }),
-        },
-        select: { id: true, storageKey: true },
-      });
-
-      for (const replaced of replacedFiles) {
-        await this.storage.delete(replaced.storageKey).catch((error) => {
-          this.logger.warn(
-            `Unable to delete replaced model ${replaced.id}: ${error instanceof Error ? error.message : String(error)}`,
-          );
-        });
-
-        await this.prisma.productFile.delete({
-          where: { id: replaced.id },
-        }).catch((error) => {
-          this.logger.warn(
-            `Unable to delete replaced model row ${replaced.id}: ${error instanceof Error ? error.message : String(error)}`,
-          );
-        });
-      }
-    } catch (error) {
-      await this.storage.delete(output.storageKey).catch(() => undefined);
-      throw error;
-    }
-  }
 
 }
