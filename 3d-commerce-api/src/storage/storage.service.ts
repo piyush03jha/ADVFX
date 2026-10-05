@@ -316,7 +316,7 @@ export class StorageService {
     const url = new URL(hostUrl);
     const payload = body ?? Buffer.alloc(0);
     const payloadHash = createHash("sha256").update(payload).digest("hex");
-    const amzDate = new Date().toISOString().replace(/[:-]|\\.\\d{3}/g, "");
+    const amzDate = new Date().toISOString().replace(/[:-]|\.\d{3}/g, "");
     const dateStamp = amzDate.slice(0, 8);
 
     const headers: Record<string, string> = {
@@ -328,7 +328,7 @@ export class StorageService {
 
     const canonicalHeaders = Object.keys(headers)
       .sort()
-      .map((name) => `${name.toLowerCase()}:${headers[name].trim()}\\n`)
+      .map((name) => `${name.toLowerCase()}:${headers[name].trim()}\n`)
       .join("");
     const signedHeaders = Object.keys(headers)
       .map((name) => name.toLowerCase())
@@ -342,7 +342,7 @@ export class StorageService {
       canonicalHeaders,
       signedHeaders,
       payloadHash,
-    ].join("\\n");
+    ].join("\n");
 
     const credentialScope = `${dateStamp}/${this.region}/s3/aws4_request`;
     const stringToSign = [
@@ -350,7 +350,7 @@ export class StorageService {
       amzDate,
       credentialScope,
       createHash("sha256").update(canonicalRequest).digest("hex"),
-    ].join("\\n");
+    ].join("\n");
 
     const signingKey = this.deriveSigningKey(dateStamp);
     const signature = createHmac("sha256", signingKey)
@@ -378,11 +378,11 @@ export class StorageService {
 
     // B2 returns S3-style XML errors. Keep only diagnostic fields so secrets
     // or large upstream responses are never copied into our API error.
-    const code = /<Code>([^<]+)<\\/Code>/i.exec(body)?.[1];
-    const message = /<Message>([^<]+)<\\/Message>/i.exec(body)?.[1];
+    const code = /<Code>([^<]+)<\/Code>/i.exec(body)?.[1];
+    const message = /<Message>([^<]+)<\/Message>/i.exec(body)?.[1];
     const detail = code && message
       ? `${code}: ${message}`
-      : code ?? message ?? body.replace(/\\s+/g, " ").slice(0, 300);
+      : code ?? message ?? body.replace(/\s+/g, " ").slice(0, 300);
 
     return requestId ? `${detail || "Remote storage request failed"} [requestId: ${requestId}]` : detail || "Remote storage request failed";
   }
