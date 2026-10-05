@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadGatewayException, BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { createHash, createHmac, randomUUID } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
 import { StorageService } from "../storage/storage.service";
