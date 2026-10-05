@@ -50,6 +50,33 @@ export function validateEnvironment() {
     if (!/^https:\/\//i.test(endpoint)) {
       throw new Error('STORAGE_ENDPOINT must be an HTTPS URL for remote storage');
     }
+
+    const bucket = process.env.STORAGE_BUCKET!.trim();
+    if (/[/:]/.test(bucket)) {
+      throw new Error('STORAGE_BUCKET must be the bucket name only (no URL or slashes)');
+    }
+
+    let endpointUrl: URL;
+    try {
+      endpointUrl = new URL(endpoint);
+    } catch {
+      throw new Error('STORAGE_ENDPOINT is not a valid URL');
+    }
+
+    if (endpointUrl.pathname !== '/' && endpointUrl.pathname !== '') {
+      throw new Error('STORAGE_ENDPOINT must not include a path or the bucket name');
+    }
+
+    const b2Host = /^s3\.([a-z0-9-]+)\.backblazeb2\.com$/i.exec(endpointUrl.hostname);
+    if (b2Host && b2Host[1].toLowerCase() !== process.env.STORAGE_REGION!.trim().toLowerCase()) {
+      throw new Error(
+        `STORAGE_REGION must be "${b2Host[1]}" to match the Backblaze B2 endpoint ${endpointUrl.hostname}`,
+      );
+    }
+
+    if (endpointUrl.hostname.toLowerCase().startsWith(`${bucket.toLowerCase()}.`)) {
+      throw new Error('STORAGE_ENDPOINT must be the regional S3 endpoint, not the bucket-specific hostname');
+    }
   }
 
   if (nodeEnv === 'production') {
