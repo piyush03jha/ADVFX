@@ -1,8 +1,8 @@
 import { StorageService } from "../src/storage/storage.service";
 
 async function main(): Promise<void> {
-  if (process.env.STORAGE_PROVIDER !== "s3") {
-    throw new Error("Set STORAGE_PROVIDER=s3 before running the S3-compatible storage smoke test.");
+  if (!["s3", "b2", "r2"].includes((process.env.STORAGE_PROVIDER ?? "").toLowerCase())) {
+    throw new Error("Set STORAGE_PROVIDER=s3 or b2 before running the S3-compatible storage smoke test.");
   }
 
   const storage = new StorageService();
