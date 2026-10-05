@@ -66,35 +66,12 @@ export class AssetController {
       throw new NotFoundException("Asset not found");
     }
 
-    // Accept the current API asset URL and the legacy assets.voxel3d.org
-    // URL format so existing category records continue to work after the
-    // asset hostname migration. The object key itself remains the source
-    // of truth for the B2 object.
-    const storedImageUrl = category.imageUrl?.trim() ?? "";
-    const expectedLegacyUrl =
-      "/categories/" +
-      storageKey
-        .split("/")
-        .map(encodeURIComponent)
-        .join("/");
-
-    const isCurrentUrl = storedImageUrl === assetUrl;
-    const isLegacyRelativeUrl =
-      storedImageUrl === expectedLegacyUrl;
-    let isLegacyAbsoluteUrl = false;
-
-    try {
-      const parsed = new URL(storedImageUrl, "https://voxel3d.org");
-      isLegacyAbsoluteUrl =
-        (parsed.hostname === "assets.voxel3d.org" ||
-          parsed.hostname === "api.voxel3d.org" ||
-          parsed.hostname === "voxel3d.org") &&
-        parsed.pathname === expectedLegacyUrl;
-    } catch {
-      // Invalid stored URL is simply treated as an unauthorized asset path.
-    }
-
-    if (!isCurrentUrl && !isLegacyRelativeUrl && !isLegacyAbsoluteUrl) {
+    // Validate the requested object against the category's stored image key.
+    // Do not compare the raw URL string: the same object may be stored as
+    // /api/assets/..., /categories/..., or an absolute API/storage URL
+    // depending on the deployment and when the image was uploaded.
+    const storedImageKey = this.categoryImageStorageKey(category.imageUrl);
+    if (storedImageKey !== storageKey) {
       throw new NotFoundException("Asset not found");
     }
 
@@ -224,4 +201,23 @@ export class AssetController {
       throw new BadGatewayException("Storage is unavailable");
     }
   }
+  private categoryImageStorageKey(value?: string | null): string | null {
+    const raw = value?.trim();
+    if (!raw) return null;
+
+    try {
+      const parsed = new URL(raw, "https://voxel3d.org");
+      const pathname = decodeURIComponent(parsed.pathname).replace(/^\\/+/, "");
+      const candidates = ["api/assets/", "assets/", "storage/", ""];
+      for (const prefix of candidates) {
+        if (!pathname.startsWith(prefix)) continue;
+        const key = pathname.slice(prefix.length);
+        if (key.startsWith("categories/")) return key;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
 }
