@@ -105,6 +105,17 @@ const corsXml = `<?xml version="1.0" encoding="UTF-8"?>
 </CORSConfiguration>`;
 
 async function main() {
+  const { endpoint } = getConfig();
+
+  if (/backblazeb2\.com/i.test(endpoint) && process.env.FORCE_S3_CORS !== "1") {
+    console.error(
+      "Backblaze B2 bucket CORS should be configured with the native B2 CORS rules API/CLI. " +
+      "Use scripts/b2-cors-rules.json and set FORCE_S3_CORS=1 only to explicitly try PutBucketCors.",
+    );
+    process.exitCode = 1;
+    return;
+  }
+
   const put = await signedRequest("PUT", corsXml);
   if (!put.ok) {
     throw new Error(
