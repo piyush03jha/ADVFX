@@ -20,16 +20,34 @@ export function validateEnvironment() {
   }
 
   const storageProvider = (process.env.STORAGE_PROVIDER ?? 'local').toLowerCase();
-  if (!['local', 's3', 'r2'].includes(storageProvider)) throw new Error('STORAGE_PROVIDER must be local, s3, or r2');
-  if (nodeEnv === 'production' && storageProvider === 'local') throw new Error('Local filesystem storage is not allowed in production');
+  if (!['local', 's3', 'r2'].includes(storageProvider)) {
+    throw new Error('STORAGE_PROVIDER must be local, s3, or r2');
+  }
+  if (nodeEnv === 'production' && storageProvider === 'local') {
+    throw new Error('Local filesystem storage is not allowed in production');
+  }
 
   if (storageProvider !== 'local') {
-    for (const key of ['STORAGE_BUCKET','STORAGE_ENDPOINT','STORAGE_ACCESS_KEY_ID','STORAGE_SECRET_ACCESS_KEY','STORAGE_REGION']) {
-      if (!process.env[key]) throw new Error(`${key} must be configured for remote storage`);
+    const requiredStorageKeys = [
+      'STORAGE_BUCKET',
+      'STORAGE_ENDPOINT',
+      'STORAGE_ACCESS_KEY_ID',
+      'STORAGE_SECRET_ACCESS_KEY',
+      'STORAGE_REGION',
+    ] as const;
+
+    for (const key of requiredStorageKeys) {
+      if (!process.env[key]) {
+        throw new Error(`${key} must be configured for remote storage`);
+      }
     }
 
-    const endpoint = process.env.STORAGE_ENDPOINT.trim();
-    if (!/^https:\\/\\//i.test(endpoint)) {
+    const endpoint = process.env.STORAGE_ENDPOINT?.trim();
+    if (!endpoint) {
+      throw new Error('STORAGE_ENDPOINT must be configured for remote storage');
+    }
+
+    if (!/^https:\/\//i.test(endpoint)) {
       throw new Error('STORAGE_ENDPOINT must be an HTTPS URL for remote storage');
     }
   }
