@@ -23,7 +23,6 @@ const helpLinks = [
   { label: "Shipping & Returns", href: "/shipping" },
   { label: "Care Guide", href: "/care" },
   { label: "Custom Orders", href: "/custom" },
-  { label: "Wholesale", href: "/wholesale" },
   { label: "Contact", href: "/contact" },
 ];
 
