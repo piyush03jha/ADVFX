@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { PolicyPage } from "@/components/content/PolicyPage";
 
-export const metadata: Metadata = { title: "Shipping & Returns — Voxel3D", description: "Voxel3D shipping, delivery, and return information." };
+export const metadata: Metadata = { title: "Shipping & Returns", description: "Voxel3D shipping, delivery, and return information." };
 
 export default function ShippingPage() {
   return <PolicyPage contentKey="shipping" eyebrow="Customer care" title="Shipping & Returns" intro="Voxel3D sells physical products. Shipping availability, charges, and delivery estimates are shown during the order flow where applicable." sections={[
