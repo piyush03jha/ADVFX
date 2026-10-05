@@ -1,0 +1,14 @@
+[
+  {
+    "corsRuleName": "voxel-browser-uploads",
+    "allowedOrigins": [
+      "https://voxel3d.org",
+      "https://www.voxel3d.org",
+      "http://localhost:3000"
+    ],
+    "allowedOperations": ["s3_put", "s3_get", "s3_head"],
+    "allowedHeaders": ["*"],
+    "exposeHeaders": ["ETag", "Content-Length", "Content-Range", "Accept-Ranges"],
+    "maxAgeSeconds": 3600
+  }
+]
