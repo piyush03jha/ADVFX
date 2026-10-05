@@ -2,7 +2,6 @@ import { BadRequestException, Injectable, NotFoundException } from "@nestjs/comm
 import { createHash, createHmac, randomUUID } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
 import { StorageService } from "../storage/storage.service";
-import { ProcessingJobsService } from "../processing-jobs/processing-jobs.service";
 
 const PART_SIZE = 8 * 1024 * 1024;
 const MAX_SIZE = Number(process.env.MAX_MODEL_MB ?? 150) * 1024 * 1024;
@@ -20,7 +19,6 @@ export class ModelMultipartService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
-    private readonly processingJobs: ProcessingJobsService,
   ) {}
 
   private assertConfigured() {
@@ -49,7 +47,7 @@ export class ModelMultipartService {
 
     this.assertConfigured();
 
-    const key = `products/${productId}/models/staging/${randomUUID()}.glb`;
+    const key = `products/${productId}/models/${randomUUID()}.glb`;
     const uploadId = await this.createMultipartUpload(key);
     const total = Math.ceil(size / PART_SIZE);
 
@@ -80,7 +78,7 @@ export class ModelMultipartService {
   ) {
     this.assertConfigured();
 
-    const prefix = `products/${productId}/models/staging/`;
+    const prefix = `products/${productId}/models/`;
     const filename = body?.key?.slice(prefix.length) ?? "";
 
     if (
@@ -173,17 +171,12 @@ export class ModelMultipartService {
       return file;
     });
 
-    // The staging object remains private-by-convention until the worker
-    // publishes an optimized immutable model URL.
-    const job = await this.processingJobs.create(created.id);
-
     return {
       id: created.id,
       url,
       size: body.size,
       originalName: body.originalName?.trim() || "model.glb",
-      processingStatus: "PENDING",
-      jobId: job.id,
+      processingStatus: "COMPLETED",
     };
   }
 
