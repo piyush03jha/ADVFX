@@ -24,7 +24,9 @@
     "db:release": "prisma migrate deploy && npm run db:seed-admin",
     "storage:smoke": "tsx scripts/smoke-neon-storage.ts",
     "storage:configure-cors": "tsx scripts/configure-storage-cors.ts",
-    "storage:lifecycle": "tsx scripts/configure-storage-lifecycle.ts"
+    "storage:lifecycle": "tsx scripts/configure-storage-lifecycle.ts",
+    "storage:b2:diagnose": "tsx scripts/b2-diagnose.ts",
+    "storage:b2:cors": "echo 'Apply scripts/b2-cors-rules.json with the Backblaze B2 CLI; see DEPLOYMENT.md'"
   },
   "dependencies": {
     "@fastify/multipart": "^10.1.1",
