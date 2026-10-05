@@ -212,29 +212,51 @@ function activePrice(product: CatalogProduct): CatalogPrice | undefined {
   );
 }
 
-function assetUrl(url: string): string {
+const PRODUCTION_ASSET_BASE_URL = "https://api.voxel3d.org";
+
+export function assetUrl(url: string): string {
   const value = url.trim();
   if (!value) return "";
 
-  const configuredBase = process.env.NEXT_PUBLIC_ASSET_BASE_URL?.trim().replace(/\/$/, "");
-  if (configuredBase) {
-    try {
-      const parsed = new URL(value, "https://voxel3d.org");
-      if (parsed.pathname.startsWith("/api/assets/")) {
-        return configuredBase + parsed.pathname + parsed.search;
-      }
-    } catch {
-      return value;
-    }
-  }
+  const configuredBase =
+    process.env.NEXT_PUBLIC_ASSET_BASE_URL?.trim().replace(/\/$/, "");
 
-  return value;
+  const baseUrl =
+    configuredBase ||
+    (process.env.NODE_ENV === "production"
+      ? PRODUCTION_ASSET_BASE_URL
+      : "");
+
+  if (!baseUrl) return value;
+
+  try {
+    const parsed = new URL(value, "https://voxel3d.org");
+    if (!parsed.pathname.startsWith("/api/assets/")) return value;
+
+    const base = new URL(baseUrl);
+    // The old assets.voxel3d.org hostname is no longer a Railway custom
+    // domain. Keep deployments self-healing if an old environment variable
+    // is still present.
+    if (base.hostname === "assets.voxel3d.org") {
+      base.hostname = "api.voxel3d.org";
+    }
+
+    return base.toString().replace(/\/$/, "") + parsed.pathname + parsed.search;
+  } catch {
+    return value;
+  }
 }
 
 function primaryImage(product: CatalogProduct): string {
-  return product.media.find((media) => media.type === "IMAGE" && media.isPrimary)?.url
-    ?? product.media.find((media) => media.type === "IMAGE")?.url
-    ?? "/catogeries/1.jpg";
+  return (
+    assetUrl(
+      product.media.find(
+        (media) => media.type === "IMAGE" && media.isPrimary,
+      )?.url ?? "",
+    ) ||
+    assetUrl(product.media.find((media) => media.type === "IMAGE")?.url ?? "") ||
+    "/catogeries/1.jpg"
+  );
 }
 
 function primaryModel(product: CatalogProduct): string {
@@ -278,7 +300,7 @@ export function mapCatalogProduct(product: CatalogProduct): StorefrontProduct {
     images: product.media
       .filter((media) => media.type === "IMAGE")
       .sort((a, b) => a.sortOrder - b.sortOrder)
-      .map((media) => media.url),
+      .map((media) => assetUrl(media.url)),
     model: primaryModel(product),
     format: primaryModel(product) ? "GLB" : "Physical",
     fileSize: "",
