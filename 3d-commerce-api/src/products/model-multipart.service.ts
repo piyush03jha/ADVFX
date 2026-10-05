@@ -335,15 +335,15 @@ export class ModelMultipartService {
   private async createMultipartUpload(key: string): Promise<string> {
     const url = this.objectUrl(key);
     const payloadHash = createHash("sha256").update("").digest("hex");
+    // Backblaze's CreateMultipartUpload request only requires the
+    // uploads query parameter. Keep the signed header set minimal so
+    // provider-specific metadata headers cannot cause SigV4 mismatches.
     const signed = this.signRequest(
       "POST",
       url,
       payloadHash,
-      {
-        "cache-control": "public, max-age=31536000, immutable",
-        "content-type": "model/gltf-binary",
-      },
-      // Backblaze documents the CreateMultipartUpload query as `?uploads=null`.\n      // Keep the signed query and actual request URL identical.\n      { uploads: "null" },
+      {},
+      { uploads: "null" },
     );
 
     // For the initial multipart request, use the normal Authorization header
