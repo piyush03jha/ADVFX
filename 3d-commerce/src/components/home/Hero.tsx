@@ -9,6 +9,7 @@ import {
 } from "react";
 
 import { Container } from "@/components/ui/Container";
+import { assetUrl } from "@/lib/catalog-api";
 import { loadModelBuffer } from "@/lib/model-loader";
 import { HERO_MODEL_ROTATION_MS } from "@/config/hero-motion";
 import type { HeroProduct } from "@/config/hero-products";
@@ -47,7 +48,14 @@ export function Hero() {
         const data = (await response.json()) as HeroProduct[];
 
         if (!cancelled) {
-          setHeroProducts(Array.isArray(data) ? data : []);
+          const products = Array.isArray(data)
+            ? data.map((product) => ({
+                ...product,
+                model: assetUrl(product.model),
+              }))
+            : [];
+
+          setHeroProducts(products);
           setActiveIndex(0);
           setIsLoading(false);
         }
