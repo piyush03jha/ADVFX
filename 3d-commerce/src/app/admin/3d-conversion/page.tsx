@@ -6,7 +6,7 @@ import {
   IconBox,
   IconCheck,
   IconDownload,
-  IconFile3d,
+  IconBox,
   IconRefresh,
   IconTrash,
   IconUpload,
@@ -129,7 +129,7 @@ export default function ThreeDConversionPage() {
         >
           <input ref={inputRef} type="file" accept={ACCEPT} onChange={choose} className="sr-only" />
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-            <IconFile3d size={28} stroke={1.6} />
+            <IconBox size={28} stroke={1.6} />
           </div>
           <h2 className="mt-5 text-lg font-semibold">Drop a 3D file here</h2>
           <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-muted">
