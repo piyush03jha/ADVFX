@@ -1,10 +1,10 @@
 import "dotenv/config";
-import { createHash, createHmac } from "node:crypto";
 
 type B2Bucket = {
   bucketId: string;
   bucketName: string;
   bucketType: string;
+  corsRules?: unknown[];
 };
 
 type B2AuthorizeResponse = {
@@ -13,10 +13,7 @@ type B2AuthorizeResponse = {
   apiUrl: string;
 };
 
-const hash = (value: string | Buffer) =>
-  createHash("sha256").update(value).digest("hex");
-
-const corsRules = [
+const CORS_RULES = [
   {
     corsRuleName: "voxel-browser-uploads",
     allowedOrigins: [
@@ -37,39 +34,37 @@ const corsRules = [
 ];
 
 function getConfig() {
-  const endpoint = (process.env.STORAGE_ENDPOINT ?? "").replace(/\/$/, "");
-  const bucket = process.env.STORAGE_BUCKET ?? "";
-  const storageAccessKey = process.env.STORAGE_ACCESS_KEY_ID ?? "";
-  const storageSecretKey = process.env.STORAGE_SECRET_ACCESS_KEY ?? "";
+  const bucket = process.env.STORAGE_BUCKET?.trim() ?? "";
+  const keyId = process.env.B2_CORS_KEY_ID?.trim() ?? "";
+  const applicationKey = process.env.B2_CORS_APPLICATION_KEY?.trim() ?? "";
 
   if (!bucket) {
-    throw new Error("STORAGE_BUCKET is required");
+    throw new Error("STORAGE_BUCKET is required.");
   }
 
-  return {
-    endpoint,
-    bucket,
-    b2KeyId: process.env.B2_CORS_KEY_ID ?? storageAccessKey,
-    b2ApplicationKey:
-      process.env.B2_CORS_APPLICATION_KEY ?? storageSecretKey,
-  };
-}
-
-async function b2Authorize(keyId: string, applicationKey: string) {
   if (!keyId || !applicationKey) {
     throw new Error(
-      "B2_CORS_KEY_ID and B2_CORS_APPLICATION_KEY are required for Backblaze B2 bucket administration. " +
-        "They may be provided through STORAGE_ACCESS_KEY_ID/STORAGE_SECRET_ACCESS_KEY when that key has writeBuckets capability.",
+      "B2_CORS_KEY_ID and B2_CORS_APPLICATION_KEY are required. " +
+        "Use a Backblaze application key with writeBuckets capability for this one-time bucket configuration.",
     );
   }
 
-  const credentials = Buffer.from(`${keyId}:${applicationKey}`).toString(
-    "base64",
-  );
+  return { bucket, keyId, applicationKey };
+}
+
+async function authorizeB2(
+  keyId: string,
+  applicationKey: string,
+): Promise<B2AuthorizeResponse> {
+  const credentials = Buffer.from(
+    `${keyId}:${applicationKey}`,
+    "utf8",
+  ).toString("base64");
 
   const response = await fetch(
     "https://api.backblazeb2.com/b2api/v4/b2_authorize_account",
     {
+      method: "GET",
       headers: {
         Authorization: `Basic ${credentials}`,
       },
@@ -77,6 +72,7 @@ async function b2Authorize(keyId: string, applicationKey: string) {
   );
 
   const body = await response.text();
+
   if (!response.ok) {
     throw new Error(
       `B2 authorization failed (${response.status}): ${body}`,
@@ -87,17 +83,16 @@ async function b2Authorize(keyId: string, applicationKey: string) {
 }
 
 async function b2Request<T>(
-  apiUrl: string,
-  authorizationToken: string,
+  auth: B2AuthorizeResponse,
   action: string,
   payload: Record<string, unknown>,
-) {
+): Promise<T> {
   const response = await fetch(
-    `${apiUrl}/b2api/v4/${action}`,
+    `${auth.apiUrl}/b2api/v4/${action}`,
     {
       method: "POST",
       headers: {
-        Authorization: authorizationToken,
+        Authorization: auth.authorizationToken,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
@@ -105,49 +100,58 @@ async function b2Request<T>(
   );
 
   const body = await response.text();
+
   if (!response.ok) {
-    throw new Error(`B2 ${action} failed (${response.status}): ${body}`);
+    throw new Error(
+      `B2 ${action} failed (${response.status}): ${body}`,
+    );
   }
 
   return JSON.parse(body) as T;
 }
 
 async function configureB2Cors() {
-  const { bucket, b2KeyId, b2ApplicationKey } = getConfig();
+  const { bucket, keyId, applicationKey } = getConfig();
 
-  console.log(`Configuring native Backblaze B2 CORS for bucket: ${bucket}`);
+  console.log(`Authorizing Backblaze B2 for bucket: ${bucket}`);
 
-  const auth = await b2Authorize(b2KeyId, b2ApplicationKey);
+  const auth = await authorizeB2(keyId, applicationKey);
 
-  const buckets = await b2Request<{ buckets: B2Bucket[] }>(
-    auth.apiUrl,
-    auth.authorizationToken,
+  const list = await b2Request<{ buckets: B2Bucket[] }>(
+    auth,
     "b2_list_buckets",
     {
       accountId: auth.accountId,
     },
   );
 
-  const target = buckets.buckets.find((item) => item.bucketName === bucket);
+  const target = list.buckets.find(
+    (candidate) => candidate.bucketName === bucket,
+  );
+
   if (!target) {
-    throw new Error(`Backblaze bucket not found: ${bucket}`);
+    throw new Error(
+      `Backblaze bucket "${bucket}" was not found for account "${auth.accountId}".`,
+    );
   }
 
+  console.log(
+    `Updating CORS on ${target.bucketName} (${target.bucketId})...`,
+  );
+
   await b2Request(
-    auth.apiUrl,
-    auth.authorizationToken,
+    auth,
     "b2_update_bucket",
     {
       accountId: auth.accountId,
       bucketId: target.bucketId,
       bucketType: target.bucketType,
-      corsRules,
+      corsRules: CORS_RULES,
     },
   );
 
   const verify = await b2Request<{ buckets: B2Bucket[] }>(
-    auth.apiUrl,
-    auth.authorizationToken,
+    auth,
     "b2_list_buckets",
     {
       accountId: auth.accountId,
@@ -155,29 +159,24 @@ async function configureB2Cors() {
   );
 
   const verified = verify.buckets.find(
-    (item) => item.bucketId === target.bucketId,
+    (candidate) => candidate.bucketId === target.bucketId,
   );
 
-  console.log(
-    `B2 bucket CORS configuration applied successfully to ${verified?.bucketName ?? bucket}.`,
-  );
-}
+  const rules = verified?.corsRules ?? [];
 
-async function main() {
-  const { endpoint } = getConfig();
-
-  if (/backblazeb2\.com/i.test(endpoint)) {
-    await configureB2Cors();
-    return;
+  if (rules.length === 0) {
+    throw new Error(
+      "B2 accepted the bucket update but returned no CORS rules during verification.",
+    );
   }
 
-  throw new Error(
-    "This script currently supports Backblaze B2 bucket CORS administration only. " +
-      "Use storage:configure-cors for other S3-compatible providers.",
-  );
+  console.log("B2 CORS configured successfully.");
+  console.log(JSON.stringify(rules, null, 2));
 }
 
-main().catch((error) => {
-  console.error(error);
+configureB2Cors().catch((error: unknown) => {
+  console.error(
+    error instanceof Error ? error.message : String(error),
+  );
   process.exitCode = 1;
 });
