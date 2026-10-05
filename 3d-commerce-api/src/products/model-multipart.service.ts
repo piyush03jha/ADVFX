@@ -168,6 +168,27 @@ export class ModelMultipartService {
         },
       });
 
+      // The uploaded GLB is already the customer-facing web asset.
+      // Publish it directly as MODEL_PREVIEW so the public product API
+      // includes it for the Three.js viewer. No optimizer/worker is needed.
+      await tx.productMedia.deleteMany({
+        where: {
+          productId,
+          type: "MODEL_PREVIEW",
+        },
+      });
+
+      await tx.productMedia.create({
+        data: {
+          productId,
+          type: "MODEL_PREVIEW",
+          url,
+          altText: body.originalName?.trim() || "GLB model",
+          sortOrder: 0,
+          isPrimary: true,
+        },
+      });
+
       return file;
     });
 
