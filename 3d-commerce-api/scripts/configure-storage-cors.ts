@@ -91,9 +91,15 @@ const corsXml = `<?xml version="1.0" encoding="UTF-8"?>
   <CORSRule>
     <AllowedOrigin>https://voxel3d.org</AllowedOrigin>
     <AllowedOrigin>https://www.voxel3d.org</AllowedOrigin>
+    <AllowedOrigin>http://localhost:3000</AllowedOrigin>
     <AllowedMethod>PUT</AllowedMethod>
+    <AllowedMethod>GET</AllowedMethod>
+    <AllowedMethod>HEAD</AllowedMethod>
     <AllowedHeader>*</AllowedHeader>
     <ExposeHeader>ETag</ExposeHeader>
+    <ExposeHeader>Content-Length</ExposeHeader>
+    <ExposeHeader>Content-Range</ExposeHeader>
+    <ExposeHeader>Accept-Ranges</ExposeHeader>
     <MaxAgeSeconds>3600</MaxAgeSeconds>
   </CORSRule>
 </CORSConfiguration>`;
