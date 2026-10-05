@@ -29,7 +29,8 @@ export function resolveMediaUrl(value?: string | null): string | null {
       // same-origin asset proxy instead of sending the browser to the old
       // hostname.
       if (
-        parsed.hostname === "assets.voxel3d.org" &&
+        (parsed.hostname === "assets.voxel3d.org" ||
+          parsed.hostname === "api.voxel3d.org") &&
         parsed.pathname.startsWith("/categories/")
       ) {
         return (
