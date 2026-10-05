@@ -199,7 +199,7 @@ export default function AdminProducts(){
           processingStatus:data.processingStatus||"PENDING",
         },...prev]);
       }
-      setAssetMessage(data.processingStatus === "PENDING" ? "GLB uploaded. Web optimization is processing in the background." : "GLB uploaded and published.");
+      setAssetMessage("GLB uploaded and published.");
       await load();
     }catch(e){setAssetMessage(e instanceof Error?e.message:"GLB upload failed.")}
     finally{
