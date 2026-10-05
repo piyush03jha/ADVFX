@@ -69,6 +69,10 @@ export class AssetController {
     }
 
     try {
+      const size = await this.storage.getObjectSize(storageKey);
+      if (size <= 0) {
+        throw new NotFoundException("Asset not found");
+      }
       const stream = await this.storage.createReadStream(storageKey);
       return new StreamableFile(stream, {
         type: this.storage.getContentTypeForStorageKey(storageKey),
