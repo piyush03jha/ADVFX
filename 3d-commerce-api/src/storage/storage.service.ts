@@ -14,11 +14,11 @@ import { Readable } from "node:stream";
 import { basename, dirname, extname, join, resolve, sep } from "node:path";
 import type { SaveProductFileOptions, StoredFile } from "./storage.types";
 
-type StorageProvider = "local" | "s3";
+type StorageProvider = "local" | "s3" | "b2";
 
 @Injectable()
 export class StorageService {
-  private readonly provider: StorageProvider = ((process.env.STORAGE_PROVIDER ?? "local").toLowerCase() === "r2" ? "s3" : (process.env.STORAGE_PROVIDER ?? "local").toLowerCase()) as StorageProvider;
+  private readonly provider: StorageProvider = ((process.env.STORAGE_PROVIDER ?? "local").toLowerCase() === "r2" || (process.env.STORAGE_PROVIDER ?? "local").toLowerCase() === "b2" ? "s3" : (process.env.STORAGE_PROVIDER ?? "local").toLowerCase()) as StorageProvider;
   private readonly root = resolve(process.env.STORAGE_ROOT ?? join(process.cwd(), "storage"));
   private readonly bucket = process.env.STORAGE_BUCKET ?? "";
   private readonly endpoint = (process.env.STORAGE_ENDPOINT ?? "").replace(/\/$/, "");
