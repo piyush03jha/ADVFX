@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { PolicyPage } from "@/components/content/PolicyPage";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — Voxel3D",
+  title: "Privacy Policy",
   description: "Voxel3D privacy policy and information handling practices.",
 };
 
