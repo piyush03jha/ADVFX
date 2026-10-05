@@ -2,10 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { IconCheck, IconChevronDown, IconStar } from "@tabler/icons-react";
-import {
-  processSteps,
-  sizeOptions,
-} from "./customOptions";
+import { processSteps } from "./customOptions";
 import { CustomUploadZone } from "./CustomUploadZone";
 import { resolveMediaUrl } from "@/lib/media-url";
 
@@ -205,7 +202,7 @@ export function CustomForm({
         body: JSON.stringify({
           title: `Custom ${selectedCategory.name}`,
           requirements,
-          dimensions: selectedSize.label,
+          dimensions: configuredSize?.name ?? `${size} cm`,
           notes: details.trim() || undefined,
           category,
           bodyType: isPerson ? body : undefined,
