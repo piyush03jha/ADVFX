@@ -15,7 +15,7 @@ import type { FastifyReply } from "fastify";
 import { PrismaService } from "../prisma/prisma.service";
 import { StorageService } from "./storage.service";
 
-@Controller(["assets", "api/assets"])
+@Controller(["assets", "api/assets", ""])
 export class AssetController {
   private readonly logger = new Logger(AssetController.name);
   private readonly validProducts = new Map<string, number>();
@@ -62,7 +62,39 @@ export class AssetController {
       select: { imageUrl: true },
     });
 
-    if (!category || category.imageUrl !== assetUrl) {
+    if (!category) {
+      throw new NotFoundException("Asset not found");
+    }
+
+    // Accept the current API asset URL and the legacy assets.voxel3d.org
+    // URL format so existing category records continue to work after the
+    // asset hostname migration. The object key itself remains the source
+    // of truth for the B2 object.
+    const storedImageUrl = category.imageUrl?.trim() ?? "";
+    const expectedLegacyUrl =
+      "/categories/" +
+      storageKey
+        .split("/")
+        .map(encodeURIComponent)
+        .join("/");
+
+    const isCurrentUrl = storedImageUrl === assetUrl;
+    const isLegacyRelativeUrl =
+      storedImageUrl === expectedLegacyUrl;
+    let isLegacyAbsoluteUrl = false;
+
+    try {
+      const parsed = new URL(storedImageUrl, "https://voxel3d.org");
+      isLegacyAbsoluteUrl =
+        (parsed.hostname === "assets.voxel3d.org" ||
+          parsed.hostname === "api.voxel3d.org" ||
+          parsed.hostname === "voxel3d.org") &&
+        parsed.pathname === expectedLegacyUrl;
+    } catch {
+      // Invalid stored URL is simply treated as an unauthorized asset path.
+    }
+
+    if (!isCurrentUrl && !isLegacyRelativeUrl && !isLegacyAbsoluteUrl) {
       throw new NotFoundException("Asset not found");
     }
 
