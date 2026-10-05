@@ -1,13 +1,8 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { IconCheck, IconChevronDown, IconStar } from "@tabler/icons-react";
 import {
-  bodyOptions,
-  calculateCategoryPrice,
-  calculatePrice,
-  frameOptions,
   processSteps,
   sizeOptions,
 } from "./customOptions";
@@ -43,26 +38,6 @@ interface CustomFormProps {
   onSubmit: (submission: CustomSubmission) => void;
 }
 
-const gallery = [
-  { id: "full", label: "Full body", image: "/catogeries/2.jpg" },
-  { id: "half", label: "Half body", image: "/catogeries/1.jpg" },
-  { id: "stationary", label: "Stationary head", image: "/catogeries/4.jpg" },
-];
-
-const categories: Array<{
-  id: CustomCategory;
-  label: string;
-  description: string;
-  image: string;
-}> = [
-  { id: "person", label: "Person", description: "Portraits and figurines", image: "/catogeries/2.jpg" },
-  { id: "pet", label: "Pet / Animal", description: "Turn your companion into a keepsake", image: "/catogeries/1.jpg" },
-  { id: "object", label: "Product / Object", description: "Replicas, parts, sculptures & more", image: "/catogeries/4.jpg" },
-  { id: "vehicle", label: "Vehicle", description: "Cars, bikes and display models", image: "/catogeries/2.jpg" },
-  { id: "character", label: "Character / Collectible", description: "Gaming, anime and stylized figures", image: "/catogeries/3.jpg" },
-  { id: "other", label: "Other", description: "Something unique? Tell us what you need", image: "/catogeries/4.jpg" },
-];
-
 export function CustomForm({
   body,
   onBodyChange,
@@ -84,41 +59,59 @@ export function CustomForm({
   const [pricingError, setPricingError] = useState<string | null>(null);
   const [pricingLoading, setPricingLoading] = useState(false);
   const [config, setConfig] = useState<{categories:ConfigCategory[];sizeOptions:ConfigOption[]}|null>(null);
-  const router = useRouter();
+  const [configError, setConfigError] = useState<string | null>(null);
 
-  useEffect(() => { void fetch("/api/custom-requests/config",{cache:"no-store"}).then(r=>r.ok?r.json():null).then((d)=>{ if(d?.categories) setConfig(d); }).catch(()=>{}); }, []);
-
-  const configuredCategory = config?.categories.find((option) => option.slug === category);
-  const configured = (section:string, slug:string|undefined) => configuredCategory?.options.find((option)=>option.section===section && option.slug===slug);
-  const selectedBody =
-    configured("body", body) ? { id: body, label: configured("body", body)!.name, description: configured("body", body)!.description ?? "", basePrice: configured("body", body)!.priceMinor / 100, image: resolveMediaUrl(configured("body", body)!.imageUrl) ?? "/catogeries/1.jpg" } : (bodyOptions.find((option) => option.id === body) ?? bodyOptions[1]);
-  const configuredSize = config?.sizeOptions.find((option) => option.slug === size);
-  const selectedSize = configuredSize ? { value: size, label: configuredSize.name, multiplier: configuredSize.multiplier ?? 1 } : (sizeOptions.find((option) => option.value === size) ?? sizeOptions[2]);
-  const selectedFrame =
-    configured("frame", frame) ? { id: frame, label: configured("frame", frame)!.name, description: configured("frame", frame)!.description ?? "", addPrice: configured("frame", frame)!.priceMinor / 100, image: resolveMediaUrl(configured("frame", frame)!.imageUrl) ?? "/catogeries/4.jpg" } : (frameOptions.find((option) => option.id === frame) ?? frameOptions[0]);
-
-  const isPerson = category === "person";
-  const rawCategory = config?.categories.find((option) => option.slug === category);
-  const selectedCategory = rawCategory
-    ? {
-        label: rawCategory.name,
-        description: rawCategory.description ?? "",
-        image: resolveMediaUrl(rawCategory.imageUrl) ?? "/catogeries/4.jpg",
-      }
-    : (categories.find((option) => option.id === category) ?? categories[0]);
-
-  const localPrice = isPerson
-    ? calculatePrice({
-        body: selectedBody,
-        head: { addPrice: 0 },
-        frame: selectedFrame,
-        size: selectedSize,
+  useEffect(() => {
+    let cancelled = false;
+    void fetch("/api/custom-requests/config", { cache: "no-store" })
+      .then(async (response) => {
+        const data = await response.json().catch(() => null);
+        if (!response.ok || !data?.categories?.length) {
+          throw new Error(data?.error ?? data?.message ?? "Custom configuration is unavailable.");
+        }
+        return data as { categories: ConfigCategory[]; sizeOptions: ConfigOption[] };
       })
-    : calculateCategoryPrice({
-        category,
-        head: { addPrice: 0 },
-        size: selectedSize,
+      .then((data) => {
+        if (!cancelled) {
+          setConfig(data);
+          setConfigError(null);
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setConfig(null);
+          setConfigError(error instanceof Error ? error.message : "Custom configuration is unavailable.");
+        }
       });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (!config?.categories.length) return;
+    const nextCategory = config.categories.find((item) => item.slug === category) ?? config.categories[0];
+    if (nextCategory.slug !== category) setCategory(nextCategory.slug);
+
+    const bodyOption = nextCategory.options.find((item) => item.section === "body" && item.slug === body)
+      ?? nextCategory.options.find((item) => item.section === "body");
+    if (bodyOption && bodyOption.slug !== body) onBodyChange(bodyOption.slug);
+
+    const frameOption = nextCategory.options.find((item) => item.section === "frame" && item.slug === frame)
+      ?? nextCategory.options.find((item) => item.section === "frame");
+    if (frameOption && frameOption.slug !== frame) setFrame(frameOption.slug);
+
+    const sizeOption = config.sizeOptions.find((item) => item.slug === size) ?? config.sizeOptions[0];
+    if (sizeOption && sizeOption.slug !== size) setSize(sizeOption.slug);
+  }, [config, category, body, frame, size, onBodyChange]);
+
+  const configuredCategory = config?.categories.find((option) => option.slug === category) ?? config?.categories[0];
+  const configured = (section: string, slug?: string) =>
+    configuredCategory?.options.find((option) => option.section === section && option.slug === slug);
+  const selectedBody = configured("body", body);
+  const configuredSize = config?.sizeOptions.find((option) => option.slug === size) ?? config?.sizeOptions[0];
+  const selectedFrame = configured("frame", frame);
+  const isPerson = category === "person";
+  const selectedCategory = configuredCategory;
+  const price = serverPrice ?? 0;
 
   useEffect(() => {
     let cancelled = false;
@@ -163,27 +156,24 @@ export function CustomForm({
     };
   }, [category, body, frame, isPerson, size]);
 
-  const price = serverPrice ?? localPrice;
-
-  const displayCategories = config?.categories.map((item) => ({ id: item.slug, label: item.name, description: item.description ?? "", image: resolveMediaUrl(item.imageUrl) ?? "/catogeries/4.jpg" })) ?? categories;
+  const displayCategories = config?.categories ?? [];
   const hasReference = files.length > 0;
-  const [previewImage, setPreviewImage] = useState(selectedCategory.image);
-  const [previewLabel, setPreviewLabel] = useState(selectedCategory.label);
-  const activeGallery = { id: "selected", label: previewLabel, image: previewImage };
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [previewLabel, setPreviewLabel] = useState("");
 
   function selectCategory(value: CustomCategory) {
     setCategory(value);
     const nextCategory = config?.categories.find((item) => item.slug === value);
-    setPreviewImage(resolveMediaUrl(nextCategory?.imageUrl) ?? categories.find((item) => item.id === value)?.image ?? "/catogeries/4.jpg");
-    setPreviewLabel(nextCategory?.name || categories.find((item) => item.id === value)?.label || value);
+    setPreviewImage(resolveMediaUrl(nextCategory?.imageUrl) ?? null);
+    setPreviewLabel(nextCategory?.name ?? value);
   }
 
   function handleBodyChange(value: string) {
     onBodyChange(value);
     if (isPerson) {
       const option = configured("body", value);
-      setPreviewImage(resolveMediaUrl(option?.imageUrl) ?? bodyOptions.find((item) => item.id === value)?.image ?? selectedCategory.image);
-      setPreviewLabel(option?.name || bodyOptions.find((item) => item.id === value)?.label || value);
+      setPreviewImage(resolveMediaUrl(option?.imageUrl) ?? null);
+      setPreviewLabel(option?.name ?? value);
     }
   }
 
@@ -198,10 +188,10 @@ export function CustomForm({
 
     try {
       const requirements = [
-        `Category: ${selectedCategory.label}`,
-        `Body type: ${isPerson ? selectedBody.label : "Not applicable"}`,
-        `Person in frame: ${isPerson ? selectedFrame.label : "Not applicable"}`,
-        `Size: ${selectedSize.label}`,
+        `Category: ${selectedCategory.name}`,
+        `Body type: ${isPerson ? selectedBody?.name ?? "Not selected" : "Not applicable"}`,
+        `Person in frame: ${isPerson ? selectedFrame?.name ?? "Not selected" : "Not applicable"}`,
+        `Size: ${configuredSize?.name ?? `${size} cm`}`,
         details.trim() ? `Additional requirements:\n${details.trim()}` : "",
       ].filter(Boolean).join("\n");
 
@@ -213,7 +203,7 @@ export function CustomForm({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: `Custom ${selectedCategory.label}`,
+          title: `Custom ${selectedCategory.name}`,
           requirements,
           dimensions: selectedSize.label,
           notes: details.trim() || undefined,
@@ -295,10 +285,10 @@ export function CustomForm({
         requestId: requestBody.id,
         category,
         price,
-        bodyLabel: isPerson ? selectedBody.label : "Not applicable",
+        bodyLabel: isPerson ? selectedBody?.name ?? "Not selected" : "Not applicable",
         headLabel: "Default",
-        sizeLabel: selectedSize.label,
-        frameLabel: isPerson ? selectedFrame.label : "Not applicable",
+        sizeLabel: configuredSize?.name ?? `${size} cm`,
+        frameLabel: isPerson ? selectedFrame?.name ?? "Not selected" : "Not applicable",
       });
     } catch (error) {
       setFileError(
@@ -312,6 +302,23 @@ export function CustomForm({
   }
 
 
+  if (!config) {
+    return (
+      <section className="mx-auto max-w-3xl rounded-3xl border border-border bg-surface p-8 text-center">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">Custom creation studio</p>
+        <p className="mt-3 text-sm text-muted">{configError ?? "Loading admin-managed custom configuration…"}</p>
+      </section>
+    );
+  }
+
+  if (!selectedCategory || !configuredSize) {
+    return (
+      <section className="mx-auto max-w-3xl rounded-3xl border border-border bg-surface p-8 text-center">
+        <p className="text-sm text-muted">No active custom configuration is available.</p>
+      </section>
+    );
+  }
+
   return (
     <form onSubmit={handleSubmit} className="mx-auto max-w-[1380px]">
       <div className="mb-4 flex items-center gap-2 pt-2 text-xs text-muted sm:mb-5">
@@ -323,7 +330,7 @@ export function CustomForm({
       <div className="grid overflow-hidden rounded-[24px] border border-border bg-surface/80 shadow-[0_30px_100px_rgba(0,0,0,0.12)] backdrop-blur-xl lg:grid-cols-[minmax(0,1.08fr)_minmax(440px,0.92fr)]">
         <div className="relative flex min-h-0 flex-col bg-surface p-3 sm:p-4 lg:h-[calc(100svh-120px)] lg:max-h-[820px] lg:min-h-[620px]">
           <div className="relative min-h-0 flex-1 overflow-hidden rounded-[18px] border border-border bg-surface-elevated">
-            <img src={activeGallery.image} alt={activeGallery.label} className="absolute inset-0 h-full w-full object-contain transition duration-500" />
+            {previewImage ? <img src={previewImage} alt={previewLabel} className="absolute inset-0 h-full w-full object-contain transition duration-500" /> : <div className="absolute inset-0 flex items-center justify-center text-xs uppercase tracking-[0.16em] text-muted">{selectedCategory?.name ?? "Custom studio"}</div>}
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-foreground/35 via-transparent to-foreground/5" />
             <div className="absolute left-4 top-4 rounded-full border border-white/15 bg-foreground/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-foreground/80 backdrop-blur-md">
               Custom 3D Studio
@@ -339,7 +346,7 @@ export function CustomForm({
                 Example product
               </p>
               <h2 className="mt-1 text-xl font-semibold text-foreground sm:text-2xl">
-                {activeGallery.label}
+                {previewLabel || selectedCategory?.name || "Custom studio"}
               </h2>
             </div>
           </div>
@@ -369,7 +376,7 @@ export function CustomForm({
           </div>
 
           <div className="mt-6 space-y-6">
-            <CompactSection label="What would you like to create?" hint={selectedCategory.label}>
+            <CompactSection label="What would you like to create?" hint={selectedCategory?.name ?? "Loading"}>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {displayCategories.map((option) => (
                   <button
@@ -399,12 +406,12 @@ export function CustomForm({
               <>
                 <CompactSection label="Type">
                   <div className="grid grid-cols-2 gap-2">
-                    {bodyOptions.map((option) => (
+                    {configuredCategory?.options.filter((option) => option.section === "body").map((option) => (
                       <SelectionButton
                         key={option.id}
-                        label={option.label}
-                        price={option.priceLabel}
-                        description={option.description}
+                        label={option.name}
+                        price={option.priceMinor === 0 ? "Included" : `+₹${Math.round(option.priceMinor / 100).toLocaleString("en-IN")}`}
+                        description={option.description ?? ""}
                         selected={body === option.id}
                         onClick={() => handleBodyChange(option.id)}
                       />
@@ -415,7 +422,7 @@ export function CustomForm({
             ) : (
               <div className="rounded-2xl border border-border bg-surface/45 p-4">
                 <p className="text-xs font-semibold">
-                  Built for {selectedCategory.label.toLowerCase()}
+                  Built for {selectedCategory?.name.toLowerCase()}
                 </p>
                 <p className="mt-1 text-xs leading-5 text-muted">
                   Upload your references below. The selected size is stored with your request.
@@ -425,9 +432,9 @@ export function CustomForm({
 
             <CompactSection label="Size">
               <div className="relative">
-                <select value={size} onChange={(event) => { const value = event.target.value; setSize(value); const option = config?.sizeOptions.find((item) => item.slug === value); setPreviewImage(resolveMediaUrl(option?.imageUrl) ?? selectedCategory.image); setPreviewLabel(option?.name || `${value} cm`); }} className="h-12 w-full appearance-none rounded-xl border border-border bg-surface px-3.5 pr-10 text-sm font-medium outline-none focus:border-primary/60">
-                  {sizeOptions.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
+                <select value={size} onChange={(event) => { const value = event.target.value; setSize(value); const option = config?.sizeOptions.find((item) => item.slug === value); setPreviewImage(resolveMediaUrl(option?.imageUrl) ?? null); setPreviewLabel(option?.name ?? `${value} cm`); }} className="h-12 w-full appearance-none rounded-xl border border-border bg-surface px-3.5 pr-10 text-sm font-medium outline-none focus:border-primary/60">
+                  {(config?.sizeOptions ?? []).map((option) => (
+                    <option key={option.slug} value={option.slug}>{option.name}</option>
                   ))}
                 </select>
                 <IconChevronDown size={17} className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-muted" />
@@ -508,7 +515,7 @@ export function CustomForm({
           <h3 className="mt-1 text-lg font-semibold">Ready to submit</h3>
           <div className="mt-5 space-y-2.5">
             <SummaryRow label="Category" value={selectedCategory.label} />
-            <SummaryRow label="Size" value={selectedSize.label} />
+            <SummaryRow label="Size" value={configuredSize?.name ?? `${size} cm`} />
             <SummaryRow
               label={pricingLoading ? "Calculating price" : "Price"}
               value={`₹${price.toLocaleString("en-IN")}`}
