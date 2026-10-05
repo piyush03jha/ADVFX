@@ -320,11 +320,11 @@ export function mapCatalogProduct(product: CatalogProduct): StorefrontProduct {
     oldPrice: compareAt !== undefined ? compareAt / 100 : undefined,
     rating: 0,
     reviewCount: 0,
-    image: primaryImage(product),
+    image: resolveMediaUrl(primaryImage(product)) ?? "/catogeries/1.jpg",
     images: product.media
       .filter((media) => media.type === "IMAGE")
       .sort((a, b) => a.sortOrder - b.sortOrder)
-      .map((media) => media.url),
+      .map((media) => resolveMediaUrl(media.url) ?? "/catogeries/1.jpg"),
     model: primaryModel(product),
     format: primaryModel(product) ? "GLB" : "Physical",
     fileSize: "",
