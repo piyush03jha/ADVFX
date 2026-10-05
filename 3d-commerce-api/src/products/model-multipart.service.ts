@@ -164,7 +164,7 @@ export class ModelMultipartService {
           fileType: "MODEL",
           mimeType: "model/gltf-binary",
           fileSize: BigInt(body.size),
-          processingStatus: "PENDING",
+          processingStatus: "COMPLETED",
         },
       });
 
@@ -186,7 +186,7 @@ export class ModelMultipartService {
   ) {
     this.assertConfigured();
 
-    const prefix = `products/${productId}/models/staging/`;
+    const prefix = `products/${productId}/models/`;
     const filename = body?.key?.slice(prefix.length) ?? "";
 
     if (
