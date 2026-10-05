@@ -2,7 +2,8 @@ export interface ConversionUploadProgress {
   (percent: number): void;
 }
 
-interface UploadSession {\n  jobId: string;
+interface UploadSession {
+  jobId: string;
   key: string;
   uploadId: string;
   partSize: number;
@@ -14,10 +15,9 @@ interface UploadedPart {
   ETag: string;
 }
 
-export async function uploadModelDirect(
-  productId: string,
+export async function uploadConversionDirect(
   file: File,
-  onProgress: ModelUploadProgress,
+  onProgress: ConversionUploadProgress,
   signal?: AbortSignal,
 ) {
   const base = `/api/3d-conversion`;
