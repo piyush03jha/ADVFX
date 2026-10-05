@@ -248,15 +248,9 @@ export function assetUrl(url: string): string {
 }
 
 function primaryImage(product: CatalogProduct): string {
-  return (
-    assetUrl(
-      product.media.find(
-        (media) => media.type === "IMAGE" && media.isPrimary,
-      )?.url ?? "",
-    ) ||
-    assetUrl(product.media.find((media) => media.type === "IMAGE")?.url ?? "") ||
-    "/catogeries/1.jpg"
-  );
+  return product.media.find((media) => media.type === "IMAGE" && media.isPrimary)?.url
+    ?? product.media.find((media) => media.type === "IMAGE")?.url
+    ?? "/catogeries/1.jpg";
 }
 
 function primaryModel(product: CatalogProduct): string {
@@ -300,7 +294,7 @@ export function mapCatalogProduct(product: CatalogProduct): StorefrontProduct {
     images: product.media
       .filter((media) => media.type === "IMAGE")
       .sort((a, b) => a.sortOrder - b.sortOrder)
-      .map((media) => assetUrl(media.url)),
+      .map((media) => media.url),
     model: primaryModel(product),
     format: primaryModel(product) ? "GLB" : "Physical",
     fileSize: "",
