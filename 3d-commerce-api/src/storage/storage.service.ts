@@ -16,6 +16,11 @@ import type { SaveProductFileOptions, StoredFile } from "./storage.types";
 
 type StorageProvider = "local" | "s3" | "b2";
 
+const awsEncodeSegment = (value: string) =>
+  encodeURIComponent(value).replace(/[!'()*]/g, (char) =>
+    `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
+
 @Injectable()
 export class StorageService {
   private readonly provider: StorageProvider = ((process.env.STORAGE_PROVIDER ?? "local").toLowerCase() === "r2" || (process.env.STORAGE_PROVIDER ?? "local").toLowerCase() === "b2" ? "s3" : (process.env.STORAGE_PROVIDER ?? "local").toLowerCase()) as StorageProvider;
@@ -309,9 +314,9 @@ export class StorageService {
     extraHeaders: Record<string, string> = {},
   ): { url: URL; headers: Record<string, string> } {
     const normalizedKey = this.normalizeRemoteKey(key);
-    const hostUrl = `${this.endpoint}/${encodeURIComponent(this.bucket)}/${normalizedKey
+    const hostUrl = `${this.endpoint}/${awsEncodeSegment(this.bucket)}/${normalizedKey
       .split("/")
-      .map(encodeURIComponent)
+      .map(awsEncodeSegment)
       .join("/")}`;
     const url = new URL(hostUrl);
     const payload = body ?? Buffer.alloc(0);
