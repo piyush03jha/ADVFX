@@ -1,0 +1,10 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Custom Order Payment",
+  robots: { index: false, follow: true },
+};
+
+export default function CustomPaymentLayout({ children }: { children: React.ReactNode }) {
+  return children;
+}
