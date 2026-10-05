@@ -13,7 +13,7 @@ const LINE_WIDTH = 5.5;
 const LINE_SAMPLES = 120;
 
 // Set to true to play the intro only once per browser tab session.
-const PLAY_ONCE_PER_SESSION = false;
+const PLAY_ONCE_PER_SESSION = true;
 const SESSION_KEY = "voxel-intro-played";
 
 const SRC = {
