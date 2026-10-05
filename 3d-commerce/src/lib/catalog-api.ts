@@ -252,7 +252,7 @@ export function assetUrl(url: string): string {
 function primaryImage(product: CatalogProduct): string {
   return product.media.find((media) => media.type === "IMAGE" && media.isPrimary)?.url
     ?? product.media.find((media) => media.type === "IMAGE")?.url
-    ?? "/catogeries/1.jpg";
+    ?? "/categories/1.jpg";
 }
 
 function primaryModel(product: CatalogProduct): string {
@@ -322,11 +322,11 @@ export function mapCatalogProduct(product: CatalogProduct): StorefrontProduct {
     oldPrice: compareAt !== undefined ? compareAt / 100 : undefined,
     rating: 0,
     reviewCount: 0,
-    image: resolveMediaUrl(primaryImage(product)) ?? "/catogeries/1.jpg",
+    image: resolveMediaUrl(primaryImage(product)) ?? "/categories/1.jpg",
     images: product.media
       .filter((media) => media.type === "IMAGE")
       .sort((a, b) => a.sortOrder - b.sortOrder)
-      .map((media) => resolveMediaUrl(media.url) ?? "/catogeries/1.jpg"),
+      .map((media) => resolveMediaUrl(media.url) ?? "/categories/1.jpg"),
     model: primaryModel(product),
     format: primaryModel(product) ? "GLB" : "Physical",
     fileSize: "",
