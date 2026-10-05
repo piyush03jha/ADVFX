@@ -11,7 +11,7 @@ import { createHash, createHmac, randomUUID } from "node:crypto";
 import { access, mkdir, unlink, writeFile, readFile } from "node:fs/promises";
 import { createReadStream } from "node:fs";
 import { Readable } from "node:stream";
-import { basename, extname, join, resolve, sep } from "node:path";
+import { basename, dirname, extname, join, resolve, sep } from "node:path";
 import type { SaveProductFileOptions, StoredFile } from "./storage.types";
 
 type StorageProvider = "local" | "s3";
@@ -63,7 +63,7 @@ export class StorageService {
 
     if (this.provider === "local") {
       const destination = this.getAbsolutePath(normalizedKey);
-      await mkdir(join(destination, ".."), { recursive: true });
+      await mkdir(dirname(destination), { recursive: true });
       await copyFile(sourcePath, destination);
       return info.size;
     }
