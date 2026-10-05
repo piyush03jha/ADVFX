@@ -107,7 +107,7 @@ export function Footer() {
               <div>
                 <FooterHeading>Contact</FooterHeading>
                 <div className="space-y-3.5">
-                <ContactItem icon={IconMail} href="mailto:hello@voxel3d.in">
+                <ContactItem icon={IconMail} href="mailto:hello@voxel3d.org">
                   hello@voxel3d.in
                 </ContactItem>
                 <ContactItem icon={IconPhone} href="tel:+919600012345">
