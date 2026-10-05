@@ -1,7 +1,10 @@
+import "dotenv/config";
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
+import { validateEnvironment } from "./config/env.validation";
 
 async function bootstrap() {
+  validateEnvironment();
   const app = await NestFactory.createApplicationContext(AppModule, {
     logger: ["error", "warn", "log"],
   });
@@ -11,8 +14,8 @@ async function bootstrap() {
     process.exit(0);
   };
 
-  process.once("SIGTERM", shutdown);
-  process.once("SIGINT", shutdown);
+  process.once("SIGTERM", () => void shutdown());
+  process.once("SIGINT", () => void shutdown());
 }
 
 void bootstrap();
