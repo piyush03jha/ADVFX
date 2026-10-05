@@ -2,7 +2,7 @@ import { StorageService } from "../src/storage/storage.service";
 
 async function main(): Promise<void> {
   if (process.env.STORAGE_PROVIDER !== "s3") {
-    throw new Error("Set STORAGE_PROVIDER=s3 before running the Neon storage smoke test.");
+    throw new Error("Set STORAGE_PROVIDER=s3 before running the S3-compatible storage smoke test.");
   }
 
   const storage = new StorageService();
