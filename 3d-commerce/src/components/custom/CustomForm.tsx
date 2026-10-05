@@ -12,6 +12,7 @@ import {
   sizeOptions,
 } from "./customOptions";
 import { CustomUploadZone } from "./CustomUploadZone";
+import { resolveMediaUrl } from "@/lib/media-url";
 
 type ConfigOption = { id:string; section:string; slug:string; name:string; description?:string|null; imageUrl?:string|null; priceMinor:number; multiplier?:number|null; sortOrder:number; isActive:boolean };
 type ConfigCategory = { id:string; slug:CustomCategory; name:string; description?:string|null; imageUrl?:string|null; basePriceMinor:number; options:ConfigOption[] };
@@ -181,7 +182,7 @@ export function CustomForm({
     onBodyChange(value);
     if (isPerson) {
       const option = configured("body", value);
-      setPreviewImage(option?.imageUrl || bodyOptions.find((item) => item.id === value)?.image || selectedCategory.image);
+      setPreviewImage(resolveMediaUrl(option?.imageUrl) ?? bodyOptions.find((item) => item.id === value)?.image ?? selectedCategory.image);
       setPreviewLabel(option?.name || bodyOptions.find((item) => item.id === value)?.label || value);
     }
   }
@@ -424,7 +425,7 @@ export function CustomForm({
 
             <CompactSection label="Size">
               <div className="relative">
-                <select value={size} onChange={(event) => { const value = event.target.value; setSize(value); const option = config?.sizeOptions.find((item) => item.slug === value); setPreviewImage(option?.imageUrl || selectedCategory.image); setPreviewLabel(option?.name || `${value} cm`); }} className="h-12 w-full appearance-none rounded-xl border border-border bg-surface px-3.5 pr-10 text-sm font-medium outline-none focus:border-primary/60">
+                <select value={size} onChange={(event) => { const value = event.target.value; setSize(value); const option = config?.sizeOptions.find((item) => item.slug === value); setPreviewImage(resolveMediaUrl(option?.imageUrl) ?? selectedCategory.image); setPreviewLabel(option?.name || `${value} cm`); }} className="h-12 w-full appearance-none rounded-xl border border-border bg-surface px-3.5 pr-10 text-sm font-medium outline-none focus:border-primary/60">
                   {sizeOptions.map((option) => (
                     <option key={option.value} value={option.value}>{option.label}</option>
                   ))}
