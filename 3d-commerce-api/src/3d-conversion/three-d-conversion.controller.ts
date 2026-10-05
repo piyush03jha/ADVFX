@@ -1,5 +1,5 @@
-import { Body, Controller, Delete, Get, Param, Post, Res, StreamableFile, UseGuards } from "@nestjs/common";
-import type { FastifyReply } from "fastify";
+import { Body, Controller, Delete, Get, Param, Post, Req, StreamableFile, UseGuards } from "@nestjs/common";
+import type { FastifyRequest } from "fastify";
 import { AuthGuard } from "../auth/guards/auth.guard";
 import { AdminGuard } from "../auth/guards/admin.guard";
 import { ThreeDConversionService } from "./three-d-conversion.service";
@@ -12,9 +12,9 @@ export class ThreeDConversionController {
   @Post("upload")
   start(
     @Body() body: { originalName: string; size: number },
-    @Res() reply: FastifyReply,
+    @Req() request: FastifyRequest & { user?: { id?: string } },
   ) {
-    const user = (reply.request as FastifyReply["request"] & { user?: { id?: string } }).user;
+    const user = request.user;
     return this.service.start(body?.originalName, body?.size, user?.id);
   }
 
