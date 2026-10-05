@@ -18,7 +18,7 @@ type StorageProvider = "local" | "s3";
 
 @Injectable()
 export class StorageService {
-  private readonly provider = (process.env.STORAGE_PROVIDER ?? "local").toLowerCase() as StorageProvider;
+  private readonly provider: StorageProvider = ((process.env.STORAGE_PROVIDER ?? "local").toLowerCase() === "r2" ? "s3" : (process.env.STORAGE_PROVIDER ?? "local").toLowerCase()) as StorageProvider;
   private readonly root = resolve(process.env.STORAGE_ROOT ?? join(process.cwd(), "storage"));
   private readonly bucket = process.env.STORAGE_BUCKET ?? "";
   private readonly endpoint = (process.env.STORAGE_ENDPOINT ?? "").replace(/\/$/, "");
