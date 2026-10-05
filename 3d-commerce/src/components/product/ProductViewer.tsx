@@ -23,6 +23,7 @@ import {
 
 import { IconButton } from "@/components/ui/IconButton";
 import { ModelErrorBoundary } from "@/components/3d/ModelErrorBoundary";
+import { useModelUrl } from "@/lib/useModelUrl";
 
 interface ProductViewerProps {
   model: string;
@@ -34,7 +35,11 @@ function ProductModel({
 }: {
   model: string;
 }) {
-  const { scene } = useGLTF(model, true, true);
+  const { blobUrl } = useModelUrl(model);
+
+  if (!blobUrl) return null;
+
+  const { scene } = useGLTF(blobUrl, true, true);
 
   return (
     <Center>
