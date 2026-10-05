@@ -1,4 +1,5 @@
 import { getBackendApiUrl } from "@/lib/backend-api";
+import { resolveMediaUrl } from "@/lib/media-url";
 
 export interface ShopCategory {
   id: string;
@@ -22,16 +23,21 @@ export async function fetchShopCategories(): Promise<ShopCategory[]> {
 
     const data: unknown = await response.json();
 
-    return Array.isArray(data)
-      ? data.filter(
-          (category): category is ShopCategory =>
-            typeof category === "object" &&
-            category !== null &&
-            typeof (category as { id?: unknown }).id === "string" &&
-            typeof (category as { name?: unknown }).name === "string" &&
-            typeof (category as { slug?: unknown }).slug === "string",
-        )
-      : [];
+    if (!Array.isArray(data)) return [];
+
+    return data
+      .filter(
+        (category): category is ShopCategory =>
+          typeof category === "object" &&
+          category !== null &&
+          typeof (category as { id?: unknown }).id === "string" &&
+          typeof (category as { name?: unknown }).name === "string" &&
+          typeof (category as { slug?: unknown }).slug === "string",
+      )
+      .map((category) => ({
+        ...category,
+        imageUrl: resolveMediaUrl(category.imageUrl),
+      }));
   } catch {
     return [];
   }
