@@ -737,7 +737,7 @@ export class ProductsService {
     });
 
     if (!product) throw new NotFoundException(`Product "${id}" not found`);
-    return product;
+    return this.ensurePublicModelMedia(product);
   }
 
   async findBySlug(slug: string) {
@@ -747,7 +747,39 @@ export class ProductsService {
     });
 
     if (!product) throw new NotFoundException(`Product "${slug}" not found`);
-    return product;
+    return this.ensurePublicModelMedia(product);
+  }
+
+  private ensurePublicModelMedia(product: any) {
+    const hasModelMedia = product.media?.some(
+      (media: { type: string; url: string }) =>
+        media.type === 'MODEL_PREVIEW' && media.url?.trim(),
+    );
+
+    if (hasModelMedia) return product;
+
+    const modelFile = product.files?.find(
+      (file: { storageUrl: string | null; processingStatus: string }) =>
+        file.storageUrl?.trim() && file.processingStatus === 'COMPLETED',
+    );
+
+    if (!modelFile?.storageUrl) return product;
+
+    return {
+      ...product,
+      media: [
+        ...(product.media ?? []),
+        {
+          id: `model-file-${modelFile.id}`,
+          productId: product.id,
+          type: 'MODEL_PREVIEW',
+          url: modelFile.storageUrl,
+          altText: modelFile.originalName || 'GLB model',
+          sortOrder: 0,
+          isPrimary: true,
+        },
+      ],
+    };
   }
 
   async update(id: string, dto: UpdateProductDto) {
@@ -1135,6 +1167,15 @@ export class ProductsService {
         orderBy: { createdAt: 'desc' },
       },
       media: { orderBy: { sortOrder: 'asc' } },
+      files: {
+        where: {
+          fileType: 'MODEL',
+          format: 'GLB',
+          processingStatus: 'COMPLETED',
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 1,
+      },
       tags: { include: { tag: true } },
       variants: {
         where: { isActive: true },
