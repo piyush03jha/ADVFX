@@ -91,11 +91,11 @@ export function CustomForm({
   const configuredCategory = config?.categories.find((option) => option.slug === category);
   const configured = (section:string, slug:string|undefined) => configuredCategory?.options.find((option)=>option.section===section && option.slug===slug);
   const selectedBody =
-    configured("body", body) ? { id: body, label: configured("body", body)!.name, description: configured("body", body)!.description ?? "", basePrice: configured("body", body)!.priceMinor / 100, image: configured("body", body)!.imageUrl ?? "/catogeries/1.jpg" } : (bodyOptions.find((option) => option.id === body) ?? bodyOptions[1]);
+    configured("body", body) ? { id: body, label: configured("body", body)!.name, description: configured("body", body)!.description ?? "", basePrice: configured("body", body)!.priceMinor / 100, image: resolveMediaUrl(configured("body", body)!.imageUrl) ?? "/catogeries/1.jpg" } : (bodyOptions.find((option) => option.id === body) ?? bodyOptions[1]);
   const configuredSize = config?.sizeOptions.find((option) => option.slug === size);
   const selectedSize = configuredSize ? { value: size, label: configuredSize.name, multiplier: configuredSize.multiplier ?? 1 } : (sizeOptions.find((option) => option.value === size) ?? sizeOptions[2]);
   const selectedFrame =
-    configured("frame", frame) ? { id: frame, label: configured("frame", frame)!.name, description: configured("frame", frame)!.description ?? "", addPrice: configured("frame", frame)!.priceMinor / 100, image: configured("frame", frame)!.imageUrl ?? "/catogeries/4.jpg" } : (frameOptions.find((option) => option.id === frame) ?? frameOptions[0]);
+    configured("frame", frame) ? { id: frame, label: configured("frame", frame)!.name, description: configured("frame", frame)!.description ?? "", addPrice: configured("frame", frame)!.priceMinor / 100, image: resolveMediaUrl(configured("frame", frame)!.imageUrl) ?? "/catogeries/4.jpg" } : (frameOptions.find((option) => option.id === frame) ?? frameOptions[0]);
 
   const isPerson = category === "person";
   const rawCategory = config?.categories.find((option) => option.slug === category);
@@ -103,7 +103,7 @@ export function CustomForm({
     ? {
         label: rawCategory.name,
         description: rawCategory.description ?? "",
-        image: rawCategory.imageUrl || "/catogeries/4.jpg",
+        image: resolveMediaUrl(rawCategory.imageUrl) ?? "/catogeries/4.jpg",
       }
     : (categories.find((option) => option.id === category) ?? categories[0]);
 
@@ -165,7 +165,7 @@ export function CustomForm({
 
   const price = serverPrice ?? localPrice;
 
-  const displayCategories = config?.categories.map((item) => ({ id: item.slug, label: item.name, description: item.description ?? "", image: item.imageUrl || "/catogeries/4.jpg" })) ?? categories;
+  const displayCategories = config?.categories.map((item) => ({ id: item.slug, label: item.name, description: item.description ?? "", image: resolveMediaUrl(item.imageUrl) ?? "/catogeries/4.jpg" })) ?? categories;
   const hasReference = files.length > 0;
   const [previewImage, setPreviewImage] = useState(selectedCategory.image);
   const [previewLabel, setPreviewLabel] = useState(selectedCategory.label);
@@ -174,7 +174,7 @@ export function CustomForm({
   function selectCategory(value: CustomCategory) {
     setCategory(value);
     const nextCategory = config?.categories.find((item) => item.slug === value);
-    setPreviewImage(nextCategory?.imageUrl || categories.find((item) => item.id === value)?.image || "/catogeries/4.jpg");
+    setPreviewImage(resolveMediaUrl(nextCategory?.imageUrl) ?? categories.find((item) => item.id === value)?.image ?? "/catogeries/4.jpg");
     setPreviewLabel(nextCategory?.name || categories.find((item) => item.id === value)?.label || value);
   }
 
