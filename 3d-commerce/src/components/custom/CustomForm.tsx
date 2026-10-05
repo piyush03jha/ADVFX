@@ -383,7 +383,7 @@ export function CustomForm({
                     className={`group overflow-hidden rounded-2xl border text-left transition ${category === option.id ? "border-primary/70 bg-primary/[0.07]" : "border-border bg-surface hover:border-primary/35 hover:bg-surface-hover"}`}
                   >
                     <div className="relative aspect-[4/3] overflow-hidden bg-surface-elevated">
-                      <img src={option.image} alt="" className="h-full w-full object-cover opacity-80 transition duration-500 group-hover:scale-105" />
+                      {resolveMediaUrl(option.imageUrl) ? <img src={resolveMediaUrl(option.imageUrl)!} alt="" className="h-full w-full object-cover opacity-80 transition duration-500 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center text-[9px] uppercase tracking-[0.12em] text-muted">No image</div>}
                       {category === option.id && (
                         <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-white">
                           <IconCheck size={11} />
@@ -391,8 +391,8 @@ export function CustomForm({
                       )}
                     </div>
                     <div className="p-3">
-                      <p className="text-xs font-semibold">{option.label}</p>
-                      <p className="mt-1 text-[10px] leading-4 text-muted">{option.description}</p>
+                      <p className="text-xs font-semibold">{option.name}</p>
+                      <p className="mt-1 text-[10px] leading-4 text-muted">{option.description ?? ""}</p>
                     </div>
                   </button>
                 ))}
@@ -409,8 +409,8 @@ export function CustomForm({
                         label={option.name}
                         price={option.priceMinor === 0 ? "Included" : `+₹${Math.round(option.priceMinor / 100).toLocaleString("en-IN")}`}
                         description={option.description ?? ""}
-                        selected={body === option.id}
-                        onClick={() => handleBodyChange(option.id)}
+                        selected={body === option.slug}
+                        onClick={() => handleBodyChange(option.slug)}
                       />
                     ))}
                   </div>
@@ -453,7 +453,7 @@ export function CustomForm({
                 <p className="text-[10px] uppercase tracking-[0.16em] text-muted">
                   Size
                 </p>
-                <p className="mt-1 text-sm font-medium">{selectedSize.label}</p>
+                <p className="mt-1 text-sm font-medium">{configuredSize?.name ?? `${size} cm`}</p>
               </div>
             </div>
           </div>
