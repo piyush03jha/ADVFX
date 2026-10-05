@@ -178,7 +178,7 @@ function mapVariant(variant: CatalogVariant): StorefrontVariant | null {
   };
 }
 
-function activePrice(product: CatalogProduct): CatalogPrice | undefined {
+export function activePrice(product: CatalogProduct): CatalogPrice | undefined {
   const now = Date.now();
   const prices = product.prices ?? [];
 
