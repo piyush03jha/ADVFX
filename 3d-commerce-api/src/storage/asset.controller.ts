@@ -15,7 +15,7 @@ import type { FastifyReply } from "fastify";
 import { PrismaService } from "../prisma/prisma.service";
 import { StorageService } from "./storage.service";
 
-@Controller(["assets", "api/assets", ""])
+@Controller()
 export class AssetController {
   private readonly logger = new Logger(AssetController.name);
   private readonly validProducts = new Map<string, number>();
@@ -26,7 +26,7 @@ export class AssetController {
     private readonly storage: StorageService,
   ) {}
 
-  @Get("categories/*")
+  @Get(["categories/*", "assets/categories/*", "api/assets/categories/*"])
   async getCategoryAsset(
     @Param() params: Record<string, string | undefined>,
   ): Promise<StreamableFile> {
@@ -108,7 +108,7 @@ export class AssetController {
     }
   }
 
-  @Get("products/*")
+  @Get(["products/*", "assets/products/*", "api/assets/products/*"])
   async getProductAsset(
     @Param() params: Record<string, string | undefined>,
     @Res({ passthrough: true }) reply: FastifyReply,
