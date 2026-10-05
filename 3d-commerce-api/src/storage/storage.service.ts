@@ -51,6 +51,28 @@ export class StorageService {
   async saveReviewImage(reviewScope: string, filename: string, buffer: Buffer): Promise<StoredFile> { return this.saveScopedFile(["reviews", reviewScope.trim()], filename.trim(), buffer); }
   async saveGeneratedFile(buffer: Buffer, productId: string, fileName: string) { return this.saveScopedFile(["products", productId.trim(), "generated"], fileName.trim(), buffer); }
 
+  /**
+   * Store a worker-produced file without buffering it through the API.
+   * The worker may produce a large GLB on local disk; only the final
+   * object upload is buffered for S3-compatible providers.
+   */
+  async uploadFileFromPath(storageKey: string, sourcePath: string, contentType: string): Promise<number> {
+    const normalizedKey = this.normalizeRemoteKey(storageKey);
+    const { stat, copyFile } = await import("node:fs/promises");
+    const info = await stat(sourcePath);
+
+    if (this.provider === "local") {
+      const destination = this.getAbsolutePath(normalizedKey);
+      await mkdir(join(destination, ".."), { recursive: true });
+      await copyFile(sourcePath, destination);
+      return info.size;
+    }
+
+    const buffer = await readFile(sourcePath);
+    await this.putObject(normalizedKey, buffer, contentType, "private, max-age=0, no-cache");
+    return buffer.length;
+  }
+
   async saveBundleFile(productId: string, bundleId: string, relativePath: string, buffer: Buffer): Promise<StoredFile> {
     const normalizedProductId = this.normalizePathSegment(productId, "productId");
     const normalizedBundleId = this.normalizePathSegment(bundleId, "bundleId");
