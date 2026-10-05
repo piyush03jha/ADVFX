@@ -5,6 +5,7 @@ import { Canvas, useThree } from "@react-three/fiber";
 import { Center, OrbitControls, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { ModelErrorBoundary } from "@/components/3d/ModelErrorBoundary";
+import { useModelUrl } from "@/lib/useModelUrl";
 
 interface Product3DStageProps {
   model: string;
@@ -13,7 +14,12 @@ interface Product3DStageProps {
 }
 
 function ProductModel({ model }: { model: string }) {
-  const { scene } = useGLTF(model, true, true);
+  const { blobUrl } = useModelUrl(model);
+
+  if (!blobUrl) return null;
+
+  const { scene } = useGLTF(blobUrl, true, true);
+
   return (
     <Center precise disableZ>
       <primitive object={scene} dispose={null} />
