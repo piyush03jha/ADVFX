@@ -4,14 +4,14 @@
 
 Run the NestJS API and the processing worker as Railway services using the same Docker image/configuration.
 
-- **PostgreSQL:** Neon
-- **Object storage:** Neon Object Storage through its S3-compatible API
+- **PostgreSQL:** Prisma Postgres
+- **Object storage:** Backblaze B2 through its S3-compatible API
 - **API:** Railway
 - **Processing worker:** Railway
 - **Frontend/assets:** Next.js on Cloudflare/OpenNext
 - **Payments:** Razorpay
 
-The API and worker must use the **same Neon Object Storage bucket and credentials**. Do not use Railway's local filesystem as persistent production storage.
+The API and worker must use the **same Prisma Postgres database URL and Backblaze B2 bucket/credentials**. Do not use Railway's local filesystem as persistent production storage.
 
 ## Required production environment
 
@@ -19,7 +19,7 @@ Set these on **both the API and worker Railway services**:
 
 - `NODE_ENV=production`
 - `PORT=4000`
-- `DATABASE_URL=<Neon PostgreSQL connection string>`
+- `DATABASE_URL=<Prisma Postgres connection string>`
 - `CORS_ORIGINS=<frontend origin>`
 - `FRONTEND_URL=<frontend URL>`
 - `RAZORPAY_KEY_ID=<live/test key>`
@@ -29,12 +29,12 @@ Set these on **both the API and worker Railway services**:
 - `AUTH_CAPTCHA_SECRET=<32+ character secret>`
 - `RESEND_API_KEY=<email provider key>`
 - `AUTH_EMAIL_FROM=<verified sender>`
-- `STORAGE_PROVIDER=s3`
-- `STORAGE_BUCKET=<Neon Object Storage bucket on the production branch>`
-- `STORAGE_ENDPOINT=<Neon S3 endpoint for that bucket/branch>`
-- `STORAGE_ACCESS_KEY_ID=<Neon access key>`
-- `STORAGE_SECRET_ACCESS_KEY=<Neon secret>`
-- `STORAGE_REGION=<exact region required by the Neon bucket endpoint>`
+- `STORAGE_PROVIDER=b2`
+- `STORAGE_BUCKET=<Backblaze B2 bucket name only>`
+- `STORAGE_ENDPOINT=https://s3.<region>.backblazeb2.com`
+- `STORAGE_ACCESS_KEY_ID=<B2 application key ID>`
+- `STORAGE_SECRET_ACCESS_KEY=<B2 application key secret>`
+- `STORAGE_REGION=<same region embedded in the B2 endpoint>`
 - Leave `STORAGE_PUBLIC_BASE_URL` unset for a private bucket.
 - `TRUST_PROXY=true` when Railway/proxy configuration requires it.
 - `API_RATE_LIMIT_PER_MINUTE=120`
@@ -45,11 +45,9 @@ The worker should have enough container memory for Blender, gltf-transform and n
 
 Never commit production environment values.
 
-## Neon Object Storage
+## Backblaze B2 object storage
 
-Neon Object Storage is accessed through its S3-compatible API. Use the endpoint, credentials, bucket and region shown for the **same production Neon branch** used by `DATABASE_URL`.
-
-Do not assume the development bucket credentials or endpoint are valid for production.
+Backblaze B2 is accessed through its S3-compatible API. Use the regional S3 endpoint, bucket name, application key ID/secret, and matching region. The bucket remains private; browser uploads use short-lived presigned multipart URLs and browser downloads use the API asset route.
 
 Before deployment, verify the bucket with a small S3-compatible smoke test:
 
@@ -109,3 +107,22 @@ Build with:
 Start with:
 
 `NODE_ENV=production node dist/main.js`
+
+
+## B2 browser upload setup
+
+Backblaze B2 browser multipart uploads require the bucket's native CORS rules. Do not rely on the generic S3 PutBucketCors helper for B2.
+
+Apply:
+
+    b2 bucket update --cors-rules "$(cat scripts/b2-cors-rules.json)" <bucket-name> allPrivate
+
+For older B2 CLI versions use the equivalent b2 update-bucket command.
+
+Then diagnose the complete B2 path:
+
+    STORAGE_PROVIDER=b2 npx tsx scripts/b2-diagnose.ts https://voxel3d.org
+
+The diagnostic checks endpoint/region/bucket configuration, server-side PUT/HEAD/GET/DELETE, and the browser PUT preflight. The browser multipart uploader must receive an exposed ETag for every uploaded part.
+
+Existing objects from a previous storage provider are not automatically copied into B2. Copy them using their existing storage keys before switching production traffic; otherwise database records can point to objects that do not exist in B2.
