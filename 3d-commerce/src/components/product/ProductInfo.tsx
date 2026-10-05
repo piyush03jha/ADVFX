@@ -18,7 +18,18 @@ export function ProductInfo({
   product,
 }: ProductInfoProps) {
   const variants = product.variants ?? [];
-  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(variants[0]?.id ?? null);
+  const lowestPricedVariant = useMemo(
+    () =>
+      variants
+        .filter((variant) => variant.price !== undefined)
+        .sort((a, b) => (a.price ?? Infinity) - (b.price ?? Infinity))[0] ??
+      variants[0] ??
+      null,
+    [variants],
+  );
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(
+    lowestPricedVariant?.id ?? null,
+  );
   const [quantity, setQuantity] = useState(1);
   const selectedVariant = useMemo(() => variants.find((variant) => variant.id === selectedVariantId) ?? null, [variants, selectedVariantId]);
   const selectedPrice = selectedVariant?.price ?? product.price;
