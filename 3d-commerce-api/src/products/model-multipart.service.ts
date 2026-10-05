@@ -343,13 +343,13 @@ export class ModelMultipartService {
         "cache-control": "public, max-age=31536000, immutable",
         "content-type": "model/gltf-binary",
       },
-      { uploads: "" },
+      // Backblaze documents the CreateMultipartUpload query as `?uploads=null`.\n      // Keep the signed query and actual request URL identical.\n      { uploads: "null" },
     );
 
     // For the initial multipart request, use the normal Authorization header
     // rather than a presigned query so providers only need standard SigV4 support.
     const auth = `AWS4-HMAC-SHA256 Credential=${this.accessKey}/${signed.credentialScope}, SignedHeaders=${signed.signedHeaders}, Signature=${signed.signature}`;
-    const response = await fetch(`${url}?uploads=`, {
+    const response = await fetch(`${url}?uploads=null`, {
       method: "POST",
       headers: {
         ...signed.headers,
