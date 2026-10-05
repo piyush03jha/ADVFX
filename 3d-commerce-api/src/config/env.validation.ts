@@ -20,8 +20,8 @@ export function validateEnvironment() {
   }
 
   const storageProvider = (process.env.STORAGE_PROVIDER ?? 'local').toLowerCase();
-  if (!['local', 's3', 'r2'].includes(storageProvider)) {
-    throw new Error('STORAGE_PROVIDER must be local, s3, or r2');
+  if (!['local', 's3', 'r2', 'b2'].includes(storageProvider)) {
+    throw new Error('STORAGE_PROVIDER must be local, s3, r2, or b2');
   }
   if (nodeEnv === 'production' && storageProvider === 'local') {
     throw new Error('Local filesystem storage is not allowed in production');
