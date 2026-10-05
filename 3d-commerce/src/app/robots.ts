@@ -1,9 +1,16 @@
 import type { MetadataRoute } from "next";
+import { SITE_URL } from "@/lib/site";
 
 export default function robots(): MetadataRoute.Robots {
-  const base = process.env.NEXT_PUBLIC_SITE_URL || "https://forma3d.in";
   return {
-    rules: [{ userAgent: "*", allow: "/", disallow: ["/admin/", "/api/", "/account/", "/checkout/"] }],
-    sitemap: base + "/sitemap.xml",
+    rules: [
+      {
+        userAgent: "*",
+        allow: ["/", "/api/assets/"],
+        disallow: ["/admin/", "/api/", "/account/", "/checkout"],
+      },
+    ],
+    sitemap: `${SITE_URL}/sitemap.xml`,
+    host: SITE_URL,
   };
 }
