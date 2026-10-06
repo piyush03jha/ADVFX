@@ -13,7 +13,7 @@ const md5 = (value: string | Buffer) =>
   createHash("md5").update(value).digest("base64");
 
 function getConfig() {
-  const endpoint = (process.env.STORAGE_ENDPOINT ?? "").replace(/\/$/, "");
+  const endpoint = (process.env.STORAGE_ENDPOINT ?? "").trim().replace(/^[\"\']|[\"\']$/g, "").trim().replace(/\/+$/, "");
   const bucket = process.env.STORAGE_BUCKET ?? "";
   const accessKey = process.env.STORAGE_ACCESS_KEY_ID ?? "";
   const secretKey = process.env.STORAGE_SECRET_ACCESS_KEY ?? "";
@@ -88,7 +88,10 @@ async function signedLifecycleRequest(
   });
 }
 
-const managedRule = `  <Rule>
+const managedRules = [
+  {
+    id: "abort-incomplete-product-multipart-uploads",
+    xml: `  <Rule>
     <ID>abort-incomplete-product-multipart-uploads</ID>
     <Filter>
       <Prefix>products/</Prefix>
@@ -97,20 +100,32 @@ const managedRule = `  <Rule>
     <AbortIncompleteMultipartUpload>
       <DaysAfterInitiation>1</DaysAfterInitiation>
     </AbortIncompleteMultipartUpload>
-  </Rule>`;
+  </Rule>`,
+  },
+  {
+    id: "abort-incomplete-conversion-multipart-uploads",
+    xml: `  <Rule>
+    <ID>abort-incomplete-conversion-multipart-uploads</ID>
+    <Filter>
+      <Prefix>conversions/</Prefix>
+    </Filter>
+    <Status>Enabled</Status>
+    <AbortIncompleteMultipartUpload>
+      <DaysAfterInitiation>1</DaysAfterInitiation>
+    </AbortIncompleteMultipartUpload>
+  </Rule>`,
+  },
+];
 
 function mergeLifecycleConfiguration(existingXml: string): string {
   const rules =
     existingXml.match(/<Rule(?:\s[^>]*)?>[\s\S]*?<\/Rule>/g) ?? [];
-  const managedId = "abort-incomplete-product-multipart-uploads";
-  const managedIndex = rules.findIndex((rule) =>
-    rule.includes(`<ID>${managedId}</ID>`),
-  );
-
-  if (managedIndex >= 0) {
-    rules[managedIndex] = managedRule;
-  } else {
-    rules.push(managedRule);
+  for (const managed of managedRules) {
+    const managedIndex = rules.findIndex((rule) =>
+      rule.includes(`<ID>${managed.id}</ID>`),
+    );
+    if (managedIndex >= 0) rules[managedIndex] = managed.xml;
+    else rules.push(managed.xml);
   }
 
   return `<?xml version="1.0" encoding="UTF-8"?>
@@ -141,7 +156,7 @@ async function main() {
   }
 
   console.log(
-    "Configured S3 lifecycle: incomplete multipart uploads under products/ are aborted after 1 day.",
+    "Configured S3 lifecycle: incomplete multipart uploads under products/ and conversions/ are aborted after 1 day.",
   );
   if (existingXml) {
     console.log("Existing lifecycle rules were preserved; the managed rule was added or updated.");
