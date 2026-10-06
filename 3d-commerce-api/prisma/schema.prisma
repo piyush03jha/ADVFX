@@ -292,6 +292,7 @@ model Product {
   media      ProductMedia[]
   files      ProductFile[]
   tags       ProductTag[]
+  threeDConversionJobs ThreeDConversionJob[] @relation("ThreeDConversionTargetProduct")
   cartItems      CartItem[]
   orderItems     OrderItem[]
   wishlistItems  WishlistItem[]
@@ -1035,6 +1036,8 @@ model ProductFile {
 
   generatedByJob ProductFileProcessingJob? @relation("ProcessingJobOutput")
 
+  publishedConversionJob ThreeDConversionJob? @relation("ThreeDConversionPublishedFile")
+
   customPreview CustomRequestPreview?
 
   /**
@@ -1259,12 +1262,27 @@ model ThreeDConversionJob {
 
   originalName String
   sourceStorageKey String
+  convertedStorageKey String?
   outputStorageKey String?
 
   inputExt String
   status ProcessingJobStatus @default(QUEUED)
+  stage String @default("QUEUED")
 
+  originalSize BigInt?
+  convertedSize BigInt?
   outputSize BigInt?
+
+  targetProductId String?
+  targetProduct Product? @relation("ThreeDConversionTargetProduct", fields: [targetProductId], references: [id], onDelete: SetNull)
+
+  publishedFileId String? @unique
+  publishedFile ProductFile? @relation("ThreeDConversionPublishedFile", fields: [publishedFileId], references: [id], onDelete: SetNull)
+  publishedAt DateTime?
+
+  optimizationPreset String @default("BALANCED")
+  optimizerWarning String?
+
   errorMessage String?
   attempts Int @default(0)
   maxAttempts Int @default(3)
@@ -1278,8 +1296,9 @@ model ThreeDConversionJob {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([status, createdAt])
+  @@index([status, stage, createdAt])
   @@index([createdById])
+  @@index([targetProductId])
 }
 
 /**
