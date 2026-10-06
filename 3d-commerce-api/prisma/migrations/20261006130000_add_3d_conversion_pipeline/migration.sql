@@ -9,7 +9,8 @@ ALTER TABLE "ThreeDConversionJob"
   ADD COLUMN "publishedFileId" TEXT,
   ADD COLUMN "publishedAt" TIMESTAMP(3),
   ADD COLUMN "optimizationPreset" TEXT NOT NULL DEFAULT 'BALANCED',
-  ADD COLUMN "optimizerWarning" TEXT;
+  ADD COLUMN "optimizerWarning" TEXT,
+  ADD COLUMN "deleteSourceOnSuccess" BOOLEAN NOT NULL DEFAULT true;
 
 CREATE UNIQUE INDEX "ThreeDConversionJob_publishedFileId_key"
   ON "ThreeDConversionJob"("publishedFileId");
