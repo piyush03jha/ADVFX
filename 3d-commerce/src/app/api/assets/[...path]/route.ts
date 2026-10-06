@@ -59,9 +59,15 @@ export async function GET(
       });
     }
 
+    const isImmutableGlb =
+      path[path.length - 1]?.toLowerCase().endsWith(".glb") ||
+      response.headers.get("content-type") === "model/gltf-binary";
+
     headers.set(
       "cache-control",
-      "public, max-age=31536000, immutable",
+      isImmutableGlb
+        ? "public, max-age=31536000, immutable"
+        : "public, max-age=86400",
     );
 
     const out = new Response(response.body, {
