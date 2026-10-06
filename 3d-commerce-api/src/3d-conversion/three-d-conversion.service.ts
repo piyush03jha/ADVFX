@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { ProcessingJobStatus } from "@prisma/client";
 import { createHash, createHmac, randomUUID } from "node:crypto";
 import { extname } from "node:path";
@@ -11,6 +11,7 @@ type UploadPart = { PartNumber: number; ETag: string };
 
 @Injectable()
 export class ThreeDConversionService {
+  private readonly logger = new Logger(ThreeDConversionService.name);
   private readonly bucket = process.env.STORAGE_BUCKET ?? "";
   private readonly endpoint = (process.env.STORAGE_ENDPOINT ?? "").replace(/\/$/, "");
   private readonly accessKey = process.env.STORAGE_ACCESS_KEY_ID ?? "";
@@ -374,10 +375,38 @@ export class ThreeDConversionService {
         });
       });
 
+      await this.notifyStorefrontRevalidation(productId);
       return this.serialize(published);
     } catch (error) {
       await this.storage.delete(destinationKey).catch(() => undefined);
       throw error;
+    }
+  }
+
+  private async notifyStorefrontRevalidation(productId: string) {
+    const url = process.env.STOREFRONT_REVALIDATE_URL?.trim();
+    const secret = process.env.CATALOG_REVALIDATE_SECRET?.trim();
+    if (!url || !secret) return;
+
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-catalog-revalidate-secret": secret,
+        },
+        body: JSON.stringify({ productId }),
+      });
+
+      if (!response.ok) {
+        this.logger.warn(
+          `Storefront revalidation returned HTTP ${response.status} for product ${productId}`,
+        );
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Storefront revalidation failed for product ${productId}: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 
