@@ -25,7 +25,12 @@ export class ThreeDConversionService {
     }
   }
 
-  async start(originalName: string, size: number, createdById?: string) {
+  async start(
+    originalName: string,
+    size: number,
+    createdById?: string,
+    options?: { targetProductId?: string; optimizationPreset?: string },
+  ) {
     const name = originalName?.trim();
     if (!name) throw new BadRequestException("Original filename is required");
     if (!Number.isInteger(size) || size <= 0 || size > THREE_D_CONVERSION_MAX_BYTES) {
@@ -49,6 +54,9 @@ export class ThreeDConversionService {
         sourceStorageKey: "pending",
         inputExt,
         status: ProcessingJobStatus.PROCESSING,
+        stage: "UPLOADING",
+        targetProductId: options?.targetProductId ?? null,
+        optimizationPreset: options?.optimizationPreset === "SMALLEST" ? "SMALLEST" : "BALANCED",
         createdById: createdById ?? null,
       },
     });
@@ -144,6 +152,8 @@ export class ThreeDConversionService {
       where: { id: job.id },
       data: {
         status: ProcessingJobStatus.QUEUED,
+        stage: "QUEUED",
+        originalSize: BigInt(body.size),
         errorMessage: null,
         startedAt: null,
         completedAt: null,
@@ -194,9 +204,17 @@ export class ThreeDConversionService {
     if (job.status !== ProcessingJobStatus.FAILED) {
       throw new BadRequestException("Only failed conversion jobs can be retried");
     }
-    if (!(await this.storage.exists(job.sourceStorageKey))) {
-      throw new BadRequestException("Original source file is no longer available");
+    if (job.stage === "PUBLISHED") {
+      throw new BadRequestException("Published conversion jobs cannot be retried");
     }
+
+    const sourceAvailable =
+      (await this.storage.exists(job.sourceStorageKey)) ||
+      Boolean(job.convertedStorageKey && (await this.storage.exists(job.convertedStorageKey)));
+    if (!sourceAvailable) {
+      throw new BadRequestException("No source or converted GLB is available for retry");
+    }
+
     if (job.outputStorageKey) {
       await this.storage.delete(job.outputStorageKey).catch(() => undefined);
     }
@@ -205,12 +223,14 @@ export class ThreeDConversionService {
       where: { id },
       data: {
         status: ProcessingJobStatus.QUEUED,
+        stage: "QUEUED",
         attempts: 0,
         errorMessage: null,
         startedAt: null,
         completedAt: null,
         outputStorageKey: null,
         outputSize: null,
+        optimizerWarning: null,
       },
     });
     return this.serialize(updated);
@@ -219,33 +239,157 @@ export class ThreeDConversionService {
   async remove(id: string) {
     const job = await this.prisma.threeDConversionJob.findUnique({ where: { id } });
     if (!job) throw new NotFoundException("Conversion job not found");
+
     await this.prisma.threeDConversionJob.delete({ where: { id } });
+
+    // Never delete a published product file as a side effect of deleting its
+    // conversion history. The catalog owns published assets.
     await this.storage.delete(job.sourceStorageKey).catch(() => undefined);
+    if (job.convertedStorageKey) await this.storage.delete(job.convertedStorageKey).catch(() => undefined);
     if (job.outputStorageKey) await this.storage.delete(job.outputStorageKey).catch(() => undefined);
     return { deleted: true };
   }
 
-  async download(id: string) {
+  async download(id: string, kind: "optimized" | "converted" = "optimized") {
     const job = await this.prisma.threeDConversionJob.findUnique({ where: { id } });
     if (!job) throw new NotFoundException("Conversion job not found");
-    if (job.status !== ProcessingJobStatus.COMPLETED || !job.outputStorageKey) {
-      throw new NotFoundException("Converted GLB is not ready");
+
+    const key = kind === "converted" ? job.convertedStorageKey : job.outputStorageKey;
+    if (job.status !== ProcessingJobStatus.COMPLETED || !key) {
+      throw new NotFoundException("Requested GLB is not ready");
     }
-    const stream = await this.storage.createReadStream(job.outputStorageKey);
-    return { stream, filename: this.outputName(job.originalName) };
+
+    const stream = await this.storage.createReadStream(key);
+    return {
+      stream,
+      filename:
+        kind === "converted"
+          ? this.outputName(job.originalName, "-converted")
+          : this.outputName(job.originalName, "-web-optimized"),
+    };
+  }
+
+  async createFromExistingGlb(
+    productId: string,
+    productFileId: string,
+    optimizationPreset: string = "BALANCED",
+  ) {
+    const file = await this.prisma.productFile.findFirst({
+      where: {
+        id: productFileId,
+        productId,
+        fileType: "MODEL",
+        format: "GLB",
+      },
+      select: {
+        id: true,
+        productId: true,
+        originalName: true,
+        storageKey: true,
+        fileSize: true,
+      },
+    });
+    if (!file) throw new NotFoundException("GLB product file not found");
+
+    const job = await this.prisma.threeDConversionJob.create({
+      data: {
+        originalName: file.originalName,
+        sourceStorageKey: file.storageKey,
+        inputExt: ".glb",
+        status: ProcessingJobStatus.QUEUED,
+        stage: "QUEUED",
+        originalSize: file.fileSize,
+        targetProductId: productId,
+        optimizationPreset: optimizationPreset === "SMALLEST" ? "SMALLEST" : "BALANCED",
+        deleteSourceOnSuccess: false,
+      },
+    });
+
+    return this.serialize(job);
+  }
+
+  async publish(id: string, productId: string) {
+    const job = await this.prisma.threeDConversionJob.findUnique({ where: { id } });
+    if (!job) throw new NotFoundException("Conversion job not found");
+    if (job.status !== ProcessingJobStatus.COMPLETED || !job.outputStorageKey || job.stage !== "READY") {
+      throw new BadRequestException("Only READY conversion jobs can be published");
+    }
+
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+      select: { id: true },
+    });
+    if (!product) throw new NotFoundException("Target product not found");
+
+    const destinationKey = `products/${productId}/models/${job.id}.glb`;
+    await this.storage.copy(job.outputStorageKey, destinationKey);
+    const url = this.storage.getPublicAssetUrl(destinationKey);
+
+    try {
+      const published = await this.prisma.$transaction(async (tx) => {
+        const file = await tx.productFile.create({
+          data: {
+            productId,
+            originalName: job.originalName || "model.glb",
+            storageKey: destinationKey,
+            storageUrl: url,
+            format: "GLB",
+            fileType: "MODEL",
+            mimeType: "model/gltf-binary",
+            fileSize: job.outputSize ?? BigInt(0),
+            processingStatus: "COMPLETED",
+          },
+        });
+
+        await tx.productMedia.deleteMany({
+          where: { productId, type: "MODEL_PREVIEW" },
+        });
+
+        await tx.productMedia.create({
+          data: {
+            productId,
+            type: "MODEL_PREVIEW",
+            url,
+            altText: job.originalName || "GLB model",
+            sortOrder: 0,
+            isPrimary: true,
+          },
+        });
+
+        return tx.threeDConversionJob.update({
+          where: { id: id },
+          data: {
+            targetProductId: productId,
+            publishedFileId: file.id,
+            publishedAt: new Date(),
+            stage: "PUBLISHED",
+            status: ProcessingJobStatus.COMPLETED,
+            errorMessage: null,
+          },
+          include: { publishedFile: true },
+        });
+      });
+
+      return this.serialize(published);
+    } catch (error) {
+      await this.storage.delete(destinationKey).catch(() => undefined);
+      throw error;
+    }
   }
 
   serialize(job: any) {
     return {
       ...job,
+      originalSize: job.originalSize == null ? null : job.originalSize.toString(),
+      convertedSize: job.convertedSize == null ? null : job.convertedSize.toString(),
       outputSize: job.outputSize == null ? null : job.outputSize.toString(),
     };
   }
 
-  private outputName(originalName: string) {
+  private outputName(originalName: string, suffix = "") {
     const base =
       originalName.replace(/\\/g, "/").split("/").pop()?.replace(/\.[^.]+$/, "") || "model";
-    return base.replace(/[^a-zA-Z0-9._-]/g, "-").slice(0, 180) + ".glb";
+    return base.replace(/[^a-zA-Z0-9._-]/g, "-").slice(0, 170) + suffix + ".glb";
   }
 
   private objectUrl(key: string): URL {
