@@ -13,7 +13,7 @@ type UploadPart = { PartNumber: number; ETag: string };
 export class ThreeDConversionService {
   private readonly logger = new Logger(ThreeDConversionService.name);
   private readonly bucket = process.env.STORAGE_BUCKET ?? "";
-  private readonly endpoint = (process.env.STORAGE_ENDPOINT ?? "").replace(/\/$/, "");
+  private readonly endpoint = (process.env.STORAGE_ENDPOINT ?? "").trim().replace(/^[\"\']|[\"\']$/g, "").trim().replace(/\/+$/, "");
   private readonly accessKey = process.env.STORAGE_ACCESS_KEY_ID ?? "";
   private readonly secretKey = process.env.STORAGE_SECRET_ACCESS_KEY ?? "";
   private readonly region = process.env.STORAGE_REGION ?? "us-east-1";
@@ -348,8 +348,8 @@ export class ThreeDConversionService {
 
     const job = await this.prisma.threeDConversionJob.findUnique({ where: { id } });
     if (!job) throw new NotFoundException("Conversion job not found");
-    if (job.status !== ProcessingJobStatus.COMPLETED || !job.outputStorageKey || job.stage !== "READY") {
-      throw new BadRequestException("Only READY conversion jobs can be published");
+    if (job.status !== ProcessingJobStatus.COMPLETED || !job.outputStorageKey || job.stage !== "PUBLISHING") {
+      throw new BadRequestException("Conversion job publish claim is invalid");
     }
 
     const product = await this.prisma.product.findUnique({
@@ -408,6 +408,13 @@ export class ThreeDConversionService {
       });
 
       await this.notifyStorefrontRevalidation(productId);
+
+      if (job.deleteSourceOnSuccess && job.sourceStorageKey === job.convertedStorageKey) {
+        await this.storage.delete(job.sourceStorageKey).catch((error) => {
+          this.logger.warn(`Unable to delete original GLB source ${job.id}: ${error instanceof Error ? error.message : String(error)}`);
+        });
+      }
+
       return this.serialize(published);
     } catch (error) {
       await this.prisma.threeDConversionJob.updateMany({
