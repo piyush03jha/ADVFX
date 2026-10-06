@@ -26,7 +26,7 @@ export class StorageService {
   private readonly provider: StorageProvider = ((process.env.STORAGE_PROVIDER ?? "local").toLowerCase() === "r2" || (process.env.STORAGE_PROVIDER ?? "local").toLowerCase() === "b2" ? "s3" : (process.env.STORAGE_PROVIDER ?? "local").toLowerCase()) as StorageProvider;
   private readonly root = resolve(process.env.STORAGE_ROOT ?? join(process.cwd(), "storage"));
   private readonly bucket = process.env.STORAGE_BUCKET ?? "";
-  private readonly endpoint = (process.env.STORAGE_ENDPOINT ?? "").replace(/\/$/, "");
+  private readonly endpoint = (process.env.STORAGE_ENDPOINT ?? "").trim().replace(/^[\"\']|[\"\']$/g, "").trim().replace(/\/+$/, "");
   private readonly publicBaseUrl = (process.env.STORAGE_PUBLIC_BASE_URL ?? "").replace(/\/$/, "");
   private readonly accessKey = process.env.STORAGE_ACCESS_KEY_ID ?? "";
   private readonly secretKey = process.env.STORAGE_SECRET_ACCESS_KEY ?? "";
@@ -65,6 +65,7 @@ export class StorageService {
     const normalizedKey = this.normalizeRemoteKey(storageKey);
     const { stat, copyFile } = await import("node:fs/promises");
     const info = await stat(sourcePath);
+    if (info.size === 0) throw new InternalServerErrorException(`Refusing to upload empty file for ${normalizedKey}`);
 
     if (this.provider === "local") {
       const destination = this.getAbsolutePath(normalizedKey);
@@ -75,6 +76,11 @@ export class StorageService {
 
     const buffer = await readFile(sourcePath);
     await this.putObject(normalizedKey, buffer, contentType, "private, max-age=0, no-cache");
+    const remoteSize = await this.getObjectSize(normalizedKey);
+    if (remoteSize !== buffer.length) {
+      await this.deleteObject(normalizedKey).catch(() => undefined);
+      throw new BadGatewayException(`Upload verification failed for ${normalizedKey}: sent ${buffer.length} bytes, storage has ${remoteSize}`);
+    }
     return buffer.length;
   }
 
