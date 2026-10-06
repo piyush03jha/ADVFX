@@ -19,17 +19,35 @@ import {
 } from "@/components/admin/AdminKit";
 import { uploadConversionDirect } from "@/lib/conversion-upload";
 
+type Product = {
+  id: string;
+  name: string;
+  files?: Array<{
+    id: string;
+    originalName: string;
+    fileSize: string;
+  }>;
+};
+
 type Job = {
   id: string;
   originalName: string;
   inputExt: string;
   status: "QUEUED" | "PROCESSING" | "COMPLETED" | "FAILED";
+  stage: string;
   attempts: number;
   maxAttempts: number;
+  originalSize: string | null;
+  convertedSize: string | null;
   outputSize: string | null;
+  targetProductId: string | null;
+  publishedFileId: string | null;
+  optimizationPreset: "BALANCED" | "SMALLEST";
+  optimizerWarning: string | null;
   errorMessage: string | null;
   createdAt: string;
   completedAt: string | null;
+  publishedAt: string | null;
 };
 
 const ACCEPT = ".abc,.usd,.usda,.usdc,.usdz,.svg,.pdf,.obj,.ply,.stl,.bvh,.fbx,.glb,.gltf";
@@ -46,9 +64,19 @@ const FORMATS = [
   "glTF 2.0 (.glb/.gltf)",
 ];
 
+function sizeLabel(value: string | null) {
+  if (!value) return "—";
+  const mb = Number(value) / 1024 / 1024;
+  return mb >= 10 ? mb.toFixed(1) + " MB" : mb.toFixed(2) + " MB";
+}
+
 export default function ThreeDConversionPage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [targetProductId, setTargetProductId] = useState("");
+  const [existingProductId, setExistingProductId] = useState("");
+  const [preset, setPreset] = useState<"BALANCED" | "SMALLEST">("BALANCED");
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -56,15 +84,21 @@ export default function ThreeDConversionPage() {
   const [busy, setBusy] = useState("");
 
   async function load() {
-    const response = await fetch("/api/3d-conversion", { cache: "no-store" });
-    if (response.ok) setJobs(await response.json());
+    const [jobsResponse, productsResponse] = await Promise.all([
+      fetch("/api/3d-conversion", { cache: "no-store" }),
+      fetch("/api/products", { cache: "no-store" }),
+    ]);
+
+    if (jobsResponse.ok) setJobs(await jobsResponse.json());
+    if (productsResponse.ok) {
+      const data = await productsResponse.json();
+      setProducts(Array.isArray(data) ? data : []);
+    }
   }
 
   useEffect(() => {
     void load();
-    const timer = window.setInterval(() => {
-      void load();
-    }, 2000);
+    const timer = window.setInterval(() => void load(), 2500);
     return () => window.clearInterval(timer);
   }, []);
 
@@ -73,8 +107,12 @@ export default function ThreeDConversionPage() {
     setMessage("");
     setUploading(true);
     setProgress(0);
+
     try {
-      await uploadConversionDirect(file, setProgress);
+      await uploadConversionDirect(file, setProgress, undefined, {
+        targetProductId: targetProductId || undefined,
+        optimizationPreset: preset,
+      });
       await load();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Upload failed");
@@ -116,24 +154,105 @@ export default function ThreeDConversionPage() {
     }
   }
 
-  function download(id: string) {
-    window.location.href = "/api/3d-conversion/" + encodeURIComponent(id) + "/download";
+  async function publish(id: string, productId: string) {
+    setBusy(id);
+    try {
+      const response = await fetch("/api/3d-conversion/" + encodeURIComponent(id) + "/publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productId }),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.message ?? data?.error ?? "Publish failed");
+      }
+      await load();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Publish failed");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function optimizeExisting() {
+    const product = products.find((item) => item.id === existingProductId);
+    const file = product?.files?.[0];
+    if (!product || !file) {
+      setMessage("Select a product that already has a GLB model.");
+      return;
+    }
+
+    setBusy("existing:" + product.id);
+    setMessage("");
+    try {
+      const response = await fetch("/api/3d-conversion/existing-glb", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productId: product.id,
+          productFileId: file.id,
+          optimizationPreset: preset,
+        }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(data?.message ?? data?.error ?? "Unable to create optimization job");
+      await load();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to create optimization job");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  function download(id: string, kind: "optimized" | "converted") {
+    window.location.href =
+      "/api/3d-conversion/" +
+      encodeURIComponent(id) +
+      (kind === "converted" ? "/download-converted" : "/download");
   }
 
   return (
     <AdminPage
       title="3D Conversion"
       eyebrow="Admin utility"
-      description="Convert source 3D assets into web-ready GLB files for internal use. Converted files are not exposed to storefront customers."
+      description="Convert source assets into web-optimized GLB files. Optimized assets use Meshopt + WebP and are labelled as web-optimized."
     >
       <AdminCard>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="text-xs font-medium">
+            Attach when ready
+            <select
+              value={targetProductId}
+              onChange={(event) => setTargetProductId(event.target.value)}
+              className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+            >
+              <option value="">Do not attach automatically</option>
+              {products.map((product) => (
+                <option key={product.id} value={product.id}>{product.name}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="text-xs font-medium">
+            Optimization preset
+            <select
+              value={preset}
+              onChange={(event) => setPreset(event.target.value as "BALANCED" | "SMALLEST")}
+              className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+            >
+              <option value="BALANCED">Balanced — preferred max ~8 MB</option>
+              <option value="SMALLEST">Smallest — stronger size reduction</option>
+            </select>
+          </label>
+        </div>
+
         <div
           onDragEnter={(event) => { event.preventDefault(); setDragging(true); }}
           onDragOver={(event) => event.preventDefault()}
           onDragLeave={() => setDragging(false)}
           onDrop={drop}
           className={
-            "rounded-3xl border-2 border-dashed p-8 text-center transition sm:p-12 " +
+            "mt-5 rounded-3xl border-2 border-dashed p-8 text-center transition sm:p-12 " +
             (dragging ? "border-primary bg-primary/[0.05]" : "border-border bg-background")
           }
         >
@@ -143,7 +262,7 @@ export default function ThreeDConversionPage() {
           </div>
           <h2 className="mt-5 text-lg font-semibold">Drop a 3D file here</h2>
           <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-muted">
-            Supported formats are limited to the formats approved for this conversion tool. Upload one source file at a time; external dependency bundles are not accepted in this version.
+            Upload one source at a time. GLB inputs skip Blender and go directly through the web optimization pipeline.
           </p>
           <div className="mt-5 flex flex-wrap justify-center gap-2">
             {FORMATS.map((format) => (
@@ -159,10 +278,40 @@ export default function ThreeDConversionPage() {
               <div className="h-full rounded-full bg-primary transition-[width]" style={{ width: progress + "%" }} />
             </div>
           ) : null}
-          {message ? (
-            <p className="mx-auto mt-4 max-w-xl text-xs text-red-600">{message}</p>
-          ) : null}
         </div>
+      </AdminCard>
+
+      <AdminCard>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="text-sm font-semibold">Optimize existing GLB</h2>
+            <p className="mt-1 text-xs text-muted">
+              Reprocess an existing product model without downloading and re-uploading it.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 sm:min-w-[360px] sm:flex-row">
+            <select
+              value={existingProductId}
+              onChange={(event) => setExistingProductId(event.target.value)}
+              className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+            >
+              <option value="">Select product</option>
+              {products.filter((product) => product.files?.[0]).map((product) => (
+                <option key={product.id} value={product.id}>
+                  {product.name} — {sizeLabel(product.files?.[0]?.fileSize ?? null)}
+                </option>
+              ))}
+            </select>
+            <AdminButton
+              variant="primary"
+              onClick={() => void optimizeExisting()}
+              disabled={!existingProductId || busy.startsWith("existing:")}
+            >
+              <IconRefresh size={15} /> Optimize
+            </AdminButton>
+          </div>
+        </div>
+        {message ? <p className="mt-4 text-xs text-red-600">{message}</p> : null}
       </AdminCard>
 
       <AdminCard>
@@ -177,43 +326,68 @@ export default function ThreeDConversionPage() {
         <AdminTable>
           <AdminTableHeader>
             <th className="p-3">Source</th>
-            <th className="p-3">Status</th>
-            <th className="p-3">Attempts</th>
-            <th className="p-3">Created</th>
+            <th className="p-3">Stage</th>
+            <th className="p-3">Size</th>
             <th className="p-3">Result</th>
             <th className="p-3">Actions</th>
           </AdminTableHeader>
           <tbody>
             {jobs.length === 0 ? (
-              <tr><td colSpan={6} className="p-8 text-center text-muted">No conversion jobs yet.</td></tr>
+              <tr><td colSpan={5} className="p-8 text-center text-muted">No conversion jobs yet.</td></tr>
             ) : jobs.map((job) => (
               <tr key={job.id} className="border-b border-border last:border-0">
-                <td className="max-w-[280px] p-3">
+                <td className="max-w-[260px] p-3">
                   <div className="flex items-center gap-2">
                     <IconBox size={16} className="shrink-0 text-muted" />
                     <span className="truncate font-medium">{job.originalName}</span>
                   </div>
-                  <p className="mt-1 text-[10px] uppercase text-muted">{job.inputExt}</p>
+                  <p className="mt-1 text-[10px] uppercase text-muted">{job.inputExt} · {job.optimizationPreset}</p>
                 </td>
                 <td className="p-3">
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[10px] font-medium">
-                    {job.status === "COMPLETED" ? <IconCheck size={13} /> : job.status === "FAILED" ? <IconAlertTriangle size={13} /> : <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" />}
-                    {job.status}
+                    {job.stage === "PUBLISHED" ? <IconCheck size={13} /> : job.stage === "FAILED" ? <IconAlertTriangle size={13} /> : <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" />}
+                    {job.stage}
                   </span>
+                  {job.optimizerWarning ? <p className="mt-2 max-w-sm text-[10px] text-amber-700">{job.optimizerWarning}</p> : null}
                   {job.errorMessage ? <p className="mt-2 max-w-sm text-[10px] text-red-600">{job.errorMessage}</p> : null}
                 </td>
-                <td className="p-3 text-muted">{job.attempts}/{job.maxAttempts}</td>
-                <td className="whitespace-nowrap p-3 text-muted">{new Date(job.createdAt).toLocaleString()}</td>
-                <td className="p-3 text-muted">{job.outputSize ? Math.round(Number(job.outputSize) / 1024 / 1024) + " MB GLB" : "—"}</td>
+                <td className="p-3 text-xs text-muted">
+                  {sizeLabel(job.originalSize)} → {sizeLabel(job.outputSize)}
+                </td>
+                <td className="p-3 text-xs text-muted">
+                  {job.publishedFileId ? "Published to product" : job.status === "COMPLETED" ? "READY" : "—"}
+                </td>
                 <td className="p-3">
                   <div className="flex flex-wrap gap-2">
-                    {job.status === "COMPLETED" ? (
-                      <AdminButton variant="primary" onClick={() => download(job.id)}><IconDownload size={15} />Download GLB</AdminButton>
+                    {job.status === "COMPLETED" && job.stage === "READY" ? (
+                      <>
+                        <AdminButton variant="primary" onClick={() => download(job.id, "optimized")}>
+                          <IconDownload size={15} /> Web-optimized GLB
+                        </AdminButton>
+                        <AdminButton onClick={() => download(job.id, "converted")}>
+                          <IconDownload size={15} /> Converted GLB
+                        </AdminButton>
+                        {!job.targetProductId ? (
+                          <AdminButton
+                            onClick={() => {
+                              const productId = window.prompt("Enter the product ID to attach this model to:");
+                              if (productId) void publish(job.id, productId);
+                            }}
+                            disabled={busy === job.id}
+                          >
+                            <IconCheck size={15} /> Attach
+                          </AdminButton>
+                        ) : null}
+                      </>
                     ) : null}
                     {job.status === "FAILED" ? (
-                      <AdminButton onClick={() => void retry(job.id)} disabled={busy === job.id}><IconRefresh size={15} />Retry</AdminButton>
+                      <AdminButton onClick={() => void retry(job.id)} disabled={busy === job.id}>
+                        <IconRefresh size={15} /> Retry
+                      </AdminButton>
                     ) : null}
-                    <AdminButton onClick={() => void remove(job.id)} disabled={busy === job.id}><IconTrash size={15} />Delete</AdminButton>
+                    <AdminButton onClick={() => void remove(job.id)} disabled={busy === job.id}>
+                      <IconTrash size={15} /> Delete
+                    </AdminButton>
                   </div>
                 </td>
               </tr>
