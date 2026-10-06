@@ -437,4 +437,4 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-}\n
+}
