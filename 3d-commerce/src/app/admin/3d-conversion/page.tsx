@@ -89,6 +89,10 @@ export default function ThreeDConversionPage() {
   const [dragging, setDragging] = useState(false);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState("");
+  const [attachJobId, setAttachJobId] = useState("");
+  const [attachProducts, setAttachProducts] = useState<AttachProduct[]>([]);
+  const [attachProductId, setAttachProductId] = useState("");
+  const [loadingAttachProducts, setLoadingAttachProducts] = useState(false);
 
   const loadingRef = useRef(false);
 
