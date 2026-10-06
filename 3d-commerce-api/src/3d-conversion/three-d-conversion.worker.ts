@@ -7,6 +7,7 @@ import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import { PrismaService } from "../prisma/prisma.service";
 import { StorageService } from "../storage/storage.service";
+import { ThreeDConversionService } from "./three-d-conversion.service";
 
 const execFileAsync = promisify(execFile);
 const TARGET_MAX_BYTES = 8 * 1024 * 1024;
@@ -28,6 +29,7 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
+    private readonly conversionService: ThreeDConversionService,
   ) {}
 
   private positive(value: string | undefined, fallback: number) {
@@ -179,14 +181,30 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
       // The optimized and converted artifacts are now durable. Remove the
       // private source immediately; retry/publish operate on the converted
       // artifact instead of requiring the original upload.
-      await this.storage.delete(job.sourceStorageKey).catch((error) => {
-        this.logger.warn(
-          `Unable to delete original conversion source ${job.id}: ${error instanceof Error ? error.message : String(error)}`,
-        );
-      });
+      if (job.deleteSourceOnSuccess && !reusableConverted) {
+        await this.storage.delete(job.sourceStorageKey).catch((error) => {
+          this.logger.warn(
+            `Unable to delete original conversion source ${job.id}: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        });
+      }
 
       if (job.targetProductId) {
-        await this.publishReadyJob(job.id, job.targetProductId);
+        try {
+          await this.conversionService.publish(job.id, job.targetProductId);
+        } catch (error) {
+          await this.prisma.threeDConversionJob.update({
+            where: { id: job.id },
+            data: {
+              stage: "READY",
+              errorMessage: `Publish failed: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          });
+          this.logger.error(
+            `Automatic publish failed for ${job.id}`,
+            error instanceof Error ? error.stack : String(error),
+          );
+        }
       }
 
       this.logger.log(
@@ -415,24 +433,4 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  /**
-   * Publishing is delegated back to the service to keep the worker focused on
-   * CPU-heavy conversion/optimization. The service is injected lazily to avoid
-   * a circular dependency at module construction time.
-   */
-  private async publishReadyJob(id: string, productId: string) {
-    const job = await this.prisma.threeDConversionJob.findUnique({
-      where: { id },
-      select: { id: true, stage: true },
-    });
-    if (!job || job.stage !== "READY") return;
-
-    const product = await this.prisma.product.findUnique({ where: { id: productId }, select: { id: true } });
-    if (!product) throw new Error(`Target product ${productId} no longer exists`);
-
-    // Mark the job ready for the API/admin to publish. Automatic publishing is
-    // intentionally not performed here so a worker crash cannot create a
-    // half-published catalog state.
-    this.logger.log(`Job ${id} has target product ${productId}; waiting for publish transaction.`);
-  }
-}
+}\n
