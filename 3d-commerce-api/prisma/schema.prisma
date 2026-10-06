@@ -1282,6 +1282,7 @@ model ThreeDConversionJob {
 
   optimizationPreset String @default("BALANCED")
   optimizerWarning String?
+  deleteSourceOnSuccess Boolean @default(true)
 
   errorMessage String?
   attempts Int @default(0)
