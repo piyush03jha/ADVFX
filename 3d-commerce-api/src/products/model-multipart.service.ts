@@ -153,34 +153,18 @@ export class ModelMultipartService {
       .map(encodeURIComponent)
       .join("/")}`;
 
-    const created = await this.prisma.$transaction(async (tx) => {
-      const file = await tx.productFile.create({
-        data: {
-          productId,
-          originalName: body.originalName?.trim() || "model.glb",
-          storageKey: body.key,
-          storageUrl: url,
-          format: "GLB",
-          fileType: "MODEL",
-          mimeType: "model/gltf-binary",
-          fileSize: BigInt(body.size),
-          processingStatus: "PENDING",
-        },
-      });
-
-      // Every admin-uploaded GLB goes through the same optimization worker.
-      // The existing published model remains untouched until the optimized
-      // replacement is ready and atomically published.
-      await tx.productFileProcessingJob.create({
-        data: {
-          productFileId: file.id,
-          status: "QUEUED",
-          attempts: 0,
-          maxAttempts: 3,
-        },
-      });
-
-      return file;
+    const created = await this.prisma.threeDConversionJob.create({
+      data: {
+        originalName: body.originalName?.trim() || "model.glb",
+        sourceStorageKey: body.key,
+        inputExt: ".glb",
+        status: "QUEUED",
+        stage: "QUEUED",
+        originalSize: BigInt(body.size),
+        targetProductId: productId,
+        optimizationPreset: "BALANCED",
+        deleteSourceOnSuccess: true,
+      },
     });
 
     return {
@@ -189,6 +173,7 @@ export class ModelMultipartService {
       size: body.size,
       originalName: body.originalName?.trim() || "model.glb",
       processingStatus: "PENDING",
+      conversionJobId: created.id,
     };
   }
 
