@@ -153,10 +153,11 @@ async function readCachedModel(url: string): Promise<string | null> {
   }
 }
 
-async function storeModel(url: string, buffer: ArrayBuffer) {
-  if (!("caches" in window)) return;
+async function storeModel(url: string, buffer: ArrayBuffer, signal: AbortSignal) {
+  if (!("caches" in window) || signal.aborted) return;
   try {
     const cache = await caches.open(CACHE_NAME);
+    if (signal.aborted) return;
     await cache.put(
       url,
       new Response(buffer.slice(0), {
@@ -166,6 +167,9 @@ async function storeModel(url: string, buffer: ArrayBuffer) {
         },
       }),
     );
+    if (signal.aborted) {
+      await cache.delete(url).catch(() => undefined);
+    }
   } catch {
     // Cache quota is optional; the in-memory object URL remains usable.
   }
@@ -288,7 +292,7 @@ async function downloadModel(url: string, emit: (percent: number) => void, signa
 
   if (signal.aborted) throw abortError();
 
-  await storeModel(url, buffer);
+  await storeModel(url, buffer, signal);
   if (signal.aborted) throw abortError();
 
   const blobUrl = URL.createObjectURL(new Blob([buffer], { type: "model/gltf-binary" }));
