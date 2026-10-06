@@ -29,6 +29,13 @@ type Product = {
   }>;
 };
 
+type AttachProduct = {
+  id: string;
+  name: string;
+  slug: string;
+  status: "DRAFT" | "ACTIVE" | "ARCHIVED";
+};
+
 type Job = {
   id: string;
   originalName: string;
@@ -226,6 +233,44 @@ export default function ThreeDConversionPage() {
       setBusy("");
     }
   }
+  async function openAttach(id: string) {
+    setAttachJobId(id);
+    setAttachProductId("");
+    setMessage("");
+    setLoadingAttachProducts(true);
+    try {
+      const response = await fetch("/api/3d-conversion/products-without-model", {
+        cache: "no-store",
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.message ?? data?.error ?? "Unable to load products");
+      }
+      const nextProducts = Array.isArray(data) ? data : [];
+      setAttachProducts(nextProducts);
+      if (nextProducts.length === 0) {
+        setMessage("No products without a 3D model are available.");
+      }
+    } catch (error) {
+      setAttachJobId("");
+      setMessage(error instanceof Error ? error.message : "Unable to load products");
+    } finally {
+      setLoadingAttachProducts(false);
+    }
+  }
+
+  function closeAttach() {
+    setAttachJobId("");
+    setAttachProducts([]);
+    setAttachProductId("");
+  }
+
+  async function attachSelected() {
+    if (!attachJobId || !attachProductId) return;
+    await publish(attachJobId, attachProductId);
+    closeAttach();
+  }
+
 
   async function optimizeExisting() {
     const product = products.find((item) => item.id === existingProductId);
@@ -425,16 +470,47 @@ export default function ThreeDConversionPage() {
                         </AdminButton>
                         {!job.targetProductId ? (
                           <AdminButton
-                            onClick={() => {
-                              const productId = window.prompt("Enter the product ID to attach this model to:");
-                              if (productId) void publish(job.id, productId);
-                            }}
-                            disabled={busy === job.id}
+                            onClick={() => void openAttach(job.id)}
+                            disabled={busy === job.id || loadingAttachProducts}
                           >
-                            <IconCheck size={15} /> Attach
+                            <IconCheck size={15} /> Attach to product
                           </AdminButton>
                         ) : null}
                       </>
+                    ) : null}
+                    {attachJobId === job.id ? (
+                      <div className="mt-3 w-full rounded-xl border border-border bg-background p-3">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                          <select
+                            value={attachProductId}
+                            onChange={(event) => setAttachProductId(event.target.value)}
+                            disabled={loadingAttachProducts || busy === job.id}
+                            className="min-w-0 flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                          >
+                            <option value="">
+                              {loadingAttachProducts ? "Loading products…" : "Select a product without a 3D model"}
+                            </option>
+                            {attachProducts.map((product) => (
+                              <option key={product.id} value={product.id}>
+                                {product.name} · {product.status}
+                              </option>
+                            ))}
+                          </select>
+                          <AdminButton
+                            variant="primary"
+                            onClick={() => void attachSelected()}
+                            disabled={!attachProductId || busy === job.id || loadingAttachProducts}
+                          >
+                            <IconCheck size={15} /> Connect
+                          </AdminButton>
+                          <AdminButton onClick={closeAttach} disabled={busy === job.id}>
+                            Cancel
+                          </AdminButton>
+                        </div>
+                        {!loadingAttachProducts && attachProducts.length === 0 ? (
+                          <p className="mt-2 text-xs text-muted">Every product already has a 3D model.</p>
+                        ) : null}
+                      </div>
                     ) : null}
                     {job.status === "FAILED" ? (
                       <AdminButton onClick={() => void retry(job.id)} disabled={busy === job.id}>
