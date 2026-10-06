@@ -83,23 +83,38 @@ export default function ThreeDConversionPage() {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState("");
 
-  async function load() {
-    const [jobsResponse, productsResponse] = await Promise.all([
-      fetch("/api/3d-conversion", { cache: "no-store" }),
-      fetch("/api/admin/products", { cache: "no-store" }),
-    ]);
+  const loadingRef = useRef(false);
 
-    if (jobsResponse.ok) setJobs(await jobsResponse.json());
-    if (productsResponse.ok) {
-      const data = await productsResponse.json();
+  async function loadJobs() {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
+    try {
+      const response = await fetch("/api/3d-conversion", { cache: "no-store" });
+      if (response.ok) setJobs(await response.json());
+    } finally {
+      loadingRef.current = false;
+    }
+  }
+
+  async function loadProducts() {
+    const response = await fetch("/api/admin/products", { cache: "no-store" });
+    if (response.ok) {
+      const data = await response.json();
       setProducts(Array.isArray(data) ? data : []);
     }
   }
 
+  async function load() {
+    await Promise.all([loadJobs(), loadProducts()]);
+  }
+
   useEffect(() => {
     void load();
-    const timer = window.setInterval(() => void load(), 2500);
+    const timer = window.setInterval(() => {
+      if (!document.hidden) void loadJobs();
+    }, 4000);
     return () => window.clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function upload(file: File) {
