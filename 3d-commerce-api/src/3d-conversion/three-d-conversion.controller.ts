@@ -11,11 +11,19 @@ export class ThreeDConversionController {
 
   @Post("upload")
   start(
-    @Body() body: { originalName: string; size: number },
+    @Body() body: {
+      originalName: string;
+      size: number;
+      targetProductId?: string;
+      optimizationPreset?: string;
+    },
     @Req() request: FastifyRequest & { user?: { id?: string } },
   ) {
     const user = request.user;
-    return this.service.start(body?.originalName, body?.size, user?.id);
+    return this.service.start(body?.originalName, body?.size, user?.id, {
+      targetProductId: body?.targetProductId,
+      optimizationPreset: body?.optimizationPreset,
+    });
   }
 
   @Post(":id/complete")
@@ -38,11 +46,36 @@ export class ThreeDConversionController {
 
   @Get(":id/download")
   async download(@Param("id") id: string) {
-    const result = await this.service.download(id);
+    const result = await this.service.download(id, "optimized");
     return new StreamableFile(result.stream, {
       type: "model/gltf-binary",
       disposition: "attachment; filename=\"" + encodeURIComponent(result.filename) + "\"",
     });
+  }
+
+  @Get(":id/download-converted")
+  async downloadConverted(@Param("id") id: string) {
+    const result = await this.service.download(id, "converted");
+    return new StreamableFile(result.stream, {
+      type: "model/gltf-binary",
+      disposition: "attachment; filename=\"" + encodeURIComponent(result.filename) + "\"",
+    });
+  }
+
+  @Post(":id/publish")
+  publish(@Param("id") id: string, @Body("productId") productId: string) {
+    return this.service.publish(id, productId);
+  }
+
+  @Post("existing-glb")
+  createFromExistingGlb(
+    @Body() body: { productId: string; productFileId: string; optimizationPreset?: string },
+  ) {
+    return this.service.createFromExistingGlb(
+      body?.productId,
+      body?.productFileId,
+      body?.optimizationPreset,
+    );
   }
 
   @Get(":id")
