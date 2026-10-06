@@ -23,6 +23,7 @@ export function Hero() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const [activeModelReady, setActiveModelReady] = useState(false);
   const [initialRotationStart] = useState(() => Date.now());
   const isModelHeldRef = useRef(false);
   const rotationStartedAtRef = useRef(initialRotationStart);
@@ -98,18 +99,36 @@ export function Hero() {
     return promise;
   }, [heroProducts]);
 
-  // Preload the current model and the next model. The next model is allowed
-  // to download in the background, but the hero never switches to it until
-  // the complete GLB is available in the browser cache.
+  // Give the visible model download priority. Only after the active GLB is
+  // completely available do we spend bandwidth preloading the next model.
+  // This prevents two large GLBs from competing for the same connection and
+  // prevents a rotation from ever advancing to a partially downloaded model.
   useEffect(() => {
     if (!heroProducts.length) return;
 
-    void preloadModel(activeIndex).catch(() => undefined);
+    let cancelled = false;
+    const currentIndex = activeIndex;
 
-    if (heroProducts.length > 1) {
-      const nextIndex = (activeIndex + 1) % heroProducts.length;
-      void preloadModel(nextIndex).catch(() => undefined);
-    }
+    void preloadModel(currentIndex)
+      .then(() => {
+        if (cancelled || currentIndex !== activeIndex) return;
+
+        setActiveModelReady(true);
+
+        if (heroProducts.length > 1) {
+          const nextIndex = (currentIndex + 1) % heroProducts.length;
+          void preloadModel(nextIndex).catch(() => undefined);
+        }
+      })
+      .catch(() => {
+        if (!cancelled && currentIndex === activeIndex) {
+          setActiveModelReady(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeIndex, heroProducts.length, preloadModel]);
 
   const clearRotationTimer = useCallback(() => {
@@ -160,12 +179,12 @@ export function Hero() {
   );
 
   useEffect(() => {
-    if (heroProducts.length <= 1) return;
+    if (heroProducts.length <= 1 || !activeModelReady) return;
 
     scheduleNextProduct(remainingTimeRef.current);
 
     return clearRotationTimer;
-  }, [clearRotationTimer, scheduleNextProduct, heroProducts.length]);
+  }, [activeModelReady, clearRotationTimer, scheduleNextProduct, heroProducts.length]);
 
   const handleModelHoldChange = useCallback(
     (held: boolean) => {
