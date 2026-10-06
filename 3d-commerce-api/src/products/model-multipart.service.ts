@@ -164,28 +164,19 @@ export class ModelMultipartService {
           fileType: "MODEL",
           mimeType: "model/gltf-binary",
           fileSize: BigInt(body.size),
-          processingStatus: "COMPLETED",
+          processingStatus: "PENDING",
         },
       });
 
-      // The uploaded GLB is already the customer-facing web asset.
-      // Publish it directly as MODEL_PREVIEW so the public product API
-      // includes it for the Three.js viewer. No optimizer/worker is needed.
-      await tx.productMedia.deleteMany({
-        where: {
-          productId,
-          type: "MODEL_PREVIEW",
-        },
-      });
-
-      await tx.productMedia.create({
+      // Every admin-uploaded GLB goes through the same optimization worker.
+      // The existing published model remains untouched until the optimized
+      // replacement is ready and atomically published.
+      await tx.productFileProcessingJob.create({
         data: {
-          productId,
-          type: "MODEL_PREVIEW",
-          url,
-          altText: body.originalName?.trim() || "GLB model",
-          sortOrder: 0,
-          isPrimary: true,
+          productFileId: file.id,
+          status: "QUEUED",
+          attempts: 0,
+          maxAttempts: 3,
         },
       });
 
@@ -194,10 +185,10 @@ export class ModelMultipartService {
 
     return {
       id: created.id,
-      url,
+      url: null,
       size: body.size,
       originalName: body.originalName?.trim() || "model.glb",
-      processingStatus: "COMPLETED",
+      processingStatus: "PENDING",
     };
   }
 
