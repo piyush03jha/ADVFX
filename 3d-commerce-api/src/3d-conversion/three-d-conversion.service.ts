@@ -55,8 +55,13 @@ export class ThreeDConversionService {
       data: { sourceStorageKey: key },
     });
 
+    let uploadId = "";
     try {
-      const uploadId = await this.storage.createMultipartUpload(key);
+      uploadId = await this.storage.createMultipartUpload(key);
+      await this.prisma.threeDConversionJob.update({
+        where: { id: job.id },
+        data: { uploadId },
+      });
       const total = Math.ceil(size / PART_SIZE);
       const parts = await Promise.all(
         Array.from({ length: total }, async (_, index) => ({
@@ -66,9 +71,14 @@ export class ThreeDConversionService {
       );
       return { jobId: job.id, key, uploadId, partSize: PART_SIZE, parts };
     } catch (error) {
+      if (uploadId) {
+        await this.storage.abortMultipartUpload(key, uploadId).catch(() => undefined);
+      }
+      await this.storage.delete(key).catch(() => undefined);
       await this.prisma.threeDConversionJob.update({
         where: { id: job.id },
         data: {
+          uploadId: null,
           status: ProcessingJobStatus.FAILED,
           stage: "FAILED",
           errorMessage: error instanceof Error ? error.message : String(error),
@@ -129,6 +139,7 @@ export class ThreeDConversionService {
       await this.prisma.threeDConversionJob.update({
         where: { id: job.id },
         data: {
+          uploadId: null,
           status: ProcessingJobStatus.FAILED,
           errorMessage: error instanceof Error ? error.message : String(error),
           completedAt: new Date(),
@@ -140,6 +151,7 @@ export class ThreeDConversionService {
     const updated = await this.prisma.threeDConversionJob.update({
       where: { id: job.id },
       data: {
+        uploadId: null,
         status: ProcessingJobStatus.QUEUED,
         stage: "QUEUED",
         originalSize: BigInt(body.size),
@@ -165,6 +177,7 @@ export class ThreeDConversionService {
     const updated = await this.prisma.threeDConversionJob.update({
       where: { id: job.id },
       data: {
+        uploadId: null,
         status: ProcessingJobStatus.FAILED,
         stage: "FAILED",
         errorMessage: "Upload cancelled",
@@ -230,16 +243,37 @@ export class ThreeDConversionService {
     const job = await this.prisma.threeDConversionJob.findUnique({ where: { id } });
     if (!job) throw new NotFoundException("Conversion job not found");
 
-    await this.prisma.threeDConversionJob.delete({ where: { id } });
-
-    // Never delete a published product file as a side effect of deleting its
-    // conversion history. The catalog owns published assets.
-    if (job.deleteSourceOnSuccess) {
-      await this.storage.delete(job.sourceStorageKey).catch(() => undefined);
+    // Abort any active multipart session before removing the database record.
+    // The uploadId is persisted so deleting an in-progress job cannot leave
+    // an orphaned multipart upload in B2.
+    if (job.uploadId) {
+      await this.storage.abortMultipartUpload(job.sourceStorageKey, job.uploadId);
     }
-    if (job.convertedStorageKey) await this.storage.delete(job.convertedStorageKey).catch(() => undefined);
-    if (job.outputStorageKey) await this.storage.delete(job.outputStorageKey).catch(() => undefined);
-    return { deleted: true };
+
+    // A source is conversion-owned only when deleteSourceOnSuccess is true.
+    // Existing product GLBs and re-run sources deliberately set this to false.
+    // In particular, reruns can have convertedStorageKey === sourceStorageKey;
+    // never delete that catalog-owned object.
+    const keys = new Set<string>();
+    if (job.deleteSourceOnSuccess && job.sourceStorageKey !== "pending") {
+      keys.add(job.sourceStorageKey);
+    }
+    if (job.convertedStorageKey && (job.deleteSourceOnSuccess || job.convertedStorageKey !== job.sourceStorageKey)) {
+      keys.add(job.convertedStorageKey);
+    }
+    if (job.outputStorageKey) {
+      keys.add(job.outputStorageKey);
+    }
+
+    // Clean storage before deleting the DB row. If storage cleanup fails,
+    // keep the job so the admin can retry deletion rather than reporting a
+    // false successful delete.
+    for (const key of keys) {
+      await this.storage.delete(key);
+    }
+
+    await this.prisma.threeDConversionJob.delete({ where: { id } });
+    return { deleted: true, deletedStorageKeys: keys.size };
   }
 
   async download(id: string, kind: "optimized" | "converted" = "optimized") {
