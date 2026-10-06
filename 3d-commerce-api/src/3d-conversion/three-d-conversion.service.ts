@@ -338,6 +338,16 @@ export class ThreeDConversionService {
   }
 
   async publish(id: string, productId: string) {
+    const claimed = await this.prisma.threeDConversionJob.updateMany({
+      where: { id, status: ProcessingJobStatus.COMPLETED, stage: "READY" },
+      data: { stage: "PUBLISHING" },
+    });
+    if (claimed.count !== 1) {
+      throw new BadRequestException("Job is not READY or is already being published");
+    }
+
+    const job = await this.prisma.threeDConversionJob.findUnique({ where: { id } });
+    if (!job) throw new NotFoundException("Conversion job not found");
     const job = await this.prisma.threeDConversionJob.findUnique({ where: { id } });
     if (!job) throw new NotFoundException("Conversion job not found");
     if (job.status !== ProcessingJobStatus.COMPLETED || !job.outputStorageKey || job.stage !== "READY") {
@@ -402,6 +412,10 @@ export class ThreeDConversionService {
       await this.notifyStorefrontRevalidation(productId);
       return this.serialize(published);
     } catch (error) {
+      await this.prisma.threeDConversionJob.updateMany({
+        where: { id, stage: "PUBLISHING" },
+        data: { stage: "READY" },
+      });
       await this.storage.delete(destinationKey).catch(() => undefined);
       throw error;
     }
