@@ -348,8 +348,6 @@ export class ThreeDConversionService {
 
     const job = await this.prisma.threeDConversionJob.findUnique({ where: { id } });
     if (!job) throw new NotFoundException("Conversion job not found");
-    const job = await this.prisma.threeDConversionJob.findUnique({ where: { id } });
-    if (!job) throw new NotFoundException("Conversion job not found");
     if (job.status !== ProcessingJobStatus.COMPLETED || !job.outputStorageKey || job.stage !== "READY") {
       throw new BadRequestException("Only READY conversion jobs can be published");
     }
