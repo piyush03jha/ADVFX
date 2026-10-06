@@ -721,7 +721,7 @@ export class ProcessingJobsWorker
       }
 
       if (productFile.fileType === ProductFileType.MODEL) {
-        await this.publishSourceModelFallback(productFile, jobId, null, "GLB optimization is disabled; published original");
+        await this.enqueueLegacyModelOptimization(productFile, jobId);
         return;
       }
 
@@ -733,6 +733,42 @@ export class ProcessingJobsWorker
     }
   }
 
+
+  private async enqueueLegacyModelOptimization(productFile: any, jobId: string): Promise<void> {
+    if (productFile.format !== ProductFileFormat.GLB) {
+      throw new Error("Only GLB product models can enter the web optimization pipeline.");
+    }
+
+    const existing = await this.prisma.threeDConversionJob.findFirst({
+      where: {
+        sourceStorageKey: productFile.storageKey,
+        status: { in: [ProcessingJobStatus.QUEUED, ProcessingJobStatus.PROCESSING, ProcessingJobStatus.COMPLETED] },
+      },
+      select: { id: true },
+    });
+    if (existing) return;
+
+    await this.prisma.threeDConversionJob.create({
+      data: {
+        originalName: productFile.originalName || "model.glb",
+        sourceStorageKey: productFile.storageKey,
+        inputExt: ".glb",
+        status: ProcessingJobStatus.QUEUED,
+        stage: "QUEUED",
+        originalSize: productFile.fileSize,
+        targetProductId: productFile.productId,
+        optimizationPreset: "BALANCED",
+        deleteSourceOnSuccess: false,
+      },
+    });
+
+    await this.prisma.productFileProcessingJob.update({
+      where: { id: jobId },
+      data: {
+        errorMessage: "Queued for web GLB optimization.",
+      },
+    });
+  }
 
   private async publishSourceModelFallback(
     productFile: any,
