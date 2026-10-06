@@ -31,6 +31,7 @@ export function Hero() {
   const timeoutRef = useRef<number | null>(null);
   const readyModelsRef = useRef(new Set<string>());
   const preloadPromisesRef = useRef(new Map<string, Promise<void>>());
+  const preloadAbortRef = useRef(new Map<string, AbortController>());
 
   useEffect(() => {
     let cancelled = false;
@@ -87,12 +88,16 @@ export function Hero() {
     const running = preloadPromisesRef.current.get(url);
     if (running) return running;
 
-    const promise = loadModelBuffer(url)
+    const controller = new AbortController();
+    preloadAbortRef.current.set(url, controller);
+
+    const promise = loadModelBuffer(url, undefined, controller.signal)
       .then(() => {
         readyModelsRef.current.add(url);
       })
       .finally(() => {
         preloadPromisesRef.current.delete(url);
+        preloadAbortRef.current.delete(url);
       });
 
     preloadPromisesRef.current.set(url, promise);
@@ -108,6 +113,19 @@ export function Hero() {
 
     let cancelled = false;
     const currentIndex = activeIndex;
+
+    const keep = new Set<string>();
+    for (const index of [currentIndex, (currentIndex + 1) % heroProducts.length]) {
+      const modelUrl = heroProducts[index]?.model?.trim();
+      if (modelUrl) keep.add(modelUrl);
+    }
+
+    preloadAbortRef.current.forEach((controller, modelUrl) => {
+      if (keep.has(modelUrl)) return;
+      controller.abort();
+      preloadAbortRef.current.delete(modelUrl);
+      preloadPromisesRef.current.delete(modelUrl);
+    });
 
     void preloadModel(currentIndex)
       .then(() => {
@@ -129,7 +147,12 @@ export function Hero() {
     return () => {
       cancelled = true;
     };
-  }, [activeIndex, heroProducts.length, preloadModel]);
+  }, [activeIndex, heroProducts, preloadModel]);
+
+  useEffect(() => {
+    const controllers = preloadAbortRef.current;
+    return () => controllers.forEach((controller) => controller.abort());
+  }, []);
 
   const clearRotationTimer = useCallback(() => {
     if (timeoutRef.current !== null) {
