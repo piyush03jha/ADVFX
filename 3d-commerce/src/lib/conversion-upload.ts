@@ -19,6 +19,7 @@ export async function uploadConversionDirect(
   file: File,
   onProgress: ConversionUploadProgress,
   signal?: AbortSignal,
+  options?: { targetProductId?: string; optimizationPreset?: "BALANCED" | "SMALLEST" },
 ) {
   const base = `/api/3d-conversion`;
 
@@ -46,7 +47,12 @@ export async function uploadConversionDirect(
     return data;
   };
 
-  const session = (await post("/upload", { originalName: file.name, size: file.size })) as UploadSession;
+  const session = (await post("/upload", {
+    originalName: file.name,
+    size: file.size,
+    targetProductId: options?.targetProductId || undefined,
+    optimizationPreset: options?.optimizationPreset || "BALANCED",
+  })) as UploadSession;
   const etags: UploadedPart[] = [];
   let doneBytes = 0;
   const sessionController = new AbortController();
