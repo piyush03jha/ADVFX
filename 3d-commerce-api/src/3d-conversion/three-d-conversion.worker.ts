@@ -113,14 +113,18 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
     try {
       await fs.mkdir(tempDir, { recursive: true });
 
-      const originalSize = await this.storage.getObjectSize(job.sourceStorageKey);
-      await this.storage.downloadTo(job.sourceStorageKey, sourcePath);
+      const reusableConverted = Boolean(
+        job.convertedStorageKey && (await this.storage.exists(job.convertedStorageKey)),
+      );
+      const sourceKey = reusableConverted ? job.convertedStorageKey! : job.sourceStorageKey;
+      const originalSize = job.originalSize ? Number(job.originalSize) : await this.storage.getObjectSize(sourceKey);
+      await this.storage.downloadTo(sourceKey, sourcePath);
 
       let animationCount = 0;
 
-      if (job.inputExt === ".glb") {
-        await this.validateGlb(convertedPath === sourcePath ? sourcePath : sourcePath);
+      if (reusableConverted || job.inputExt === ".glb") {
         await fs.copyFile(sourcePath, convertedPath);
+        await this.validateGlb(convertedPath);
       } else {
         await this.runBlender(sourcePath, convertedPath, job.inputExt);
         await this.validateGlb(convertedPath);
