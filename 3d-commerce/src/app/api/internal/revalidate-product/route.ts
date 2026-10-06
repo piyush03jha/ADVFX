@@ -1,11 +1,19 @@
 import { NextResponse } from "next/server";
+import { timingSafeEqual } from "node:crypto";
 import { revalidateProductCatalog } from "@/lib/revalidate-catalog";
 
 export async function POST(request: Request) {
   const expected = process.env.CATALOG_REVALIDATE_SECRET?.trim();
   const provided = request.headers.get("x-catalog-revalidate-secret")?.trim();
 
-  if (!expected || !provided || provided !== expected) {
+  const expectedBuffer = Buffer.from(expected ?? "");
+  const providedBuffer = Buffer.from(provided ?? "");
+  const validSecret =
+    expectedBuffer.length > 0 &&
+    expectedBuffer.length === providedBuffer.length &&
+    timingSafeEqual(expectedBuffer, providedBuffer);
+
+  if (!validSecret) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
