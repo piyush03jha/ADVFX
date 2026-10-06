@@ -435,7 +435,14 @@ export class StorageService {
   }
 
   private multipartCanonicalQuery(params: Record<string, string>): string {
-    return Object.entries(params).sort(([a], [b]) => a.localeCompare(b)).map(([key, value]) => awsEncodeSegment(key) + "=" + awsEncodeSegment(value)).join("&");
+    // SigV4 sorts the URI-encoded query keys by byte/ASCII order, not locale order.
+    // localeCompare() can place lowercase keys before uppercase X-Amz-* keys,
+    // producing a signature that B2 rejects even though the URL looks valid.
+    return Object.entries(params)
+      .map(([key, value]) => [awsEncodeSegment(key), awsEncodeSegment(value)] as const)
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .map(([key, value]) => key + "=" + value)
+      .join("&");
   }
 
   private deriveMultipartSigningKey(dateStamp: string): Buffer {
