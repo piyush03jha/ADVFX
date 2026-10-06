@@ -86,7 +86,7 @@ export default function ThreeDConversionPage() {
   async function load() {
     const [jobsResponse, productsResponse] = await Promise.all([
       fetch("/api/3d-conversion", { cache: "no-store" }),
-      fetch("/api/products", { cache: "no-store" }),
+      fetch("/api/admin/products", { cache: "no-store" }),
     ]);
 
     if (jobsResponse.ok) setJobs(await jobsResponse.json());
