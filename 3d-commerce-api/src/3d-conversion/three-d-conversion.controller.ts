@@ -62,6 +62,11 @@ export class ThreeDConversionController {
     });
   }
 
+  @Post(":id/rerun")
+  rerun(@Param("id") id: string, @Body("optimizationPreset") optimizationPreset: string) {
+    return this.service.rerun(id, optimizationPreset);
+  }
+
   @Post(":id/publish")
   publish(@Param("id") id: string, @Body("productId") productId: string) {
     return this.service.publish(id, productId);
