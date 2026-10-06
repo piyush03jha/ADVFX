@@ -15,6 +15,7 @@ import { basename, dirname, extname, join, resolve, sep } from "node:path";
 import type { SaveProductFileOptions, StoredFile } from "./storage.types";
 
 type StorageProvider = "local" | "s3" | "b2";
+type MultipartUploadPart = { PartNumber: number; ETag: string };
 
 const awsEncodeSegment = (value: string) =>
   encodeURIComponent(value).replace(/[!'()*]/g, (char) =>
@@ -94,8 +95,6 @@ export class StorageService {
     return this.saveScopedFile(["products", normalizedProductId, "bundles", normalizedBundleId], normalizedPath, buffer);
   }
 
-
-  type MultipartUploadPart = { PartNumber: number; ETag: string };
 
   async createMultipartUpload(storageKey: string): Promise<string> {
     if (this.provider !== "s3") throw new BadRequestException("Multipart uploads require S3-compatible remote storage");
