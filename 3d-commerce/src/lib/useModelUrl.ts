@@ -1,62 +1,60 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { loadModelBuffer } from "@/lib/model-loader";
+import { loadModelBuffer, peekModelUrl } from "@/lib/model-loader";
+
+type ModelState = {
+  url: string;
+  blobUrl: string | null;
+  progress: number;
+  error: Error | null;
+};
+
+const EMPTY: ModelState = { url: "", blobUrl: null, progress: 0, error: null };
 
 export function useModelUrl(url: string) {
-  const [blobUrl, setBlobUrl] = useState<string | null>(null);
-  const [progress, setProgress] = useState(0);
-  const [error, setError] = useState<Error | null>(null);
+  const [state, setState] = useState<ModelState>(EMPTY);
   const [attempt, setAttempt] = useState(0);
 
   const retry = useCallback(() => {
-    setError(null);
-    setProgress(0);
+    setState((current) => ({ ...current, error: null, progress: 0 }));
     setAttempt((value) => value + 1);
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-
-    if (!url.trim()) {
-      setBlobUrl(null);
-      setError(null);
-      setProgress(0);
+    const target = url.trim();
+    if (!target) {
+      setState(EMPTY);
       return;
     }
 
-    setBlobUrl(null);
-    setError(null);
-    setProgress(0);
+    const patch = (partial: Partial<ModelState>) =>
+      setState((current) => ({
+        ...(current.url === target ? current : { ...EMPTY, url: target }),
+        ...partial,
+      }));
 
     const controller = new AbortController();
 
-    void loadModelBuffer(
-      url,
-      (value) => {
-        if (!cancelled) setProgress(value);
-      },
-      controller.signal,
-    )
-      .then((value) => {
-        if (!cancelled) setBlobUrl(value);
-      })
+    void loadModelBuffer(target, (progress) => patch({ progress }), controller.signal)
+      .then((blobUrl) => patch({ blobUrl, progress: 100, error: null }))
       .catch((cause) => {
-        if (!cancelled && cause instanceof Error) {
-          setError(cause);
-        }
+        if (controller.signal.aborted) return;
+        patch({
+          error: cause instanceof Error ? cause : new Error("Model failed to load"),
+        });
       });
 
-    return () => {
-      cancelled = true;
-      controller.abort();
-    };
+    return () => controller.abort();
   }, [attempt, url]);
 
+  const target = url.trim();
+  const matches = target !== "" && state.url === target;
+
   return {
-    blobUrl,
-    progress,
-    error,
+    blobUrl: (matches ? state.blobUrl : null) ?? (target ? peekModelUrl(target) : null),
+    progress: matches ? state.progress : 0,
+    error: matches ? state.error : null,
     retry,
   };
 }
