@@ -240,7 +240,7 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
       const ratio = simplifyRatios[i];
       const args = [
         "optimize",
-        best,
+        inputPath, // always re-optimize from the converted source, never from an already-compressed tier
         output,
         "--compress", "meshopt",
         "--meshopt-level", "medium",
