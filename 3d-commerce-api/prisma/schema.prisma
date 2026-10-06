@@ -1262,6 +1262,7 @@ model ThreeDConversionJob {
 
   originalName String
   sourceStorageKey String
+  uploadId String?
   convertedStorageKey String?
   outputStorageKey String?
 
