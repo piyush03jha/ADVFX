@@ -134,8 +134,14 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
       animationCount = await this.hasAnimations(convertedPath) ? 1 : 0;
 
       const convertedSize = (await fs.stat(convertedPath)).size;
-      const convertedKey = "conversions/" + job.id + "/converted/model.glb";
-      await this.storage.uploadFileFromPath(convertedKey, convertedPath, "model/gltf-binary");
+      const directGlbSource = job.inputExt === ".glb" && !reusableConverted;
+      const convertedKey = directGlbSource
+        ? job.sourceStorageKey
+        : "conversions/" + job.id + "/converted/model.glb";
+
+      if (!directGlbSource) {
+        await this.storage.uploadFileFromPath(convertedKey, convertedPath, "model/gltf-binary");
+      }
 
       await this.prisma.threeDConversionJob.update({
         where: { id: job.id },
@@ -182,10 +188,10 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
         },
       });
 
-      // The optimized and converted artifacts are now durable. Remove the
-      // private source immediately; retry/publish operate on the converted
-      // artifact instead of requiring the original upload.
-      if (job.deleteSourceOnSuccess && !reusableConverted) {
+      // Keep a direct GLB source until publish because convertedStorageKey points
+      // at that same object. Other formats can discard their private source once
+      // the converted GLB is durable.
+      if (job.deleteSourceOnSuccess && !reusableConverted && !directGlbSource) {
         await this.storage.delete(job.sourceStorageKey).catch((error) => {
           this.logger.warn(
             `Unable to delete original conversion source ${job.id}: ${error instanceof Error ? error.message : String(error)}`,
@@ -369,6 +375,24 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
   }
 
   private async recoverStaleJobs() {
+    const uploadCutoff = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    const staleUploads = await this.prisma.threeDConversionJob.updateMany({
+      where: {
+        status: ProcessingJobStatus.PROCESSING,
+        stage: "UPLOADING",
+        createdAt: { lt: uploadCutoff },
+      },
+      data: {
+        status: ProcessingJobStatus.FAILED,
+        stage: "FAILED",
+        errorMessage: "Upload was never completed. Delete this job and upload the file again.",
+        completedAt: new Date(),
+      },
+    });
+    if (staleUploads.count > 0) {
+      this.logger.warn(`Marked ${staleUploads.count} abandoned conversion upload(s) as failed`);
+    }
+
     const cutoff = new Date(Date.now() - this.staleAfterMs);
     await this.prisma.threeDConversionJob.updateMany({
       where: {
