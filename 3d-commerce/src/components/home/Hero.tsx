@@ -96,8 +96,12 @@ export function Hero() {
         readyModelsRef.current.add(url);
       })
       .finally(() => {
-        preloadPromisesRef.current.delete(url);
-        preloadAbortRef.current.delete(url);
+        if (preloadPromisesRef.current.get(url) === promise) {
+          preloadPromisesRef.current.delete(url);
+        }
+        if (preloadAbortRef.current.get(url) === controller) {
+          preloadAbortRef.current.delete(url);
+        }
       });
 
     preloadPromisesRef.current.set(url, promise);
