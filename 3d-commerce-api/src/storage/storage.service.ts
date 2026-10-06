@@ -304,10 +304,11 @@ export class StorageService {
     );
 
     const response = await fetch(url, { method: "PUT", headers });
-    if (!response.ok) {
-      const detail = await this.readRemoteError(response);
+    const body = await response.text();
+    if (!response.ok || /<Error\b/i.test(body) || /<Code>[^<]+<\/Code>/i.test(body)) {
+      const detail = body.trim() || `HTTP ${response.status}`;
       throw new BadGatewayException(
-        `Remote storage copy failed (${response.status}): ${detail}`,
+        `Remote storage copy failed (${response.status}): ${detail.slice(0, 2000)}`,
       );
     }
   }
