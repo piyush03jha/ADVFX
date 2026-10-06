@@ -313,6 +313,30 @@ export class ThreeDConversionService {
     return this.serialize(job);
   }
 
+  async rerun(id: string, optimizationPreset: string = "BALANCED") {
+    const job = await this.prisma.threeDConversionJob.findUnique({ where: { id } });
+    if (!job) throw new NotFoundException("Conversion job not found");
+    if (!job.convertedStorageKey || !(await this.storage.exists(job.convertedStorageKey))) {
+      throw new BadRequestException("Converted GLB is not available for a re-run");
+    }
+
+    const rerun = await this.prisma.threeDConversionJob.create({
+      data: {
+        originalName: job.originalName,
+        sourceStorageKey: job.convertedStorageKey,
+        inputExt: ".glb",
+        status: ProcessingJobStatus.QUEUED,
+        stage: "QUEUED",
+        originalSize: job.convertedSize,
+        targetProductId: job.targetProductId,
+        optimizationPreset: optimizationPreset === "SMALLEST" ? "SMALLEST" : "BALANCED",
+        deleteSourceOnSuccess: false,
+      },
+    });
+
+    return this.serialize(rerun);
+  }
+
   async publish(id: string, productId: string) {
     const job = await this.prisma.threeDConversionJob.findUnique({ where: { id } });
     if (!job) throw new NotFoundException("Conversion job not found");
