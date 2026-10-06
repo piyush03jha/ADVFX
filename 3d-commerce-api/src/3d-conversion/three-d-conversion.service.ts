@@ -82,6 +82,7 @@ export class ThreeDConversionService {
         where: { id: job.id },
         data: {
           status: ProcessingJobStatus.FAILED,
+          stage: "FAILED",
           errorMessage: error instanceof Error ? error.message : String(error),
           completedAt: new Date(),
         },
@@ -177,6 +178,7 @@ export class ThreeDConversionService {
       where: { id: job.id },
       data: {
         status: ProcessingJobStatus.FAILED,
+        stage: "FAILED",
         errorMessage: "Upload cancelled",
         completedAt: new Date(),
       },
@@ -244,7 +246,9 @@ export class ThreeDConversionService {
 
     // Never delete a published product file as a side effect of deleting its
     // conversion history. The catalog owns published assets.
-    await this.storage.delete(job.sourceStorageKey).catch(() => undefined);
+    if (job.deleteSourceOnSuccess) {
+      await this.storage.delete(job.sourceStorageKey).catch(() => undefined);
+    }
     if (job.convertedStorageKey) await this.storage.delete(job.convertedStorageKey).catch(() => undefined);
     if (job.outputStorageKey) await this.storage.delete(job.outputStorageKey).catch(() => undefined);
     return { deleted: true };
