@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { ProcessingJobStatus } from "@prisma/client";
-import { createHash, createHmac, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { extname } from "node:path";
 import { PrismaService } from "../prisma/prisma.service";
 import { StorageService } from "../storage/storage.service";
@@ -19,12 +19,6 @@ export class ThreeDConversionService {
   private readonly region = process.env.STORAGE_REGION ?? "us-east-1";
 
   constructor(private readonly prisma: PrismaService, private readonly storage: StorageService) {}
-
-  private assertConfigured() {
-    if (!this.bucket || !this.endpoint || !this.accessKey || !this.secretKey) {
-      throw new BadRequestException("Remote storage is not configured");
-    }
-  }
 
   async start(
     originalName: string,
@@ -47,8 +41,6 @@ export class ThreeDConversionService {
       throw new BadRequestException("Unsupported 3D conversion format: " + (inputExt || "unknown"));
     }
 
-    this.assertConfigured();
-
     const job = await this.prisma.threeDConversionJob.create({
       data: {
         originalName: name.slice(0, 255),
@@ -69,12 +61,12 @@ export class ThreeDConversionService {
     });
 
     try {
-      const uploadId = await this.createMultipartUpload(key);
+      const uploadId = await this.storage.createMultipartUpload(key);
       const total = Math.ceil(size / PART_SIZE);
       const parts = await Promise.all(
         Array.from({ length: total }, async (_, index) => ({
           partNumber: index + 1,
-          url: await this.presignUploadPart(key, uploadId, index + 1),
+          url: await this.storage.presignMultipartPart(key, uploadId, index + 1),
         })),
       );
       return { jobId: job.id, key, uploadId, partSize: PART_SIZE, parts };
@@ -133,11 +125,11 @@ export class ThreeDConversionService {
     }
 
     try {
-      await this.completeMultipartUpload(job.sourceStorageKey, body.uploadId, parts);
+      await this.storage.completeMultipartUpload(job.sourceStorageKey, body.uploadId, parts);
       const uploadedSize = await this.storage.getObjectSize(job.sourceStorageKey);
       if (uploadedSize !== body.size) throw new BadRequestException("Uploaded size does not match");
     } catch (error) {
-      await this.abortMultipartUpload(job.sourceStorageKey, body.uploadId).catch(() => undefined);
+      await this.storage.abortMultipartUpload(job.sourceStorageKey, body.uploadId).catch(() => undefined);
       await this.storage.delete(job.sourceStorageKey).catch(() => undefined);
       await this.prisma.threeDConversionJob.update({
         where: { id: job.id },
@@ -468,225 +460,4 @@ export class ThreeDConversionService {
     return base.replace(/[^a-zA-Z0-9._-]/g, "-").slice(0, 170) + suffix + ".glb";
   }
 
-  private objectUrl(key: string): URL {
-    return new URL(
-      this.endpoint +
-        "/" +
-        encodeURIComponent(this.bucket) +
-        "/" +
-        key.split("/").map(encodeURIComponent).join("/"),
-    );
-  }
-
-  private awsEncode(value: string): string {
-    return encodeURIComponent(value).replace(/[!'()*]/g, (char) =>
-      "%" + char.charCodeAt(0).toString(16).toUpperCase(),
-    );
-  }
-
-  private canonicalQuery(params: Record<string, string>): string {
-    return Object.entries(params)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([key, value]) => this.awsEncode(key) + "=" + this.awsEncode(value))
-      .join("&");
-  }
-
-  private signingKey(dateStamp: string): Buffer {
-    const kDate = createHmac("sha256", "AWS4" + this.secretKey).update(dateStamp).digest();
-    const kRegion = createHmac("sha256", kDate).update(this.region).digest();
-    const kService = createHmac("sha256", kRegion).update("s3").digest();
-    return createHmac("sha256", kService).update("aws4_request").digest();
-  }
-
-  private signRequest(
-    method: string,
-    url: URL,
-    payloadHash: string,
-    headers: Record<string, string>,
-    query: Record<string, string> = {},
-  ) {
-    const amzDate = new Date().toISOString().replace(/[:-]|\.\d{3}/g, "");
-    const dateStamp = amzDate.slice(0, 8);
-    const credentialScope = dateStamp + "/" + this.region + "/s3/aws4_request";
-    const allHeaders = {
-      host: url.host,
-      ...headers,
-      "x-amz-content-sha256": payloadHash,
-      "x-amz-date": amzDate,
-    };
-    const canonicalHeaders = Object.keys(allHeaders)
-      .sort()
-      .map((name) => name.toLowerCase() + ":" + allHeaders[name].trim() + "\n")
-      .join("");
-    const signedHeaders = Object.keys(allHeaders)
-      .map((name) => name.toLowerCase())
-      .sort()
-      .join(";");
-    const canonicalRequest = [
-      method,
-      url.pathname,
-      this.canonicalQuery(query),
-      canonicalHeaders,
-      signedHeaders,
-      payloadHash,
-    ].join("\n");
-    const stringToSign = [
-      "AWS4-HMAC-SHA256",
-      amzDate,
-      credentialScope,
-      createHash("sha256").update(canonicalRequest).digest("hex"),
-    ].join("\n");
-    const signature = createHmac("sha256", this.signingKey(dateStamp))
-      .update(stringToSign)
-      .digest("hex");
-    return {
-      credentialScope,
-      signedHeaders,
-      signature,
-      headers: allHeaders,
-    };
-  }
-
-  private async createMultipartUpload(key: string): Promise<string> {
-    const url = this.objectUrl(key);
-    const payloadHash = createHash("sha256").update("").digest("hex");
-    const signed = this.signRequest(
-      "POST",
-      url,
-      payloadHash,
-      { "cache-control": "private, max-age=0, no-cache", "content-type": "application/octet-stream" },
-      { uploads: "" },
-    );
-    const auth =
-      "AWS4-HMAC-SHA256 Credential=" +
-      this.accessKey +
-      "/" +
-      signed.credentialScope +
-      ", SignedHeaders=" +
-      signed.signedHeaders +
-      ", Signature=" +
-      signed.signature;
-
-    const response = await fetch(url.toString() + "?uploads=", {
-      method: "POST",
-      headers: { ...signed.headers, authorization: auth },
-    });
-    if (!response.ok) throw new Error("Unable to start multipart upload (" + response.status + ")");
-    const xml = await response.text();
-    const uploadId = xml.match(/<UploadId>([^<]+)<\/UploadId>/)?.[1];
-    if (!uploadId) throw new Error("Storage did not return a multipart upload ID");
-    return uploadId;
-  }
-
-  private async presignUploadPart(key: string, uploadId: string, partNumber: number): Promise<string> {
-    const url = this.objectUrl(key);
-    const amzDate = new Date().toISOString().replace(/[:-]|\.\d{3}/g, "");
-    const dateStamp = amzDate.slice(0, 8);
-    const credentialScope = dateStamp + "/" + this.region + "/s3/aws4_request";
-    const query = {
-      partNumber: String(partNumber),
-      uploadId,
-      "X-Amz-Algorithm": "AWS4-HMAC-SHA256",
-      "X-Amz-Credential": this.accessKey + "/" + credentialScope,
-      "X-Amz-Date": amzDate,
-      "X-Amz-Expires": "3600",
-      "X-Amz-SignedHeaders": "host",
-    };
-    const canonicalRequest = [
-      "PUT",
-      url.pathname,
-      this.canonicalQuery(query),
-      "host:" + url.host + "\n",
-      "host",
-      "UNSIGNED-PAYLOAD",
-    ].join("\n");
-    const stringToSign = [
-      "AWS4-HMAC-SHA256",
-      amzDate,
-      credentialScope,
-      createHash("sha256").update(canonicalRequest).digest("hex"),
-    ].join("\n");
-    const signature = createHmac("sha256", this.signingKey(dateStamp))
-      .update(stringToSign)
-      .digest("hex");
-    return (
-      url.origin +
-      url.pathname +
-      "?" +
-      this.canonicalQuery({ ...query, "X-Amz-Signature": signature })
-    );
-  }
-
-  private async completeMultipartUpload(key: string, uploadId: string, parts: UploadPart[]): Promise<void> {
-    const url = this.objectUrl(key);
-    const xml =
-      '<?xml version="1.0" encoding="UTF-8"?><CompleteMultipartUpload>' +
-      parts
-        .map(
-          (part) =>
-            "<Part><PartNumber>" +
-            part.PartNumber +
-            "</PartNumber><ETag>" +
-            this.escapeXml(part.ETag) +
-            "</ETag></Part>",
-        )
-        .join("") +
-      "</CompleteMultipartUpload>";
-    const body = Buffer.from(xml);
-    const payloadHash = createHash("sha256").update(body).digest("hex");
-    const signed = this.signRequest(
-      "POST",
-      url,
-      payloadHash,
-      { "content-type": "application/xml" },
-      { uploadId },
-    );
-    const auth =
-      "AWS4-HMAC-SHA256 Credential=" +
-      this.accessKey +
-      "/" +
-      signed.credentialScope +
-      ", SignedHeaders=" +
-      signed.signedHeaders +
-      ", Signature=" +
-      signed.signature;
-
-    const response = await fetch(
-      url.toString() + "?" + this.canonicalQuery({ uploadId }),
-      { method: "POST", headers: { ...signed.headers, authorization: auth }, body },
-    );
-    if (!response.ok) throw new Error("Unable to complete multipart upload (" + response.status + ")");
-  }
-
-  private async abortMultipartUpload(key: string, uploadId: string): Promise<void> {
-    const url = this.objectUrl(key);
-    const payloadHash = createHash("sha256").update("").digest("hex");
-    const signed = this.signRequest("DELETE", url, payloadHash, {}, { uploadId });
-    const auth =
-      "AWS4-HMAC-SHA256 Credential=" +
-      this.accessKey +
-      "/" +
-      signed.credentialScope +
-      ", SignedHeaders=" +
-      signed.signedHeaders +
-      ", Signature=" +
-      signed.signature;
-    await fetch(
-      url.toString() + "?" + this.canonicalQuery({ uploadId }),
-      { method: "DELETE", headers: { ...signed.headers, authorization: auth } },
-    );
-  }
-
-  private escapeXml(value: string): string {
-    return value.replace(/[<>&'"]/g, (char) => {
-      const entities: Record<string, string> = {
-        "<": "&lt;",
-        ">": "&gt;",
-        "&": "&amp;",
-        "'": "&apos;",
-        '"': "&quot;",
-      };
-      return entities[char];
-    });
-  }
 }
