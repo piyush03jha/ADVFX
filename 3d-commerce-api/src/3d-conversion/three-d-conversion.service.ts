@@ -198,6 +198,40 @@ export class ThreeDConversionService {
     return jobs.map((job) => this.serialize(job));
   }
 
+  async findProductsWithoutModel() {
+    const products = await this.prisma.product.findMany({
+      where: {
+        NOT: {
+          OR: [
+            {
+              media: {
+                some: { type: "MODEL_PREVIEW" },
+              },
+            },
+            {
+              files: {
+                some: {
+                  fileType: "MODEL",
+                  format: "GLB",
+                },
+              },
+            },
+          ],
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        status: true,
+      },
+      orderBy: { name: "asc" },
+      take: 500,
+    });
+
+    return products;
+  }
+
   async findOne(id: string) {
     const job = await this.prisma.threeDConversionJob.findUnique({ where: { id } });
     if (!job) throw new NotFoundException("Conversion job not found");
