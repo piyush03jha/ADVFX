@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE } from "@/app/api/auth/admin/login/route";
 import { getBackendApiUrl } from "@/lib/backend-api";
+import { revalidateProductCatalog } from "@/lib/revalidate-catalog";
 
 async function getToken() {
   return (await cookies()).get(ADMIN_COOKIE)?.value;
@@ -23,6 +24,20 @@ async function proxy(request: NextRequest, path: string) {
     });
 
     const contentType = response.headers.get("content-type") ?? "application/json";
+    const responseText = contentType.includes("application/json")
+      ? await response.text()
+      : null;
+
+    if (request.method === "POST" && path.endsWith("/publish") && response.ok && responseText) {
+      try {
+        const published = JSON.parse(responseText) as { targetProductId?: string };
+        if (published.targetProductId) revalidateProductCatalog(published.targetProductId);
+      } catch {
+        // The backend response is still returned to the admin UI even if
+        // catalog revalidation cannot be performed.
+      }
+    }
+
     if (contentType.includes("application/octet-stream") || contentType.includes("model/gltf-binary")) {
       return new NextResponse(response.body, {
         status: response.status,
@@ -34,7 +49,7 @@ async function proxy(request: NextRequest, path: string) {
       });
     }
 
-    return new NextResponse(await response.text(), {
+    return new NextResponse(responseText ?? "", {
       status: response.status,
       headers: { "Content-Type": contentType },
     });
