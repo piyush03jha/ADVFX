@@ -278,6 +278,40 @@ export class StorageService {
     return response;
   }
 
+  /**
+   * Copy an object inside the storage provider without downloading it through
+   * the API process. This is used when publishing an optimized GLB to its
+   * immutable product URL.
+   */
+  async copy(sourceKey: string, destinationKey: string): Promise<void> {
+    const source = this.normalizeRemoteKey(sourceKey);
+    const destination = this.normalizeRemoteKey(destinationKey);
+
+    if (this.provider === "local") {
+      const { copyFile } = await import("node:fs/promises");
+      const destinationPath = this.getAbsolutePath(destination);
+      await mkdir(dirname(destinationPath), { recursive: true });
+      await copyFile(this.getAbsolutePath(source), destinationPath);
+      return;
+    }
+
+    const copySource = "/" + this.bucket + "/" + source.split("/").map(awsEncodeSegment).join("/");
+    const { url, headers } = this.buildSignedRequest(
+      "PUT",
+      destination,
+      undefined,
+      { "x-amz-copy-source": copySource },
+    );
+
+    const response = await fetch(url, { method: "PUT", headers });
+    if (!response.ok) {
+      const detail = await this.readRemoteError(response);
+      throw new BadGatewayException(
+        `Remote storage copy failed (${response.status}): ${detail}`,
+      );
+    }
+  }
+
   async delete(storageKey: string): Promise<void> {
     if (this.provider === "local") {
       try { await unlink(this.getAbsolutePath(storageKey)); } catch (error: unknown) {
