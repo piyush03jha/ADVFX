@@ -148,11 +148,6 @@ export class ModelMultipartService {
       throw error;
     }
 
-    const url = `/api/assets/${body.key
-      .split("/")
-      .map(encodeURIComponent)
-      .join("/")}`;
-
     const created = await this.prisma.threeDConversionJob.create({
       data: {
         originalName: body.originalName?.trim() || "model.glb",
