@@ -1297,7 +1297,8 @@ model ThreeDConversionJob {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([status, stage, createdAt])
+  @@index([status, createdAt])
+  @@index([stage, createdAt])
   @@index([createdById])
   @@index([targetProductId])
 }
