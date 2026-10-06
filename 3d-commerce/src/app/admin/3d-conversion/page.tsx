@@ -154,6 +154,25 @@ export default function ThreeDConversionPage() {
     }
   }
 
+  async function rerun(id: string) {
+    setBusy(id);
+    setMessage("");
+    try {
+      const response = await fetch("/api/3d-conversion/" + encodeURIComponent(id) + "/rerun", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ optimizationPreset: preset }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(data?.message ?? data?.error ?? "Re-run failed");
+      await load();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Re-run failed");
+    } finally {
+      setBusy("");
+    }
+  }
+
   async function publish(id: string, productId: string) {
     setBusy(id);
     try {
@@ -361,6 +380,9 @@ export default function ThreeDConversionPage() {
                   <div className="flex flex-wrap gap-2">
                     {job.status === "COMPLETED" && job.stage === "READY" ? (
                       <>
+                        <AdminButton onClick={() => void rerun(job.id)} disabled={busy === job.id}>
+                          <IconRefresh size={15} /> Re-run {preset === "SMALLEST" ? "Smallest" : "Balanced"}
+                        </AdminButton>
                         <AdminButton variant="primary" onClick={() => download(job.id, "optimized")}>
                           <IconDownload size={15} /> Web-optimized GLB
                         </AdminButton>
