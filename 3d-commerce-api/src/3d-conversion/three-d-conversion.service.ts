@@ -219,7 +219,10 @@ export class ThreeDConversionService {
     }
 
     if (job.outputStorageKey) {
-      await this.storage.delete(job.outputStorageKey).catch(() => undefined);
+      // Do not queue the retry until the previous output has actually been
+      // removed. Otherwise a stale output object can be mistaken for the new
+      // attempt's result.
+      await this.storage.delete(job.outputStorageKey);
     }
 
     const updated = await this.prisma.threeDConversionJob.update({
