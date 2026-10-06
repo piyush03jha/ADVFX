@@ -1,7 +1,6 @@
-const CHUNK_SIZE = 4 * 1024 * 1024;
+const CHUNK_SIZE = 8 * 1024 * 1024;
 const MAX_RETRIES = 5;
 const CACHE_NAME = "voxel3d-glb-v2";
-const SMALL_MODEL_FULL_DOWNLOAD_SIZE = 12 * 1024 * 1024;
 
 const inFlight = new Map<string, Promise<string>>();
 const objectUrls = new Map<string, string>();
@@ -259,10 +258,20 @@ export async function loadModelBuffer(
         });
       }
 
-      // Four parallel ranges are enough to saturate typical mobile/desktop
-      // connections without creating a large number of simultaneous requests.
+      // Keep concurrency adaptive. Too many range requests can starve the
+      // active hero model on mobile, while 5 workers materially improve
+      // throughput on normal broadband.
       let next = 0;
-      const workers = Math.min(4, ranges.length);
+      const connection = (navigator as Navigator & {
+        connection?: { effectiveType?: string; saveData?: boolean };
+      }).connection;
+      const constrained = Boolean(
+        connection?.saveData ||
+          connection?.effectiveType === "slow-2g" ||
+          connection?.effectiveType === "2g" ||
+          connection?.effectiveType === "3g",
+      );
+      const workers = Math.min(constrained ? 2 : 5, ranges.length);
 
       await Promise.all(
         Array.from({ length: workers }, async () => {
