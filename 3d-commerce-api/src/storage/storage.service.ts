@@ -317,6 +317,17 @@ export class StorageService {
         `Remote storage copy failed (${response.status}): ${detail.slice(0, 2000)}`,
       );
     }
+
+    const [sourceSize, destinationSize] = await Promise.all([
+      this.getObjectSize(source),
+      this.getObjectSize(destination),
+    ]);
+    if (destinationSize !== sourceSize) {
+      await this.deleteObject(destination).catch(() => undefined);
+      throw new BadGatewayException(
+        `Remote storage copy verification failed: expected ${sourceSize} bytes, got ${destinationSize}`,
+      );
+    }
   }
 
   async delete(storageKey: string): Promise<void> {
