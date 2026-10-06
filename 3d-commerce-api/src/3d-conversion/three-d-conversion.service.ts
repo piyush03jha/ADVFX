@@ -159,7 +159,7 @@ export class ThreeDConversionService {
       throw new BadRequestException("Conversion upload is not active");
     }
 
-    await this.abortMultipartUpload(job.sourceStorageKey, uploadId).catch(() => undefined);
+    await this.storage.abortMultipartUpload(job.sourceStorageKey, uploadId).catch(() => undefined);
     await this.storage.delete(job.sourceStorageKey).catch(() => undefined);
 
     const updated = await this.prisma.threeDConversionJob.update({
