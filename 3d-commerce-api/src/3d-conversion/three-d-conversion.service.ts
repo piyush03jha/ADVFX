@@ -12,11 +12,6 @@ type UploadPart = { PartNumber: number; ETag: string };
 @Injectable()
 export class ThreeDConversionService {
   private readonly logger = new Logger(ThreeDConversionService.name);
-  private readonly bucket = process.env.STORAGE_BUCKET ?? "";
-  private readonly endpoint = (process.env.STORAGE_ENDPOINT ?? "").trim().replace(/^[\"\']|[\"\']$/g, "").trim().replace(/\/+$/, "");
-  private readonly accessKey = process.env.STORAGE_ACCESS_KEY_ID ?? "";
-  private readonly secretKey = process.env.STORAGE_SECRET_ACCESS_KEY ?? "";
-  private readonly region = process.env.STORAGE_REGION ?? "us-east-1";
 
   constructor(private readonly prisma: PrismaService, private readonly storage: StorageService) {}
 
