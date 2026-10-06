@@ -94,6 +94,80 @@ export class StorageService {
     return this.saveScopedFile(["products", normalizedProductId, "bundles", normalizedBundleId], normalizedPath, buffer);
   }
 
+
+  type MultipartUploadPart = { PartNumber: number; ETag: string };
+
+  async createMultipartUpload(storageKey: string): Promise<string> {
+    if (this.provider !== "s3") throw new BadRequestException("Multipart uploads require S3-compatible remote storage");
+    const key = this.normalizeRemoteKey(storageKey);
+    const url = this.multipartObjectUrl(key);
+    const signed = this.signMultipartRequest("POST", url, createHash("sha256").update("").digest("hex"), {
+      "cache-control": "private, max-age=0, no-cache",
+      "content-type": "application/octet-stream",
+    }, { uploads: "" });
+
+    const response = await fetch(url.toString() + "?uploads=", {
+      method: "POST",
+      headers: { ...signed.headers, authorization: signed.authorization },
+    });
+    if (!response.ok) throw new BadGatewayException(`Unable to start multipart upload (${response.status}): ${await this.readRemoteError(response)}`);
+    const uploadId = (await response.text()).match(/<UploadId>([^<]+)<\/UploadId>/)?.[1];
+    if (!uploadId) throw new BadGatewayException("Storage did not return a multipart upload ID");
+    return uploadId;
+  }
+
+  presignMultipartPart(storageKey: string, uploadId: string, partNumber: number): string {
+    if (this.provider !== "s3") throw new BadRequestException("Multipart uploads require S3-compatible remote storage");
+    if (!uploadId || !Number.isInteger(partNumber) || partNumber < 1) throw new BadRequestException("Invalid multipart upload part");
+
+    const url = this.multipartObjectUrl(this.normalizeRemoteKey(storageKey));
+    const amzDate = new Date().toISOString().replace(/[:-]|\.\d{3}/g, "");
+    const dateStamp = amzDate.slice(0, 8);
+    const credentialScope = `${dateStamp}/${this.region}/s3/aws4_request`;
+    const query = {
+      partNumber: String(partNumber),
+      uploadId,
+      "X-Amz-Algorithm": "AWS4-HMAC-SHA256",
+      "X-Amz-Credential": `${this.accessKey}/${credentialScope}`,
+      "X-Amz-Date": amzDate,
+      "X-Amz-Expires": "3600",
+      "X-Amz-SignedHeaders": "host",
+    };
+    const canonicalRequest = ["PUT", url.pathname, this.multipartCanonicalQuery(query), "host:" + url.host + "\n", "host", "UNSIGNED-PAYLOAD"].join("\n");
+    const stringToSign = ["AWS4-HMAC-SHA256", amzDate, credentialScope, createHash("sha256").update(canonicalRequest).digest("hex")].join("\n");
+    const signature = createHmac("sha256", this.deriveMultipartSigningKey(dateStamp)).update(stringToSign).digest("hex");
+
+    return url.origin + url.pathname + "?" + this.multipartCanonicalQuery({ ...query, "X-Amz-Signature": signature });
+  }
+
+  async completeMultipartUpload(storageKey: string, uploadId: string, parts: MultipartUploadPart[]): Promise<void> {
+    if (this.provider !== "s3") throw new BadRequestException("Multipart uploads require S3-compatible remote storage");
+    const url = this.multipartObjectUrl(this.normalizeRemoteKey(storageKey));
+    const xml = '<?xml version="1.0" encoding="UTF-8"?><CompleteMultipartUpload>' +
+      parts.map((part) => "<Part><PartNumber>" + part.PartNumber + "</PartNumber><ETag>" + this.escapeMultipartXml(part.ETag) + "</ETag></Part>").join("") +
+      "</CompleteMultipartUpload>";
+    const body = Buffer.from(xml);
+    const signed = this.signMultipartRequest("POST", url, createHash("sha256").update(body).digest("hex"), { "content-type": "application/xml" }, { uploadId });
+
+    const response = await fetch(url.toString() + "?" + this.multipartCanonicalQuery({ uploadId }), {
+      method: "POST",
+      headers: { ...signed.headers, authorization: signed.authorization },
+      body,
+    });
+    if (!response.ok) throw new BadGatewayException(`Unable to complete multipart upload (${response.status}): ${await this.readRemoteError(response)}`);
+  }
+
+  async abortMultipartUpload(storageKey: string, uploadId: string): Promise<void> {
+    if (this.provider !== "s3") return;
+    const url = this.multipartObjectUrl(this.normalizeRemoteKey(storageKey));
+    const signed = this.signMultipartRequest("DELETE", url, createHash("sha256").update("").digest("hex"), {}, { uploadId });
+    const response = await fetch(url.toString() + "?" + this.multipartCanonicalQuery({ uploadId }), {
+      method: "DELETE",
+      headers: { ...signed.headers, authorization: signed.authorization },
+    });
+    if (!response.ok && response.status !== 404) throw new BadGatewayException(`Unable to abort multipart upload (${response.status}): ${await this.readRemoteError(response)}`);
+  }
+
   private async saveScopedFile(segments: string[], originalName: string, buffer: Buffer, exposeThroughAssetRoute = false, deterministic = false): Promise<StoredFile> {
     if (!originalName || !buffer?.length) throw new BadRequestException("File name and non-empty file are required");
     const extension = extname(originalName).toLowerCase();
@@ -354,6 +428,48 @@ export class StorageService {
     const absolutePath = resolve(this.root, normalizedKey);
     if (absolutePath !== this.root && !absolutePath.startsWith(`${this.root}${sep}`)) throw new BadRequestException("Invalid storage key");
     return absolutePath;
+  }
+
+
+  private multipartObjectUrl(storageKey: string): URL {
+    return new URL(this.endpoint + "/" + encodeURIComponent(this.bucket) + "/" + storageKey.split("/").map(encodeURIComponent).join("/"));
+  }
+
+  private multipartCanonicalQuery(params: Record<string, string>): string {
+    return Object.entries(params).sort(([a], [b]) => a.localeCompare(b)).map(([key, value]) => awsEncodeSegment(key) + "=" + awsEncodeSegment(value)).join("&");
+  }
+
+  private deriveMultipartSigningKey(dateStamp: string): Buffer {
+    const kDate = createHmac("sha256", "AWS4" + this.secretKey).update(dateStamp).digest();
+    const kRegion = createHmac("sha256", kDate).update(this.region).digest();
+    const kService = createHmac("sha256", kRegion).update("s3").digest();
+    return createHmac("sha256", kService).update("aws4_request").digest();
+  }
+
+  private signMultipartRequest(
+    method: "POST" | "DELETE",
+    url: URL,
+    payloadHash: string,
+    headers: Record<string, string>,
+    query: Record<string, string> = {},
+  ) {
+    const amzDate = new Date().toISOString().replace(/[:-]|\.\d{3}/g, "");
+    const dateStamp = amzDate.slice(0, 8);
+    const credentialScope = `${dateStamp}/${this.region}/s3/aws4_request`;
+    const allHeaders = { host: url.host, ...headers, "x-amz-content-sha256": payloadHash, "x-amz-date": amzDate };
+    const canonicalHeaders = Object.keys(allHeaders).sort().map((name) => name.toLowerCase() + ":" + allHeaders[name].trim() + "\n").join("");
+    const signedHeaders = Object.keys(allHeaders).map((name) => name.toLowerCase()).sort().join(";");
+    const canonicalRequest = [method, url.pathname, this.multipartCanonicalQuery(query), canonicalHeaders, signedHeaders, payloadHash].join("\n");
+    const stringToSign = ["AWS4-HMAC-SHA256", amzDate, credentialScope, createHash("sha256").update(canonicalRequest).digest("hex")].join("\n");
+    const signature = createHmac("sha256", this.deriveMultipartSigningKey(dateStamp)).update(stringToSign).digest("hex");
+    return {
+      authorization: `AWS4-HMAC-SHA256 Credential=${this.accessKey}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
+      headers: allHeaders,
+    };
+  }
+
+  private escapeMultipartXml(value: string): string {
+    return value.replace(/[<>&'"]/g, (char) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", "'": "&apos;", '"': "&quot;" }[char] ?? char));
   }
 
   private async putObject(key: string, body: Buffer, contentType: string, cacheControl?: string) { await this.requestObject("PUT", key, body, contentType, cacheControl); }
