@@ -201,6 +201,7 @@ export class ThreeDConversionService {
   async findProductsWithoutModel() {
     const products = await this.prisma.product.findMany({
       where: {
+        status: { not: "ARCHIVED" },
         NOT: {
           OR: [
             {
