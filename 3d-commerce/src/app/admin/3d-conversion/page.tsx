@@ -151,19 +151,38 @@ export default function ThreeDConversionPage() {
 
   async function retry(id: string) {
     setBusy(id);
+    setMessage("");
     try {
-      await fetch("/api/3d-conversion/" + encodeURIComponent(id) + "/retry", { method: "POST" });
+      const response = await fetch("/api/3d-conversion/" + encodeURIComponent(id) + "/retry", {
+        method: "POST",
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.message ?? data?.error ?? "Retry failed");
+      }
       await load();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Retry failed");
     } finally {
       setBusy("");
     }
   }
 
   async function remove(id: string) {
+    if (!window.confirm("Delete this conversion job and its conversion-owned storage files?")) return;
     setBusy(id);
+    setMessage("");
     try {
-      await fetch("/api/3d-conversion/" + encodeURIComponent(id), { method: "DELETE" });
+      const response = await fetch("/api/3d-conversion/" + encodeURIComponent(id), {
+        method: "DELETE",
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.message ?? data?.error ?? "Delete failed");
+      }
       await load();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Delete failed");
     } finally {
       setBusy("");
     }
