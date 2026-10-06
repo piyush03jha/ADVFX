@@ -44,6 +44,11 @@ export class ThreeDConversionController {
     return this.service.findAll();
   }
 
+  @Get("products-without-model")
+  findProductsWithoutModel() {
+    return this.service.findProductsWithoutModel();
+  }
+
   @Get(":id/download")
   async download(@Param("id") id: string) {
     const result = await this.service.download(id, "optimized");
