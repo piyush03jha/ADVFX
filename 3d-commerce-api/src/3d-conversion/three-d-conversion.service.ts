@@ -98,7 +98,7 @@ export class ThreeDConversionService {
     if (job.status !== ProcessingJobStatus.PROCESSING) {
       throw new BadRequestException("Conversion upload is not active");
     }
-    if (body?.key !== job.sourceStorageKey || !body.uploadId) {
+    if (!job.uploadId || body?.key !== job.sourceStorageKey || body.uploadId !== job.uploadId) {
       throw new BadRequestException("Invalid conversion upload session");
     }
     if (
@@ -170,8 +170,11 @@ export class ThreeDConversionService {
     if (job.status !== ProcessingJobStatus.PROCESSING) {
       throw new BadRequestException("Conversion upload is not active");
     }
+    if (!job.uploadId || uploadId !== job.uploadId) {
+      throw new BadRequestException("Invalid conversion upload session");
+    }
 
-    await this.storage.abortMultipartUpload(job.sourceStorageKey, uploadId).catch(() => undefined);
+    await this.storage.abortMultipartUpload(job.sourceStorageKey, job.uploadId);
     await this.storage.delete(job.sourceStorageKey).catch(() => undefined);
 
     const updated = await this.prisma.threeDConversionJob.update({
