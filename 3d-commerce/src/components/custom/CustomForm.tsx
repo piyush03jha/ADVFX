@@ -183,6 +183,12 @@ export function CustomForm({
     setFileError("");
     setSubmitting(true);
 
+    if (!selectedCategory) {
+      setFileError("Custom configuration is unavailable. Please refresh and try again.");
+      setSubmitting(false);
+      return;
+    }
+
     try {
       const requirements = [
         `Category: ${selectedCategory.name}`,
@@ -379,7 +385,7 @@ export function CustomForm({
                   <button
                     key={option.id}
                     type="button"
-                    onClick={() => selectCategory(option.id)}
+                    onClick={() => selectCategory(option.slug)}
                     className={`group overflow-hidden rounded-2xl border text-left transition ${category === option.id ? "border-primary/70 bg-primary/[0.07]" : "border-border bg-surface hover:border-primary/35 hover:bg-surface-hover"}`}
                   >
                     <div className="relative aspect-[4/3] overflow-hidden bg-surface-elevated">
@@ -511,7 +517,7 @@ export function CustomForm({
           </p>
           <h3 className="mt-1 text-lg font-semibold">Ready to submit</h3>
           <div className="mt-5 space-y-2.5">
-            <SummaryRow label="Category" value={selectedCategory.label} />
+            <SummaryRow label="Category" value={selectedCategory.name} />
             <SummaryRow label="Size" value={configuredSize?.name ?? `${size} cm`} />
             <SummaryRow
               label={pricingLoading ? "Calculating price" : "Price"}
