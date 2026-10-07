@@ -613,7 +613,7 @@ function SelectionButton({
     <button
       type="button"
       onClick={onClick}
-      className={`min-h-11 rounded-xl border p-3 text-left transition ${selected ?` "border-primary/60 bg-primary/[0.07]" : "border-border bg-surface hover:border-primary/35 hover:bg-surface-hover"}`}
+      className={`min-h-11 rounded-xl border p-3 text-left transition ${selected ? "border-primary/60 bg-primary/[0.07]" : "border-border bg-surface hover:border-primary/35 hover:bg-surface-hover"}`}
     >
       {image && <div className="mb-2 aspect-[4/3] overflow-hidden rounded-lg bg-surface-elevated"><img src={image} alt="" className="h-full w-full object-cover" /></div>}
       <div className="flex items-center justify-between gap-2">
