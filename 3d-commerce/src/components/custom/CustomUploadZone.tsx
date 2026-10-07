@@ -167,7 +167,7 @@ export function CustomUploadZone({
           <button
             type="button"
             onClick={() => modelInputRef.current?.click()}
-            className="group flex min-h-[150px] flex-col justify-between rounded-2xl border border-border bg-surface p-5 text-left transition duration-300 hover:border-primary/55 hover:bg-primary/[0.035]"
+            className="group flex min-h-[120px] flex-col justify-between rounded-2xl border border-border bg-surface p-5 text-left transition duration-300 hover:border-primary/55 hover:bg-primary/[0.035] sm:min-h-[150px]"
           >
             <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-surface text-primary transition group-hover:scale-105">
               <IconCube size={21} />
