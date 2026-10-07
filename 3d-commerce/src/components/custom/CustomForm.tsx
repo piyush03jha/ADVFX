@@ -50,7 +50,8 @@ const gallery = [
 
 const categories: Array<{
   id: CustomCategory;
-  step?: number;\n  label: string;
+  step?: number;
+  label: string;
   description: string;
   image: string;
 }> = [
@@ -190,7 +191,11 @@ export function CustomForm({
     event.preventDefault();
     setAttemptedSubmit(true);
 
-    if (!hasReference) {\n      document.getElementById("custom-references")?.scrollIntoView({ behavior: "smooth", block: "center" });\n      return;\n    }\n    if (submitting) return;
+    if (!hasReference) {
+      document.getElementById("custom-references")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    if (submitting) return;
 
     setFileError("");
     setSubmitting(true);
@@ -201,8 +206,10 @@ export function CustomForm({
         `Body type: ${isPerson ? selectedBody.label : "Not applicable"}`,
         `Person in frame: ${isPerson ? selectedFrame.label : "Not applicable"}`,
         `Size: ${selectedSize.label}`,
-        details.trim() ? `Additional requirements:\n${details.trim()}` : "",
-      ].filter(Boolean).join("\n");
+        details.trim() ? `Additional requirements:
+${details.trim()}` : "",
+      ].filter(Boolean).join("
+");
 
       if (serverPrice == null || pricingLoading || pricingError) {
         throw new Error(pricingError ?? "Custom price is still being calculated.");
@@ -528,7 +535,14 @@ export function CustomForm({
         </aside>
       </div>
 
-      <div className="sticky bottom-0 z-30 -mx-4 mt-4 border-t border-border bg-surface/95 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl sm:-mx-6 sm:px-6 lg:hidden">\n        <div className="mx-auto flex max-w-xl items-center gap-3">\n          <div className="min-w-0 shrink-0"><p className="text-[11px] uppercase tracking-[0.14em] text-muted">{pricingLoading ? "Calculating…" : "Estimated"}</p><p className="text-xl font-semibold tracking-[-0.03em]">₹{price.toLocaleString("en-IN")}</p></div>\n          <button type="submit" disabled={submitting || pricingLoading || Boolean(pricingError) || serverPrice == null} className="flex h-12 min-w-0 flex-1 items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45">{submitting ? "Preparing payment…" : hasReference ? "Continue to payment" : "Add a photo to continue"}</button>\n        </div>\n      </div>\n\n      <div className="mt-5 hidden gap-3 sm:grid sm:grid-cols-3">
+      <div className="sticky bottom-0 z-30 -mx-4 mt-4 border-t border-border bg-surface/95 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl sm:-mx-6 sm:px-6 lg:hidden">
+        <div className="mx-auto flex max-w-xl items-center gap-3">
+          <div className="min-w-0 shrink-0"><p className="text-[11px] uppercase tracking-[0.14em] text-muted">{pricingLoading ? "Calculating…" : "Estimated"}</p><p className="text-xl font-semibold tracking-[-0.03em]">₹{price.toLocaleString("en-IN")}</p></div>
+          <button type="submit" disabled={submitting || pricingLoading || Boolean(pricingError) || serverPrice == null} className="flex h-12 min-w-0 flex-1 items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45">{submitting ? "Preparing payment…" : hasReference ? "Continue to payment" : "Add a photo to continue"}</button>
+        </div>
+      </div>
+
+      <div className="mt-5 hidden gap-3 sm:grid sm:grid-cols-3">
         {processSteps.map((step, index) => (
           <div key={step.title} className="rounded-2xl border border-border bg-surface/35 p-4">
             <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-primary">
