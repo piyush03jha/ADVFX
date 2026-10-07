@@ -88,6 +88,11 @@ try:
         export_yup=True,
         export_animations=True,
         export_materials="EXPORT",
+        # Preserve vertex-painted/scan colors even when the imported OBJ has
+        # no material node using the color attribute.
+        export_vertex_color="ACTIVE",
+        export_all_vertex_colors=True,
+        export_active_vertex_color_when_no_material=True,
         use_selection=True,
     )
 finally:
