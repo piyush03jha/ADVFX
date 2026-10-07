@@ -58,7 +58,7 @@ export function ShopByCategory() {
     <Section
       id="categories"
       glow
-      className="!hidden max-[639px]:!hidden scroll-mt-28 overflow-hidden py-8 sm:!block sm:py-20 lg:py-28"
+      className="scroll-mt-28 overflow-hidden py-8 sm:py-20 lg:py-28"
     >
       <div className="mb-6 flex items-end justify-between gap-4 sm:mb-9 sm:gap-6">
         <motion.div
@@ -93,7 +93,7 @@ export function ShopByCategory() {
                 duration: 0.5,
                 delay: shouldReduceMotion ? 0 : Math.min(index * 0.04, 0.25),
               }}
-              className="w-[148px] min-w-[148px] shrink-0 snap-start min-[400px]:w-[158px] min-[400px]:min-w-[158px] sm:w-[190px] sm:min-w-[190px] lg:w-[260px] lg:min-w-[260px] xl:w-[280px] xl:min-w-[280px]"
+              className={`shrink-0 snap-start max-[639px]:w-[calc((100vw-3.5rem)/3)] max-[639px]:min-w-[calc((100vw-3.5rem)/3)] sm:w-[190px] sm:min-w-[190px] lg:w-[260px] lg:min-w-[260px] xl:w-[280px] xl:min-w-[280px] ${index > 2 ? "max-[639px]:hidden" : ""}`}
             >
               <CategoryCard category={category} index={index} />
             </motion.div>
