@@ -383,7 +383,7 @@ export function CustomForm({
           </div>
 
           <div className="mt-6 space-y-6">
-            <CompactSection step={1} label="What would you like to create?" hint={selectedCategory.label}>
+            <CompactSection step={1} label="What would you like to create?" hint={selectedCategory.name}>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {displayCategories.map((option) => (
                   <button
