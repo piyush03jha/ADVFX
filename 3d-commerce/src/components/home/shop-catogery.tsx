@@ -99,7 +99,7 @@ export function ShopByCategory() {
             </motion.div>
           ))}
         </div>
-      )}}
+      )}
     </Section>
   );
 }
