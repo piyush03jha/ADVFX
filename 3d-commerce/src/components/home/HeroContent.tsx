@@ -67,14 +67,14 @@ export function HeroContent({
           </div>
         </div>
 
-        <div className="mt-5 flex flex-wrap gap-2.5 sm:mt-9 sm:gap-3">
-          <Button href={`/product/${product.slug}`}>
+        <div className="mt-5 flex flex-nowrap items-center gap-2 sm:mt-9 sm:gap-3">
+          <Button href={`/product/${product.slug}`} className="shrink-0">
             View Model
             <span className="ml-2">→</span>
           </Button>
 
           <motion.div
-            className="relative overflow-hidden rounded-full"
+            className="relative shrink-0 overflow-hidden rounded-full"
             animate={{
               scale: [1, 1.025, 1],
             }}
