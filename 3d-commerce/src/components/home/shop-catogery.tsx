@@ -82,44 +82,24 @@ export function ShopByCategory() {
       </div>
 
       {categories.length > 0 && (
-        <>
-          <div className="-mx-5 flex gap-3 overflow-x-auto overscroll-x-contain px-5 pb-3 snap-x snap-mandatory sm:-mx-8 sm:px-8 lg:hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {categories.map((category, index) => (
-              <motion.div
-                key={category.id}
-                initial={shouldReduceMotion ? false : { opacity: 0, x: 20 }}
-                whileInView={shouldReduceMotion ? undefined : { opacity: 1, x: 0 }}
-                viewport={{ once: true, amount: 0.1 }}
-                transition={{
-                  duration: 0.5,
-                  delay: shouldReduceMotion ? 0 : Math.min(index * 0.04, 0.25),
-                }}
-                className="w-[50vw] shrink-0 snap-start min-[400px]:w-[44vw] sm:w-[42vw]"
-              >
-                <CategoryCard category={category} index={index} />
-              </motion.div>
-            ))}
-          </div>
-
-          <div className="-mx-5 flex gap-3 overflow-x-auto overscroll-x-contain px-5 pb-3 snap-x snap-mandatory sm:-mx-8 sm:px-8 lg:-mx-8 lg:px-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {categories.map((category, index) => (
-              <motion.div
-                key={category.id}
-                initial={shouldReduceMotion ? false : { opacity: 0, x: 20 }}
-                whileInView={shouldReduceMotion ? undefined : { opacity: 1, x: 0 }}
-                viewport={{ once: true, amount: 0.1 }}
-                transition={{
-                  duration: 0.5,
-                  delay: shouldReduceMotion ? 0 : Math.min(index * 0.04, 0.25),
-                }}
-                className="w-[50vw] shrink-0 snap-start min-[400px]:w-[44vw] sm:w-[32vw] lg:w-[260px] xl:w-[280px]"
-              >
-                <CategoryCard category={category} index={index} />
-              </motion.div>
-            ))}
-          </div>
-        </>
-      )}
+        <div className="-mx-5 flex gap-3 overflow-x-auto overscroll-x-contain px-5 pb-3 snap-x snap-mandatory sm:-mx-8 sm:px-8 lg:-mx-8 lg:px-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {categories.map((category, index) => (
+            <motion.div
+              key={category.id}
+              initial={shouldReduceMotion ? false : { opacity: 0, x: 20 }}
+              whileInView={shouldReduceMotion ? undefined : { opacity: 1, x: 0 }}
+              viewport={{ once: true, amount: 0.1 }}
+              transition={{
+                duration: 0.5,
+                delay: shouldReduceMotion ? 0 : Math.min(index * 0.04, 0.25),
+              }}
+              className="w-[58vw] shrink-0 snap-start min-[400px]:w-[52vw] sm:w-[34vw] lg:w-[260px] xl:w-[280px]"
+            >
+              <CategoryCard category={category} index={index} />
+            </motion.div>
+          ))}
+        </div>
+      )}}
     </Section>
   );
 }
@@ -138,7 +118,7 @@ function CategoryCard({
     >
       <Card
         interactive
-        className="relative aspect-[1/1.38] rounded-2xl sm:aspect-[1/1.38] lg:aspect-[1/1.32]"
+        className="relative aspect-[4/5] overflow-hidden rounded-2xl sm:aspect-[4/5] lg:aspect-[1/1.32]"
       >
         {resolveMediaUrl(category.imageUrl) ? (
           <img
