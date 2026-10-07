@@ -101,18 +101,18 @@ export function ShopByCategory() {
             ))}
           </div>
 
-          <div className="hidden grid-cols-6 gap-3 lg:grid">
+          <div className="-mx-5 flex gap-3 overflow-x-auto overscroll-x-contain px-5 pb-3 snap-x snap-mandatory sm:-mx-8 sm:px-8 lg:-mx-8 lg:px-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {categories.map((category, index) => (
               <motion.div
                 key={category.id}
-                initial={shouldReduceMotion ? false : { opacity: 0, y: 22 }}
-                whileInView={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
+                initial={shouldReduceMotion ? false : { opacity: 0, x: 20 }}
+                whileInView={shouldReduceMotion ? undefined : { opacity: 1, x: 0 }}
                 viewport={{ once: true, amount: 0.1 }}
                 transition={{
-                  duration: 0.55,
-                  delay: shouldReduceMotion ? 0 : Math.min(index * 0.045, 0.3),
-                  ease: [0.22, 1, 0.36, 1],
+                  duration: 0.5,
+                  delay: shouldReduceMotion ? 0 : Math.min(index * 0.04, 0.25),
                 }}
+                className="w-[50vw] shrink-0 snap-start min-[400px]:w-[44vw] sm:w-[32vw] lg:w-[260px] xl:w-[280px]"
               >
                 <CategoryCard category={category} index={index} />
               </motion.div>

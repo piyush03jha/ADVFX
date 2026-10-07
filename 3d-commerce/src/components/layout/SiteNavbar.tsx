@@ -164,7 +164,7 @@ export function Navbar() {
           <div className="relative hidden min-[1529px]:block">
             <form
               onSubmit={handleSearchSubmit}
-              className="flex w-[190px] items-center rounded-full border border-border bg-surface/80 px-3"
+              className="flex w-[190px] items-center rounded-full border border-border bg-surface/80 px-3 outline-none transition-[border-color,box-shadow] duration-200 focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/20"
               role="search"
             >
               <IconSearch
@@ -260,7 +260,7 @@ export function Navbar() {
           <div className="relative">
             <form
               onSubmit={handleSearchSubmit}
-              className="flex items-center rounded-xl border border-border bg-surface px-4"
+              className="flex items-center rounded-xl border border-border bg-surface px-4 outline-none transition-[border-color,box-shadow] duration-200 focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/20"
               role="search"
             >
               <IconSearch

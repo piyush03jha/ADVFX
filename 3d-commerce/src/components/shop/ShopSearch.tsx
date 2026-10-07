@@ -10,7 +10,7 @@ interface ShopSearchProps {
 export function ShopSearch({ value, onChange }: ShopSearchProps) {
   return (
     <div className="relative w-full">
-      <div className="flex min-h-14 w-full items-center rounded-2xl border border-border bg-surface px-4 shadow-[0_14px_45px_rgba(0,0,0,0.08)] transition-shadow">
+      <div className="flex min-h-14 w-full items-center rounded-2xl border border-border bg-surface px-4 shadow-[0_14px_45px_rgba(0,0,0,0.08)] outline-none transition-[border-color,box-shadow] duration-200 focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/20">
         <IconSearch size={20} stroke={1.7} className="shrink-0 text-muted" />
         <input
           type="search"
