@@ -50,7 +50,7 @@ const gallery = [
 
 const categories: Array<{
   id: CustomCategory;
-  label: string;
+  step?: number;\n  label: string;
   description: string;
   image: string;
 }> = [
@@ -190,7 +190,7 @@ export function CustomForm({
     event.preventDefault();
     setAttemptedSubmit(true);
 
-    if (!hasReference || submitting) return;
+    if (!hasReference) {\n      document.getElementById("custom-references")?.scrollIntoView({ behavior: "smooth", block: "center" });\n      return;\n    }\n    if (submitting) return;
 
     setFileError("");
     setSubmitting(true);
@@ -312,19 +312,19 @@ export function CustomForm({
 
 
   return (
-    <form onSubmit={handleSubmit} className="mx-auto max-w-[1380px]">
-      <div className="mb-4 flex items-center gap-2 pt-2 text-xs text-muted sm:mb-5">
+    <form onSubmit={handleSubmit} className="mx-auto max-w-[1380px]" noValidate>
+      <div className="mb-4 hidden items-center gap-2 pt-2 text-xs text-muted sm:mb-5 sm:flex">
         <span>Home</span>
         <span>/</span>
         <span className="text-foreground">Custom</span>
       </div>
 
-      <div className="grid overflow-hidden rounded-[24px] border border-border bg-surface/80 shadow-[0_30px_100px_rgba(0,0,0,0.12)] backdrop-blur-xl lg:grid-cols-[minmax(0,1.08fr)_minmax(440px,0.92fr)]">
+      <div className="grid overflow-hidden rounded-[20px] border border-border bg-surface/80 shadow-[0_12px_40px_rgba(0,0,0,0.08)] sm:rounded-[24px] sm:shadow-[0_30px_100px_rgba(0,0,0,0.12)] lg:backdrop-blur-xl lg:grid-cols-[minmax(0,1.08fr)_minmax(440px,0.92fr)]">
         <div className="relative flex min-h-0 flex-col bg-surface p-3 sm:p-4 lg:h-[calc(100svh-120px)] lg:max-h-[820px] lg:min-h-[620px]">
-          <div className="relative min-h-0 flex-1 overflow-hidden rounded-[18px] border border-border bg-surface-elevated">
+          <div className="relative aspect-[16/10] min-h-0 flex-none overflow-hidden rounded-[16px] border border-border bg-surface-elevated sm:aspect-[16/9] lg:aspect-auto lg:flex-1 lg:rounded-[18px]">
             <img src={activeGallery.image} alt={activeGallery.label} className="absolute inset-0 h-full w-full object-contain transition duration-500" />
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-foreground/35 via-transparent to-foreground/5" />
-            <div className="absolute left-4 top-4 rounded-full border border-white/15 bg-foreground/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-foreground/80 backdrop-blur-md">
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+            <div className="absolute left-3 top-3 rounded-full border border-white/20 bg-black/45 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-white backdrop-blur-md sm:left-4 sm:top-4">
               Custom 3D Studio
             </div>
             <button type="button" disabled aria-label="Previous product example" className="absolute left-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl border border-white/15 bg-black/35 text-white backdrop-blur-md sm:left-5">
@@ -333,11 +333,11 @@ export function CustomForm({
             <button type="button" disabled aria-label="Next product example" className="absolute right-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl border border-white/15 bg-black/35 text-white backdrop-blur-md sm:right-5">
               <span className="text-xl">›</span>
             </button>
-            <div className="absolute bottom-4 left-4 right-4 sm:bottom-5 sm:left-5 sm:right-5">
-              <p className="text-[10px] uppercase tracking-[0.16em] text-muted">
+            <div className="absolute bottom-3 left-3 right-3 sm:bottom-5 sm:left-5 sm:right-5">
+              <p className="text-[10px] uppercase tracking-[0.16em] text-white/70">
                 Example product
               </p>
-              <h2 className="mt-1 text-xl font-semibold text-foreground sm:text-2xl">
+              <h2 className="mt-1 text-lg font-semibold text-white sm:text-2xl">
                 {activeGallery.label}
               </h2>
             </div>
@@ -346,15 +346,15 @@ export function CustomForm({
 
         </div>
 
-        <div className="flex flex-col bg-surface/80 p-5 sm:p-7 lg:max-h-[calc(100svh-120px)] lg:overflow-y-auto lg:p-9">
+        <div className="flex flex-col bg-surface/80 p-4 sm:p-7 lg:max-h-[calc(100svh-120px)] lg:overflow-y-auto lg:p-9">
           <div className="border-b border-border pb-5">
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
               Custom creation studio
             </p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-[-0.045em] sm:text-4xl">
+            <h2 className="mt-2 text-2xl font-semibold tracking-[-0.045em] sm:text-4xl">
               Your idea. Our craft.
-            </h1>
-            <div className="mt-3 flex items-center gap-2 text-xs">
+            </h2>
+            <div className="mt-3 hidden items-center gap-2 text-xs sm:flex">
               <span className="flex items-center gap-0.5 text-primary">
                 {[0, 1, 2, 3, 4].map((star) => (
                   <IconStar key={star} size={14} fill="currentColor" />
@@ -362,13 +362,13 @@ export function CustomForm({
               </span>
               <span className="font-medium">Custom service</span>
             </div>
-            <p className="mt-4 text-sm leading-6 text-muted">
+            <p className="mt-3 text-sm leading-6 text-muted sm:mt-4">
               Upload your reference photos, choose the size, and tell us what you need. We review it, prepare the model, make the physical piece, and arrange delivery.
             </p>
           </div>
 
           <div className="mt-6 space-y-6">
-            <CompactSection label="What would you like to create?" hint={selectedCategory.label}>
+            <CompactSection step={1} label="What would you like to create?" hint={selectedCategory.label}>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {displayCategories.map((option) => (
                   <button
@@ -377,8 +377,8 @@ export function CustomForm({
                     onClick={() => selectCategory(option.id)}
                     className={`group overflow-hidden rounded-2xl border text-left transition ${category === option.id ? "border-primary/70 bg-primary/[0.07]" : "border-border bg-surface hover:border-primary/35 hover:bg-surface-hover"}`}
                   >
-                    <div className="relative aspect-[4/3] overflow-hidden bg-surface-elevated">
-                      <img src={option.image} alt="" className="h-full w-full object-cover opacity-80 transition duration-500 group-hover:scale-105" />
+                    <div className="relative aspect-[16/10] overflow-hidden bg-surface-elevated sm:aspect-[4/3]">
+                      <img src={option.image} alt="" loading="lazy" className="h-full w-full object-cover opacity-80 transition duration-500 group-hover:scale-105" />
                       {category === option.id && (
                         <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-white">
                           <IconCheck size={11} />
@@ -396,7 +396,7 @@ export function CustomForm({
 
             {isPerson ? (
               <>
-                <CompactSection label="Type">
+                <CompactSection step={2} label="Type">
                   <div className="grid grid-cols-2 gap-2">
                     {bodyOptions.map((option) => (
                       <SelectionButton
@@ -422,9 +422,9 @@ export function CustomForm({
               </div>
             )}
 
-            <CompactSection label="Size">
+            <CompactSection step={isPerson ? 3 : 2} label="Size">
               <div className="relative">
-                <select value={size} onChange={(event) => { const value = event.target.value; setSize(value); const option = config?.sizeOptions.find((item) => item.slug === value); setPreviewImage(option?.imageUrl || selectedCategory.image); setPreviewLabel(option?.name || `${value} cm`); }} className="h-12 w-full appearance-none rounded-xl border border-border bg-surface px-3.5 pr-10 text-sm font-medium outline-none focus:border-primary/60">
+                <select value={size} onChange={(event) => { const value = event.target.value; setSize(value); const option = config?.sizeOptions.find((item) => item.slug === value); setPreviewImage(option?.imageUrl || selectedCategory.image); setPreviewLabel(option?.name || `${value} cm`); }} className="h-12 w-full appearance-none rounded-xl border border-border bg-surface px-3.5 pr-10 text-base font-medium outline-none sm:text-sm focus:border-primary/60">
                   {sizeOptions.map((option) => (
                     <option key={option.value} value={option.value}>{option.label}</option>
                   ))}
@@ -434,7 +434,7 @@ export function CustomForm({
             </CompactSection>
           </div>
 
-          <div className="mt-auto pt-7">
+          <div className="mt-auto hidden pt-7 lg:block">
             <div className="flex items-end justify-between gap-4 border-t border-border pt-5">
               <div>
                 <p className="text-[10px] uppercase tracking-[0.16em] text-muted">
@@ -455,8 +455,8 @@ export function CustomForm({
         </div>
       </div>
 
-      <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.42fr)]">
-        <div className="rounded-[24px] border border-border bg-surface/45 p-5 sm:p-7">
+      <div className="mt-4 grid gap-4 sm:mt-5 sm:gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.42fr)]">
+        <div id="custom-references" className="scroll-mt-24 rounded-[20px] border border-border bg-surface/45 p-4 sm:rounded-[24px] sm:p-7">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
               Your references
@@ -494,7 +494,7 @@ export function CustomForm({
               maxLength={1000}
               rows={4}
               placeholder="Tell us anything important about the pose, clothing, expression, dimensions or scene."
-              className="mt-2 w-full resize-none rounded-xl border border-border bg-background/45 p-3.5 text-sm leading-6 outline-none placeholder:text-muted focus:border-primary/60"
+              className="mt-2 w-full resize-none rounded-xl border border-border bg-background/45 p-3.5 text-base leading-6 outline-none placeholder:text-muted focus:border-primary/60 sm:text-sm"
             />
             <div className="mt-1 text-right text-[10px] text-muted">{details.length}/1000</div>
           </div>
@@ -516,8 +516,8 @@ export function CustomForm({
 
           <button
             type="submit"
-            disabled={!hasReference || submitting || pricingLoading || Boolean(pricingError) || serverPrice == null}
-            className="mt-6 flex h-12 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
+            disabled={submitting || pricingLoading || Boolean(pricingError) || serverPrice == null}
+            className="mt-6 hidden h-12 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45 lg:flex"
           >
             {submitting
               ? "Preparing payment…"
@@ -528,7 +528,7 @@ export function CustomForm({
         </aside>
       </div>
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-3">
+      <div className="sticky bottom-0 z-30 -mx-4 mt-4 border-t border-border bg-surface/95 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl sm:-mx-6 sm:px-6 lg:hidden">\n        <div className="mx-auto flex max-w-xl items-center gap-3">\n          <div className="min-w-0 shrink-0"><p className="text-[11px] uppercase tracking-[0.14em] text-muted">{pricingLoading ? "Calculating…" : "Estimated"}</p><p className="text-xl font-semibold tracking-[-0.03em]">₹{price.toLocaleString("en-IN")}</p></div>\n          <button type="submit" disabled={submitting || pricingLoading || Boolean(pricingError) || serverPrice == null} className="flex h-12 min-w-0 flex-1 items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45">{submitting ? "Preparing payment…" : hasReference ? "Continue to payment" : "Add a photo to continue"}</button>\n        </div>\n      </div>\n\n      <div className="mt-5 hidden gap-3 sm:grid sm:grid-cols-3">
         {processSteps.map((step, index) => (
           <div key={step.title} className="rounded-2xl border border-border bg-surface/35 p-4">
             <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-primary">
@@ -556,7 +556,7 @@ function CompactSection({
     <section>
       <div className="mb-2.5 flex items-center justify-between">
         <p className="text-xs font-semibold text-foreground">{label}</p>
-        {hint && <span className="text-[10px] text-muted">{hint}</span>}
+        {hint && <span className="truncate text-[11px] text-muted">{hint}</span>}
       </div>
       {children}
     </section>
@@ -582,7 +582,7 @@ function SelectionButton({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-xl border p-3 text-left transition ${selected ? "border-primary/60 bg-primary/[0.07]" : "border-border bg-surface hover:border-primary/35 hover:bg-surface-hover"}`}
+      className={`min-h-11 rounded-xl border p-3 text-left transition ${selected ?` "border-primary/60 bg-primary/[0.07]" : "border-border bg-surface hover:border-primary/35 hover:bg-surface-hover"}`}
     >
       {image && <div className="mb-2 aspect-[4/3] overflow-hidden rounded-lg bg-surface-elevated"><img src={image} alt="" className="h-full w-full object-cover" /></div>}
       <div className="flex items-center justify-between gap-2">
