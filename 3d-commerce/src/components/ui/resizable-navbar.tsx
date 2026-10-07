@@ -144,8 +144,10 @@ export const NavbarLogo = () => (
     <img
       src="/logo/full_logo.png"
       alt="Voxel3D"
+      width={110}
+      height={30}
       draggable={false}
-      className="block h-8 w-auto object-contain lg:h-[35px]"
+      className="block h-6 w-auto scale-[0.72] object-contain sm:h-7 sm:scale-[0.72]"
     />
   </Link>
 );
