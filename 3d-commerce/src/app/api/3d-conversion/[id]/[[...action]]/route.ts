@@ -13,13 +13,16 @@ async function proxy(request: NextRequest, path: string) {
   if (!token) return NextResponse.json({ error: "Authentication is required." }, { status: 401 });
 
   try {
+    const hasBodyMethod = request.method !== "GET" && request.method !== "HEAD";
+    const bodyText = hasBodyMethod ? await request.text() : "";
+
     const response = await fetch(getBackendApiUrl(path), {
       method: request.method,
       headers: {
         Authorization: "Bearer " + token,
-        ...(request.method === "GET" ? {} : { "Content-Type": "application/json" }),
+        ...(bodyText ? { "Content-Type": "application/json" } : {}),
       },
-      body: request.method === "GET" ? undefined : await request.text(),
+      body: bodyText || undefined,
       cache: "no-store",
     });
 
