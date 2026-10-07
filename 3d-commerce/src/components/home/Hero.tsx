@@ -303,7 +303,7 @@ export function Hero() {
   const activeProduct = heroProducts[activeIndex] ?? heroProducts[0];
 
   return (
-    <section className="relative isolate min-h-[520px] overflow-hidden pb-6 sm:min-h-[640px] lg:min-h-[calc(100svh-5rem)] lg:pb-0">
+    <section className="relative isolate min-h-[580px] overflow-hidden pb-6 sm:min-h-[720px] lg:min-h-[calc(100svh-5rem)] lg:pb-0">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_55%_25%,rgba(139,92,246,0.13),transparent_35%),linear-gradient(180deg,rgba(255,255,255,0.025),transparent_48%)] lg:bg-[radial-gradient(circle_at_60%_40%,rgba(139,92,246,0.14),transparent_40%),linear-gradient(180deg,rgba(255,255,255,0.025),transparent_48%)]"
@@ -314,8 +314,8 @@ export function Hero() {
         className="pointer-events-none absolute -z-10 left-1/2 top-[5rem] h-[300px] w-[300px] -translate-x-1/2 rounded-full bg-primary/[0.075] blur-[100px] lg:right-[-12%] lg:left-auto lg:top-[18%] lg:h-[70%] lg:w-[58%] lg:translate-x-0 lg:bg-primary/[0.035] lg:blur-[120px]"
       />
 
-      <Container className="relative min-h-[520px] py-0 sm:min-h-[640px] lg:min-h-[calc(100svh-5rem)] lg:py-8 xl:py-10">
-        <div         className="absolute left-1/2 top-[3.25rem] z-10 h-[280px] w-[calc(100vw-1rem)] max-w-[420px] -translate-x-1/2 sm:top-[4rem] sm:h-[360px] sm:w-[min(92vw,520px)] lg:right-[-8%] lg:left-auto lg:top-1/2 lg:h-[min(82vw,780px)] lg:w-[min(72vw,820px)] lg:-translate-x-0 lg:-translate-y-1/2 xl:right-[-5%] xl:h-[min(88vh,820px)] xl:w-[min(64vw,900px)]">
+      <Container className="relative min-h-[580px] py-0 sm:min-h-[720px] lg:min-h-[calc(100svh-5rem)] lg:py-8 xl:py-10">
+        <div         className="absolute left-1/2 top-[3.25rem] z-10 h-[340px] w-[calc(100vw-0.5rem)] max-w-[500px] -translate-x-1/2 sm:top-[3.5rem] sm:h-[430px] sm:w-[min(96vw,600px)] lg:right-[-8%] lg:left-auto lg:top-1/2 lg:h-[min(82vw,780px)] lg:w-[min(72vw,820px)] lg:-translate-x-0 lg:-translate-y-1/2 xl:right-[-5%] xl:h-[min(88vh,820px)] xl:w-[min(64vw,900px)]">
           <HeroProductStage
             products={heroProducts}
             activeIndex={activeIndex}
@@ -323,7 +323,7 @@ export function Hero() {
           />
         </div>
 
-        <div         className="relative z-30 flex min-h-[520px] items-start pt-[320px] sm:min-h-[640px] sm:pt-[415px] lg:min-h-[calc(100svh-5rem)] lg:w-[52%] lg:items-center lg:pt-0">
+        <div         className="relative z-30 flex min-h-[520px] items-start pt-[380px] sm:min-h-[720px] sm:pt-[485px] lg:min-h-[calc(100svh-5rem)] lg:w-[52%] lg:items-center lg:pt-0">
           <HeroContent product={activeProduct} />
         </div>
 
