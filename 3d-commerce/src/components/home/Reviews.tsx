@@ -125,7 +125,7 @@ export function Reviews() {
   }, []);
 
   return (
-    <section className="w-full overflow-hidden py-16 sm:py-20 lg:py-24">
+    <section className="w-full overflow-hidden py-10 sm:py-20 lg:py-24">
       <Container>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
