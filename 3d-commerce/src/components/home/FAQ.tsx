@@ -92,7 +92,7 @@ export function FAQ() {
       glow
       className="
         overflow-hidden
-        py-14
+        py-10
         sm:py-20
         lg:py-32
       "

@@ -39,7 +39,7 @@ export function NewArrivals() {
   const animationWhileInView = shouldReduceMotion ? undefined : { opacity: 1, y: 0 };
 
   return (
-    <Section id="new-arrivals" glow className="scroll-mt-28 py-12 sm:py-20 lg:py-28">
+    <Section id="new-arrivals" glow className="scroll-mt-28 py-8 sm:py-20 lg:py-28">
       <Container>
         <motion.div initial={animationInitial} whileInView={animationWhileInView} viewport={{ once: true, amount: 0.2 }} transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }} className="mb-6 flex items-end justify-between gap-4 sm:mb-9">
           <div>

@@ -16,7 +16,7 @@ export function CustomBuild() {
   const reduceMotion = useReducedMotion();
 
   return (
-    <section className="relative overflow-hidden py-16 sm:py-24 lg:py-32">
+    <section className="relative overflow-hidden py-10 sm:py-24 lg:py-32">
       <Container>
         <div className="grid overflow-hidden rounded-[1.5rem] border border-border bg-surface lg:grid-cols-[1.05fr_0.95fr]">
           <motion.div
