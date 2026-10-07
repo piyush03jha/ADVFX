@@ -50,6 +50,23 @@ export function Navbar() {
   const [searchProducts, setSearchProducts] = useState<HeroProduct[]>([]);
 
   useEffect(() => {
+    if (!isMobileMenuOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Element | null;
+      if (!target?.closest?.("[data-mobile-nav]")) setIsMobileMenuOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsMobileMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [isMobileMenuOpen]);
+
+  useEffect(() => {
     if (searchQuery.trim().length < 3) {
       setSearchProducts([]);
       return;
