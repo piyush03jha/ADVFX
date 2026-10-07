@@ -440,7 +440,7 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
     }
 
     const entries = listing
-      .split(/\\r?\\n/)
+      .split(/\r?\n/)
       .map((entry) => entry.trim())
       .filter(Boolean);
 
@@ -451,11 +451,11 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
 
     const safeEntries: string[] = [];
     for (const entry of entries) {
-      const normalized = entry.replace(/\\\\/g, "/");
+      const normalized = entry.replace(/\\/g, "/");
       const segments = normalized.split("/");
       if (
         normalized.startsWith("/") ||
-        normalized.includes("\\0") ||
+        normalized.includes(String.fromCharCode(0)) ||
         segments.some((segment) => segment === "..")
       ) {
         throw new Error("ZIP archive contains an unsafe file path: " + entry);
@@ -474,8 +474,8 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
         timeout: Math.min(this.timeoutMs, 2 * 60 * 1000),
         maxBuffer: 8 * 1024 * 1024,
       });
-      for (const line of stdout.split(/\\r?\\n/)) {
-        const match = /^\\s*(\\d+)\\s+\\d{4}-\\d{2}-\\d{2}\\s+\\d{2}:\\d{2}\\s+(.+)$/.exec(line);
+      for (const line of stdout.split(/\r?\n/)) {
+        const match = /^\s*(\d+)\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}\s+(.+)$/.exec(line);
         if (match) totalUnpackedBytes += Number(match[1]);
       }
     } catch (error) {
