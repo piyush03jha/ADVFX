@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { IconBrandWhatsapp, IconMessageCircle, IconX } from "@tabler/icons-react";
 
 const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "";
@@ -42,6 +43,8 @@ function createWhatsAppUrl(message: string) {
 
 export function WhatsAppBot() {
   const [isOpen, setIsOpen] = useState(false);
+  const pathname = usePathname();
+  const raised = pathname === "/custom";
 
   return (
     <>
@@ -50,7 +53,7 @@ export function WhatsAppBot() {
           id="whatsapp-question-panel"
           role="dialog"
           aria-label="WhatsApp support questions"
-          className="fixed bottom-24 right-4 z-50 w-[calc(100vw-2rem)] max-w-sm overflow-hidden rounded-2xl border border-border bg-background text-foreground shadow-2xl sm:bottom-28 sm:right-6"
+          className={`fixed right-4 z-50 w-[calc(100vw-2rem)] max-w-sm overflow-hidden rounded-2xl border border-border bg-background text-foreground shadow-2xl sm:right-6 ${raised ? "bottom-[calc(10rem+env(safe-area-inset-bottom))] lg:bottom-28" : "bottom-[calc(6rem+env(safe-area-inset-bottom))] sm:bottom-28"}`}
         >
           <div className="flex items-start justify-between gap-4 border-b border-border px-4 py-4">
             <div>
@@ -92,7 +95,7 @@ export function WhatsAppBot() {
         aria-expanded={isOpen}
         aria-controls="whatsapp-question-panel"
         aria-label={isOpen ? "Close WhatsApp support questions" : "Open WhatsApp support questions"}
-        className="group fixed bottom-5 right-5 z-50 flex items-center gap-3 sm:bottom-6 sm:right-6"
+        className={`group fixed right-5 z-50 flex items-center gap-3 sm:right-6 ${raised ? "bottom-[calc(5.5rem+env(safe-area-inset-bottom))] lg:bottom-6" : "bottom-[max(1.25rem,env(safe-area-inset-bottom))] sm:bottom-6"}`}
       >
         <span className="pointer-events-none hidden rounded-full border border-border bg-background px-3 py-2 text-xs font-medium text-foreground shadow-lg transition-all duration-300 group-hover:-translate-x-1 group-hover:opacity-100 sm:block sm:opacity-0">
           {isOpen ? "Close" : "Chat with us"}
