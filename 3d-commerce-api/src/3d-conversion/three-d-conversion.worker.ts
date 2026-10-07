@@ -1,7 +1,7 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import { ProcessingJobStatus } from "@prisma/client";
 import { promises as fs } from "node:fs";
-import { join } from "node:path";
+import { join, relative, resolve, sep } from "node:path";
 import { randomUUID } from "node:crypto";
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
@@ -126,7 +126,8 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
         await fs.copyFile(sourcePath, convertedPath);
         await this.validateGlb(convertedPath);
       } else {
-        await this.runBlender(sourcePath, convertedPath, job.inputExt);
+        const blenderInput = await this.prepareBlenderInput(sourcePath, job.inputExt, tempDir);
+        await this.runBlender(blenderInput.path, convertedPath, blenderInput.ext);
         await this.validateGlb(convertedPath);
       }
 
@@ -406,6 +407,130 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
         startedAt: null,
       },
     });
+  }
+
+  /**
+   * OBJ material files and texture images are external to the OBJ itself.
+   * When an admin uploads a ZIP bundle, extract it beside the OBJ so Blender
+   * can resolve mtllib/image paths exactly as they were authored.
+   */
+  private async prepareBlenderInput(sourcePath: string, inputExt: string, tempDir: string) {
+    if (inputExt !== ".zip") {
+      return { path: sourcePath, ext: inputExt };
+    }
+
+    const archiveDir = join(tempDir, "archive");
+    await fs.mkdir(archiveDir, { recursive: true });
+
+    let listing: string;
+    try {
+      ({ stdout: listing } = await execFileAsync("unzip", ["-Z1", sourcePath], {
+        timeout: Math.min(this.timeoutMs, 2 * 60 * 1000),
+        maxBuffer: 8 * 1024 * 1024,
+      }));
+    } catch (error) {
+      throw new Error(
+        "Unable to inspect ZIP archive: " +
+          (error instanceof Error ? error.message : String(error)),
+      );
+    }
+
+    const entries = listing
+      .split(/\\r?\\n/)
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+
+    if (entries.length === 0) throw new Error("ZIP archive is empty");
+    if (entries.length > 5000) {
+      throw new Error("ZIP archive contains too many files (maximum 5000)");
+    }
+
+    const safeEntries: string[] = [];
+    for (const entry of entries) {
+      const normalized = entry.replace(/\\/g, "/");
+      const segments = normalized.split("/");
+      if (
+        normalized.startsWith("/") ||
+        normalized.includes("\\0") ||
+        segments.some((segment) => segment === "..")
+      ) {
+        throw new Error("ZIP archive contains an unsafe file path: " + entry);
+      }
+
+      const target = resolve(archiveDir, normalized);
+      if (target !== archiveDir && !target.startsWith(archiveDir + sep)) {
+        throw new Error("ZIP archive contains an unsafe extraction path");
+      }
+      safeEntries.push(normalized);
+    }
+
+    let totalUnpackedBytes = 0;
+    try {
+      const { stdout } = await execFileAsync("unzip", ["-l", sourcePath], {
+        timeout: Math.min(this.timeoutMs, 2 * 60 * 1000),
+        maxBuffer: 8 * 1024 * 1024,
+      });
+      for (const line of stdout.split(/\\r?\\n/)) {
+        const match = /^\\s*(\\d+)\\s+\\d{4}-\\d{2}-\\d{2}\\s+\\d{2}:\\d{2}\\s+(.+)$/.exec(line);
+        if (match) totalUnpackedBytes += Number(match[1]);
+      }
+    } catch (error) {
+      throw new Error(
+        "Unable to inspect ZIP archive sizes: " +
+          (error instanceof Error ? error.message : String(error)),
+      );
+    }
+
+    const maxUnpackedBytes =
+      Number(process.env.CONVERSION_MAX_ARCHIVE_UNPACKED_MB ?? 1024) * 1024 * 1024;
+    if (!Number.isFinite(maxUnpackedBytes) || maxUnpackedBytes <= 0) {
+      throw new Error("CONVERSION_MAX_ARCHIVE_UNPACKED_MB must be positive");
+    }
+    if (totalUnpackedBytes > maxUnpackedBytes) {
+      throw new Error(
+        `ZIP archive expands to ${Math.round(totalUnpackedBytes / 1024 / 1024)} MB; maximum is ${Math.round(maxUnpackedBytes / 1024 / 1024)} MB`,
+      );
+    }
+
+    const objEntries = safeEntries.filter(
+      (entry) => !entry.endsWith("/") && extname(entry).toLowerCase() === ".obj",
+    );
+    if (objEntries.length !== 1) {
+      throw new Error(
+        objEntries.length === 0
+          ? "ZIP archive must contain exactly one OBJ file"
+          : "ZIP archive must contain exactly one OBJ file; multiple OBJ files were found",
+      );
+    }
+
+    await execFileAsync("unzip", ["-t", sourcePath], {
+      timeout: this.timeoutMs,
+      maxBuffer: 8 * 1024 * 1024,
+    });
+    await execFileAsync("unzip", ["-qq", "-o", sourcePath, "-d", archiveDir], {
+      timeout: this.timeoutMs,
+      maxBuffer: 8 * 1024 * 1024,
+    });
+
+    const verifyNoSymlinks = async (directory: string): Promise<void> => {
+      const children = await fs.readdir(directory, { withFileTypes: true });
+      for (const child of children) {
+        const childPath = join(directory, child.name);
+        if (child.isSymbolicLink()) {
+          throw new Error("ZIP archives containing symbolic links are not supported");
+        }
+        if (child.isDirectory()) await verifyNoSymlinks(childPath);
+      }
+    };
+    await verifyNoSymlinks(archiveDir);
+
+    const objPath = resolve(archiveDir, objEntries[0]);
+    const rel = relative(archiveDir, objPath);
+    if (!rel || rel.startsWith(".." + sep) || resolve(archiveDir, rel) !== objPath) {
+      throw new Error("Resolved OBJ path is outside the extracted archive");
+    }
+
+    return { path: objPath, ext: ".obj" };
   }
 
   private async runBlender(sourcePath: string, outputPath: string, ext: string) {
