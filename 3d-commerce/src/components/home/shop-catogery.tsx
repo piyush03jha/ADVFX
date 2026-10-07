@@ -82,7 +82,7 @@ export function ShopByCategory() {
       </div>
 
       {categories.length > 0 && (
-        <div className="-mx-5 flex gap-3 overflow-x-auto overscroll-x-contain px-5 pb-3 snap-x snap-mandatory sm:-mx-8 sm:px-8 lg:-mx-8 lg:px-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="-mx-5 flex w-max min-w-full flex-nowrap gap-3 overflow-x-auto overscroll-x-contain px-5 pb-3 snap-x snap-mandatory sm:-mx-8 sm:px-8 lg:-mx-8 lg:px-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {categories.map((category, index) => (
             <motion.div
               key={category.id}
