@@ -35,30 +35,6 @@ interface CustomFormProps {
   onSubmit: (submission: CustomSubmission) => void;
 }
 
-<<<<<<< HEAD
-=======
-const gallery = [
-  { id: "full", label: "Full body", image: "/catogeries/2.jpg" },
-  { id: "half", label: "Half body", image: "/catogeries/1.jpg" },
-  { id: "stationary", label: "Stationary head", image: "/catogeries/4.jpg" },
-];
-
-const categories: Array<{
-  id: CustomCategory;
-  step?: number;
-  label: string;
-  description: string;
-  image: string;
-}> = [
-  { id: "person", label: "Person", description: "Portraits and figurines", image: "/catogeries/2.jpg" },
-  { id: "pet", label: "Pet / Animal", description: "Turn your companion into a keepsake", image: "/catogeries/1.jpg" },
-  { id: "object", label: "Product / Object", description: "Replicas, parts, sculptures & more", image: "/catogeries/4.jpg" },
-  { id: "vehicle", label: "Vehicle", description: "Cars, bikes and display models", image: "/catogeries/2.jpg" },
-  { id: "character", label: "Character / Collectible", description: "Gaming, anime and stylized figures", image: "/catogeries/3.jpg" },
-  { id: "other", label: "Other", description: "Something unique? Tell us what you need", image: "/catogeries/4.jpg" },
-];
-
->>>>>>> fe10e4f6a70307fa420ab6ae2a6f1d64213214cc
 export function CustomForm({
   body,
   onBodyChange,
@@ -219,23 +195,12 @@ export function CustomForm({
 
     try {
       const requirements = [
-<<<<<<< HEAD
         `Category: ${selectedCategory.name}`,
         `Body type: ${isPerson ? selectedBody?.name ?? "Not selected" : "Not applicable"}`,
         `Person in frame: ${isPerson ? selectedFrame?.name ?? "Not selected" : "Not applicable"}`,
         `Size: ${configuredSize?.name ?? `${size} cm`}`,
         details.trim() ? `Additional requirements:\n${details.trim()}` : "",
       ].filter(Boolean).join("\n");
-=======
-        `Category: ${selectedCategory.label}`,
-        `Body type: ${isPerson ? selectedBody.label : "Not applicable"}`,
-        `Person in frame: ${isPerson ? selectedFrame.label : "Not applicable"}`,
-        `Size: ${selectedSize.label}`,
-        details.trim() ? `Additional requirements:
-${details.trim()}` : "",
-      ].filter(Boolean).join("
-");
->>>>>>> fe10e4f6a70307fa420ab6ae2a6f1d64213214cc
 
       if (serverPrice == null || pricingLoading || pricingError) {
         throw new Error(pricingError ?? "Custom price is still being calculated.");
@@ -371,17 +336,10 @@ ${details.trim()}` : "",
 
       <div className="grid overflow-hidden rounded-[20px] border border-border bg-surface/80 shadow-[0_12px_40px_rgba(0,0,0,0.08)] sm:rounded-[24px] sm:shadow-[0_30px_100px_rgba(0,0,0,0.12)] lg:backdrop-blur-xl lg:grid-cols-[minmax(0,1.08fr)_minmax(440px,0.92fr)]">
         <div className="relative flex min-h-0 flex-col bg-surface p-3 sm:p-4 lg:h-[calc(100svh-120px)] lg:max-h-[820px] lg:min-h-[620px]">
-<<<<<<< HEAD
           <div className="relative min-h-0 flex-1 overflow-hidden rounded-[18px] border border-border bg-surface-elevated">
             {previewImage ? <img src={previewImage} alt={previewLabel} className="absolute inset-0 h-full w-full object-contain transition duration-500" /> : <div className="absolute inset-0 flex items-center justify-center text-xs uppercase tracking-[0.16em] text-muted">{selectedCategory?.name ?? "Custom studio"}</div>}
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-foreground/35 via-transparent to-foreground/5" />
             <div className="absolute left-4 top-4 rounded-full border border-white/15 bg-foreground/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-foreground/80 backdrop-blur-md">
-=======
-          <div className="relative aspect-[16/10] min-h-0 flex-none overflow-hidden rounded-[16px] border border-border bg-surface-elevated sm:aspect-[16/9] lg:aspect-auto lg:flex-1 lg:rounded-[18px]">
-            <img src={activeGallery.image} alt={activeGallery.label} className="absolute inset-0 h-full w-full object-contain transition duration-500" />
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-            <div className="absolute left-3 top-3 rounded-full border border-white/20 bg-black/45 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-white backdrop-blur-md sm:left-4 sm:top-4">
->>>>>>> fe10e4f6a70307fa420ab6ae2a6f1d64213214cc
               Custom 3D Studio
             </div>
             <button type="button" disabled aria-label="Previous product example" className="absolute left-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl border border-white/15 bg-black/35 text-white backdrop-blur-md sm:left-5">
@@ -394,13 +352,8 @@ ${details.trim()}` : "",
               <p className="text-[10px] uppercase tracking-[0.16em] text-white/70">
                 Example product
               </p>
-<<<<<<< HEAD
               <h2 className="mt-1 text-xl font-semibold text-foreground sm:text-2xl">
                 {previewLabel || selectedCategory?.name || "Custom studio"}
-=======
-              <h2 className="mt-1 text-lg font-semibold text-white sm:text-2xl">
-                {activeGallery.label}
->>>>>>> fe10e4f6a70307fa420ab6ae2a6f1d64213214cc
               </h2>
             </div>
           </div>
@@ -430,11 +383,7 @@ ${details.trim()}` : "",
           </div>
 
           <div className="mt-6 space-y-6">
-<<<<<<< HEAD
-            <CompactSection label="What would you like to create?" hint={selectedCategory?.name ?? "Loading"}>
-=======
             <CompactSection step={1} label="What would you like to create?" hint={selectedCategory.label}>
->>>>>>> fe10e4f6a70307fa420ab6ae2a6f1d64213214cc
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {displayCategories.map((option) => (
                   <button
@@ -443,13 +392,8 @@ ${details.trim()}` : "",
                     onClick={() => selectCategory(option.slug)}
                     className={`group overflow-hidden rounded-2xl border text-left transition ${category === option.id ? "border-primary/70 bg-primary/[0.07]" : "border-border bg-surface hover:border-primary/35 hover:bg-surface-hover"}`}
                   >
-<<<<<<< HEAD
                     <div className="relative aspect-[4/3] overflow-hidden bg-surface-elevated">
                       {resolveMediaUrl(option.imageUrl) ? <img src={resolveMediaUrl(option.imageUrl)!} alt="" className="h-full w-full object-cover opacity-80 transition duration-500 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center text-[9px] uppercase tracking-[0.12em] text-muted">No image</div>}
-=======
-                    <div className="relative aspect-[16/10] overflow-hidden bg-surface-elevated sm:aspect-[4/3]">
-                      <img src={option.image} alt="" loading="lazy" className="h-full w-full object-cover opacity-80 transition duration-500 group-hover:scale-105" />
->>>>>>> fe10e4f6a70307fa420ab6ae2a6f1d64213214cc
                       {category === option.id && (
                         <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-white">
                           <IconCheck size={11} />
@@ -495,15 +439,9 @@ ${details.trim()}` : "",
 
             <CompactSection step={isPerson ? 3 : 2} label="Size">
               <div className="relative">
-<<<<<<< HEAD
                 <select value={size} onChange={(event) => { const value = event.target.value; setSize(value); const option = config?.sizeOptions.find((item) => item.slug === value); setPreviewImage(resolveMediaUrl(option?.imageUrl) ?? null); setPreviewLabel(option?.name ?? `${value} cm`); }} className="h-12 w-full appearance-none rounded-xl border border-border bg-surface px-3.5 pr-10 text-sm font-medium outline-none focus:border-primary/60">
                   {(config?.sizeOptions ?? []).map((option) => (
                     <option key={option.slug} value={option.slug}>{option.name}</option>
-=======
-                <select value={size} onChange={(event) => { const value = event.target.value; setSize(value); const option = config?.sizeOptions.find((item) => item.slug === value); setPreviewImage(option?.imageUrl || selectedCategory.image); setPreviewLabel(option?.name || `${value} cm`); }} className="h-12 w-full appearance-none rounded-xl border border-border bg-surface px-3.5 pr-10 text-base font-medium outline-none sm:text-sm focus:border-primary/60">
-                  {sizeOptions.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
->>>>>>> fe10e4f6a70307fa420ab6ae2a6f1d64213214cc
                   ))}
                 </select>
                 <IconChevronDown size={17} className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-muted" />
