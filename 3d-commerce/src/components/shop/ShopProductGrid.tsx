@@ -108,6 +108,13 @@ export function ShopProductGrid({
     navRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  const hasPriceFilter = state.minPrice > 0 || Number.isFinite(state.maxPrice);
+  const activeFilterCount =
+    (lockedCategory ? 0 : state.categories.length) +
+    (hasPriceFilter ? 1 : 0) +
+    (state.minRating > 0 ? 1 : 0);
+  const hasAnythingActive = activeFilterCount > 0 || state.q.trim() !== "" || searchText.trim() !== "";
+
   const items = result?.items ?? [];
   const total = result?.total ?? 0;
   const pageSize = result?.pageSize ?? 12;
@@ -125,7 +132,7 @@ export function ShopProductGrid({
               <div className="w-full min-w-0 xl:flex-[2]">
                 <ShopSearch value={searchText} onChange={setSearchText} />
               </div>
-              <div className="flex flex-wrap items-center justify-between gap-2 sm:justify-center xl:shrink-0">
+              <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2 sm:flex sm:flex-wrap sm:justify-center xl:shrink-0">
                 <div className="hidden lg:block">
                   <ShopFilters
                     filters={filters}
@@ -139,26 +146,27 @@ export function ShopProductGrid({
                   variant="outline"
                   size="sm"
                   onClick={() => setMobileFiltersOpen(true)}
-                  className="rounded-full lg:hidden"
+                  className="relative min-h-11 rounded-full lg:hidden"
                 >
                   Filters
+                  {activeFilterCount > 0 && (
+                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-semibold text-white">
+                      {activeFilterCount}
+                    </span>
+                  )}
                 </Button>
                 <ShopSort
                   value={state.sort}
                   onChange={(sort: ShopSortValue) => navigate({ sort })}
                 />
-                <button
-                  type="button"
-                  onClick={clearAll}
-                  className="h-10 rounded-full border border-primary/45 px-4 text-[10px] font-medium uppercase tracking-[0.1em] text-primary transition-colors hover:bg-primary/[0.07]"
-                >
-                  Clear Filters
-                </button>
+                {(state.categories.length > 0 || state.minPrice > 0 || Number.isFinite(state.maxPrice) || state.minRating > 0 || state.q.trim() !== "" || searchText.trim() !== "") && (
+                  <button type="button" onClick={clearAll} className="col-span-2 h-10 rounded-full border border-primary/45 px-4 text-[11px] font-medium uppercase tracking-[0.1em] text-primary transition-colors hover:bg-primary/[0.07]">Clear filters</button>
+                )}
               </div>
             </div>
           </div>
 
-          <div ref={navRef} className="-mx-1 mb-7 mt-7 scroll-mt-24 sm:mb-8 sm:mt-8">
+          <div ref={navRef} className="mb-5 mt-5 scroll-mt-24 sm:mb-8 sm:mt-8">
             <ShopNavigation
               categories={categories}
               selectedCategories={state.categories}
@@ -168,7 +176,7 @@ export function ShopProductGrid({
             />
           </div>
 
-          <div className="mt-8 sm:mt-9" aria-busy={isPending}>
+          <div className="mt-5 sm:mt-9" aria-busy={isPending}>
             {result === null ? (
               <EmptyProducts
                 onClear={clearAll}
@@ -207,7 +215,6 @@ export function ShopProductGrid({
         categories={categories}
         filters={filters}
         onChange={handleFilterChange}
-        onClear={clearFilters}
       />
     </>
   );

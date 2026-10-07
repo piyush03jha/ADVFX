@@ -19,7 +19,7 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
   return (
     <>
       <Navbar />
-      <main className="min-h-screen bg-background">
+      <main className="min-h-svh overflow-x-clip bg-background">
         <ShopListing searchParams={params} basePath="/shop" />
       </main>
     </>

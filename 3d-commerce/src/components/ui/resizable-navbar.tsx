@@ -20,7 +20,7 @@ export const Navbar = ({ children, className }: NavbarProps) => {
   useMotionValueEvent(scrollY, "change", (latest) => setVisible(latest > 100));
 
   return (
-    <motion.div className={cn("fixed inset-x-0 top-4 z-[100] w-full px-2 sm:px-3 lg:px-4", className)}>
+    <motion.div className={cn("fixed inset-x-0 top-[max(0.75rem,env(safe-area-inset-top))] z-[100] w-full px-2 sm:top-[max(1rem,env(safe-area-inset-top))] sm:px-3 lg:px-4", className)}>
       {React.Children.map(children, (child) =>
         React.isValidElement(child)
           ? React.cloneElement(child as React.ReactElement<{ visible?: boolean }>, { visible })
@@ -113,7 +113,7 @@ export const MobileNavMenu = ({ children, className, isOpen }: MobileNavMenuProp
         exit={{ opacity: 0, height: 0, y: -10 }}
         transition={{ duration: 0.3 }}
         className={cn(
-          "absolute inset-x-0 top-[calc(100%+0.5rem)] z-50 flex w-full flex-col items-start justify-start gap-4 overflow-hidden rounded-3xl border border-border bg-surface/95 px-3 py-5 shadow-[0_20px_60px_color-mix(in_srgb,var(--foreground)_22%,transparent)] backdrop-blur-xl",
+          "absolute inset-x-0 top-[calc(100%+0.5rem)] z-50 flex w-full flex-col items-start justify-start gap-4 max-h-[calc(100svh-6rem)] overflow-y-auto overflow-x-hidden overscroll-contain rounded-3xl border border-border bg-surface/95 px-3 py-5 shadow-[0_20px_60px_color-mix(in_srgb,var(--foreground)_22%,transparent)] backdrop-blur-xl",
           className,
         )}
       >
@@ -129,7 +129,7 @@ export const MobileNavToggle = ({ isOpen, onClick }: { isOpen: boolean; onClick:
     aria-label={isOpen ? "Close navigation" : "Open navigation"}
     aria-expanded={isOpen}
     onClick={onClick}
-    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted transition-all duration-300 hover:bg-surface-elevated hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary"
+    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted transition-all duration-300 hover:bg-surface-elevated hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary"
   >
     {isOpen ? <IconX size={20} stroke={1.7} /> : <IconMenu2 size={20} stroke={1.7} />}
   </button>
@@ -145,8 +145,7 @@ export const NavbarLogo = () => (
       src="/logo/full_logo.png"
       alt="Voxel3D"
       draggable={false}
-      style={{height:35, width:"auto"}}
-      className="block object-contain sm:h-7 sm:h-[18px]"
+      className="block h-8 w-auto object-contain lg:h-[35px]"
     />
   </Link>
 );

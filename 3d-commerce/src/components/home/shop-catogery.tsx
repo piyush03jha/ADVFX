@@ -82,7 +82,7 @@ export function ShopByCategory() {
       </div>
 
       {categories.length > 0 && (
-        <div className="-mx-5 flex w-max min-w-full flex-nowrap gap-3 overflow-x-auto overscroll-x-contain px-5 pb-3 snap-x snap-mandatory sm:-mx-8 sm:px-8 lg:-mx-8 lg:px-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="snap-rail -mx-3 flex flex-nowrap gap-3 px-3 pb-3 sm:-mx-5 sm:px-5 lg:-mx-6 lg:gap-4 lg:px-6">
           {categories.map((category, index) => (
             <motion.div
               key={category.id}
@@ -93,7 +93,7 @@ export function ShopByCategory() {
                 duration: 0.5,
                 delay: shouldReduceMotion ? 0 : Math.min(index * 0.04, 0.25),
               }}
-              className={`shrink-0 snap-start max-[639px]:w-[calc((100vw-3.5rem)/3)] max-[639px]:min-w-[calc((100vw-3.5rem)/3)] sm:w-[190px] sm:min-w-[190px] lg:w-[260px] lg:min-w-[260px] xl:w-[280px] xl:min-w-[280px] ${index > 2 ? "max-[639px]:hidden" : ""}`}
+              className="w-[38vw] max-w-[170px] shrink-0 snap-start sm:w-[190px] sm:max-w-none lg:w-[260px] xl:w-[280px]"
             >
               <CategoryCard category={category} index={index} />
             </motion.div>
@@ -113,7 +113,7 @@ function CategoryCard({
 }) {
   const imageUrl = resolveMediaUrl(category.imageUrl);
   const isAllModels =
-    index === 0 && category.name.trim().toLowerCase().replace(/\\s+/g, " ") === "all models";
+    index === 0 && category.name.trim().toLowerCase().replace(/\s+/g, " ") === "all models";
 
   return (
     <Link
