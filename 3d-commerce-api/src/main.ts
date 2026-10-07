@@ -36,27 +36,6 @@ async function bootstrap() {
 
   app.enableShutdownHooks();
 
-  // Fastify normally rejects an empty request body when a client sends
-  // Content-Type: application/json. Treat an empty JSON body as {} so
-  // body-less admin actions remain safe for direct API clients as well.
-  const fastify = app.getHttpAdapter().getInstance();
-  fastify.removeContentTypeParser("application/json");
-  fastify.addContentTypeParser(
-    "application/json",
-    { parseAs: "string" },
-    (_request: unknown, body: string, done: (error: Error | null, value?: unknown) => void) => {
-      if (!body) {
-        done(null, {});
-        return;
-      }
-      try {
-        done(null, JSON.parse(body));
-      } catch (error) {
-        done(error instanceof Error ? error : new Error("Invalid JSON body"));
-      }
-    },
-  );
-
   const maxUploadSizeMb = Number(process.env.MAX_UPLOAD_SIZE_MB ?? 100);
 
   if (
