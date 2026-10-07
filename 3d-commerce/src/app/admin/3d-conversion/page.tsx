@@ -57,7 +57,7 @@ type Job = {
   publishedAt: string | null;
 };
 
-const ACCEPT = ".abc,.usd,.usda,.usdc,.usdz,.svg,.pdf,.obj,.ply,.stl,.bvh,.fbx,.glb,.gltf";
+const ACCEPT = ".abc,.usd,.usda,.usdc,.usdz,.svg,.pdf,.obj,.ply,.stl,.bvh,.fbx,.glb,.gltf,.zip";
 const FORMATS = [
   "Alembic (.abc)",
   "Universal Scene Description (.usd*)",
@@ -69,6 +69,7 @@ const FORMATS = [
   "Motion Capture (.bvh)",
   "FBX (.fbx)",
   "glTF 2.0 (.glb/.gltf)",
+  "OBJ bundle (.zip — OBJ + MTL + textures)",
 ];
 
 function sizeLabel(value: string | null) {
@@ -364,7 +365,7 @@ export default function ThreeDConversionPage() {
           </div>
           <h2 className="mt-5 text-lg font-semibold">Drop a 3D file here</h2>
           <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-muted">
-            Upload one source at a time. GLB inputs skip Blender and go directly through the web optimization pipeline.
+            Upload one source at a time. GLB inputs skip Blender and go directly through the web optimization pipeline. For colored OBJ models, upload a ZIP containing the OBJ, its MTL file, and all referenced texture images.
           </p>
           <div className="mt-5 flex flex-wrap justify-center gap-2">
             {FORMATS.map((format) => (
