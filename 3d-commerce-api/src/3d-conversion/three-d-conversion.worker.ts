@@ -122,11 +122,15 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
 
       let animationCount = 0;
 
-      if (reusableConverted || job.inputExt === ".glb") {
-        await fs.copyFile(sourcePath, convertedPath);
+      const blenderInput =
+        job.inputExt === ".zip"
+          ? await this.prepareBlenderInput(sourcePath, job.inputExt, tempDir)
+          : { path: sourcePath, ext: job.inputExt };
+
+      if (reusableConverted || blenderInput.ext === ".glb") {
+        await fs.copyFile(blenderInput.path, convertedPath);
         await this.validateGlb(convertedPath);
       } else {
-        const blenderInput = await this.prepareBlenderInput(sourcePath, job.inputExt, tempDir);
         await this.runBlender(blenderInput.path, convertedPath, blenderInput.ext);
         await this.validateGlb(convertedPath);
       }
@@ -410,9 +414,9 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * OBJ material files and texture images are external to the OBJ itself.
-   * When an admin uploads a ZIP bundle, extract it beside the OBJ so Blender
-   * can resolve mtllib/image paths exactly as they were authored.
+   * ZIP is an asset bundle, not a model format. Extract it without flattening
+   * the directory tree so relative references used by OBJ/MTL, glTF/BIN,
+   * FBX, USD and similar formats continue to resolve inside Blender.
    */
   private async prepareBlenderInput(sourcePath: string, inputExt: string, tempDir: string) {
     if (inputExt !== ".zip") {
@@ -436,7 +440,7 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
     }
 
     const entries = listing
-      .split(/\r?\n/)
+      .split(/\\r?\\n/)
       .map((entry) => entry.trim())
       .filter(Boolean);
 
@@ -447,11 +451,11 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
 
     const safeEntries: string[] = [];
     for (const entry of entries) {
-      const normalized = entry.replace(/\\/g, "/");
+      const normalized = entry.replace(/\\\\/g, "/");
       const segments = normalized.split("/");
       if (
         normalized.startsWith("/") ||
-        normalized.includes("\0") ||
+        normalized.includes("\\0") ||
         segments.some((segment) => segment === "..")
       ) {
         throw new Error("ZIP archive contains an unsafe file path: " + entry);
@@ -470,8 +474,8 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
         timeout: Math.min(this.timeoutMs, 2 * 60 * 1000),
         maxBuffer: 8 * 1024 * 1024,
       });
-      for (const line of stdout.split(/\r?\n/)) {
-        const match = /^\s*(\d+)\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}\s+(.+)$/.exec(line);
+      for (const line of stdout.split(/\\r?\\n/)) {
+        const match = /^\\s*(\\d+)\\s+\\d{4}-\\d{2}-\\d{2}\\s+\\d{2}:\\d{2}\\s+(.+)$/.exec(line);
         if (match) totalUnpackedBytes += Number(match[1]);
       }
     } catch (error) {
@@ -492,14 +496,30 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
       );
     }
 
-    const objEntries = safeEntries.filter(
-      (entry) => !entry.endsWith("/") && extname(entry).toLowerCase() === ".obj",
-    );
-    if (objEntries.length !== 1) {
+    // These are the files that can be the primary scene/model. Dependency
+    // files such as .mtl, .bin and textures are deliberately not candidates.
+    const primaryExtensions = new Set([
+      ".abc", ".usd", ".usda", ".usdc", ".usdz",
+      ".svg", ".pdf", ".obj", ".ply", ".stl", ".bvh",
+      ".fbx", ".glb", ".gltf",
+    ]);
+
+    const primaryEntries = safeEntries.filter((entry) => {
+      if (entry.endsWith("/")) return false;
+      return primaryExtensions.has(extname(entry).toLowerCase());
+    });
+
+    if (primaryEntries.length === 0) {
       throw new Error(
-        objEntries.length === 0
-          ? "ZIP archive must contain exactly one OBJ file"
-          : "ZIP archive must contain exactly one OBJ file; multiple OBJ files were found",
+        "ZIP archive does not contain a supported primary 3D/model file. " +
+        "Expected one of OBJ, glTF, GLB, FBX, USD, Alembic, PLY, STL, BVH, SVG or PDF.",
+      );
+    }
+    if (primaryEntries.length > 1) {
+      const names = primaryEntries.slice(0, 8).join(", ");
+      const suffix = primaryEntries.length > 8 ? ", …" : "";
+      throw new Error(
+        `ZIP archive contains multiple primary model files (${primaryEntries.length}): ${names}${suffix}. Upload one primary scene/model per ZIP.`,
       );
     }
 
@@ -524,13 +544,13 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
     };
     await verifyNoSymlinks(archiveDir);
 
-    const objPath = resolve(archiveDir, objEntries[0]);
-    const rel = relative(archiveDir, objPath);
-    if (!rel || rel.startsWith(".." + sep) || resolve(archiveDir, rel) !== objPath) {
-      throw new Error("Resolved OBJ path is outside the extracted archive");
+    const primaryPath = resolve(archiveDir, primaryEntries[0]);
+    const rel = relative(archiveDir, primaryPath);
+    if (!rel || rel.startsWith(".." + sep) || resolve(archiveDir, rel) !== primaryPath) {
+      throw new Error("Resolved primary model path is outside the extracted archive");
     }
 
-    return { path: objPath, ext: ".obj" };
+    return { path: primaryPath, ext: extname(primaryEntries[0]).toLowerCase() };
   }
 
   private async runBlender(sourcePath: string, outputPath: string, ext: string) {
