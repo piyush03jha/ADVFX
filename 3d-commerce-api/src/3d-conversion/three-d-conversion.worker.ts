@@ -515,11 +515,21 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
         "Expected one of OBJ, glTF, GLB, FBX, USD, Alembic, PLY, STL, BVH, SVG or PDF.",
       );
     }
-    if (primaryEntries.length > 1) {
-      const names = primaryEntries.slice(0, 8).join(", ");
-      const suffix = primaryEntries.length > 8 ? ", …" : "";
+
+    // USD commonly uses several .usd/.usda/.usdc layers: one root layer and
+    // referenced dependency layers. Prefer the shallowest candidate so a
+    // nested material/reference layer is not mistaken for a second model.
+    // If multiple candidates exist at the same depth, the bundle is ambiguous
+    // and we fail safely instead of converting an arbitrary file.
+    const depth = (entry: string) => entry.split("/").filter(Boolean).length;
+    const shallowestDepth = Math.min(...primaryEntries.map(depth));
+    const rootCandidates = primaryEntries.filter((entry) => depth(entry) === shallowestDepth);
+
+    if (rootCandidates.length > 1) {
+      const names = rootCandidates.slice(0, 8).join(", ");
+      const suffix = rootCandidates.length > 8 ? ", …" : "";
       throw new Error(
-        `ZIP archive contains multiple primary model files (${primaryEntries.length}): ${names}${suffix}. Upload one primary scene/model per ZIP.`,
+        `ZIP archive contains multiple primary model files at the root level (${rootCandidates.length}): ${names}${suffix}. Upload one primary scene/model per ZIP.`,
       );
     }
 
