@@ -17,6 +17,12 @@ export const metadata: Metadata = {
   description: "Premium physical 3D models, custom 3D creations, and collectibles built with obsessive attention to detail.",
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} h-full antialiased`}>
