@@ -161,7 +161,7 @@ function CategoryCard({
         <div className="absolute inset-x-0 bottom-0 flex h-[78px] flex-col justify-center bg-surface px-3 py-2.5 sm:h-[88px] sm:px-3.5 lg:absolute lg:h-auto lg:bg-transparent lg:p-5">
           <Badge
             variant="default"
-            className="w-fit !border-stone-200 !bg-[#f5f3ef] !px-1.5 !py-0.5 !text-[8px] !text-stone-900 shadow-sm dark:!border-white/20 dark:!bg-black/90 dark:!text-white sm:!px-2 sm:!py-0.5 sm:!text-[9px] lg:!px-2.5 lg:!py-1 lg:!text-[10px]"
+            className="hidden w-fit !border-stone-200 !bg-[#f5f3ef] !px-1.5 !py-0.5 !text-[8px] !text-stone-900 shadow-sm dark:!border-white/20 dark:!bg-black/90 dark:!text-white lg:inline-flex lg:!px-2.5 lg:!py-1 lg:!text-[10px]"
           >
             {category._count?.products ?? 0} models
           </Badge>
