@@ -558,18 +558,27 @@ ${details.trim()}` : "",
 }
 
 function CompactSection({
+  step,
   label,
   hint,
   children,
 }: {
+  step?: number;
   label: string;
   hint?: string;
   children: React.ReactNode;
 }) {
   return (
     <section>
-      <div className="mb-2.5 flex items-center justify-between">
-        <p className="text-xs font-semibold text-foreground">{label}</p>
+      <div className="mb-2.5 flex items-center justify-between gap-3">
+        <p className="flex items-center gap-2 text-sm font-semibold text-foreground sm:text-xs">
+          {step !== undefined && (
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary lg:hidden">
+              {step}
+            </span>
+          )}
+          {label}
+        </p>
         {hint && <span className="truncate text-[11px] text-muted">{hint}</span>}
       </div>
       {children}
