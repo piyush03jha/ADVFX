@@ -207,7 +207,7 @@ export function Hero() {
       />
 
       <Container className="relative min-h-[520px] py-0 sm:min-h-[640px] lg:min-h-[calc(100svh-5rem)] lg:py-8 xl:py-10">
-        <div className="absolute z-10 left-1/2 top-[3.25rem] h-[245px] w-[320px] -translate-x-1/2 sm:top-[4rem] sm:h-[340px] sm:w-[460px] lg:right-[-8%] lg:left-auto lg:top-1/2 lg:h-[min(82vw,780px)] lg:w-[min(72vw,820px)] lg:-translate-x-0 lg:-translate-y-1/2 xl:right-[-5%] xl:h-[min(88vh,820px)] xl:w-[min(64vw,900px)]">
+        <div         className="absolute left-1/2 top-[3.25rem] z-10 h-[280px] w-[calc(100vw-1rem)] max-w-[420px] -translate-x-1/2 sm:top-[4rem] sm:h-[360px] sm:w-[min(92vw,520px)] lg:right-[-8%] lg:left-auto lg:top-1/2 lg:h-[min(82vw,780px)] lg:w-[min(72vw,820px)] lg:-translate-x-0 lg:-translate-y-1/2 xl:right-[-5%] xl:h-[min(88vh,820px)] xl:w-[min(64vw,900px)]">
           <HeroProductStage
             products={heroProducts}
             activeIndex={activeIndex}
@@ -215,7 +215,7 @@ export function Hero() {
           />
         </div>
 
-        <div className="relative z-30 flex min-h-[520px] items-start pt-[285px] sm:min-h-[640px] sm:pt-[390px] lg:min-h-[calc(100svh-5rem)] lg:w-[52%] lg:items-center lg:pt-0">
+        <div         className="relative z-30 flex min-h-[520px] items-start pt-[320px] sm:min-h-[640px] sm:pt-[415px] lg:min-h-[calc(100svh-5rem)] lg:w-[52%] lg:items-center lg:pt-0">
           <HeroContent product={activeProduct} />
         </div>
 
