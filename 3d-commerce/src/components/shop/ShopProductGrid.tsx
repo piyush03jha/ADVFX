@@ -108,6 +108,13 @@ export function ShopProductGrid({
     navRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  const hasPriceFilter = state.minPrice > 0 || Number.isFinite(state.maxPrice);
+  const activeFilterCount =
+    (lockedCategory ? 0 : state.categories.length) +
+    (hasPriceFilter ? 1 : 0) +
+    (state.minRating > 0 ? 1 : 0);
+  const hasAnythingActive = activeFilterCount > 0 || state.q.trim() !== "" || searchText.trim() !== "";
+
   const items = result?.items ?? [];
   const total = result?.total ?? 0;
   const pageSize = result?.pageSize ?? 12;
@@ -142,6 +149,11 @@ export function ShopProductGrid({
                   className="relative min-h-11 rounded-full lg:hidden"
                 >
                   Filters
+                  {activeFilterCount > 0 && (
+                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-semibold text-white">
+                      {activeFilterCount}
+                    </span>
+                  )}
                 </Button>
                 <ShopSort
                   value={state.sort}
