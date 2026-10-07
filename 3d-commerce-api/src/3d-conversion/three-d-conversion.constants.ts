@@ -13,6 +13,7 @@ export const THREE_D_CONVERSION_EXTENSIONS = [
   ".fbx",
   ".glb",
   ".gltf",
+  ".zip",
 ] as const;
 
 export type ThreeDConversionExtension = (typeof THREE_D_CONVERSION_EXTENSIONS)[number];
