@@ -58,7 +58,7 @@ export function ShopByCategory() {
     <Section
       id="categories"
       glow
-      className="scroll-mt-28 overflow-hidden py-8 sm:py-20 lg:py-28"
+      className="hidden scroll-mt-28 overflow-hidden py-8 sm:block sm:py-20 lg:py-28"
     >
       <div className="mb-6 flex items-end justify-between gap-4 sm:mb-9 sm:gap-6">
         <motion.div
