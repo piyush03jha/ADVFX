@@ -147,7 +147,7 @@ export const NavbarLogo = () => (
       width={110}
       height={30}
       draggable={false}
-      className="block h-6 w-auto scale-[0.72] object-contain sm:h-7 sm:scale-[0.72]"
+      className="block h-6 w-auto object-contain sm:h-7"
     />
   </Link>
 );
