@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { IconShoppingBag, IconBolt } from "@tabler/icons-react";
+import { IconBolt, IconCheck, IconShoppingBag } from "@tabler/icons-react";
 
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -137,14 +137,14 @@ export function ShopProductCard({ product, priority = false }: ShopProductCardPr
           {product.category}
         </p>
 
-        <div className="mt-1.5 flex items-center justify-between gap-2">
+        <div className="mt-1.5 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-2">
           <Link href={`/product/${product.slug}`} className="min-w-0 flex-1">
             <h3 className="line-clamp-2 text-sm font-medium leading-5 tracking-[-0.015em] text-foreground transition-colors hover:text-primary-hover">
               {product.name}
             </h3>
           </Link>
 
-          <div className="flex shrink-0 flex-col items-end">
+          <div className="flex shrink-0 flex-row items-baseline gap-2 sm:flex-col sm:items-end sm:gap-0">
             <Price value={product.price} size="sm" />
             {product.oldPrice !== undefined && (
               <span className="text-[10px] text-muted line-through">
@@ -173,9 +173,10 @@ export function ShopProductCard({ product, priority = false }: ShopProductCardPr
             variant="primary"
             size="lg"
             onClick={handleAddToCart}
-            className="min-h-9 w-full px-2 text-[10px] font-semibold sm:min-h-11 sm:px-3 sm:text-sm"
+            ariaLabel={added ? "Added to cart" : `Add ${product.name} to cart`}
+            className="min-h-10 w-full gap-1.5 px-2 text-xs font-semibold sm:min-h-11 sm:px-3 sm:text-sm"
           >
-            <IconShoppingBag size={17} stroke={1.8} aria-hidden="true" />
+            {added ? <IconCheck size={16} stroke={2} aria-hidden="true" /> : <IconShoppingBag size={16} stroke={1.8} aria-hidden="true" />}<span>{added ? "Added" : "Add"}</span>
           </Button>
 
           <Button
@@ -184,9 +185,11 @@ export function ShopProductCard({ product, priority = false }: ShopProductCardPr
             size="lg"
             onClick={handleBuyNow}
             disabled={buying}
-            className="min-h-9 w-full px-2 text-[10px] font-semibold sm:min-h-11 sm:px-3 sm:text-sm"
+            ariaLabel={`Buy ${product.name} now`}
+            className="min-h-10 w-full gap-1.5 px-2 text-xs font-semibold sm:min-h-11 sm:px-3 sm:text-sm"
           >
-            <IconBolt size={17} stroke={1.8} aria-hidden="true" />
+            <IconBolt size={16} stroke={1.8} aria-hidden="true" />
+            <span>Buy</span>
           </Button>
         </div>
       </div>
