@@ -296,7 +296,7 @@ export default function PaymentPage() {
           setPaymentState("confirmed");
           try {
             window.localStorage.removeItem(DRAFT_KEY);
-            window.localStorage.removeItem("voxel3d-buy-now");
+            window.localStorage.removeItem("forma-buy-now");
           } catch {}
           router.push("/order/confirmation?order=" + encodeURIComponent(paymentOrderId));
           return;
