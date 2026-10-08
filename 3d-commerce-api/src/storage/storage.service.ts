@@ -51,8 +51,23 @@ export class StorageService {
     return this.saveScopedFile(["categories", categoryId.trim()], filename.trim(), buffer, true);
   }
 
-  async saveCustomBuildCategoryImage(categoryId: string, originalName: string, buffer: Buffer): Promise<StoredFile> { return this.saveScopedFile(["custom-build-categories", categoryId.trim()], originalName.trim(), buffer); }
-  async saveCustomBuildOptionImage(optionId: string, originalName: string, buffer: Buffer): Promise<StoredFile> { return this.saveScopedFile(["custom-build-options", optionId.trim()], originalName.trim(), buffer); }
+  async saveCustomBuildCategoryImage(categoryId: string, originalName: string, buffer: Buffer): Promise<StoredFile> {
+    return this.saveScopedFile(
+      ["custom-build-categories", categoryId.trim()],
+      originalName.trim(),
+      buffer,
+      true,
+    );
+  }
+
+  async saveCustomBuildOptionImage(optionId: string, originalName: string, buffer: Buffer): Promise<StoredFile> {
+    return this.saveScopedFile(
+      ["custom-build-options", optionId.trim()],
+      originalName.trim(),
+      buffer,
+      true,
+    );
+  }
   async saveCustomRequestFile(requestId: string, originalName: string, buffer: Buffer) { return this.saveScopedFile(["custom-requests", requestId.trim()], originalName.trim(), buffer); }
   async saveReviewImage(reviewScope: string, filename: string, buffer: Buffer): Promise<StoredFile> { return this.saveScopedFile(["reviews", reviewScope.trim()], filename.trim(), buffer); }
   async saveGeneratedFile(buffer: Buffer, productId: string, fileName: string) { return this.saveScopedFile(["products", productId.trim(), "generated"], fileName.trim(), buffer); }
