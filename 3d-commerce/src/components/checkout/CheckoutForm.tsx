@@ -38,7 +38,7 @@ export interface CheckoutDraft {
 }
 
 const INITIAL_FORM: FormState = { email: "", phone: "" };
-const DRAFT_KEY = "forma-checkout-draft";
+const DRAFT_KEY = "voxel3d-checkout-draft";
 const sectionClass =
   "relative overflow-hidden rounded-3xl border border-border bg-[linear-gradient(135deg,rgb(from var(--foreground) r g b / 0.06),rgb(from var(--background) r g b / 0.02)_55%,rgb(from var(--primary) r g b / 0.07))] p-4 shadow-[0_20px_60px_rgba(0,0,0,0.14)] sm:p-6";
 const innerClass =
@@ -59,6 +59,12 @@ export function CheckoutForm({
   const [saving, setSaving] = useState(false);
   const [quote, setQuote] = useState<CheckoutQuote | null>(null);
   const [quoteError, setQuoteError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!selectedAddressId && defaultAddressId) {
+      setSelectedAddressId(defaultAddressId);
+    }
+  }, [defaultAddressId, selectedAddressId]);
 
   const selectedAddress = useMemo(
     () => addresses.find((address) => address.id === selectedAddressId) ?? null,
