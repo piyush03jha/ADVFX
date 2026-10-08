@@ -286,6 +286,12 @@ export class PaymentsService {
       throw new BadRequestException("Razorpay payment is not configured");
     }
 
+    if (order.payment.providerOrderId !== input.razorpayOrderId) {
+      throw new BadRequestException(
+        "Razorpay payment order does not match the current payment attempt",
+      );
+    }
+
     if (
       !this.razorpay.verifyPaymentSignature({
         razorpayOrderId: input.razorpayOrderId,
@@ -319,6 +325,35 @@ export class PaymentsService {
     ) {
       throw new BadRequestException(
         "Payment attempt total does not match order total",
+      );
+    }
+
+    const providerPayment = await this.razorpay.fetchPayment(
+      input.razorpayPaymentId,
+    );
+
+    if (providerPayment.id !== input.razorpayPaymentId) {
+      throw new BadRequestException("Razorpay payment ID does not match");
+    }
+
+    if (providerPayment.order_id !== input.razorpayOrderId) {
+      throw new BadRequestException(
+        "Razorpay payment belongs to a different Razorpay order",
+      );
+    }
+
+    if (
+      providerPayment.amount !== order.payment.amountMinor ||
+      providerPayment.currency !== order.payment.currency
+    ) {
+      throw new BadRequestException(
+        "Razorpay payment amount or currency does not match the order",
+      );
+    }
+
+    if (providerPayment.status !== "captured") {
+      throw new ConflictException(
+        "Razorpay payment has not been captured yet",
       );
     }
 
@@ -462,6 +497,12 @@ export class PaymentsService {
         if (!payment || payment.status === PaymentStatus.CAPTURED) break;
 
         await this.prisma.$transaction(async (tx) => {
+          // Serialize failed-payment processing with capture reconciliation so a
+          // late payment.failed webhook cannot overwrite a captured payment.
+          await tx.$queryRaw<Array<{ id: string }>>(
+            Prisma.sql`SELECT "id" FROM "Payment" WHERE "id" = ${payment.id} FOR UPDATE`,
+          );
+
           const current = await tx.payment.findUnique({ where: { id: payment.id } });
           if (!current || current.status === PaymentStatus.CAPTURED) return;
 
@@ -507,8 +548,20 @@ export class PaymentsService {
     currency: string,
   ) {
     const result = await this.prisma.$transaction(async (tx) => {
+      // Serialize browser verification and webhook reconciliation for the same
+      // payment. Without the row lock, both callers can observe an uncaptured
+      // payment and one can incorrectly enter the refund path after the other
+      // has already confirmed the order.
+      const lockedPaymentRows = await tx.$queryRaw<Array<{ id: string }>>(
+        Prisma.sql`SELECT "id" FROM "Payment" WHERE "orderId" = ${orderId} FOR UPDATE`,
+      );
+
+      if (lockedPaymentRows.length === 0) {
+        return { kind: "NONE" as const };
+      }
+
       const payment = await tx.payment.findUnique({
-        where: { orderId },
+        where: { id: lockedPaymentRows[0].id },
       });
       if (!payment) return { kind: "NONE" as const };
 
