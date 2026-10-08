@@ -57,6 +57,14 @@ class FakeRazorpay {
     return this.payments.get(orderId) ?? [];
   }
 
+  async fetchPayment(paymentId: string) {
+    for (const payments of this.payments.values()) {
+      const payment = payments.find((item) => item.id === paymentId);
+      if (payment) return { ...payment };
+    }
+    throw new Error("Unknown Razorpay payment");
+  }
+
   async refundPayment(paymentId: string, amount?: number) {
     this.refunds.push({ paymentId, amount });
     return { id: "rfnd_1", amount: amount ?? 0, status: "processed" };
@@ -245,18 +253,20 @@ describeDb("AUDIT: checkout -> payment behaviour (real DB)", () => {
       items,
     );
 
-  const verify = (
+  const verify = async (
     uid: string,
     orderId: string,
     razorpayOrderId: string,
     pid = "pay_ok",
-  ) =>
-    payments.verifyRazorpayPayment(uid, {
+  ) => {
+    razorpay.markPaid(razorpayOrderId, pid);
+    return payments.verifyRazorpayPayment(uid, {
       orderId,
       razorpayOrderId,
       razorpayPaymentId: pid,
       razorpaySignature: "sig",
     });
+  };
 
   const hook = (event: string, entity: Record<string, unknown>) =>
     payments.handleWebhook(
@@ -483,4 +493,34 @@ describeDb("AUDIT: checkout -> payment behaviour (real DB)", () => {
     expect([i.stock, i.reserved]).toEqual([8, 0]);
     expect((await ord(o.id)).status).toBe("CONFIRMED");
   });
+
+  it("11 VERIFY rejects an authorized-but-not-captured Razorpay payment", async () => {
+    const { u, a, A } = await shop();
+
+    await fillCart(u.id, [{ productId: A.id, quantity: 1 }]);
+
+    const o = await checkout(u.id, a.id);
+    const rz = await payments.createRazorpayOrder(u.id, o.id);
+
+    razorpay.addPayment(rz.razorpayOrderId!, {
+      id: "pay_authorized",
+      order_id: rz.razorpayOrderId,
+      status: "authorized",
+      amount: o.totalMinor,
+      currency: "INR",
+    });
+
+    await expect(
+      payments.verifyRazorpayPayment(u.id, {
+        orderId: o.id,
+        razorpayOrderId: rz.razorpayOrderId!,
+        razorpayPaymentId: "pay_authorized",
+        razorpaySignature: "sig",
+      }),
+    ).rejects.toThrow("has not been captured yet");
+
+    expect((await ord(o.id)).status).toBe("PENDING_PAYMENT");
+    expect((await ord(o.id)).payment?.status).toBe("PENDING");
+  });
+
 });
