@@ -32,6 +32,7 @@ import {
   type RazorpayOrder,
 } from "@/lib/payment-api";
 import { getCountry, type CountryCode } from "@/config/countries";
+import { resolveMediaUrl } from "@/lib/media-url";
 
 const DRAFT_KEY = "voxel3d-checkout-draft";
 
@@ -213,7 +214,7 @@ export default function PaymentPage() {
                 .finally(() => {
                   try {
                     window.localStorage.removeItem(DRAFT_KEY);
-                    window.localStorage.removeItem("voxel3d-buy-now");
+                    window.localStorage.removeItem("forma-buy-now");
                   } catch {
                     // Ignore local storage cleanup failures.
                   }
@@ -240,7 +241,7 @@ export default function PaymentPage() {
 
                 try {
                   window.localStorage.removeItem(DRAFT_KEY);
-                  window.localStorage.removeItem("voxel3d-buy-now");
+                  window.localStorage.removeItem("forma-buy-now");
                 } catch {
                   // Ignore storage failures after a successful payment.
                 }
@@ -468,9 +469,10 @@ export default function PaymentPage() {
                     <div key={item.key} className="flex min-w-0 gap-3">
                       <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-border bg-background">
                         <Image
-                          src={item.product.image.startsWith("/") ? item.product.image : "/" + item.product.image}
+                          src={resolveMediaUrl(item.product.image) ?? "/catogeries/1.jpg"}
                           alt={item.product.name}
                           fill
+                          unoptimized={resolveMediaUrl(item.product.image)?.startsWith("/api/assets/")}
                           sizes="64px"
                           className="object-cover"
                         />
