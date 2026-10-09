@@ -44,13 +44,13 @@ export function HeroContent({
         }}
         className="relative max-w-[580px]"
       >
-        <div className="mb-3 text-[9px] font-medium uppercase tracking-[0.22em] text-primary sm:mb-5 sm:text-xs sm:tracking-[0.28em]">
-          Premium 3D Collection
-        </div>
-
-        <h1 className="max-w-[600px] text-3xl font-semibold sm:text-5xl leading-[0.94] tracking-[-0.055em] text-foreground sm:text-6xl lg:text-[clamp(4rem,5.8vw,6.5rem)]">
-          {product.name}
+        <h1 className="mb-3 max-w-[580px] text-[10px] font-semibold uppercase tracking-[0.22em] text-primary sm:mb-5 sm:text-xs sm:tracking-[0.28em]">
+          Premium 3D Printed Models &amp; Collectibles
         </h1>
+
+        <h2 className="max-w-[600px] text-3xl font-semibold leading-[0.94] tracking-[-0.055em] text-foreground sm:text-5xl sm:text-6xl lg:text-[clamp(4rem,5.8vw,6.5rem)]">
+          {product.name}
+        </h2>
 
         <p className="mt-3 max-w-[510px] text-xs leading-5 text-muted sm:mt-6 sm:text-lg sm:leading-7">
           {product.description}
