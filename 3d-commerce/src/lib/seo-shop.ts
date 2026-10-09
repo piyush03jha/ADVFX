@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { absoluteUrl } from "@/lib/site";
 
 type Params = Record<string, string | string[] | undefined>;
 const FILTER_KEYS = ["q", "search", "category", "categories", "sort", "minPrice", "maxPrice", "minRating"];
@@ -27,5 +28,3 @@ export function shopListingMetadata(opts: {
     openGraph: { title, description, url: absoluteUrl(canonicalPath) },
   };
 }
-
-import { absoluteUrl } from "@/lib/site";
