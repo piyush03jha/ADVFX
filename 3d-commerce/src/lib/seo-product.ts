@@ -1,6 +1,22 @@
-import { activePrice, type CatalogProduct } from "@/lib/catalog-api";
+import type { CatalogProduct } from "@/lib/catalog-api";
 import { resolveMediaUrl } from "@/lib/media-url";
 import { absoluteUrl, SITE_NAME } from "@/lib/site";
+
+function getActiveProductPrice(product: CatalogProduct) {
+  const now = Date.now();
+  const prices = product.prices ?? [];
+  const current = (price: (typeof prices)[number]) =>
+    price.isActive &&
+    (!price.startsAt || new Date(price.startsAt).getTime() <= now) &&
+    (!price.endsAt || new Date(price.endsAt).getTime() > now);
+
+  return (
+    prices.find((price) => price.currency === "INR" && current(price)) ??
+    prices.find((price) => price.currency === "INR" && price.isActive) ??
+    prices.find((price) => price.isActive) ??
+    prices[0]
+  );
+}
 
 export function productImageUrls(product: CatalogProduct): string[] {
   return (product.media ?? [])
@@ -25,7 +41,7 @@ export function buildProductJsonLd(
   product: CatalogProduct,
   opts: { url: string; rating: number; reviewCount: number },
 ) {
-  const price = activePrice(product);
+  const price = getActiveProductPrice(product);
   const images = productImageUrls(product);
   return {
     "@context": "https://schema.org",
