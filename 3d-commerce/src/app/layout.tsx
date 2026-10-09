@@ -21,7 +21,6 @@ export const metadata: Metadata = {
   },
   description: "Shop premium 3D printed models, collectibles and custom builds from Voxel3D. Made to order and shipped across India.",
   applicationName: SITE_NAME,
-  alternates: { canonical: "/" },
   openGraph: {
     type: "website",
     siteName: SITE_NAME,
