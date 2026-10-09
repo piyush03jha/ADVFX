@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import {
   IconArrowRight,
@@ -11,6 +12,12 @@ import {
 
 import { Navbar } from "@/components/layout/SiteNavbar";
 import { Button } from "@/components/ui/Button";
+
+export const metadata: Metadata = {
+  title: "Contact Voxel3D",
+  description: "Questions about an order, a custom 3D print or a bulk request? Reach the Voxel3D team by WhatsApp or email.",
+  alternates: { canonical: "/contact" },
+};
 
 const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "";
 
@@ -27,7 +34,7 @@ async function getContactEmail() {
       if (typeof data?.value === "string" && data.value.trim()) return data.value.trim();
     }
   } catch {}
-  return process.env.NEXT_PUBLIC_CONTACT_EMAIL || "contact@voxel3d.in";
+  return process.env.NEXT_PUBLIC_CONTACT_EMAIL || "contact@voxel3d.org";
 }
 
 export default async function ContactPage() {
