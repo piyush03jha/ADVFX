@@ -97,7 +97,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const catalogProduct = await fetchProduct(id);
   if (!catalogProduct || catalogProduct.status !== "ACTIVE") notFound();
 
-  if (decodeURIComponent(id) !== catalogProduct.slug) {
+  if (id !== catalogProduct.slug) {
     permanentRedirect(`/product/${encodeURIComponent(catalogProduct.slug)}`);
   }
 
