@@ -145,8 +145,8 @@ export const NavbarLogo = () => (
       src="/logo/full_logo.png"
       alt="Voxel3D"
       draggable={false}
-      style={{height:35, width:"auto"}}
-      className="block object-contain sm:h-7 sm:h-[18px]"
+      style={{ height: 35, width: "auto" }}
+      className="block h-[22px] w-auto object-contain sm:h-[35px]"
     />
   </Link>
 );
