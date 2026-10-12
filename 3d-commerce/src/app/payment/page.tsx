@@ -365,14 +365,14 @@ export default function PaymentPage() {
       />
       <Navbar />
       <main className="min-h-screen overflow-hidden">
-        <section className="relative pb-20 pt-4 sm:pb-24 sm:pt-7 lg:pb-28 lg:pt-10">
+        <section className="relative pb-12 pt-28 sm:pb-24 sm:pt-32 lg:pb-28 lg:pt-36">
           <div
             aria-hidden="true"
             className="pointer-events-none absolute left-1/2 top-0 -z-10 h-[480px] w-[480px] -translate-x-1/2 rounded-full bg-primary/[0.045] blur-[150px]"
           />
 
           <Container>
-            <div className="mb-8 sm:mb-10">
+            <div className="mb-6 sm:mb-10">
               <Link
                 href={backToCheckoutHref}
                 className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.16em] text-muted transition-colors hover:text-foreground"
@@ -381,7 +381,7 @@ export default function PaymentPage() {
                 Back to delivery
               </Link>
 
-              <div className="mt-7 flex items-end justify-between gap-6">
+              <div className="mt-5 flex min-w-0 items-start justify-between gap-3 sm:mt-7 sm:items-end sm:gap-6">
                 <div>
                   <div className="flex items-center gap-3">
                     <span className="h-px w-7 bg-primary" />
@@ -390,7 +390,7 @@ export default function PaymentPage() {
                     </p>
                   </div>
 
-                  <h1 className="mt-4 font-serif text-4xl tracking-[-0.05em] text-foreground sm:text-5xl lg:text-6xl">
+                  <h1 className="mt-3 font-serif text-3xl leading-tight tracking-[-0.05em] text-foreground sm:mt-4 sm:text-5xl lg:text-6xl">
                     Secure your order
                   </h1>
 
@@ -406,9 +406,9 @@ export default function PaymentPage() {
               </div>
             </div>
 
-            <div className="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start lg:gap-12">
-              <div className="space-y-7">
-                <section className="rounded-2xl border border-border bg-surface p-5 sm:p-7">
+            <div className="grid w-full min-w-0 grid-cols-1 gap-5 sm:gap-8 lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start lg:gap-12">
+              <div className="min-w-0 space-y-4 sm:space-y-7">
+                <section className="min-w-0 rounded-2xl border border-border bg-surface p-3.5 sm:p-7">
                   <div className="flex items-center justify-between gap-4">
                     <div>
                       <p className="text-[11px] uppercase tracking-[0.2em] text-primary">01</p>
@@ -417,7 +417,7 @@ export default function PaymentPage() {
                     <span className="text-[11px] text-muted">{countryConfig.currency}</span>
                   </div>
 
-                  <div className="mt-6 rounded-xl border border-border bg-surface-elevated p-5">
+                  <div className="mt-3 rounded-xl border border-border bg-surface-elevated p-3 sm:mt-6 sm:p-5">
                     <div className="flex gap-4">
                       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
                         <IconShieldCheck size={18} />
@@ -435,7 +435,7 @@ export default function PaymentPage() {
                   </div>
                 </section>
 
-                <section className="rounded-2xl border border-border bg-surface p-5 sm:p-7">
+                <section className="min-w-0 rounded-2xl border border-border bg-surface p-3.5 sm:p-7">
                   <div className="flex gap-4">
                     <span className="pt-0.5 font-mono text-[11px] tracking-[0.15em] text-primary">02</span>
                     <div>
@@ -446,7 +446,7 @@ export default function PaymentPage() {
                     </div>
                   </div>
 
-                  <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                  <div className="mt-3 grid grid-cols-3 gap-2 sm:mt-6 sm:gap-3">
                     <TrustItem icon={<IconLock size={16} />} title="Secure" text="Razorpay Checkout" />
                     <TrustItem icon={<IconShieldCheck size={16} />} title="Protected" text="Server verified" />
                     <TrustItem icon={<IconCheck size={16} />} title="Transparent" text="Final total from server" />
@@ -574,10 +574,10 @@ function TrustItem({
   text: string;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-surface-elevated p-4">
+    <div className="min-w-0 rounded-lg border border-border bg-surface-elevated p-2.5 sm:rounded-xl sm:p-4">
       <span className="text-primary">{icon}</span>
-      <p className="mt-3 text-xs font-medium text-foreground">{title}</p>
-      <p className="mt-1 text-[11px] text-muted">{text}</p>
+      <p className="mt-1.5 break-words text-[10px] font-medium leading-4 text-foreground sm:mt-3 sm:text-xs">{title}</p>
+      <p className="mt-0.5 break-words text-[9px] leading-3 text-muted sm:mt-1 sm:text-[11px] sm:leading-normal">{text}</p>
     </div>
   );
 }
