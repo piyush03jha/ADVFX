@@ -56,6 +56,7 @@ export function CheckoutForm({
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(defaultAddressId);
   const [couponCode, setCouponCode] = useState("");
+  const [appliedCouponCode, setAppliedCouponCode] = useState("");
   const [saving, setSaving] = useState(false);
   const [quote, setQuote] = useState<CheckoutQuote | null>(null);
   const [quoteError, setQuoteError] = useState<string | null>(null);
@@ -87,7 +88,7 @@ export function CheckoutForm({
 
     void getCheckoutQuote(
       selectedAddressId,
-      couponCode.trim() || undefined,
+      appliedCouponCode || undefined,
       selectedItems,
     )
       .then((value) => {
@@ -107,7 +108,7 @@ export function CheckoutForm({
     return () => {
       cancelled = true;
     };
-  }, [couponCode, selectedAddressId, selectedItems, onQuoteChange]);
+  }, [appliedCouponCode, selectedAddressId, selectedItems, onQuoteChange]);
 
   useEffect(() => {
     onQuoteChange?.(quote, quoteError);
@@ -278,16 +279,21 @@ export function CheckoutForm({
             <span className="mb-2 block text-[11px] font-medium uppercase tracking-[0.15em] text-muted">
               Coupon code
             </span>
-            <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
+            <div className="flex min-w-0 flex-row items-stretch gap-2">
               <input
                 value={couponCode}
                 onChange={(event) => setCouponCode(event.target.value)}
                 placeholder="Optional"
-                className="h-11 w-full min-w-0 flex-1 rounded-xl border border-border bg-background px-4 text-sm text-foreground outline-none focus:border-primary/60"
+                className="h-11 w-0 min-w-0 flex-1 rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-primary/60 sm:px-4"
               />
-              <span className="flex min-h-9 max-w-full items-center self-start rounded-xl border border-border px-3 py-2 text-[10px] uppercase tracking-[0.1em] text-muted sm:h-11 sm:shrink-0 sm:self-auto sm:px-3 sm:text-[11px] sm:tracking-[0.12em]">
-                Server checked
-              </span>
+              <button
+                type="button"
+                onClick={() => setAppliedCouponCode(couponCode.trim())}
+                disabled={appliedCouponCode === couponCode.trim()}
+                className="h-11 shrink-0 rounded-xl border border-primary/40 bg-primary/10 px-4 text-xs font-medium uppercase tracking-[0.12em] text-primary transition-colors hover:bg-primary/15 disabled:cursor-default disabled:opacity-60 sm:px-5"
+              >
+                Check
+              </button>
             </div>
           </label>
         </div>
