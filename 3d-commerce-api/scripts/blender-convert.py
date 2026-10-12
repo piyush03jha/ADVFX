@@ -44,7 +44,22 @@ try:
             from io_mesh_3mf.api import import_3mf
         except ImportError as exc:
             raise RuntimeError("3MF support is not installed in the conversion worker") from exc
-        result = import_3mf(input_path, import_materials="MATERIALS")
+        # On the 1 GB worker, 3MF material/texture extraction can cause a large
+        # transient memory spike. Physical print meshes are the priority for GLB
+        # conversion; skip slicer materials/textures to keep import lightweight.
+        print("3MF import started (materials disabled for low-memory conversion)", flush=True)
+        result = import_3mf(
+            input_path,
+            import_materials="NONE",
+            reuse_materials=False,
+            auto_smooth=False,
+        )
+        print(
+            "3MF import finished: "
+            + str(result.num_loaded)
+            + " object(s) loaded",
+            flush=True,
+        )
         if result.status != "FINISHED":
             raise RuntimeError("3MF import failed: " + str(getattr(result, "message", result.status)))
     elif ext == ".fbx":
