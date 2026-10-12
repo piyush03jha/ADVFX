@@ -30,14 +30,6 @@ RUN curl -fsSL "https://download.blender.org/release/Blender4.5/blender-${BLENDE
   && ln -s "/opt/blender-${BLENDER_VERSION}-linux-x64/blender" /usr/local/bin/blender \
   && rm /tmp/blender.tar.xz
 
-# Pin the maintained Blender 4.2+ 3MF importer so headless workers can convert .3mf files.
-ARG THREEMF_ADDON_COMMIT=ddac1be1d728fa39cd5470d02d50f6fb0821198c
-RUN mkdir -p /opt/3mf-addon \
-  && curl -fsSL "https://github.com/Clonephaze/3MF-Blender-Add-on---Maintained/archive/${THREEMF_ADDON_COMMIT}.tar.gz" -o /tmp/3mf-addon.tar.gz \
-  && tar -xzf /tmp/3mf-addon.tar.gz --strip-components=1 -C /opt/3mf-addon \
-  && rm /tmp/3mf-addon.tar.gz \
-  && test -f /opt/3mf-addon/io_mesh_3mf/api.py
-RUN blender --background --python-expr "import sys; sys.path.insert(0, '/opt/3mf-addon'); from io_mesh_3mf.api import import_3mf; print('3MF importer ready')"
 RUN npm install --global @gltf-transform/cli@4.5.1
 
 COPY --from=build /app/package*.json ./
