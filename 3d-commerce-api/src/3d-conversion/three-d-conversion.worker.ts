@@ -566,25 +566,26 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
   private async runBlender(sourcePath: string, outputPath: string, ext: string) {
     const blender = process.env.BLENDER_BIN || "blender";
     const script = join(process.cwd(), "scripts", "blender-convert.py");
+    // Keep the low-memory workaround scoped to 3MF; preserve Blender's default
+    // threading behavior for all other supported formats.
+    const blenderArgs = [
+      "--background",
+      "--factory-startup",
+      ...(ext.toLowerCase() === ".3mf" ? ["--threads", "1"] : []),
+      "--python-exit-code",
+          "1",
+      "--python",
+      script,
+      "--",
+      "--input", sourcePath,
+      "--output", outputPath,
+      "--ext", ext,
+    ];
 
     await new Promise<void>((resolve, reject) => {
       const child = spawn(
         blender,
-        [
-          "--background",
-          "--factory-startup",
-          // Limit Blender's internal worker threads on memory-constrained hosts.
-          "--threads",
-          "1",
-          "--python-exit-code",
-          "1",
-          "--python",
-          script,
-          "--",
-          "--input", sourcePath,
-          "--output", outputPath,
-          "--ext", ext,
-        ],
+        blenderArgs,
         { shell: false, stdio: ["ignore", "pipe", "pipe"] },
       );
 
