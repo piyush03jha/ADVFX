@@ -142,7 +142,7 @@ export const NavbarLogo = () => (
     className="relative z-20 flex shrink-0 items-center px-1.5 py-.5 transition-opacity hover:opacity-80"
   >
     <img
-      src="/logo/full_logo.svg"
+      src="/logo/full_logo.png"
       alt="Voxel3D"
       draggable={false}
       style={{height:35, width:"auto"}}
