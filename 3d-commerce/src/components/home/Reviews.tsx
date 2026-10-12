@@ -34,7 +34,7 @@ function Stars({ rating }: { rating: number }) {
 }
 
 function Reviewer({ review }: { review: Review }) {
-  const name = review.user.name || "Verified customer";
+  const name = review.user.name || "Customer";
   const initials = name
     .split(/\s+/)
     .filter(Boolean)
@@ -45,13 +45,12 @@ function Reviewer({ review }: { review: Review }) {
   return (
     <div className="flex min-w-0 items-center gap-3">
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-background text-[9px] font-medium text-foreground">
-        {initials || "VC"}
+        {initials || "CU"}
       </div>
-
       <div className="min-w-0">
         <p className="truncate text-xs font-medium text-foreground">{name}</p>
         <p className="mt-1 truncate text-[9px] uppercase tracking-[0.1em] text-muted">
-          {review.id.startsWith("demo-") ? "Sample review · not verified" : review.verifiedPurchase ? "Verified purchase" : "Customer review"}
+          {review.verifiedPurchase ? "Verified purchase" : "Customer review"}
         </p>
       </div>
     </div>
@@ -74,12 +73,8 @@ function ReviewCard({ review, index }: { review: Review; index: number }) {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.2 }}
       transition={{ duration: 0.6, delay: index * 0.08 }}
-      className="group flex h-full min-h-[390px] min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-surface/60 p-6 transition-all duration-500 hover:border-primary/25 hover:bg-surface sm:min-h-[410px] lg:min-h-[420px]"
+      className="group flex h-full min-h-[320px] min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-surface/60 p-6 transition-all duration-500 hover:border-primary/25 hover:bg-surface sm:min-h-[340px]"
     >
-      <div className="relative mb-5 aspect-[16/9] overflow-hidden rounded-xl border border-border bg-surface-elevated">
-        {(review.photoUrl || review.product.media?.[0]?.url) ? <img src={review.photoUrl || review.product.media?.[0]?.url || ""} alt={review.photoUrl ? "Customer review photo" : review.product.media?.[0]?.altText || review.product.name} className="h-full w-full object-cover" loading="lazy" /> : <div className="flex h-full items-center justify-center text-[9px] uppercase tracking-[0.14em] text-muted">Customer review</div>}
-      </div>
-
       <div className="flex shrink-0 items-center justify-between">
         <Stars rating={review.rating} />
         <IconArrowUpRight
@@ -110,52 +105,9 @@ function ReviewCard({ review, index }: { review: Review; index: number }) {
   );
 }
 
-const SAMPLE_REVIEWS: Review[] = [
-  {
-    id: "demo-1",
-    rating: 5,
-    title: "Better than expected",
-    comment: "The detailing is excellent and the finish looks great on my desk. It feels like a carefully made collectible.",
-    verifiedPurchase: false,
-    createdAt: "2026-01-12T00:00:00.000Z",
-    user: { name: "Aarav M." },
-    product: { id: "demo-product-1", name: "Collector Edition Model", slug: "collector-edition-model" },
-  },
-  {
-    id: "demo-2",
-    rating: 5,
-    title: "A standout display piece",
-    comment: "The sculpt and proportions make this a real standout. It was easy to style with the rest of my collection.",
-    verifiedPurchase: false,
-    createdAt: "2026-01-18T00:00:00.000Z",
-    user: { name: "Riya S." },
-    product: { id: "demo-product-2", name: "Display Collectible", slug: "display-collectible" },
-  },
-  {
-    id: "demo-3",
-    rating: 4,
-    title: "Lovely level of detail",
-    comment: "I really like the fine details and overall look. It makes a thoughtful gift for anyone who enjoys collectibles.",
-    verifiedPurchase: false,
-    createdAt: "2026-02-02T00:00:00.000Z",
-    user: { name: "Kabir R." },
-    product: { id: "demo-product-3", name: "Articulated Figure", slug: "articulated-figure" },
-  },
-  {
-    id: "demo-4",
-    rating: 5,
-    title: "Looks great on display",
-    comment: "The model has a premium look and catches your eye straight away. I would explore more designs in this style.",
-    verifiedPurchase: false,
-    createdAt: "2026-02-11T00:00:00.000Z",
-    user: { name: "Meera K." },
-    product: { id: "demo-product-4", name: "Signature Model", slug: "signature-model" },
-  },
-];
-
 export function Reviews() {
   const [reviews, setReviews] = useState<Review[]>([]);
-  const displayedReviews = reviews.length > 0 ? reviews : SAMPLE_REVIEWS;
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     void fetch("/api/products/reviews/latest", { cache: "no-store" })
@@ -165,41 +117,29 @@ export function Reviews() {
         return Array.isArray(data) ? data : [];
       })
       .then(setReviews)
-      .catch(() => setReviews([]));
+      .catch(() => setReviews([]))
+      .finally(() => setLoaded(true));
   }, []);
+
+  if (!loaded || reviews.length === 0) return null;
 
   return (
     <section className="w-full overflow-hidden py-10 sm:py-20 lg:py-24">
       <Container>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-[9px] font-medium uppercase tracking-[0.2em] text-primary">
-              Collector feedback
-            </p>
-            <h2 className="mt-2 font-serif text-3xl tracking-[-0.04em] text-foreground sm:text-4xl">
-              What buyers say
-            </h2>
-          </div>
-
-          <p className="text-xs text-muted">
-            {reviews.length > 0 ? "Customer product reviews" : "Demo content · replace with real customer reviews"}
+        <div>
+          <p className="text-[9px] font-medium uppercase tracking-[0.2em] text-primary">
+            Collector feedback
           </p>
+          <h2 className="mt-2 font-serif text-3xl tracking-[-0.04em] text-foreground sm:text-4xl">
+            What buyers say
+          </h2>
         </div>
 
-        {displayedReviews.length > 0 ? (
-          <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {displayedReviews.map((review, index) => (
-              <ReviewCard key={review.id} review={review} index={index} />
-            ))}
-          </div>
-        ) : (
-          <div className="mt-8 rounded-2xl border border-border bg-surface/60 p-8">
-            <p className="text-sm font-medium text-foreground">Reviews are temporarily unavailable</p>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
-              Please check back later.
-            </p>
-          </div>
-        )}
+        <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {reviews.map((review, index) => (
+            <ReviewCard key={review.id} review={review} index={index} />
+          ))}
+        </div>
       </Container>
     </section>
   );
