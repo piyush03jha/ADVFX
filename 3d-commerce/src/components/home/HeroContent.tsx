@@ -26,27 +26,15 @@ export function HeroContent({
         transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
         className="relative max-w-[640px]"
       >
-<<<<<<< HEAD
-        <div className="mb-3 text-[10px] font-medium uppercase tracking-[0.22em] text-primary sm:mb-5 sm:text-sm sm:tracking-[0.28em]">
-          Premium 3D Collection
-        </div>
-
-        <h1 className="max-w-[650px] text-3xl font-semibold leading-[0.98] tracking-[-0.055em] text-foreground sm:text-6xl lg:text-[clamp(4rem,5.8vw,6.5rem)]">
-          {product.name}
-        </h1>
-
-        <p className="mt-4 max-w-[540px] text-sm leading-6 text-muted sm:mt-6 sm:text-xl sm:leading-8">
-=======
         <h1 className="mb-3 max-w-[580px] text-[10px] font-semibold uppercase tracking-[0.22em] text-primary sm:mb-5 sm:text-xs sm:tracking-[0.28em]">
           Premium 3D Printed Models &amp; Collectibles
         </h1>
 
-        <h2 className="max-w-[600px] text-3xl font-semibold leading-[0.94] tracking-[-0.055em] text-foreground sm:text-5xl sm:text-6xl lg:text-[clamp(4rem,5.8vw,6.5rem)]">
+        <h2 className="max-w-[600px] text-3xl font-semibold leading-[0.94] tracking-[-0.055em] text-foreground sm:text-5xl lg:text-[clamp(4rem,5.8vw,6.5rem)]">
           {product.name}
         </h2>
 
         <p className="mt-3 max-w-[510px] text-xs leading-5 text-muted sm:mt-6 sm:text-lg sm:leading-7">
->>>>>>> 2e333e6420699702b901cba35b9acc18fbe919d0
           {product.description}
         </p>
 
