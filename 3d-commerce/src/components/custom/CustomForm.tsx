@@ -452,6 +452,7 @@ export function CustomForm({
               </div>
             )}
 
+            {!useCustomSize && (
             <CompactSection step={isPerson ? 3 : 2} label="Size">
               <div className="relative">
                 <select value={size} onChange={(event) => { const value = event.target.value; setSize(value); const option = config?.sizeOptions.find((item) => item.slug === value); setPreviewImage(resolveMediaUrl(option?.imageUrl) ?? null); setPreviewLabel(option?.name ?? `${value} cm`); }} className="h-12 w-full appearance-none rounded-xl border border-border bg-surface px-3.5 pr-10 text-sm font-medium outline-none focus:border-primary/60">
@@ -462,6 +463,8 @@ export function CustomForm({
                 <IconChevronDown size={17} className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-muted" />
               </div>
             </CompactSection>
+
+            )}
 
             <section id="custom-size-fields" className="rounded-2xl border border-border bg-background/35 p-4">
               <label className="flex cursor-pointer items-start gap-3">
