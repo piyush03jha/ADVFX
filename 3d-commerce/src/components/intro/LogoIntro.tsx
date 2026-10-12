@@ -101,7 +101,7 @@ export function LogoIntro() {
       if (cancelled) return;
 
       ctx = gsap.context(() => {
-        gsap.set(logo, { opacity: 0, clipPath: HIDDEN, y: 12, scale: 0.985 });
+        gsap.set(logo, { opacity: 0, clipPath: HIDDEN, yPercent: -18, y: 12, scale: 0.985 });
         gsap.set(head, { opacity: 0 });
 
         const draw = { progress: 0 };
@@ -145,10 +145,11 @@ export function LogoIntro() {
 
         timeline.fromTo(
           logo,
-          { clipPath: HIDDEN, opacity: 0, y: 12, scale: 0.985 },
+          { clipPath: HIDDEN, opacity: 0, yPercent: -18, y: 12, scale: 0.985 },
           {
             clipPath: SHOWN,
             opacity: 1,
+            yPercent: -18,
             y: 0,
             scale: 1,
             duration: 0.9,
