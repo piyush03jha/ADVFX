@@ -500,7 +500,7 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
     // files such as .mtl, .bin and textures are deliberately not candidates.
     const primaryExtensions = new Set([
       ".abc", ".usd", ".usda", ".usdc", ".usdz",
-      ".svg", ".pdf", ".obj", ".ply", ".stl", ".bvh",
+      ".svg", ".pdf", ".obj", ".ply", ".stl", ".3mf", ".bvh",
       ".fbx", ".glb", ".gltf",
     ]);
 
@@ -512,7 +512,7 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
     if (primaryEntries.length === 0) {
       throw new Error(
         "ZIP archive does not contain a supported primary 3D/model file. " +
-        "Expected one of OBJ, glTF, GLB, FBX, USD, Alembic, PLY, STL, BVH, SVG or PDF.",
+        "Expected one of OBJ, glTF, GLB, FBX, USD, Alembic, PLY, STL, 3MF, BVH, SVG or PDF.",
       );
     }
 
