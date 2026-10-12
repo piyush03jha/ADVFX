@@ -16,18 +16,9 @@ const LINE_SAMPLES = 120;
 const PLAY_ONCE_PER_SESSION = false;
 const SESSION_KEY = "voxel-intro-played";
 
-const SRC = {
-  icon: "/logo/voxel-icon.svg",
-  word: "/logo/voxel-word.svg",
-  three: "/logo/voxel-3d.svg",
-};
-
+const LOGO_SRC = "/logo/full_logo.svg";
 const SHOWN = "inset(0% 0% 0% 0%)";
-const HIDDEN = {
-  icon: "inset(59.5% 0% 0% 0%)",
-  word: "inset(0% 75.5% 0% 0%)",
-  three: "inset(0% 18.5% 0% 0%)",
-};
+const HIDDEN = "inset(0% 100% 0% 0%)";
 
 const LAYER_WILL_CHANGE = "transform, opacity, clip-path";
 
@@ -37,15 +28,11 @@ export function LogoIntro() {
   const glowARef = useRef<SVGPathElement>(null);
   const glowBRef = useRef<SVGPathElement>(null);
   const headRef = useRef<SVGGElement>(null);
-  const iconRef = useRef<HTMLImageElement>(null);
-  const wordRef = useRef<HTMLImageElement>(null);
-  const threeRef = useRef<HTMLImageElement>(null);
+  const logoRef = useRef<HTMLImageElement>(null);
   const [show, setShow] = useState(true);
 
   // Start fetching the three layers as early as possible.
-  preload(SRC.icon, { as: "image", fetchPriority: "high" });
-  preload(SRC.word, { as: "image", fetchPriority: "high" });
-  preload(SRC.three, { as: "image", fetchPriority: "high" });
+  preload(LOGO_SRC, { as: "image", fetchPriority: "high" });
 
   useEffect(() => {
     let seen = false;
@@ -72,11 +59,9 @@ export function LogoIntro() {
     const glowA = glowARef.current;
     const glowB = glowBRef.current;
     const head = headRef.current;
-    const icon = iconRef.current;
-    const word = wordRef.current;
-    const three = threeRef.current;
+    const logo = logoRef.current;
 
-    if (!root || !line || !glowA || !glowB || !head || !icon || !word || !three) {
+    if (!root || !line || !glowA || !glowB || !head || !logo) {
       return;
     }
 
@@ -116,9 +101,7 @@ export function LogoIntro() {
       if (cancelled) return;
 
       ctx = gsap.context(() => {
-        gsap.set(icon, { opacity: 0, clipPath: HIDDEN.icon, y: 10 });
-        gsap.set(word, { opacity: 0, clipPath: HIDDEN.word, x: -18 });
-        gsap.set(three, { opacity: 0, clipPath: HIDDEN.three, x: -10 });
+        gsap.set(logo, { opacity: 0, clipPath: HIDDEN, y: 12, scale: 0.985 });
         gsap.set(head, { opacity: 0 });
 
         const draw = { progress: 0 };
@@ -161,42 +144,17 @@ export function LogoIntro() {
         );
 
         timeline.fromTo(
-          icon,
-          { clipPath: HIDDEN.icon, opacity: 0, y: 10 },
+          logo,
+          { clipPath: HIDDEN, opacity: 0, y: 12, scale: 0.985 },
           {
             clipPath: SHOWN,
             opacity: 1,
             y: 0,
-            duration: 0.4,
-            ease: "power3.out",
-          },
-          ">-0.1",
-        );
-
-        timeline.fromTo(
-          word,
-          { clipPath: HIDDEN.word, opacity: 0, x: -18 },
-          {
-            clipPath: SHOWN,
-            opacity: 1,
-            x: 0,
+            scale: 1,
             duration: 0.9,
             ease: "power3.out",
           },
-          ">-0.2",
-        );
-
-        timeline.fromTo(
-          three,
-          { clipPath: HIDDEN.three, opacity: 0, x: -10 },
-          {
-            clipPath: SHOWN,
-            opacity: 1,
-            x: 0,
-            duration: 0.55,
-            ease: "power2.out",
-          },
-          ">-0.25",
+          ">-0.1",
         );
 
         timeline.to(
@@ -207,11 +165,9 @@ export function LogoIntro() {
       }, root);
     };
 
-    // Don't start until the three SVGs are loaded AND decoded. Otherwise the
-    // browser rasterizes them in the middle of the animation = visible hitch.
-    const decoded = Promise.all(
-      [icon, word, three].map((img) => img.decode().catch(() => undefined)),
-    );
+    // Decode the high-quality master SVG before animating to avoid a visible
+    // rasterization hitch on the intro overlay.
+    const decoded = logo.decode().catch(() => undefined);
     const timeout = new Promise<void>((resolve) =>
       window.setTimeout(resolve, 1500),
     );
@@ -245,8 +201,8 @@ export function LogoIntro() {
         style={{ aspectRatio: LOGO_W / LOGO_H }}
       >
         <img
-          ref={iconRef}
-          src={SRC.icon}
+          ref={logoRef}
+          src={LOGO_SRC}
           alt=""
           draggable={false}
           decoding="async"
@@ -254,37 +210,7 @@ export function LogoIntro() {
           className={layer}
           style={{
             opacity: 0,
-            clipPath: HIDDEN.icon,
-            willChange: LAYER_WILL_CHANGE,
-          }}
-        />
-
-        <img
-          ref={wordRef}
-          src={SRC.word}
-          alt=""
-          draggable={false}
-          decoding="async"
-          fetchPriority="high"
-          className={layer}
-          style={{
-            opacity: 0,
-            clipPath: HIDDEN.word,
-            willChange: LAYER_WILL_CHANGE,
-          }}
-        />
-
-        <img
-          ref={threeRef}
-          src={SRC.three}
-          alt=""
-          draggable={false}
-          decoding="async"
-          fetchPriority="high"
-          className={layer}
-          style={{
-            opacity: 0,
-            clipPath: HIDDEN.three,
+            clipPath: HIDDEN,
             willChange: LAYER_WILL_CHANGE,
           }}
         />
