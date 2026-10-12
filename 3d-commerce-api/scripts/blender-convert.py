@@ -6,11 +6,6 @@ import tempfile
 
 import bpy
 
-# The conversion worker image installs the maintained Blender 3MF add-on here.
-THREEMF_ADDON_PATH = "/opt/3mf-addon"
-if os.path.isdir(THREEMF_ADDON_PATH) and THREEMF_ADDON_PATH not in sys.path:
-    sys.path.insert(0, THREEMF_ADDON_PATH)
-
 parser = argparse.ArgumentParser()
 parser.add_argument("--input", required=True)
 parser.add_argument("--output", required=True)
@@ -39,35 +34,7 @@ if ext == ".pdf":
     ext = ".svg"
 
 try:
-    if ext == ".3mf":
-        try:
-            from io_mesh_3mf.api import import_3mf
-        except ImportError as exc:
-            raise RuntimeError("3MF support is not installed in the conversion worker") from exc
-
-        # Do not call the add-on's inspect_3mf() here: it is itself being
-        # SIGKILLed under the worker's 1 GB memory limit before import begins.
-        # ZIP/XML metadata is inspected with a streaming parser in a follow-up
-        # path; for now, avoid duplicating the model in memory before import.
-        # On the 1 GB worker, 3MF material/texture extraction can cause a large
-        # transient memory spike. Physical print meshes are the priority for GLB
-        # conversion; skip slicer materials/textures to keep import lightweight.
-        print("3MF import started (materials disabled for low-memory conversion)", flush=True)
-        result = import_3mf(
-            input_path,
-            import_materials="NONE",
-            reuse_materials=False,
-            auto_smooth=False,
-        )
-        print(
-            "3MF import finished: "
-            + str(result.num_loaded)
-            + " object(s) loaded",
-            flush=True,
-        )
-        if result.status != "FINISHED":
-            raise RuntimeError("3MF import failed: " + str(getattr(result, "message", result.status)))
-    elif ext == ".fbx":
+    if ext == ".fbx":
         bpy.ops.import_scene.fbx(filepath=input_path)
     elif ext == ".obj":
         bpy.ops.wm.obj_import(filepath=input_path)
@@ -114,62 +81,6 @@ try:
 
     bpy.ops.object.select_all(action="SELECT")
     bpy.context.view_layer.objects.active = bpy.context.selected_objects[0]
-
-    # STL and 3MF are often triangle-heavy, and GLB export can exceed the
-    # memory limit even after import succeeds. Simplify only the derived GLB
-    # mesh; the uploaded STL/3MF source remains the manufacturing source.
-    if ext in {".stl", ".3mf"}:
-        try:
-            max_faces = int(os.environ.get("VOXEL3D_GLTF_MAX_FACES", "250000"))
-        except ValueError as exc:
-            raise RuntimeError("VOXEL3D_GLTF_MAX_FACES must be a positive integer") from exc
-        if max_faces < 1:
-            raise RuntimeError("VOXEL3D_GLTF_MAX_FACES must be a positive integer")
-
-        mesh_objects = [obj for obj in bpy.context.scene.objects if obj.type == "MESH"]
-        total_faces_before = sum(len(obj.data.polygons) for obj in mesh_objects)
-        print(
-            "Mesh export preflight: "
-            + str(len(mesh_objects))
-            + " mesh object(s), "
-            + str(total_faces_before)
-            + " face(s)",
-            flush=True,
-        )
-
-        if total_faces_before > max_faces:
-            ratio = max_faces / total_faces_before
-            print(
-                "Reducing STL/3MF preview mesh to approximately "
-                + str(max_faces)
-                + " faces (decimate ratio="
-                + format(ratio, ".6f")
-                + "); original uploaded file is not modified",
-                flush=True,
-            )
-            for obj in mesh_objects:
-                face_count = len(obj.data.polygons)
-                if face_count <= 0:
-                    continue
-                bpy.context.view_layer.objects.active = obj
-                obj.select_set(True)
-                modifier = obj.modifiers.new(name="Voxel3DPreviewMemoryGuard", type="DECIMATE")
-                modifier.decimate_type = "COLLAPSE"
-                modifier.ratio = max(0.01, min(1.0, ratio))
-                bpy.ops.object.modifier_apply(modifier=modifier.name)
-                obj.select_set(False)
-
-            total_faces_after = sum(
-                len(obj.data.polygons)
-                for obj in bpy.context.scene.objects
-                if obj.type == "MESH"
-            )
-            print(
-                "Mesh export preflight finished: "
-                + str(total_faces_after)
-                + " face(s) after preview reduction",
-                flush=True,
-            )
 
     bpy.ops.export_scene.gltf(
         filepath=args.output,
