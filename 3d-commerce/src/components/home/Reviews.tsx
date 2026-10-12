@@ -154,7 +154,8 @@ const SAMPLE_REVIEWS: Review[] = [
 ];
 
 export function Reviews() {
-  const [reviews, setReviews] = useState<Review[]>([]);\n  const displayedReviews = reviews.length > 0 ? reviews : SAMPLE_REVIEWS;
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const displayedReviews = reviews.length > 0 ? reviews : SAMPLE_REVIEWS;
 
   useEffect(() => {
     void fetch("/api/products/reviews/latest", { cache: "no-store" })
