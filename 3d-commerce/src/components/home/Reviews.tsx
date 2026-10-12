@@ -50,7 +50,7 @@ export function Reviews() {
           </p>
         </div>
 
-        <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="-mx-4 mt-7 flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:mt-8 sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-4">
           {HIGHLIGHTS.map((highlight, index) => (
             <motion.article
               key={highlight.eyebrow}
@@ -58,7 +58,7 @@ export function Reviews() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, amount: 0.2 }}
               transition={{ duration: 0.6, delay: index * 0.08 }}
-              className="group flex h-full min-h-[300px] min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-surface/60 p-6 transition-all duration-500 hover:border-primary/25 hover:bg-surface sm:min-h-[320px] sm:p-7"
+              className="group flex h-full min-h-[245px] w-[78vw] max-w-[290px] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-border bg-surface/60 p-4 transition-all duration-500 hover:border-primary/25 hover:bg-surface sm:min-h-[300px] sm:w-auto sm:max-w-none sm:min-w-0 sm:p-6 lg:min-h-[320px] lg:p-7"
             >
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-primary sm:text-xs">
@@ -66,18 +66,18 @@ export function Reviews() {
                 </span>
                 <IconArrowUpRight size={18} stroke={1.4} className="shrink-0 text-muted transition-all duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary" />
               </div>
-              <div className="flex flex-1 flex-col justify-center py-8">
-                <div className="mb-5 flex h-10 w-10 items-center justify-center rounded-full border border-primary/20 text-primary">
+              <div className="flex flex-1 flex-col justify-center py-5 sm:py-8">
+                <div className="mb-4 flex h-8 w-8 items-center justify-center rounded-full border border-primary/20 text-primary sm:mb-5 sm:h-10 sm:w-10">
                   <IconCheck size={18} stroke={1.5} />
                 </div>
-                <h3 className="font-serif text-2xl leading-[1.2] tracking-[-0.03em] text-foreground lg:text-[1.75rem]">
+                <h3 className="font-serif text-xl leading-[1.2] tracking-[-0.03em] text-foreground sm:text-2xl lg:text-[1.75rem]">
                   {highlight.title}
                 </h3>
-                <p className="mt-3 text-base leading-7 text-muted">
+                <p className="mt-2 text-sm leading-6 text-muted sm:mt-3 sm:text-base sm:leading-7">
                   {highlight.description}
                 </p>
               </div>
-              <div className="mt-auto border-t border-border pt-5">
+              <div className="mt-auto border-t border-border pt-4 sm:pt-5">
                 <span className="inline-flex items-center gap-2 text-[9px] font-medium uppercase tracking-[0.14em] text-primary sm:text-[10px]">
                   <span className="h-px w-4 bg-primary/60" />
                   {highlight.product}
