@@ -20,19 +20,6 @@ export function CustomBuild() {
       <Container>
         <div className="group/custom relative isolate rounded-[1.5rem]">
           <div aria-hidden="true" className="pointer-events-none absolute -inset-1.5 rounded-[1.8rem] bg-primary/30 opacity-75 blur-xl transition-opacity duration-500 group-hover/custom:opacity-100 sm:-inset-2.5 sm:blur-2xl" />
-
-          {/* Orbiting pill: follows the card perimeter without blocking its content. */}
-          <div aria-hidden="true" className="pointer-events-none absolute -inset-3 z-20 hidden sm:block">
-            <motion.div
-              className="absolute left-1/2 top-0 h-3 w-14 -translate-x-1/2 rounded-full border border-white/80 bg-primary shadow-[0_0_18px_rgba(139,92,246,0.85)]"
-              animate={reduceMotion ? undefined : {
-                offsetDistance: ["0%", "25%", "50%", "75%", "100%"],
-              }}
-              transition={reduceMotion ? undefined : { duration: 12, repeat: Infinity, ease: "linear" }}
-              style={{ offsetPath: "rect(0% 0% 100% 100% round 28px)", offsetRotate: "0deg" }}
-            />
-          </div>
-
           <div className="relative grid overflow-hidden rounded-[1.5rem] border border-primary/35 bg-surface shadow-[0_0_0_1px_rgba(139,92,246,0.08)] transition-colors duration-500 hover:border-primary/50 lg:grid-cols-[1.05fr_0.95fr]">
             <motion.div
               initial={reduceMotion ? false : { opacity: 0, y: 18 }}
