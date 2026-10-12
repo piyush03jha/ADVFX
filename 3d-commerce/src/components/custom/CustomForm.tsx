@@ -44,6 +44,11 @@ export function CustomForm({
 }: CustomFormProps) {
   const [category, setCategory] = useState<CustomCategory>("person");
   const [size, setSize] = useState("15");
+  const [useCustomSize, setUseCustomSize] = useState(false);
+  const [customWidth, setCustomWidth] = useState("");
+  const [customHeight, setCustomHeight] = useState("");
+  const [customDepth, setCustomDepth] = useState("");
+  const [customUnit, setCustomUnit] = useState("cm");
   const [frame, setFrame] = useState("single");
   const [files, setFiles] = useState<File[]>([]);
   const [modelFile, setModelFile] = useState<File | null>(null);
@@ -109,6 +114,10 @@ export function CustomForm({
   const isPerson = category === "person";
   const selectedCategory = configuredCategory;
   const price = serverPrice ?? 0;
+  const customDimensions = useCustomSize
+    ? `W ${customWidth} × H ${customHeight} × D ${customDepth} ${customUnit}`
+    : "";
+  const customSizeValid = !useCustomSize || [customWidth, customHeight, customDepth].every((value) => value.trim() !== "" && Number.isFinite(Number(value)) && Number(value) > 0);
 
   useEffect(() => {
     let cancelled = false;
@@ -178,6 +187,11 @@ export function CustomForm({
     event.preventDefault();
     setAttemptedSubmit(true);
 
+    if (useCustomSize && !customSizeValid) {
+      setFileError("Enter a valid positive width, height, and depth for your custom size.");
+      document.getElementById("custom-size-fields")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
     if (!hasReference) {
       document.getElementById("custom-references")?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
@@ -198,7 +212,8 @@ export function CustomForm({
         `Category: ${selectedCategory.name}`,
         `Body type: ${isPerson ? selectedBody?.name ?? "Not selected" : "Not applicable"}`,
         `Person in frame: ${isPerson ? selectedFrame?.name ?? "Not selected" : "Not applicable"}`,
-        `Size: ${configuredSize?.name ?? `${size} cm`}`,
+        `Selected size: ${configuredSize?.name ?? `${size} cm`}`,
+        useCustomSize ? `Customer custom dimensions: ${customDimensions}` : "",
         details.trim() ? `Additional requirements:\n${details.trim()}` : "",
       ].filter(Boolean).join("\n");
 
@@ -212,7 +227,7 @@ export function CustomForm({
         body: JSON.stringify({
           title: `Custom ${selectedCategory.name}`,
           requirements,
-          dimensions: configuredSize?.name ?? `${size} cm`,
+          dimensions: useCustomSize ? customDimensions : configuredSize?.name ?? `${size} cm`,
           notes: details.trim() || undefined,
           category,
           bodyType: isPerson ? body : undefined,
@@ -447,6 +462,41 @@ export function CustomForm({
                 <IconChevronDown size={17} className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-muted" />
               </div>
             </CompactSection>
+
+            <section id="custom-size-fields" className="rounded-2xl border border-border bg-background/35 p-4">
+              <label className="flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={useCustomSize}
+                  onChange={(event) => setUseCustomSize(event.target.checked)}
+                  className="mt-0.5 h-4 w-4 accent-primary"
+                />
+                <span>
+                  <span className="block text-sm font-semibold">Need a custom size?</span>
+                  <span className="mt-1 block text-xs leading-5 text-muted">Enter your exact dimensions. Our team will review them and confirm the final price.</span>
+                </span>
+              </label>
+              {useCustomSize && (
+                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <label className="text-xs font-medium">Width
+                    <input type="number" min="0.1" step="any" required value={customWidth} onChange={(event) => setCustomWidth(event.target.value)} placeholder="Width" className="mt-1.5 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm outline-none focus:border-primary/60" />
+                  </label>
+                  <label className="text-xs font-medium">Height
+                    <input type="number" min="0.1" step="any" required value={customHeight} onChange={(event) => setCustomHeight(event.target.value)} placeholder="Height" className="mt-1.5 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm outline-none focus:border-primary/60" />
+                  </label>
+                  <label className="text-xs font-medium">Depth
+                    <input type="number" min="0.1" step="any" required value={customDepth} onChange={(event) => setCustomDepth(event.target.value)} placeholder="Depth" className="mt-1.5 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm outline-none focus:border-primary/60" />
+                  </label>
+                  <label className="text-xs font-medium">Unit
+                    <select value={customUnit} onChange={(event) => setCustomUnit(event.target.value)} className="mt-1.5 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm outline-none focus:border-primary/60">
+                      <option value="mm">mm</option>
+                      <option value="cm">cm</option>
+                      <option value="in">inches</option>
+                    </select>
+                  </label>
+                </div>
+              )}
+            </section>
           </div>
 
           <div className="mt-auto hidden pt-7 lg:block">
