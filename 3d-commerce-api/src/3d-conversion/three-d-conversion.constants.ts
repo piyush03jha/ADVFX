@@ -9,6 +9,7 @@ export const THREE_D_CONVERSION_EXTENSIONS = [
   ".obj",
   ".ply",
   ".stl",
+  ".3mf",
   ".bvh",
   ".fbx",
   ".glb",
