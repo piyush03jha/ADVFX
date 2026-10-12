@@ -115,6 +115,62 @@ try:
     bpy.ops.object.select_all(action="SELECT")
     bpy.context.view_layer.objects.active = bpy.context.selected_objects[0]
 
+    # STL and 3MF are often triangle-heavy, and GLB export can exceed the
+    # memory limit even after import succeeds. Simplify only the derived GLB
+    # mesh; the uploaded STL/3MF source remains the manufacturing source.
+    if ext in {".stl", ".3mf"}:
+        try:
+            max_faces = int(os.environ.get("VOXEL3D_GLTF_MAX_FACES", "250000"))
+        except ValueError as exc:
+            raise RuntimeError("VOXEL3D_GLTF_MAX_FACES must be a positive integer") from exc
+        if max_faces < 1:
+            raise RuntimeError("VOXEL3D_GLTF_MAX_FACES must be a positive integer")
+
+        mesh_objects = [obj for obj in bpy.context.scene.objects if obj.type == "MESH"]
+        total_faces_before = sum(len(obj.data.polygons) for obj in mesh_objects)
+        print(
+            "Mesh export preflight: "
+            + str(len(mesh_objects))
+            + " mesh object(s), "
+            + str(total_faces_before)
+            + " face(s)",
+            flush=True,
+        )
+
+        if total_faces_before > max_faces:
+            ratio = max_faces / total_faces_before
+            print(
+                "Reducing STL/3MF preview mesh to approximately "
+                + str(max_faces)
+                + " faces (decimate ratio="
+                + format(ratio, ".6f")
+                + "); original uploaded file is not modified",
+                flush=True,
+            )
+            for obj in mesh_objects:
+                face_count = len(obj.data.polygons)
+                if face_count <= 0:
+                    continue
+                bpy.context.view_layer.objects.active = obj
+                obj.select_set(True)
+                modifier = obj.modifiers.new(name="Voxel3DPreviewMemoryGuard", type="DECIMATE")
+                modifier.decimate_type = "COLLAPSE"
+                modifier.ratio = max(0.01, min(1.0, ratio))
+                bpy.ops.object.modifier_apply(modifier=modifier.name)
+                obj.select_set(False)
+
+            total_faces_after = sum(
+                len(obj.data.polygons)
+                for obj in bpy.context.scene.objects
+                if obj.type == "MESH"
+            )
+            print(
+                "Mesh export preflight finished: "
+                + str(total_faces_after)
+                + " face(s) after preview reduction",
+                flush=True,
+            )
+
     bpy.ops.export_scene.gltf(
         filepath=args.output,
         export_format="GLB",
