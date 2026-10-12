@@ -26,7 +26,7 @@ export default function CustomPage() {
     <div className="min-h-screen bg-background text-foreground">
       <Navbar />
 
-      <main className="relative isolate overflow-hidden pt-20 sm:pt-24">
+      <main className="relative isolate overflow-x-clip pt-20 sm:pt-24">
         <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[700px] bg-[radial-gradient(circle_at_72%_8%,rgb(from var(--primary) r g b / 0.10),transparent_34%),radial-gradient(circle_at_18%_18%,rgb(from var(--foreground) r g b / 0.035),transparent_28%)]" />
 
         {submission ? (
@@ -37,9 +37,9 @@ export default function CustomPage() {
         ) : (
           <>
             <section className="mx-auto max-w-[1440px] px-4 pb-8 sm:px-6 lg:px-10">
-              <div className="mx-auto max-w-4xl py-8 text-center sm:py-12">
+              <div className="mx-auto max-w-4xl py-6 text-center sm:py-12">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">Custom studio</p>
-                <h1 className="mt-3 font-serif text-4xl tracking-[-0.055em] sm:text-5xl lg:text-6xl">
+                <h1 className="mt-3 font-serif text-[2rem] leading-[1.05] tracking-[-0.055em] sm:text-5xl lg:text-6xl">
                   Made for you, not from a template.
                 </h1>
                 <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-muted sm:text-base">
@@ -57,7 +57,7 @@ export default function CustomPage() {
             </section>
 
             <section className="border-y border-border bg-surface/35">
-              <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
+              <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-20 lg:px-8">
                 <div className="max-w-2xl">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">How we work</p>
                   <h2 className="mt-2 font-serif text-3xl tracking-[-0.04em] sm:text-4xl">Simple from your side.</h2>
@@ -95,7 +95,7 @@ function CustomPageSupport() {
     <>
       <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
         <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="rounded-3xl border border-border bg-surface p-7 sm:p-9">
+          <div className="rounded-3xl border border-border bg-surface p-5 sm:p-9">
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">Not sure what to choose?</p>
             <h2 className="mt-3 font-serif text-3xl tracking-[-0.04em] sm:text-4xl">Confused about the right option?</h2>
             <p className="mt-3 max-w-xl text-sm leading-6 text-muted">

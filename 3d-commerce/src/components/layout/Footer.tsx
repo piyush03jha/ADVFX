@@ -8,7 +8,7 @@ import {
   IconBrandX,
   IconMail,
   IconMapPin,
-  IconPhone,
+  IconBrandWhatsapp,
 } from "@tabler/icons-react";
 
 const collections = [
@@ -106,17 +106,20 @@ export function Footer() {
               <div>
                 <FooterHeading>Contact</FooterHeading>
                 <div className="space-y-3.5">
-                <ContactItem icon={IconMail} href="mailto:hello@voxel3d.in">
-                  hello@voxel3d.in
-                </ContactItem>
-                <ContactItem icon={IconPhone} href="tel:+919600012345">
-                  +91 96000 12345
-                </ContactItem>
-                <ContactItem icon={IconMapPin}>Mumbai, Maharashtra</ContactItem>
-              </div>
-              <p className="mt-4 text-[9px] uppercase tracking-[0.1em] text-muted-foreground">
-                Mon–Sat · 10am–7pm IST
-              </p>
+                  <ContactItem icon={IconMail} href="mailto:hello.voxel3d@gmail.com">
+                    hello.voxel3d@gmail.com
+                  </ContactItem>
+                  <ContactItem
+                    icon={IconBrandWhatsapp}
+                    href="https://wa.me/919600012345"
+                  >
+                    WhatsApp: +91 96000 12345
+                  </ContactItem>
+                  <ContactItem icon={IconMapPin}>New Delhi, India</ContactItem>
+                </div>
+                <p className="mt-4 text-[9px] uppercase tracking-[0.1em] text-muted-foreground">
+                  Mon–Sat · 10am–7pm IST
+                </p>
               </div>
             </div>
           </div>

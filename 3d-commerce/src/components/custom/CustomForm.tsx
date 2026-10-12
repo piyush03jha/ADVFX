@@ -44,6 +44,11 @@ export function CustomForm({
 }: CustomFormProps) {
   const [category, setCategory] = useState<CustomCategory>("person");
   const [size, setSize] = useState("15");
+  const [useCustomSize, setUseCustomSize] = useState(false);
+  const [customWidth, setCustomWidth] = useState("");
+  const [customHeight, setCustomHeight] = useState("");
+  const [customDepth, setCustomDepth] = useState("");
+  const [customUnit, setCustomUnit] = useState("cm");
   const [frame, setFrame] = useState("single");
   const [files, setFiles] = useState<File[]>([]);
   const [modelFile, setModelFile] = useState<File | null>(null);
@@ -109,6 +114,10 @@ export function CustomForm({
   const isPerson = category === "person";
   const selectedCategory = configuredCategory;
   const price = serverPrice ?? 0;
+  const customDimensions = useCustomSize
+    ? `W ${customWidth} × H ${customHeight} × D ${customDepth} ${customUnit}`
+    : "";
+  const customSizeValid = !useCustomSize || [customWidth, customHeight, customDepth].every((value) => value.trim() !== "" && Number.isFinite(Number(value)) && Number(value) > 0);
 
   useEffect(() => {
     let cancelled = false;
@@ -178,7 +187,16 @@ export function CustomForm({
     event.preventDefault();
     setAttemptedSubmit(true);
 
-    if (!hasReference || submitting) return;
+    if (useCustomSize && !customSizeValid) {
+      setFileError("Enter a valid positive width, height, and depth for your custom size.");
+      document.getElementById("custom-size-fields")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    if (!hasReference) {
+      document.getElementById("custom-references")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    if (submitting) return;
 
     setFileError("");
     setSubmitting(true);
@@ -194,7 +212,8 @@ export function CustomForm({
         `Category: ${selectedCategory.name}`,
         `Body type: ${isPerson ? selectedBody?.name ?? "Not selected" : "Not applicable"}`,
         `Person in frame: ${isPerson ? selectedFrame?.name ?? "Not selected" : "Not applicable"}`,
-        `Size: ${configuredSize?.name ?? `${size} cm`}`,
+        `Selected size: ${configuredSize?.name ?? `${size} cm`}`,
+        useCustomSize ? `Customer custom dimensions: ${customDimensions}` : "",
         details.trim() ? `Additional requirements:\n${details.trim()}` : "",
       ].filter(Boolean).join("\n");
 
@@ -208,7 +227,7 @@ export function CustomForm({
         body: JSON.stringify({
           title: `Custom ${selectedCategory.name}`,
           requirements,
-          dimensions: configuredSize?.name ?? `${size} cm`,
+          dimensions: useCustomSize ? customDimensions : configuredSize?.name ?? `${size} cm`,
           notes: details.trim() || undefined,
           category,
           bodyType: isPerson ? body : undefined,
@@ -323,14 +342,14 @@ export function CustomForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mx-auto max-w-[1380px]">
-      <div className="mb-4 flex items-center gap-2 pt-2 text-xs text-muted sm:mb-5">
+    <form onSubmit={handleSubmit} className="mx-auto max-w-[1380px]" noValidate>
+      <div className="mb-4 hidden items-center gap-2 pt-2 text-xs text-muted sm:mb-5 sm:flex">
         <span>Home</span>
         <span>/</span>
         <span className="text-foreground">Custom</span>
       </div>
 
-      <div className="grid overflow-hidden rounded-[24px] border border-border bg-surface/80 shadow-[0_30px_100px_rgba(0,0,0,0.12)] backdrop-blur-xl lg:grid-cols-[minmax(0,1.08fr)_minmax(440px,0.92fr)]">
+      <div className="grid overflow-hidden rounded-[20px] border border-border bg-surface/80 shadow-[0_12px_40px_rgba(0,0,0,0.08)] sm:rounded-[24px] sm:shadow-[0_30px_100px_rgba(0,0,0,0.12)] lg:backdrop-blur-xl lg:grid-cols-[minmax(0,1.08fr)_minmax(440px,0.92fr)]">
         <div className="relative flex min-h-0 flex-col bg-surface p-3 sm:p-4 lg:h-[calc(100svh-120px)] lg:max-h-[820px] lg:min-h-[620px]">
           <div className="relative min-h-0 flex-1 overflow-hidden rounded-[18px] border border-border bg-surface-elevated">
             {previewImage ? <img src={previewImage} alt={previewLabel} className="absolute inset-0 h-full w-full object-contain transition duration-500" /> : <div className="absolute inset-0 flex items-center justify-center text-xs uppercase tracking-[0.16em] text-muted">{selectedCategory?.name ?? "Custom studio"}</div>}
@@ -344,8 +363,8 @@ export function CustomForm({
             <button type="button" disabled aria-label="Next product example" className="absolute right-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl border border-white/15 bg-black/35 text-white backdrop-blur-md sm:right-5">
               <span className="text-xl">›</span>
             </button>
-            <div className="absolute bottom-4 left-4 right-4 sm:bottom-5 sm:left-5 sm:right-5">
-              <p className="text-[10px] uppercase tracking-[0.16em] text-muted">
+            <div className="absolute bottom-3 left-3 right-3 sm:bottom-5 sm:left-5 sm:right-5">
+              <p className="text-[10px] uppercase tracking-[0.16em] text-white/70">
                 Example product
               </p>
               <h2 className="mt-1 text-xl font-semibold text-foreground sm:text-2xl">
@@ -357,15 +376,15 @@ export function CustomForm({
 
         </div>
 
-        <div className="flex flex-col bg-surface/80 p-5 sm:p-7 lg:max-h-[calc(100svh-120px)] lg:overflow-y-auto lg:p-9">
+        <div className="flex flex-col bg-surface/80 p-4 sm:p-7 lg:max-h-[calc(100svh-120px)] lg:overflow-y-auto lg:p-9">
           <div className="border-b border-border pb-5">
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
               Custom creation studio
             </p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-[-0.045em] sm:text-4xl">
+            <h2 className="mt-2 text-2xl font-semibold tracking-[-0.045em] sm:text-4xl">
               Your idea. Our craft.
-            </h1>
-            <div className="mt-3 flex items-center gap-2 text-xs">
+            </h2>
+            <div className="mt-3 hidden items-center gap-2 text-xs sm:flex">
               <span className="flex items-center gap-0.5 text-primary">
                 {[0, 1, 2, 3, 4].map((star) => (
                   <IconStar key={star} size={14} fill="currentColor" />
@@ -373,13 +392,13 @@ export function CustomForm({
               </span>
               <span className="font-medium">Custom service</span>
             </div>
-            <p className="mt-4 text-sm leading-6 text-muted">
+            <p className="mt-3 text-sm leading-6 text-muted sm:mt-4">
               Upload your reference photos, choose the size, and tell us what you need. We review it, prepare the model, make the physical piece, and arrange delivery.
             </p>
           </div>
 
           <div className="mt-6 space-y-6">
-            <CompactSection label="What would you like to create?" hint={selectedCategory?.name ?? "Loading"}>
+            <CompactSection step={1} label="What would you like to create?" hint={selectedCategory.name}>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {displayCategories.map((option) => (
                   <button
@@ -407,7 +426,7 @@ export function CustomForm({
 
             {isPerson ? (
               <>
-                <CompactSection label="Type">
+                <CompactSection step={2} label="Type">
                   <div className="grid grid-cols-2 gap-2">
                     {configuredCategory?.options.filter((option) => option.section === "body").map((option) => (
                       <SelectionButton
@@ -433,7 +452,8 @@ export function CustomForm({
               </div>
             )}
 
-            <CompactSection label="Size">
+            {!useCustomSize && (
+            <CompactSection step={isPerson ? 3 : 2} label="Size">
               <div className="relative">
                 <select value={size} onChange={(event) => { const value = event.target.value; setSize(value); const option = config?.sizeOptions.find((item) => item.slug === value); setPreviewImage(resolveMediaUrl(option?.imageUrl) ?? null); setPreviewLabel(option?.name ?? `${value} cm`); }} className="h-12 w-full appearance-none rounded-xl border border-border bg-surface px-3.5 pr-10 text-sm font-medium outline-none focus:border-primary/60">
                   {(config?.sizeOptions ?? []).map((option) => (
@@ -443,9 +463,46 @@ export function CustomForm({
                 <IconChevronDown size={17} className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-muted" />
               </div>
             </CompactSection>
+
+            )}
+
+            <section id="custom-size-fields" className="rounded-2xl border border-border bg-background/35 p-4">
+              <label className="flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={useCustomSize}
+                  onChange={(event) => setUseCustomSize(event.target.checked)}
+                  className="mt-0.5 h-4 w-4 accent-primary"
+                />
+                <span>
+                  <span className="block text-sm font-semibold">Need a custom size?</span>
+                  <span className="mt-1 block text-xs leading-5 text-muted">Enter your exact dimensions. Our team will review them and confirm the final price.</span>
+                </span>
+              </label>
+              {useCustomSize && (
+                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <label className="text-xs font-medium">Width
+                    <input type="number" min="0.1" step="any" required value={customWidth} onChange={(event) => setCustomWidth(event.target.value)} placeholder="Width" className="mt-1.5 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm outline-none focus:border-primary/60" />
+                  </label>
+                  <label className="text-xs font-medium">Height
+                    <input type="number" min="0.1" step="any" required value={customHeight} onChange={(event) => setCustomHeight(event.target.value)} placeholder="Height" className="mt-1.5 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm outline-none focus:border-primary/60" />
+                  </label>
+                  <label className="text-xs font-medium">Depth
+                    <input type="number" min="0.1" step="any" required value={customDepth} onChange={(event) => setCustomDepth(event.target.value)} placeholder="Depth" className="mt-1.5 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm outline-none focus:border-primary/60" />
+                  </label>
+                  <label className="text-xs font-medium">Unit
+                    <select value={customUnit} onChange={(event) => setCustomUnit(event.target.value)} className="mt-1.5 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm outline-none focus:border-primary/60">
+                      <option value="mm">mm</option>
+                      <option value="cm">cm</option>
+                      <option value="in">inches</option>
+                    </select>
+                  </label>
+                </div>
+              )}
+            </section>
           </div>
 
-          <div className="mt-auto pt-7">
+          <div className="mt-auto hidden pt-7 lg:block">
             <div className="flex items-end justify-between gap-4 border-t border-border pt-5">
               <div>
                 <p className="text-[10px] uppercase tracking-[0.16em] text-muted">
@@ -466,8 +523,8 @@ export function CustomForm({
         </div>
       </div>
 
-      <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.42fr)]">
-        <div className="rounded-[24px] border border-border bg-surface/45 p-5 sm:p-7">
+      <div className="mt-4 grid gap-4 sm:mt-5 sm:gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.42fr)]">
+        <div id="custom-references" className="scroll-mt-24 rounded-[20px] border border-border bg-surface/45 p-4 sm:rounded-[24px] sm:p-7">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
               Your references
@@ -505,7 +562,7 @@ export function CustomForm({
               maxLength={1000}
               rows={4}
               placeholder="Tell us anything important about the pose, clothing, expression, dimensions or scene."
-              className="mt-2 w-full resize-none rounded-xl border border-border bg-background/45 p-3.5 text-sm leading-6 outline-none placeholder:text-muted focus:border-primary/60"
+              className="mt-2 w-full resize-none rounded-xl border border-border bg-background/45 p-3.5 text-base leading-6 outline-none placeholder:text-muted focus:border-primary/60 sm:text-sm"
             />
             <div className="mt-1 text-right text-[10px] text-muted">{details.length}/1000</div>
           </div>
@@ -527,8 +584,8 @@ export function CustomForm({
 
           <button
             type="submit"
-            disabled={!hasReference || submitting || pricingLoading || Boolean(pricingError) || serverPrice == null}
-            className="mt-6 flex h-12 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
+            disabled={submitting || pricingLoading || Boolean(pricingError) || serverPrice == null}
+            className="mt-6 hidden h-12 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45 lg:flex"
           >
             {submitting
               ? "Preparing payment…"
@@ -539,7 +596,14 @@ export function CustomForm({
         </aside>
       </div>
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-3">
+      <div className="sticky bottom-0 z-30 -mx-4 mt-4 border-t border-border bg-surface/95 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl sm:-mx-6 sm:px-6 lg:hidden">
+        <div className="mx-auto flex max-w-xl items-center gap-3">
+          <div className="min-w-0 shrink-0"><p className="text-[11px] uppercase tracking-[0.14em] text-muted">{pricingLoading ? "Calculating…" : "Estimated"}</p><p className="text-xl font-semibold tracking-[-0.03em]">₹{price.toLocaleString("en-IN")}</p></div>
+          <button type="submit" disabled={submitting || pricingLoading || Boolean(pricingError) || serverPrice == null} className="flex h-12 min-w-0 flex-1 items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45">{submitting ? "Preparing payment…" : hasReference ? "Continue to payment" : "Add a photo to continue"}</button>
+        </div>
+      </div>
+
+      <div className="mt-5 hidden gap-3 sm:grid sm:grid-cols-3">
         {processSteps.map((step, index) => (
           <div key={step.title} className="rounded-2xl border border-border bg-surface/35 p-4">
             <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-primary">
@@ -555,19 +619,28 @@ export function CustomForm({
 }
 
 function CompactSection({
+  step,
   label,
   hint,
   children,
 }: {
+  step?: number;
   label: string;
   hint?: string;
   children: React.ReactNode;
 }) {
   return (
     <section>
-      <div className="mb-2.5 flex items-center justify-between">
-        <p className="text-xs font-semibold text-foreground">{label}</p>
-        {hint && <span className="text-[10px] text-muted">{hint}</span>}
+      <div className="mb-2.5 flex items-center justify-between gap-3">
+        <p className="flex items-center gap-2 text-sm font-semibold text-foreground sm:text-xs">
+          {step !== undefined && (
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary lg:hidden">
+              {step}
+            </span>
+          )}
+          {label}
+        </p>
+        {hint && <span className="truncate text-[11px] text-muted">{hint}</span>}
       </div>
       {children}
     </section>
@@ -593,7 +666,7 @@ function SelectionButton({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-xl border p-3 text-left transition ${selected ? "border-primary/60 bg-primary/[0.07]" : "border-border bg-surface hover:border-primary/35 hover:bg-surface-hover"}`}
+      className={`min-h-11 rounded-xl border p-3 text-left transition ${selected ? "border-primary/60 bg-primary/[0.07]" : "border-border bg-surface hover:border-primary/35 hover:bg-surface-hover"}`}
     >
       {image && <div className="mb-2 aspect-[4/3] overflow-hidden rounded-lg bg-surface-elevated"><img src={image} alt="" className="h-full w-full object-cover" /></div>}
       <div className="flex items-center justify-between gap-2">

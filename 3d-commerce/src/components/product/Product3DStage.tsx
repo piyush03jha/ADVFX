@@ -120,7 +120,7 @@ export default function Product3DStage({
           enablePan={false}
           enableDamping
           dampingFactor={0.055}
-          minDistance={2.5}
+          minDistance={0.35}
           maxDistance={5.5}
           minPolarAngle={0.12}
           maxPolarAngle={Math.PI - 0.12}
@@ -128,7 +128,8 @@ export default function Product3DStage({
           rotateSpeed={0.75}
           zoomSpeed={0.8}
           touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }}
-          mouseButtons={{ LEFT: 0, MIDDLE: 1, RIGHT: 2 }}
+          mouseButtons={{ LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE }}
+          reverseOrbit
         />
       </Canvas>
 

@@ -200,7 +200,7 @@ export function ProductActions({ product, selectedVariantId, quantity, onVariant
       </div>
 
       <div className="mt-4 flex items-baseline gap-2 sm:mt-5 sm:gap-3">
-        <p className="rounded-full bg-red-500 px-4 py-1.5 text-xl font-bold tracking-tight text-white shadow-[0_8px_24px_rgba(239,68,68,0.18)]">
+        <p className="rounded-full bg-foreground/10 px-4 py-1.5 text-xl font-bold tracking-tight text-foreground">
           ₹{(displayPrice * quantity).toLocaleString("en-IN")}
         </p>
         <span className="text-[9px] uppercase tracking-[0.14em] text-muted">Size × quantity</span>

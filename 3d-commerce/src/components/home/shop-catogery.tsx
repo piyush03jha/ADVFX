@@ -58,7 +58,7 @@ export function ShopByCategory() {
     <Section
       id="categories"
       glow
-      className="scroll-mt-28 overflow-hidden py-12 sm:py-20 lg:py-28"
+      className="scroll-mt-28 overflow-hidden py-8 sm:py-20 lg:py-28"
     >
       <div className="mb-6 flex items-end justify-between gap-4 sm:mb-9 sm:gap-6">
         <motion.div
@@ -82,43 +82,23 @@ export function ShopByCategory() {
       </div>
 
       {categories.length > 0 && (
-        <>
-          <div className="-mx-5 flex gap-3 overflow-x-auto overscroll-x-contain px-5 pb-3 snap-x snap-mandatory sm:-mx-8 sm:px-8 lg:hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {categories.map((category, index) => (
-              <motion.div
-                key={category.id}
-                initial={shouldReduceMotion ? false : { opacity: 0, x: 20 }}
-                whileInView={shouldReduceMotion ? undefined : { opacity: 1, x: 0 }}
-                viewport={{ once: true, amount: 0.1 }}
-                transition={{
-                  duration: 0.5,
-                  delay: shouldReduceMotion ? 0 : Math.min(index * 0.04, 0.25),
-                }}
-                className="w-[50vw] shrink-0 snap-start min-[400px]:w-[44vw] sm:w-[42vw]"
-              >
-                <CategoryCard category={category} index={index} />
-              </motion.div>
-            ))}
-          </div>
-
-          <div className="hidden grid-cols-6 gap-3 lg:grid">
-            {categories.map((category, index) => (
-              <motion.div
-                key={category.id}
-                initial={shouldReduceMotion ? false : { opacity: 0, y: 22 }}
-                whileInView={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.1 }}
-                transition={{
-                  duration: 0.55,
-                  delay: shouldReduceMotion ? 0 : Math.min(index * 0.045, 0.3),
-                  ease: [0.22, 1, 0.36, 1],
-                }}
-              >
-                <CategoryCard category={category} index={index} />
-              </motion.div>
-            ))}
-          </div>
-        </>
+        <div className="snap-rail -mx-3 flex flex-nowrap gap-3 px-3 pb-3 sm:-mx-5 sm:px-5 lg:-mx-6 lg:gap-4 lg:px-6">
+          {categories.map((category, index) => (
+            <motion.div
+              key={category.id}
+              initial={shouldReduceMotion ? false : { opacity: 0, x: 20 }}
+              whileInView={shouldReduceMotion ? undefined : { opacity: 1, x: 0 }}
+              viewport={{ once: true, amount: 0.1 }}
+              transition={{
+                duration: 0.5,
+                delay: shouldReduceMotion ? 0 : Math.min(index * 0.04, 0.25),
+              }}
+              className="w-[38vw] max-w-[170px] shrink-0 snap-start sm:w-[190px] sm:max-w-none lg:w-[260px] xl:w-[280px]"
+            >
+              <CategoryCard category={category} index={index} />
+            </motion.div>
+          ))}
+        </div>
       )}
     </Section>
   );
@@ -131,6 +111,10 @@ function CategoryCard({
   category: Category;
   index: number;
 }) {
+  const imageUrl = resolveMediaUrl(category.imageUrl);
+  const isAllModels =
+    index === 0 && category.name.trim().toLowerCase().replace(/\s+/g, " ") === "all models";
+
   return (
     <Link
       href={`/shop/${category.slug}`}
@@ -138,46 +122,94 @@ function CategoryCard({
     >
       <Card
         interactive
-        className="relative aspect-[1/1.38] rounded-2xl sm:aspect-[1/1.38] lg:aspect-[1/1.32]"
+        className="relative h-[190px] overflow-hidden rounded-2xl sm:h-[220px] lg:aspect-[1/1.32] lg:h-auto"
       >
-        {resolveMediaUrl(category.imageUrl) ? (
-          <img
-            src={resolveMediaUrl(category.imageUrl) ?? undefined}
-            alt={category.name}
-            loading={index < 4 ? "eager" : "lazy"}
-            className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-105"
-          />
+        {isAllModels ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-surface px-3 text-center lg:hidden">
+            <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-full border border-primary/25 bg-primary/8 text-primary">
+              <IconArrowUpRight size={18} stroke={1.8} />
+            </span>
+            <h3 className="text-[14px] font-semibold leading-tight tracking-[-0.02em] text-foreground">
+              All Models
+            </h3>
+            <span className="mt-1 whitespace-nowrap text-[9px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+              Full Collection
+            </span>
+          </div>
         ) : (
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(139,92,246,0.25),transparent_55%)]" />
+          <>
+            {imageUrl ? (
+              <img
+                src={imageUrl}
+                alt={category.name}
+                loading={index < 4 ? "eager" : "lazy"}
+                className="absolute inset-x-0 top-0 h-[112px] w-full object-contain object-center px-2 py-1 transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-105 sm:h-[132px] sm:px-3 lg:h-full lg:px-0 lg:py-0 lg:object-cover"
+              />
+            ) : (
+              <div className="absolute inset-x-0 top-0 h-[112px] bg-[radial-gradient(circle_at_50%_20%,rgba(139,92,246,0.25),transparent_55%)] sm:h-[132px] lg:h-full" />
+            )}
+
+            <div
+              aria-hidden="true"
+              className="absolute inset-x-0 top-0 h-[112px] bg-gradient-to-t from-black/20 to-transparent sm:h-[132px] lg:hidden"
+            />
+            <div
+              aria-hidden="true"
+              className="absolute inset-0 hidden bg-gradient-to-t from-black via-black/35 to-black/5 lg:block"
+            />
+            <div
+              aria-hidden="true"
+              className="absolute inset-0 hidden bg-[radial-gradient(circle_at_50%_20%,rgba(139,92,246,0.22),transparent_55%)] opacity-0 transition-opacity duration-500 group-hover:opacity-100 lg:block"
+            />
+
+            <div className="absolute inset-x-0 bottom-0 flex h-[78px] flex-col justify-center bg-surface px-3 py-2.5 sm:h-[88px] sm:px-3.5 lg:absolute lg:h-auto lg:bg-transparent lg:p-5">
+              <Badge
+                variant="default"
+                className="hidden w-fit !border-stone-200 !bg-[#f5f3ef] !px-1.5 !py-0.5 !text-[8px] !text-stone-900 shadow-sm dark:!border-white/20 dark:!bg-black/90 dark:!text-white lg:inline-flex lg:!px-2.5 lg:!py-1 lg:!text-[10px]"
+              >
+                {category._count?.products ?? 0} models
+              </Badge>
+
+              <h3 className="mt-1.5 line-clamp-1 text-[13px] font-semibold leading-tight tracking-[-0.02em] text-foreground sm:mt-2 sm:text-sm lg:mt-3 lg:line-clamp-2 lg:text-xl lg:text-white">
+                {category.name}
+              </h3>
+            </div>
+          </>
         )}
 
-        <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-black via-black/35 to-black/5" />
-        <div aria-hidden="true" className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(139,92,246,0.22),transparent_55%)] opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+        {isAllModels && (
+          <div className="pointer-events-none absolute right-2 top-2 lg:hidden">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full border border-primary/20 bg-primary/8 text-primary">
+              <IconArrowUpRight size={14} stroke={1.7} />
+            </span>
+          </div>
+        )}
 
-        <div className="absolute right-2.5 top-2.5 sm:right-3 sm:top-3">
+        <div className={`absolute right-2 top-2 ${isAllModels ? "hidden" : ""} sm:right-2.5 sm:top-2.5 lg:right-3 lg:top-3`}>
           <IconButton
             label={`Open ${category.name}`}
             size="sm"
             variant="default"
             tabIndex={-1}
-            className="h-7 w-7 !border-white/20 !bg-black/80 !text-white backdrop-blur-md sm:h-9 sm:w-9"
+            className="h-7 w-7 !border-white/20 !bg-black/70 !text-white backdrop-blur-md sm:h-8 sm:w-8 lg:h-9 lg:w-9"
           >
             <IconArrowUpRight size={14} stroke={1.7} />
           </IconButton>
         </div>
 
-        <div className="absolute bottom-0 left-0 right-0 p-2.5 sm:p-4 lg:p-5">
-          <Badge
-            variant="default"
-            className="!border-stone-200 !bg-[#f5f3ef] !px-2 !py-0.5 !text-[8px] !text-stone-900 shadow-md backdrop-blur-md dark:!border-white/20 dark:!bg-black/90 dark:!text-white sm:!px-2.5 sm:!py-1 sm:!text-[10px]"
-          >
-            {category._count?.products ?? 0} models
-          </Badge>
-
-          <h3 className="mt-2 line-clamp-2 text-sm font-medium leading-tight tracking-[-0.025em] text-white sm:mt-3 sm:text-lg lg:text-xl">
-            {category.name}
-          </h3>
-        </div>
+        {isAllModels && (
+          <div className="absolute inset-0 hidden lg:flex lg:flex-col lg:items-start lg:justify-end lg:bg-gradient-to-t lg:from-black lg:via-black/35 lg:to-transparent lg:p-5">
+            <Badge
+              variant="default"
+              className="!border-stone-200 !bg-[#f5f3ef] !px-2.5 !py-1 !text-[10px] !text-stone-900"
+            >
+              {category._count?.products ?? 0} models
+            </Badge>
+            <h3 className="mt-3 text-xl font-semibold text-white">
+              {category.name}
+            </h3>
+          </div>
+        )}
       </Card>
     </Link>
   );

@@ -10,7 +10,7 @@ interface ShopSearchProps {
 export function ShopSearch({ value, onChange }: ShopSearchProps) {
   return (
     <div className="relative w-full">
-      <div className="flex min-h-14 w-full items-center rounded-2xl border border-border bg-surface px-4 shadow-[0_14px_45px_rgba(0,0,0,0.08)] transition-shadow">
+      <div className="flex min-h-14 w-full items-center rounded-2xl border border-border bg-surface px-4 shadow-[0_14px_45px_rgba(0,0,0,0.08)] outline-none transition-[border-color,box-shadow] duration-200 focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/20">
         <IconSearch size={20} stroke={1.7} className="shrink-0 text-muted" />
         <input
           type="search"
@@ -18,7 +18,7 @@ export function ShopSearch({ value, onChange }: ShopSearchProps) {
           onChange={(event) => onChange(event.target.value)}
           placeholder="Search models, characters, toys, gaming..."
           aria-label="Search products"
-          className="h-12 w-full appearance-none bg-transparent px-3 text-sm text-foreground outline-none placeholder:text-muted/60 focus:outline-none focus:ring-0"
+          className="h-12 w-full min-w-0 appearance-none border-0 bg-transparent px-3 text-sm text-foreground !outline-none !ring-0 placeholder:text-muted/60 focus:border-0 focus:!outline-none focus:!ring-0 focus-visible:border-0 focus-visible:!outline-none focus-visible:!ring-0"
         />
         {value && (
           <button

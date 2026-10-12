@@ -54,7 +54,7 @@ export function ShopSort({
   onChange,
 }: ShopSortProps) {
   return (
-    <div className="relative">
+    <div className="relative min-w-0">
       <IconArrowsSort
         size={14}
         stroke={1.7}
@@ -78,7 +78,10 @@ export function ShopSort({
           )
         }
         className="
-          h-10
+          h-11
+          w-full
+          sm:h-10
+          sm:w-auto
           appearance-none
           rounded-full
           border

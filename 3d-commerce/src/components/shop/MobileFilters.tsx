@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { IconCheck, IconX } from "@tabler/icons-react";
 import { Button } from "@/components/ui/Button";
 import type { ShopCategory } from "@/lib/category-api";
@@ -11,166 +12,162 @@ interface MobileFiltersProps {
   categories: ShopCategory[];
   filters: ShopFilterState;
   onChange: (filters: ShopFilterState) => void;
-  onClear: () => void;
 }
 
-export function MobileFilters({
-  open,
-  onClose,
-  categories,
-  filters,
-  onChange,
-  onClear,
-}: MobileFiltersProps) {
-  if (!open) return null;
+const PRICE_OPTIONS = [
+  { label: "Under ₹2,000", min: 0, max: 2000 },
+  { label: "₹2,000 – ₹4,000", min: 2000, max: 4000 },
+  { label: "₹4,000 – ₹7,000", min: 4000, max: 7000 },
+  { label: "₹7,000+", min: 7000, max: Infinity },
+];
 
-  const toggleCategory = (categorySlug: string) => {
-    const selected = filters.categories.includes(categorySlug);
+const EMPTY: ShopFilterState = {
+  categories: [],
+  minPrice: 0,
+  maxPrice: Infinity,
+  minRating: 0,
+};
 
-    onChange({
-      ...filters,
-      categories: selected
-        ? filters.categories.filter((item) => item !== categorySlug)
-        : [...filters.categories, categorySlug],
-    });
+export function MobileFilters(props: MobileFiltersProps) {
+  if (!props.open) return null;
+  return <FiltersSheet {...props} />;
+}
+
+function FiltersSheet({ onClose, categories, filters, onChange }: MobileFiltersProps) {
+  const [draft, setDraft] = useState<ShopFilterState>(filters);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onCloseRef.current();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previous;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, []);
+
+  const toggleCategory = (slug: string) =>
+    setDraft((current) => ({
+      ...current,
+      categories: current.categories.includes(slug)
+        ? current.categories.filter((item) => item !== slug)
+        : [...current.categories, slug],
+    }));
+
+  const apply = () => {
+    onChange(draft);
+    onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-[100] lg:hidden">
-      <button
-        type="button"
-        aria-label="Close filters"
-        onClick={onClose}
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-      />
-
-      <div className="absolute inset-x-0 bottom-0 max-h-[88svh] overflow-y-auto rounded-t-[28px] border-t border-border bg-[#0c0c0c] p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-[0_-20px_80px_rgba(0,0,0,0.55)]">
-        <div className="mb-5 flex items-center justify-between">
+    <div className="fixed inset-0 z-[110] lg:hidden" role="dialog" aria-modal="true" aria-label="Filters">
+      <button type="button" aria-label="Close filters" onClick={onClose} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className="absolute inset-x-0 bottom-0 flex max-h-[88svh] flex-col rounded-t-[28px] border-t border-border bg-surface text-foreground shadow-[0_-20px_80px_rgba(0,0,0,0.35)]">
+        <div className="mx-auto mt-2.5 h-1 w-10 rounded-full bg-border" aria-hidden="true" />
+        <div className="flex items-center justify-between px-5 pb-3 pt-3">
           <div>
-            <p className="text-[9px] uppercase tracking-[0.2em] text-primary">Refine</p>
-            <h2 className="mt-1 text-lg font-semibold text-foreground">Filters</h2>
+            <p className="text-[11px] uppercase tracking-[0.2em] text-primary">Refine</p>
+            <h2 className="mt-0.5 text-lg font-semibold">Filters</h2>
           </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close filters"
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted transition-colors hover:border-primary/50 hover:text-foreground"
-          >
-            <IconX size={17} />
+          <button type="button" onClick={onClose} aria-label="Close filters" className="flex h-10 w-10 items-center justify-center rounded-full border border-border text-muted transition-colors hover:border-primary/50 hover:text-foreground">
+            <IconX size={18} />
           </button>
         </div>
 
-        <div className="border-b border-border/70 pb-5">
-          <h3 className="mb-3 text-[10px] font-medium uppercase tracking-[0.16em] text-foreground">
-            Category
-          </h3>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5">
+          <Group title="Category">
+            {categories.length > 0 ? (
+              <div className="grid grid-cols-2 gap-2">
+                {categories.map((category) => {
+                  const selected = draft.categories.includes(category.slug);
+                  return (
+                    <Option key={category.id} selected={selected} onClick={() => toggleCategory(category.slug)}>
+                      <span className="truncate">{category.name}</span>
+                      {selected && <IconCheck size={14} />}
+                    </Option>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-xs text-muted">No categories available.</p>
+            )}
+          </Group>
 
-          {categories.length > 0 ? (
+          <Group title="Price">
             <div className="grid grid-cols-2 gap-2">
-              {categories.map((category) => {
-                const selected = filters.categories.includes(category.slug);
+              {PRICE_OPTIONS.map((option) => {
+                const selected = draft.minPrice === option.min && draft.maxPrice === option.max;
+                return (
+                  <Option
+                    key={option.label}
+                    selected={selected}
+                    onClick={() => setDraft((current) => selected ? { ...current, minPrice: 0, maxPrice: Infinity } : { ...current, minPrice: option.min, maxPrice: option.max })}
+                  >
+                    {option.label}
+                  </Option>
+                );
+              })}
+            </div>
+          </Group>
 
+          <Group title="Minimum rating" last>
+            <div className="flex gap-2">
+              {[4.5, 4, 3].map((rating) => {
+                const selected = draft.minRating === rating;
                 return (
                   <button
-                    key={category.id}
+                    key={rating}
                     type="button"
-                    onClick={() => toggleCategory(category.slug)}
-                    className={`flex min-h-10 items-center justify-between rounded-xl border px-3 text-left text-xs transition-all ${
-                      selected
-                        ? "border-primary/40 bg-primary/10 text-primary-hover"
-                        : "border-border bg-surface text-muted"
+                    onClick={() => setDraft((current) => ({ ...current, minRating: selected ? 0 : rating }))}
+                    className={`min-h-11 rounded-full border px-5 text-sm transition-all ${
+                      selected ? "border-primary/50 bg-primary/10 text-primary" : "border-border text-muted"
                     }`}
                   >
-                    <span>{category.name}</span>
-                    {selected && <IconCheck size={13} />}
+                    {rating}+
                   </button>
                 );
               })}
             </div>
-          ) : (
-            <p className="text-xs text-muted">No categories available.</p>
-          )}
+          </Group>
         </div>
 
-        <div className="border-b border-border/70 py-5">
-          <h3 className="mb-3 text-[10px] font-medium uppercase tracking-[0.16em] text-foreground">
-            Price
-          </h3>
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              { label: "Under ₹2,000", min: 0, max: 2000 },
-              { label: "₹2,000 – ₹4,000", min: 2000, max: 4000 },
-              { label: "₹4,000 – ₹7,000", min: 4000, max: 7000 },
-              { label: "₹7,000+", min: 7000, max: Infinity },
-            ].map((option) => {
-              const selected =
-                filters.minPrice === option.min && filters.maxPrice === option.max;
-
-              return (
-                <button
-                  key={option.label}
-                  type="button"
-                  onClick={() =>
-                    onChange({
-                      ...filters,
-                      minPrice: option.min,
-                      maxPrice: option.max,
-                    })
-                  }
-                  className={`min-h-10 rounded-xl border px-3 text-xs transition-all ${
-                    selected
-                      ? "border-primary/40 bg-primary/10 text-primary-hover"
-                      : "border-border bg-surface text-muted"
-                  }`}
-                >
-                  {option.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="py-5">
-          <h3 className="mb-3 text-[10px] font-medium uppercase tracking-[0.16em] text-foreground">
-            Minimum rating
-          </h3>
-          <div className="flex gap-2">
-            {[4.5, 4, 3].map((rating) => {
-              const selected = filters.minRating === rating;
-
-              return (
-                <button
-                  key={rating}
-                  type="button"
-                  onClick={() =>
-                    onChange({
-                      ...filters,
-                      minRating: selected ? 0 : rating,
-                    })
-                  }
-                  className={`rounded-full border px-4 py-2 text-xs transition-all ${
-                    selected
-                      ? "border-primary/40 bg-primary/10 text-primary-hover"
-                      : "border-border text-muted"
-                  }`}
-                >
-                  {rating}+
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="flex gap-2">
-          <Button type="button" variant="ghost" size="md" onClick={onClear} className="flex-1">
-            Clear
-          </Button>
-          <Button type="button" variant="primary" size="md" onClick={onClose} className="flex-1">
-            Show Results
-          </Button>
+        <div className="flex gap-2 border-t border-border px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3">
+          <Button type="button" variant="ghost" size="md" onClick={() => setDraft(EMPTY)} className="flex-1">Reset</Button>
+          <Button type="button" variant="primary" size="md" onClick={apply} className="flex-[2]">Show results</Button>
         </div>
       </div>
     </div>
+  );
+}
+
+function Group({ title, last, children }: { title: string; last?: boolean; children: React.ReactNode }) {
+  return (
+    <div className={`py-4 ${last ? "" : "border-b border-border/70"}`}>
+      <h3 className="mb-3 text-[11px] font-medium uppercase tracking-[0.16em] text-foreground">{title}</h3>
+      {children}
+    </div>
+  );
+}
+
+function Option({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={`flex min-h-11 items-center justify-between gap-2 rounded-xl border px-3 text-left text-sm transition-all ${
+        selected ? "border-primary/50 bg-primary/10 text-primary" : "border-border bg-surface text-muted"
+      }`}
+    >
+      {children}
+    </button>
   );
 }

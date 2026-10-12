@@ -50,6 +50,23 @@ export function Navbar() {
   const [searchProducts, setSearchProducts] = useState<HeroProduct[]>([]);
 
   useEffect(() => {
+    if (!isMobileMenuOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Element | null;
+      if (!target?.closest?.("[data-mobile-nav]")) setIsMobileMenuOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsMobileMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [isMobileMenuOpen]);
+
+  useEffect(() => {
     if (searchQuery.trim().length < 3) {
       setSearchProducts([]);
       return;
@@ -164,7 +181,7 @@ export function Navbar() {
           <div className="relative hidden min-[1529px]:block">
             <form
               onSubmit={handleSearchSubmit}
-              className="flex w-[190px] items-center rounded-full border border-border bg-surface/80 px-3"
+              className="flex w-[190px] items-center rounded-full border border-border bg-surface/80 px-3 outline-none transition-[border-color,box-shadow] duration-200 focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/20"
               role="search"
             >
               <IconSearch
@@ -179,7 +196,7 @@ export function Navbar() {
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="Search products"
                 aria-label="Search products"
-                className="h-8 w-full appearance-none bg-transparent px-2 text-xs text-foreground outline-none placeholder:text-muted focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
+                className="h-8 w-full min-w-0 appearance-none border-0 bg-transparent px-2 text-xs text-foreground !outline-none !ring-0 placeholder:text-muted focus:border-0 focus:!outline-none focus:!ring-0 focus-visible:border-0 focus-visible:!outline-none focus-visible:!ring-0"
               />
             </form>
 
@@ -260,7 +277,7 @@ export function Navbar() {
           <div className="relative">
             <form
               onSubmit={handleSearchSubmit}
-              className="flex items-center rounded-xl border border-border bg-surface px-4"
+              className="flex items-center rounded-xl border border-border bg-surface px-4 outline-none transition-[border-color,box-shadow] duration-200 focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/20"
               role="search"
             >
               <IconSearch
@@ -275,7 +292,7 @@ export function Navbar() {
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="Search products"
                 aria-label="Search products"
-                className="h-11 w-full appearance-none bg-transparent px-3 text-sm text-foreground outline-none placeholder:text-muted focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
+                className="h-11 w-full min-w-0 appearance-none border-0 bg-transparent px-3 text-sm text-foreground !outline-none !ring-0 placeholder:text-muted focus:border-0 focus:!outline-none focus:!ring-0 focus-visible:border-0 focus-visible:!outline-none focus-visible:!ring-0"
               />
             </form>
 
@@ -365,7 +382,7 @@ function NavIconLink({
     <Link
       href={href}
       aria-label={label}
-      className="pointer-events-auto relative z-50 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-muted transition-all duration-300 hover:bg-surface-elevated hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      className="pointer-events-auto relative z-50 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-muted transition-all duration-300 hover:bg-surface-elevated hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:h-9 lg:w-9"
     >
       {children}
     </Link>
@@ -420,7 +437,7 @@ function CartLink({
           ? `Shopping cart, ${itemCount} items`
           : "Shopping cart"
       }
-      className="pointer-events-auto relative z-50 flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted transition-all duration-300 hover:bg-surface-elevated hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      className="pointer-events-auto relative z-50 flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted transition-all duration-300 hover:bg-surface-elevated hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:h-9 lg:w-9"
     >
       <IconShoppingCart size={18} stroke={1.7} />
 

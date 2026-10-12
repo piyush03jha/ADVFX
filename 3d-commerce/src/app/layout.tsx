@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Fraunces } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
@@ -34,6 +34,16 @@ export const metadata: Metadata = {
     title: `${SITE_NAME} — ${SITE_TAGLINE}`,
     description: "Premium physical 3D models, custom 3D creations, and collectibles built with obsessive attention to detail.",
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#eceef3" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0b0f" },
+  ],
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

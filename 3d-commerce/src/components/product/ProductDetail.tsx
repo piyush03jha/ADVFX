@@ -35,9 +35,9 @@ export function ProductDetail({
       <Section
         className="
           relative
-          pt-20
-          sm:pt-8
-          lg:pt-14
+          pt-28
+          sm:pt-28
+          lg:pt-32
         "
         glow
       >

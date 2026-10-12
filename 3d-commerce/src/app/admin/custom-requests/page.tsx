@@ -124,9 +124,16 @@ export default function AdminCustomRequestsPage() {
                 </span>
               </div>
               <p className="mt-4 whitespace-pre-line text-sm leading-6 text-muted">{request.requirements}</p>
-              <p className="mt-2 text-xs text-muted">
-                Dimensions: {request.dimensions ?? "Not specified"} · References: {request.media?.length ?? 0}
-              </p>
+              <div className="mt-4 flex flex-wrap items-start gap-3">
+                <div className="min-w-[220px] rounded-xl border border-primary/25 bg-primary/[0.06] px-3.5 py-3">
+                  <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-primary">Requested dimensions</p>
+                  <p className="mt-1.5 text-sm font-semibold text-foreground">{request.dimensions ?? "Not specified"}</p>
+                </div>
+                <div className="rounded-xl border border-border bg-background/40 px-3.5 py-3">
+                  <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-muted">References</p>
+                  <p className="mt-1.5 text-sm font-semibold text-foreground">{request.media?.length ?? 0} file(s)</p>
+                </div>
+              </div>
               <select
                 value={request.status}
                 onChange={(event) => void updateStatus(request.id, event.target.value)}
