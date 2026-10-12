@@ -196,7 +196,7 @@ export function Navbar() {
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="Search products"
                 aria-label="Search products"
-                className="h-8 w-full appearance-none bg-transparent px-2 text-xs text-foreground outline-none placeholder:text-muted focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
+                className="h-8 w-full min-w-0 appearance-none border-0 bg-transparent px-2 text-xs text-foreground !outline-none !ring-0 placeholder:text-muted focus:border-0 focus:!outline-none focus:!ring-0 focus-visible:border-0 focus-visible:!outline-none focus-visible:!ring-0"
               />
             </form>
 
@@ -292,7 +292,7 @@ export function Navbar() {
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="Search products"
                 aria-label="Search products"
-                className="h-11 w-full appearance-none bg-transparent px-3 text-sm text-foreground outline-none placeholder:text-muted focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
+                className="h-11 w-full min-w-0 appearance-none border-0 bg-transparent px-3 text-sm text-foreground !outline-none !ring-0 placeholder:text-muted focus:border-0 focus:!outline-none focus:!ring-0 focus-visible:border-0 focus-visible:!outline-none focus-visible:!ring-0"
               />
             </form>
 
