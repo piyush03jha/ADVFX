@@ -21,9 +21,9 @@ export function CustomBuild() {
         <div className="group/custom relative isolate rounded-[1.5rem]">
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute -inset-1 rounded-[1.7rem] bg-primary/20 opacity-60 blur-xl transition-opacity duration-500 group-hover/custom:opacity-90 sm:-inset-2 sm:blur-2xl"
+            className="pointer-events-none absolute -inset-1.5 rounded-[1.8rem] bg-primary/30 opacity-75 blur-xl transition-opacity duration-500 group-hover/custom:opacity-100 sm:-inset-2.5 sm:blur-2xl"
           />
-          <div className="relative grid overflow-hidden rounded-[1.5rem] border border-primary/25 bg-surface shadow-[0_0_0_1px_rgba(139,92,246,0.05)] transition-colors duration-500 hover:border-primary/40 lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="relative grid overflow-hidden rounded-[1.5rem] border border-primary/35 bg-surface shadow-[0_0_0_1px_rgba(139,92,246,0.08)] transition-colors duration-500 hover:border-primary/50 lg:grid-cols-[1.05fr_0.95fr]">
             <motion.div
               initial={reduceMotion ? false : { opacity: 0, y: 18 }}
               whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
