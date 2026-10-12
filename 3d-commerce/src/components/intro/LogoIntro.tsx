@@ -221,6 +221,7 @@ export function LogoIntro() {
         <svg
           viewBox={"0 0 " + LOGO_W + " " + LOGO_H}
           className="pointer-events-none absolute inset-0 h-full w-full overflow-visible"
+          style={{ transform: "translateY(40%)" }}
         >
           <defs>
             <radialGradient id="voxel-head-glow">
