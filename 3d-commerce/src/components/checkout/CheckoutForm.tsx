@@ -279,22 +279,11 @@ export function CheckoutForm({
             <span className="mb-2 block text-[11px] font-medium uppercase tracking-[0.15em] text-muted">
               Coupon code
             </span>
-<<<<<<< HEAD
-            <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
-=======
             <div className="flex min-w-0 flex-row items-stretch gap-2">
->>>>>>> new/changes
               <input
                 value={couponCode}
                 onChange={(event) => setCouponCode(event.target.value)}
                 placeholder="Optional"
-<<<<<<< HEAD
-                className="h-11 w-full min-w-0 flex-1 rounded-xl border border-border bg-background px-4 text-sm text-foreground outline-none focus:border-primary/60"
-              />
-              <span className="flex min-h-9 max-w-full items-center self-start rounded-xl border border-border px-3 py-2 text-[10px] uppercase tracking-[0.1em] text-muted sm:h-11 sm:shrink-0 sm:self-auto sm:px-3 sm:text-[11px] sm:tracking-[0.12em]">
-                Server checked
-              </span>
-=======
                 className="h-11 w-0 min-w-0 flex-1 rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-primary/60 sm:px-4"
               />
               <button
@@ -305,7 +294,6 @@ export function CheckoutForm({
               >
                 Check
               </button>
->>>>>>> new/changes
             </div>
           </label>
         </div>
