@@ -40,7 +40,7 @@ export interface CheckoutDraft {
 const INITIAL_FORM: FormState = { email: "", phone: "" };
 const DRAFT_KEY = "voxel3d-checkout-draft";
 const sectionClass =
-  "relative overflow-hidden rounded-3xl border border-border bg-[linear-gradient(135deg,rgb(from var(--foreground) r g b / 0.06),rgb(from var(--background) r g b / 0.02)_55%,rgb(from var(--primary) r g b / 0.07))] p-4 shadow-[0_20px_60px_rgba(0,0,0,0.14)] sm:p-6";
+  "relative w-full min-w-0 overflow-hidden rounded-2xl border border-border bg-[linear-gradient(135deg,rgb(from var(--foreground) r g b / 0.06),rgb(from var(--background) r g b / 0.02)_55%,rgb(from var(--primary) r g b / 0.07))] p-3.5 shadow-[0_20px_60px_rgba(0,0,0,0.14)] sm:rounded-3xl sm:p-6";
 const innerClass =
   "rounded-xl border border-border bg-[linear-gradient(135deg,rgb(from var(--foreground) r g b / 0.04),rgb(from var(--background) r g b / 0.015)_65%,rgb(from var(--primary) r g b / 0.045))]";
 
@@ -163,14 +163,14 @@ export function CheckoutForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
+    <form onSubmit={handleSubmit} className="w-full min-w-0 space-y-4 sm:space-y-6">
       <section className={sectionClass}>
         <SectionHeading
           number="01"
           title="Contact information"
           description="We&apos;ll use this for order confirmation and delivery updates."
         />
-        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+        <div className="mt-4 grid min-w-0 grid-cols-1 gap-4 sm:mt-5 sm:grid-cols-2">
           <Field
             label="Email address"
             icon={<IconMail size={15} />}
@@ -278,14 +278,14 @@ export function CheckoutForm({
             <span className="mb-2 block text-[11px] font-medium uppercase tracking-[0.15em] text-muted">
               Coupon code
             </span>
-            <div className="flex gap-2">
+            <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
               <input
                 value={couponCode}
                 onChange={(event) => setCouponCode(event.target.value)}
                 placeholder="Optional"
-                className="h-11 min-w-0 flex-1 rounded-xl border border-border bg-background px-4 text-sm text-foreground outline-none focus:border-primary/60"
+                className="h-11 w-full min-w-0 flex-1 rounded-xl border border-border bg-background px-4 text-sm text-foreground outline-none focus:border-primary/60"
               />
-              <span className="flex h-11 shrink-0 items-center rounded-xl border border-border px-3 text-[11px] uppercase tracking-[0.12em] text-muted">
+              <span className="flex min-h-9 max-w-full items-center self-start rounded-xl border border-border px-3 py-2 text-[10px] uppercase tracking-[0.1em] text-muted sm:h-11 sm:shrink-0 sm:self-auto sm:px-3 sm:text-[11px] sm:tracking-[0.12em]">
                 Server checked
               </span>
             </div>
@@ -366,7 +366,7 @@ function SectionHeading({
   description: string;
 }) {
   return (
-    <div className="flex gap-3.5">
+    <div className="flex min-w-0 items-start gap-3 sm:gap-3.5">
       <span className="pt-0.5 font-mono text-[11px] tracking-[0.15em] text-primary">
         {number}
       </span>
@@ -374,7 +374,7 @@ function SectionHeading({
         <h2 className="text-base font-medium tracking-[-0.02em] text-foreground sm:text-xl">
           {title}
         </h2>
-        <p className="mt-1.5 max-w-xl text-xs leading-5 text-muted">
+        <p className="mt-1.5 max-w-full break-words text-[11px] leading-[1.45rem] text-muted sm:max-w-xl sm:text-xs sm:leading-5">
           {description}
         </p>
       </div>
