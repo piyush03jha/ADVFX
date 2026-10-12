@@ -78,6 +78,104 @@ export class AssetController {
     }
   }
 
+  @Get(["custom-build-categories/*", "assets/custom-build-categories/*", "api/assets/custom-build-categories/*"])
+  async getCustomBuildCategoryAsset(
+    @Param() params: Record<string, string | undefined>,
+  ): Promise<StreamableFile> {
+    return this.getCustomBuildAsset(params, "category");
+  }
+
+  @Get(["custom-build-options/*", "assets/custom-build-options/*", "api/assets/custom-build-options/*"])
+  async getCustomBuildOptionAsset(
+    @Param() params: Record<string, string | undefined>,
+  ): Promise<StreamableFile> {
+    return this.getCustomBuildAsset(params, "option");
+  }
+
+  private async getCustomBuildAsset(
+    params: Record<string, string | undefined>,
+    kind: "category" | "option",
+  ): Promise<StreamableFile> {
+    const wildcard = params["splat"] ?? params["*"] ?? params["0"] ?? "";
+    const normalized = decodeURIComponent(wildcard).replace(/^\/+/, "");
+
+    if (!normalized || normalized.includes("\0")) {
+      throw new NotFoundException("Asset not found");
+    }
+
+    const segments = normalized.split("/");
+    if (
+      segments.length < 2 ||
+      segments.some(
+        (segment) =>
+          !segment ||
+          segment === "." ||
+          segment === ".." ||
+          segment.includes("\\"),
+      )
+    ) {
+      throw new NotFoundException("Asset not found");
+    }
+
+    const [ownerId, ...rest] = segments;
+    const storageKey = [
+      kind === "category" ? "custom-build-categories" : "custom-build-options",
+      ownerId,
+      ...rest,
+    ].join("/");
+
+    const imageUrl =
+      kind === "category"
+        ? (
+            await this.prisma.customBuildCategory.findFirst({
+              where: { id: ownerId, isActive: true },
+              select: { imageUrl: true },
+            })
+          )?.imageUrl
+        : (
+            await this.prisma.customBuildOption.findFirst({
+              where: { id: ownerId, isActive: true },
+              select: { imageUrl: true },
+            })
+          )?.imageUrl;
+
+    if (this.storageKeyFromAssetUrl(imageUrl) !== storageKey) {
+      throw new NotFoundException("Asset not found");
+    }
+
+    try {
+      const stream = await this.storage.createReadStream(storageKey);
+      return new StreamableFile(stream, {
+        type: this.storage.getContentTypeForStorageKey(storageKey),
+      });
+    } catch {
+      throw new NotFoundException("Asset not found");
+    }
+  }
+
+  private storageKeyFromAssetUrl(value?: string | null): string | null {
+    const raw = value?.trim();
+    if (!raw) return null;
+
+    try {
+      const parsed = new URL(raw, "https://voxel3d.org");
+      const pathname = decodeURIComponent(parsed.pathname).replace(/^\/+/, "");
+      for (const prefix of ["api/assets/", "assets/", "storage/", ""]) {
+        if (!pathname.startsWith(prefix)) continue;
+        const key = pathname.slice(prefix.length);
+        if (
+          key.startsWith("custom-build-categories/") ||
+          key.startsWith("custom-build-options/")
+        ) {
+          return key;
+        }
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
   @Get(["products/*", "assets/products/*", "api/assets/products/*"])
   async getProductAsset(
     @Param() params: Record<string, string | undefined>,

@@ -28,7 +28,7 @@ export async function GET(
   if (
     !Array.isArray(path) ||
     path.length < 3 ||
-    !["products", "categories"].includes(path[0]) ||
+    !["products", "categories", "custom-build-categories", "custom-build-options"].includes(path[0]) ||
     path.some((segment) => !segment || segment === "." || segment === "..")
   ) {
     return NextResponse.json({ error: "Asset not found." }, { status: 404 });

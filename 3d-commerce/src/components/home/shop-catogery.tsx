@@ -117,7 +117,11 @@ function CategoryCard({
 
   return (
     <Link
+<<<<<<< HEAD
       href={isAllModels ? "/shop" : `/shop?category=${encodeURIComponent(category.slug)}`}
+=======
+      href={`/shop/${category.slug}`}
+>>>>>>> 2e333e6420699702b901cba35b9acc18fbe919d0
       className="group block"
     >
       <Card

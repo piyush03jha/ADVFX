@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { PolicyPage } from "@/components/content/PolicyPage";
 
-export const metadata: Metadata = { title: "Terms of Service — Voxel3D", description: "Voxel3D terms of service for physical products and custom orders." };
+export const metadata: Metadata = {
+  title: "Terms of Service",
+  description: "Voxel3D terms of service for physical products and custom orders.",
+  alternates: { canonical: "/terms" },
+};
 
 export default function TermsPage() {
   return <PolicyPage contentKey="terms" eyebrow="Legal" title="Terms of Service" intro="These terms govern purchases of Voxel3D physical products and requests for custom-made physical products." sections={[

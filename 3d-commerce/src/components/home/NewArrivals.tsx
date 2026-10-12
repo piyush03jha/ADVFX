@@ -47,7 +47,7 @@ export function NewArrivals() {
             <h2 className="text-2xl font-semibold tracking-[-0.045em] text-foreground sm:text-4xl lg:text-5xl">New Arrivals</h2>
           </div>
 
-          <Button href="/shop?sort=newest" variant="ghost" size="sm" className="group hidden sm:inline-flex">
+          <Button href="/shop" variant="ghost" size="sm" className="group hidden sm:inline-flex">
             Explore All Models
             <IconArrowUpRight size={16} stroke={1.8} className="transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
           </Button>
@@ -62,7 +62,7 @@ export function NewArrivals() {
         </div>
 
         <div className="mt-6 flex justify-center sm:hidden">
-          <Button href="/shop?sort=newest" variant="outline" size="sm" className="group">
+          <Button href="/shop" variant="outline" size="sm" className="group">
             Explore All Models
             <IconArrowUpRight size={15} stroke={1.8} className="transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
           </Button>
