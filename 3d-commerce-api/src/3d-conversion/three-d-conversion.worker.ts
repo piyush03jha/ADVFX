@@ -573,6 +573,9 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
         [
           "--background",
           "--factory-startup",
+          // Limit Blender's internal worker threads on memory-constrained hosts.
+          "--threads",
+          "1",
           "--python-exit-code",
           "1",
           "--python",
