@@ -573,7 +573,7 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
       "--factory-startup",
       ...(ext.toLowerCase() === ".3mf" ? ["--threads", "1"] : []),
       "--python-exit-code",
-          "1",
+      "1",
       "--python",
       script,
       "--",
