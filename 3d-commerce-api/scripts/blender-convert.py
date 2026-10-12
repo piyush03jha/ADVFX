@@ -41,9 +41,29 @@ if ext == ".pdf":
 try:
     if ext == ".3mf":
         try:
-            from io_mesh_3mf.api import import_3mf
+            from io_mesh_3mf.api import import_3mf, inspect_3mf
         except ImportError as exc:
             raise RuntimeError("3MF support is not installed in the conversion worker") from exc
+
+        # A small .3mf ZIP can expand into millions of triangles. Inspect its
+        # XML before allocating Blender mesh objects so Railway logs tell us
+        # whether the SIGKILL is caused by source complexity or import overhead.
+        print("3MF preflight inspection started", flush=True)
+        info = inspect_3mf(input_path)
+        if info.status != "OK":
+            raise RuntimeError(
+                "3MF preflight inspection failed: "
+                + str(getattr(info, "error_message", "unknown inspection error"))
+            )
+        print(
+            "3MF preflight: "
+            + str(info.num_objects)
+            + " object(s), "
+            + str(info.num_triangles_total)
+            + " triangle(s), unit="
+            + str(info.unit),
+            flush=True,
+        )
         # On the 1 GB worker, 3MF material/texture extraction can cause a large
         # transient memory spike. Physical print meshes are the priority for GLB
         # conversion; skip slicer materials/textures to keep import lightweight.
