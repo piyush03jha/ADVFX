@@ -129,6 +129,7 @@ export default function Product3DStage({
           zoomSpeed={0.8}
           touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }}
           mouseButtons={{ LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE }}
+          reverseOrbit={false}
         />
       </Canvas>
 
