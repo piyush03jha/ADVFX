@@ -11,6 +11,13 @@ const nextConfig: NextConfig = {
       { pathname: "/catogeries/**" },
       { pathname: "/api/assets/**" },
     ],
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "api.voxel3d.org",
+        pathname: "/products/**",
+      },
+    ],
     formats: ["image/avif", "image/webp"],
     deviceSizes: [360, 480, 640, 768, 1024, 1280, 1536],
     imageSizes: [96, 160, 256, 384],
