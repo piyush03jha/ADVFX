@@ -6,6 +6,11 @@ import tempfile
 
 import bpy
 
+# The conversion worker image installs the maintained Blender 3MF add-on here.
+THREEMF_ADDON_PATH = "/opt/3mf-addon"
+if os.path.isdir(THREEMF_ADDON_PATH) and THREEMF_ADDON_PATH not in sys.path:
+    sys.path.insert(0, THREEMF_ADDON_PATH)
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--input", required=True)
 parser.add_argument("--output", required=True)
@@ -34,7 +39,15 @@ if ext == ".pdf":
     ext = ".svg"
 
 try:
-    if ext == ".fbx":
+    if ext == ".3mf":
+        try:
+            from io_mesh_3mf.api import import_3mf
+        except ImportError as exc:
+            raise RuntimeError("3MF support is not installed in the conversion worker") from exc
+        result = import_3mf(input_path, import_materials="MATERIALS")
+        if result.status != "FINISHED":
+            raise RuntimeError("3MF import failed: " + str(getattr(result, "message", result.status)))
+    elif ext == ".fbx":
         bpy.ops.import_scene.fbx(filepath=input_path)
     elif ext == ".obj":
         bpy.ops.wm.obj_import(filepath=input_path)
