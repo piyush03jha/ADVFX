@@ -151,14 +151,16 @@ export default function CheckoutPage() {
                   selectedItems={selectedItems}
                   checkoutDisplayItems={checkoutItems}
                 />
-                <CheckoutSummary
+                <div className="hidden min-w-0 lg:block">
+                  <CheckoutSummary
                   country={country}
                   quote={quote}
                   quoteError={quoteError}
                   customerName={user?.name}
                   customerEmail={user?.email}
                   checkoutItems={checkoutItems}
-                />
+                  />
+                </div>
               </div>
             )}
           </Container>
