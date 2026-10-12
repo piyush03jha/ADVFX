@@ -120,13 +120,13 @@ export default function CheckoutPage() {
     <>
       <Navbar />
       <main className="min-h-screen overflow-hidden">
-        <section className="relative pb-20 pt-28 sm:pb-24 sm:pt-32 lg:pb-28 lg:pt-36">
+        <section className="relative min-w-0 overflow-x-clip pb-12 pt-24 sm:pb-24 sm:pt-32 lg:pb-28 lg:pt-36">
           <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-10 -z-10 h-[460px] w-[460px] -translate-x-1/2 rounded-full bg-primary/[0.07] blur-[140px]" />
-          <Container>
-            <div className="mb-8 flex items-end justify-between gap-6 sm:mb-10">
+          <Container className="min-w-0 max-w-full">
+            <div className="mb-6 flex min-w-0 items-start justify-between gap-3 sm:mb-10 sm:items-end sm:gap-6">
               <div>
-                <h1 className="font-serif text-4xl tracking-[-0.05em] text-foreground sm:text-5xl lg:text-6xl">Complete your order</h1>
-                <p className="mt-3 max-w-xl text-sm leading-6 text-muted">Enter your delivery details and review your order before payment.</p>
+                <h1 className="max-w-full break-words font-serif text-[2.15rem] leading-[1.08] tracking-[-0.05em] text-foreground sm:text-5xl lg:text-6xl">Complete your order</h1>
+                <p className="mt-3 max-w-xl text-[13px] leading-5 text-muted sm:text-sm sm:leading-6">Enter your delivery details and review your order before payment.</p>
               </div>
               <div className="hidden items-center gap-2 text-[11px] uppercase tracking-[0.12em] text-muted sm:flex">
                 <IconLock size={14} className="text-primary" />
@@ -144,7 +144,7 @@ export default function CheckoutPage() {
             ) : checkoutItems.length === 0 ? (
               <EmptyCheckout />
             ) : (
-              <div className="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:gap-12">
+              <div className="grid w-full min-w-0 grid-cols-1 gap-5 sm:gap-8 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:gap-12">
                 <CheckoutForm
                   onCountryChange={setCountry}
                   onQuoteChange={handleQuoteChange}
