@@ -42,6 +42,29 @@ try:
         bpy.ops.wm.ply_import(filepath=input_path)
     elif ext == ".stl":
         bpy.ops.wm.stl_import(filepath=input_path)
+    elif ext == ".3mf":
+        # Blender 4.5's built-in operators do not provide a stable native 3MF
+        # importer across builds. Use the bundled 3MF importer extension when
+        # enabled; fail clearly rather than emitting an empty GLB.
+        imported = False
+        for operator in (
+            getattr(getattr(bpy.ops, "wm", None), "import_3mf", None),
+            getattr(getattr(bpy.ops, "import_mesh", None), "three_mf", None),
+            getattr(getattr(bpy.ops, "import_mesh", None), "threemf", None),
+        ):
+            if operator is None:
+                continue
+            try:
+                operator(filepath=input_path)
+                imported = True
+                break
+            except (RuntimeError, AttributeError):
+                continue
+        if not imported:
+            raise RuntimeError(
+                "3MF import is unavailable in this Blender runtime. "
+                "Install and enable a compatible 3MF importer extension in the worker image."
+            )
     elif ext in {".gltf", ".glb"}:
         bpy.ops.import_scene.gltf(filepath=input_path)
     elif ext in {".usd", ".usda", ".usdc", ".usdz"}:
