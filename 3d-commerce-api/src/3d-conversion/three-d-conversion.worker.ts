@@ -500,7 +500,7 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
     // files such as .mtl, .bin and textures are deliberately not candidates.
     const primaryExtensions = new Set([
       ".abc", ".usd", ".usda", ".usdc", ".usdz",
-      ".svg", ".pdf", ".obj", ".ply", ".stl", ".3mf", ".bvh",
+      ".svg", ".pdf", ".obj", ".ply", ".stl", ".bvh",
       ".fbx", ".glb", ".gltf",
     ]);
 
@@ -512,7 +512,7 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
     if (primaryEntries.length === 0) {
       throw new Error(
         "ZIP archive does not contain a supported primary 3D/model file. " +
-        "Expected one of OBJ, glTF, GLB, FBX, USD, Alembic, PLY, STL, 3MF, BVH, SVG or PDF.",
+        "Expected one of OBJ, glTF, GLB, FBX, USD, Alembic, PLY, STL, BVH, SVG or PDF.",
       );
     }
 
@@ -566,12 +566,9 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
   private async runBlender(sourcePath: string, outputPath: string, ext: string) {
     const blender = process.env.BLENDER_BIN || "blender";
     const script = join(process.cwd(), "scripts", "blender-convert.py");
-    // Keep the low-memory workaround scoped to 3MF; preserve Blender's default
-    // threading behavior for all other supported formats.
     const blenderArgs = [
       "--background",
       "--factory-startup",
-      ...(ext.toLowerCase() === ".3mf" ? ["--threads", "1"] : []),
       "--python-exit-code",
       "1",
       "--python",
