@@ -51,7 +51,7 @@ function Reviewer({ review }: { review: Review }) {
       <div className="min-w-0">
         <p className="truncate text-xs font-medium text-foreground">{name}</p>
         <p className="mt-1 truncate text-[9px] uppercase tracking-[0.1em] text-muted">
-          {review.verifiedPurchase ? "Verified purchase" : "Customer review"}
+          {review.id.startsWith("demo-") ? "Sample review · not verified" : review.verifiedPurchase ? "Verified purchase" : "Customer review"}
         </p>
       </div>
     </div>
@@ -110,8 +110,51 @@ function ReviewCard({ review, index }: { review: Review; index: number }) {
   );
 }
 
+const SAMPLE_REVIEWS: Review[] = [
+  {
+    id: "demo-1",
+    rating: 5,
+    title: "Better than expected",
+    comment: "The detailing is excellent and the finish looks great on my desk. It feels like a carefully made collectible.",
+    verifiedPurchase: false,
+    createdAt: "2026-01-12T00:00:00.000Z",
+    user: { name: "Aarav M." },
+    product: { id: "demo-product-1", name: "Collector Edition Model", slug: "collector-edition-model" },
+  },
+  {
+    id: "demo-2",
+    rating: 5,
+    title: "A standout display piece",
+    comment: "The sculpt and proportions make this a real standout. It was easy to style with the rest of my collection.",
+    verifiedPurchase: false,
+    createdAt: "2026-01-18T00:00:00.000Z",
+    user: { name: "Riya S." },
+    product: { id: "demo-product-2", name: "Display Collectible", slug: "display-collectible" },
+  },
+  {
+    id: "demo-3",
+    rating: 4,
+    title: "Lovely level of detail",
+    comment: "I really like the fine details and overall look. It makes a thoughtful gift for anyone who enjoys collectibles.",
+    verifiedPurchase: false,
+    createdAt: "2026-02-02T00:00:00.000Z",
+    user: { name: "Kabir R." },
+    product: { id: "demo-product-3", name: "Articulated Figure", slug: "articulated-figure" },
+  },
+  {
+    id: "demo-4",
+    rating: 5,
+    title: "Looks great on display",
+    comment: "The model has a premium look and catches your eye straight away. I would explore more designs in this style.",
+    verifiedPurchase: false,
+    createdAt: "2026-02-11T00:00:00.000Z",
+    user: { name: "Meera K." },
+    product: { id: "demo-product-4", name: "Signature Model", slug: "signature-model" },
+  },
+];
+
 export function Reviews() {
-  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);\n  const displayedReviews = reviews.length > 0 ? reviews : SAMPLE_REVIEWS;
 
   useEffect(() => {
     void fetch("/api/products/reviews/latest", { cache: "no-store" })
