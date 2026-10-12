@@ -180,22 +180,22 @@ export function Reviews() {
             </h2>
           </div>
 
-          {reviews.length > 0 && (
-            <p className="text-xs text-muted">Verified product reviews</p>
-          )}
+          <p className="text-xs text-muted">
+            {reviews.length > 0 ? "Customer product reviews" : "Demo content · replace with real customer reviews"}
+          </p>
         </div>
 
-        {reviews.length > 0 ? (
+        {displayedReviews.length > 0 ? (
           <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {reviews.map((review, index) => (
+            {displayedReviews.map((review, index) => (
               <ReviewCard key={review.id} review={review} index={index} />
             ))}
           </div>
         ) : (
           <div className="mt-8 rounded-2xl border border-border bg-surface/60 p-8">
-            <p className="text-sm font-medium text-foreground">No customer reviews yet</p>
+            <p className="text-sm font-medium text-foreground">Reviews are temporarily unavailable</p>
             <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
-              Verified reviews from completed purchases will appear here.
+              Please check back later.
             </p>
           </div>
         )}
