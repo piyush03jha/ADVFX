@@ -21,7 +21,7 @@ function ProductModel({ model }: { model: string }) {
   const { scene } = useGLTF(blobUrl, true, true);
 
   return (
-    <Center precise disableZ>
+    <Center precise>
       <primitive object={scene} dispose={null} />
     </Center>
   );
