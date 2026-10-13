@@ -68,8 +68,12 @@ function LoadedHeroModel({
     const size = box.getSize(new THREE.Vector3());
     const maxDimension = Math.max(size.x, size.y, size.z) || 1;
 
+    // Keep the model's bounds centered, then scale the parent pivot. Scaling
+    // the translated model itself moves its center by (scale - 1) * center.
     model.position.sub(center);
-    model.scale.setScalar(MODEL_SIZE / maxDimension);
+    const pivot = new THREE.Group();
+    pivot.add(model);
+    pivot.scale.setScalar(MODEL_SIZE / maxDimension);
 
     const materials: THREE.Material[] = [];
 
@@ -96,7 +100,7 @@ function LoadedHeroModel({
       materials.push(cloned);
     });
 
-    return { model, materials };
+    return { model: pivot, materials };
   }, [scene]);
 
   useEffect(() => {
