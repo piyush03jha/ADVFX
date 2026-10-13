@@ -138,6 +138,11 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
       await this.inspectGlb(convertedPath);
       animationCount = await this.hasAnimations(convertedPath) ? 1 : 0;
 
+      // Normalize off-origin imports (including slicer build-plate offsets) before
+      // publishing/optimizing. Translation only: keep geometry and orientation.
+      // Animated GLBs are skipped to avoid changing animation/root transform semantics.
+      if (animationCount === 0) await this.centerGlb(convertedPath);
+
       const convertedSize = (await fs.stat(convertedPath)).size;
       const directGlbSource = job.inputExt === ".glb" && !reusableConverted;
       const convertedKey = directGlbSource
@@ -312,6 +317,23 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
 
   private async inspectGlb(path: string) {
     await this.runCli(["inspect", path], Math.min(this.optimizeTimeoutMs, 2 * 60 * 1000));
+  }
+
+  private async centerGlb(path: string) {
+    const centeredPath = path + ".centered.glb";
+    try {
+      await this.runCli(
+        ["center", path, centeredPath, "--pivot", "center"],
+        Math.min(this.optimizeTimeoutMs, 3 * 60 * 1000),
+      );
+      await this.validateGlb(centeredPath);
+      await fs.rename(centeredPath, path);
+    } catch (error) {
+      await fs.rm(centeredPath, { force: true }).catch(() => undefined);
+      this.logger.warn(
+        `Could not center GLB pivot; retaining original placement: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
 
   private async hasAnimations(path: string): Promise<boolean> {
