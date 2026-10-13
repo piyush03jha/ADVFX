@@ -25,10 +25,15 @@ export interface IntroState {
   k: number; // distance multiplier, 1 = final framing
   tx: number; // point the camera looks at (logo units); (0, 0) at the end
   ty: number;
+  trackX: number;
+  fov: number;
+  roll: number;
+  streak: number;
   // icon flight
   iconX: number; // x offset in logo units (negative = off to the left)
   iconZ: number;
   iconRot: number; // rotation about its own vertical axis (radians)
+  iconTilt: number;
   iconFlash: number; // 0..1 white flash
   // the pour
   head: number; // position of the liquid front along the path (units)
@@ -288,6 +293,41 @@ function buildTubeGeometry(path: PathData, ring: number): THREE.BufferGeometry {
   return g;
 }
 
+
+/** Deterministic, low-cost speed streaks for the cinematic chase shot. */
+function buildStreaks(count: number): THREE.Mesh {
+  let seed = 1337;
+  const rnd = () => {
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const pos = new Float32Array(count * 12);
+  const col = new Float32Array(count * 12);
+  const index: number[] = [];
+  for (let i = 0; i < count; i += 1) {
+    const x = -2400 + rnd() * 6800, y = (rnd() - 0.5) * 1500;
+    const z = -900 + rnd() * 1500, len = 180 + rnd() * 520;
+    const w = 1.5 + rnd() * 3.5, b = 0.25 + rnd() * 0.75, v = i * 4;
+    pos.set([x,y-w/2,z, x,y+w/2,z, x+len,y+w/2,z, x+len,y-w/2,z], v*3);
+    col.set([0,0,0, 0,0,0, 0.72*b,0.64*b,b, 0.72*b,0.64*b,b], v*3);
+    index.push(v,v+1,v+2,v,v+2,v+3);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  geometry.setAttribute("color", new THREE.BufferAttribute(col, 3));
+  geometry.setIndex(index);
+  const material = new THREE.MeshBasicMaterial({
+    vertexColors: true, transparent: true, opacity: 0,
+    blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false,
+    side: THREE.DoubleSide,
+  });
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.frustumCulled = false;
+  return mesh;
+}
+
 export interface IntroScene {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
@@ -306,6 +346,9 @@ export function createIntroScene(
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(FOV, 16 / 9, 50, 20000);
   const disposables: { dispose: () => void }[] = [];
+  const streaks = buildStreaks(170);
+  disposables.push(streaks.geometry, streaks.material as THREE.Material);
+  scene.add(streaks);
 
   for (const tex of Object.values(textures)) {
     tex.colorSpace = THREE.NoColorSpace;
@@ -462,14 +505,19 @@ export function createIntroScene(
 
   // ---- state & per-frame application ----------------------------------
   const state: IntroState = {
-    az: 0.75,
-    el: 0.12,
-    k: 0.62,
+    az: 0.8,
+    el: 0.1,
+    k: 0.32,
     tx: path.points[0].x,
     ty: path.points[0].y,
-    iconX: -2600,
-    iconZ: -500,
-    iconRot: 1.2,
+    trackX: 2800,
+    fov: 48,
+    roll: -0.05,
+    streak: 1,
+    iconX: 2800,
+    iconZ: 0,
+    iconRot: 0.45,
+    iconTilt: -0.2,
     iconFlash: 0,
     head: 0,
     settle: 0,
@@ -500,15 +548,25 @@ export function createIntroScene(
   const tmp = new THREE.Vector3();
 
   const apply = (time: number) => {
-    // camera orbit
-    const dist = baseDist * state.k;
+    if (Math.abs(camera.fov - state.fov) > 1e-4) {
+      camera.fov = state.fov;
+      camera.updateProjectionMatrix();
+    }
+    const lens = Math.tan((state.fov * Math.PI) / 360) / Math.tan((FOV * Math.PI) / 360);
+    const dist = baseDist * state.k * lens;
     const ce = Math.cos(state.el);
+    const tx = state.tx + state.trackX;
+    const shakeX = Math.sin(time * 21) * 4 * state.streak;
+    const shakeY = Math.sin(time * 17 + 1.3) * 3 * state.streak;
     camera.position.set(
-      state.tx + dist * Math.sin(state.az) * ce,
-      state.ty + dist * Math.sin(state.el),
+      tx + dist * Math.sin(state.az) * ce + shakeX,
+      state.ty + dist * Math.sin(state.el) + shakeY,
       dist * Math.cos(state.az) * ce,
     );
-    camera.lookAt(state.tx, state.ty, 0);
+    camera.lookAt(tx, state.ty, 0);
+    camera.rotateZ(state.roll);
+    streaks.visible = state.streak > 0.01;
+    (streaks.material as THREE.MeshBasicMaterial).opacity = state.streak;
 
     // icon
     iconPivot.position.set(
@@ -518,6 +576,7 @@ export function createIntroScene(
     );
     icon.mesh.position.set(0, 0, 0);
     iconPivot.rotation.y = state.iconRot;
+    iconPivot.rotation.z = state.iconTilt;
     icon.mat.uniforms.uFlash.value = state.iconFlash;
 
     // letters
