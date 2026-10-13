@@ -13,10 +13,11 @@ worker. This script never builds an XML tree and never loads Blender:
     duplicate parts cost no extra memory
   * the binary chunk is streamed to disk, then copied into the GLB
 
-Supports: core 3MF meshes, <components> with transforms, build items,
-production-extension p:path references (Bambu / Orca / Prusa slicer files),
-units, Z-up -> Y-up. Materials/textures are intentionally ignored (the existing
-worker also imports with materials disabled).
+Supports: core 3MF meshes, base-material and color-group assignments,
+Bambu/Orca/Prusa filament-color fallback and per-object extruder metadata,
+<components> with transforms, production-extension p:path references, units,
+and Z-up -> Y-up. Texture maps and slicer-specific painted-facet extensions are
+not currently translated.
 
 Exit codes: 0 ok, 2 invalid/too large (do not retry elsewhere),
             3 nothing convertible / unsupported (caller may fall back).
@@ -146,7 +147,7 @@ def read_slicer_colors(zf):
             for obj in ET.fromstring(text).iter():
                 if local(obj.tag) != "object" or not obj.get("id"):
                     continue
-                for md in obj:
+                for md in obj.iter():
                     if local(md.tag) == "metadata" and md.get("key") == "extruder":
                         try:
                             extruders[int(obj.get("id"))] = int(md.get("value", "0"))
