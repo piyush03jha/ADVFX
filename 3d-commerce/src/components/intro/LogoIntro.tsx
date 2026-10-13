@@ -56,6 +56,8 @@ export function LogoIntro() {
         loader.load(url, resolve, undefined, reject);
       });
 
+    // Start loading the intro textures immediately; the visible overlay stays hidden
+    // until the first frame can be rendered, avoiding a blank opening frame.
     Promise.all([
       loadTexture(TEXTURE_PATHS.icon),
       loadTexture(TEXTURE_PATHS.word),
