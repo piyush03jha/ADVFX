@@ -3,17 +3,17 @@ import type { IntroScene } from "./introScene";
 
 /** Choreography in seconds; aligned to the approved chase / pour / reveal design. */
 export const TIMING = {
-  iconIn: { at: 0, dur: 1.45 },
-  trackLag: { at: 0.05, dur: 1.45 },
-  camera: { at: 0, dur: 3.35 },
-  lens: { at: 0.2, dur: 3.0 },
-  streak: { at: 0.5, dur: 1.4 },
-  seamPulse: { at: 1.1, dur: 0.75 },
-  pour: { at: 1.15, dur: 1.7 },
-  word: { at: 2.45, dur: 0.95 },
-  three: { at: 2.8, dur: 0.55 },
-  hold: 0.8,
-  fadeOut: 0.45,
+  iconIn: { at: 0, dur: 1.15 },
+  trackLag: { at: 0.05, dur: 1.15 },
+  camera: { at: 0, dur: 2.65 },
+  lens: { at: 0.2, dur: 2.4 },
+  streak: { at: 0.35, dur: 1.1 },
+  seamPulse: { at: 1.1, dur: 0.6 },
+  pour: { at: 1.15, dur: 1.35 },
+  word: { at: 2.2, dur: 0.7 },
+  three: { at: 2.5, dur: 0.45 },
+  hold: 0.55,
+  fadeOut: 0.35,
 } as const;
 
 export const INTRO_DURATION =
