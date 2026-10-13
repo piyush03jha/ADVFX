@@ -20,7 +20,7 @@ export function markIntroDone() {
  *
  * Safe fallbacks: if no intro is on screen (e.g. /admin, or a client-side
  * navigation after the intro already played) it returns true immediately,
- * and a 4s timer guarantees nothing waits forever.
+ * and a 7s timer guarantees nothing waits forever.
  */
 export function useIntroDone() {
   const [done, setDone] = useState(false);
@@ -36,7 +36,7 @@ export function useIntroDone() {
 
     const finish = () => setDone(true);
     window.addEventListener(EVENT, finish, { once: true });
-    const safety = window.setTimeout(finish, 4000);
+    const safety = window.setTimeout(finish, 7000);
 
     return () => {
       window.removeEventListener(EVENT, finish);
