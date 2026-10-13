@@ -3,19 +3,6 @@ import type { IntroScene } from "./introScene";
 
 /** Choreography in seconds; aligned to the approved chase / pour / reveal design. */
 export const TIMING = {
-<<<<<<< HEAD
-  iconIn: { at: 0, dur: 1.45 },
-  trackLag: { at: 0.05, dur: 1.45 },
-  camera: { at: 0, dur: 3.35 },
-  lens: { at: 0.2, dur: 3.0 },
-  streak: { at: 0.5, dur: 1.4 },
-  seamPulse: { at: 1.4, dur: 0.75 },
-  pour: { at: 1.45, dur: 1.7 },
-  word: { at: 2.65, dur: 0.95 },
-  three: { at: 3.0, dur: 0.55 },
-  hold: 0.8,
-  fadeOut: 0.45,
-=======
   iconIn: { at: 0, dur: 1.15 },
   trackLag: { at: 0.05, dur: 1.15 },
   camera: { at: 0, dur: 2.65 },
@@ -27,7 +14,6 @@ export const TIMING = {
   three: { at: 2.5, dur: 0.45 },
   hold: 0.55,
   fadeOut: 0.35,
->>>>>>> e916e941f64f01eba8c41905945b8a74bc177bd0
 } as const;
 
 export const INTRO_DURATION =
