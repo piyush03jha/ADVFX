@@ -47,6 +47,7 @@ SKIP_OBJECT_TYPES = {"support", "solidsupport", "surface"}
 MAX_XML_BYTES = int(os.environ.get("VOXEL3D_3MF_MAX_XML_MB", "512")) * 1024 * 1024
 MAX_TRIANGLES = int(os.environ.get("VOXEL3D_3MF_MAX_TRIANGLES", "2000000"))
 MAX_DEPTH = 32
+MAX_NODES = int(os.environ.get("VOXEL3D_3MF_MAX_NODES", "10000"))
 
 
 class Invalid(Exception):
@@ -201,17 +202,34 @@ def find_root_part(zf):
     names = {n.lower(): n for n in zf.namelist()}
     rels = names.get("_rels/.rels")
     if rels:
-        try:
-            import xml.etree.ElementTree as ET
+        info = zf.getinfo(rels)
+        if info.file_size > (1 << 20):
+            raise Invalid("3MF relationships file exceeds the 1 MB limit")
+        target_part = None
 
-            if zf.getinfo(rels).file_size < 1 << 20:
-                for el in ET.fromstring(zf.read(rels)):
-                    if el.attrib.get("Type", "").lower().endswith("/3dmodel"):
-                        target = el.attrib.get("Target", "").lstrip("/")
-                        if target.lower() in names:
-                            return names[target.lower()]
-        except Exception:
-            pass
+        def relationship_start(name, attrs):
+            nonlocal target_part
+            if attrs.get("Type", "").lower().endswith("/3dmodel"):
+                target_part = attrs.get("Target")
+
+        parser = expat.ParserCreate()
+        parser.StartElementHandler = relationship_start
+        parser.StartDoctypeDeclHandler = _no_dtd
+        parser.EntityDeclHandler = _no_dtd
+        try:
+            with zf.open(rels) as fh:
+                rel_data = fh.read((1 << 20) + 1)
+            if len(rel_data) > (1 << 20):
+                raise Invalid("3MF relationships file exceeds the 1 MB limit")
+            parser.Parse(rel_data, True)
+        except Invalid:
+            raise
+        except expat.ExpatError as exc:
+            raise Invalid("malformed 3MF relationships XML: " + str(exc))
+        if target_part:
+            normalized = target_part.lstrip("/")
+            if normalized.lower() in names:
+                return names[normalized.lower()]
     if "3d/3dmodel.model" in names:
         return names["3d/3dmodel.model"]
     for low, real in names.items():
@@ -286,6 +304,8 @@ class GlbBuilder:
         return self.mesh_ids[key]
 
     def node_for(self, path, oid, matrix, stack):
+        if len(self.nodes) >= MAX_NODES:
+            raise Invalid("model exceeds the node limit (VOXEL3D_3MF_MAX_NODES)")
         part = self.part(path)
         obj = part.objects.get(oid)
         if obj is None:
