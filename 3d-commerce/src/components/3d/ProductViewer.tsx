@@ -109,7 +109,7 @@ function LoadedHeroModel({
     if (groupRef.current) {
       groupRef.current.position.set(
         mode === "enter" ? ENTER_START_X : 0,
-        -0.75,
+        0,
         0,
       );
       groupRef.current.scale.setScalar(mode === "enter" ? 0.92 : 1);
