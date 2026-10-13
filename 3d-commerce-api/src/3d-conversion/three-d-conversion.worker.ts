@@ -131,7 +131,7 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
         await fs.copyFile(blenderInput.path, convertedPath);
         await this.validateGlb(convertedPath);
       } else {
-        await this.runBlender(blenderInput.path, convertedPath, blenderInput.ext);
+        await this.convertToGlb(blenderInput.path, convertedPath, blenderInput.ext);
         await this.validateGlb(convertedPath);
       }
 
@@ -305,7 +305,7 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
       maxBuffer: 16 * 1024 * 1024,
       env: {
         ...process.env,
-        NODE_OPTIONS: process.env.MODEL_OPTIMIZER_NODE_OPTIONS ?? "--max-old-space-size=2048",
+        NODE_OPTIONS: process.env.MODEL_OPTIMIZER_NODE_OPTIONS ?? "--max-old-space-size=384",
       },
     });
   }
@@ -561,6 +561,36 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
     }
 
     return { path: primaryPath, ext: extname(primaryEntries[0]).toLowerCase() };
+  }
+
+  /**
+   * Use the bounded-memory native converter for supported 3MF files. Only the
+   * explicit unsupported-content exit code may fall back to Blender; malformed
+   * or over-limit inputs fail closed rather than retrying the expensive path.
+   */
+  private async convertToGlb(sourcePath: string, outputPath: string, ext: string) {
+    if (ext.toLowerCase() === ".3mf" && process.env.THREEMF_NATIVE_CONVERTER !== "false") {
+      const script = join(process.cwd(), "scripts", "threemf-to-glb.py");
+      try {
+        const { stdout } = await execFileAsync(
+          process.env.PYTHON_BIN || "python3",
+          ["-I", script, "--input", sourcePath, "--output", outputPath],
+          { timeout: this.timeoutMs, maxBuffer: 1024 * 1024 },
+        );
+        this.logger.log(stdout.trim());
+        return;
+      } catch (error) {
+        const failure = error as { code?: number; stderr?: string; message?: string };
+        if (failure.code !== 3) {
+          throw new Error(
+            "Native 3MF conversion failed: " +
+              (failure.stderr || failure.message || String(error)).trim().slice(-2000),
+          );
+        }
+        this.logger.warn("Native 3MF converter reports unsupported content; trying Blender fallback");
+      }
+    }
+    await this.runBlender(sourcePath, outputPath, ext);
   }
 
   private async runBlender(sourcePath: string, outputPath: string, ext: string) {
