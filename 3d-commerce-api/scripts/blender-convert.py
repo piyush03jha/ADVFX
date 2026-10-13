@@ -6,6 +6,11 @@ import tempfile
 
 import bpy
 
+# Installed by Dockerfile.worker for unsupported native 3MF packages.
+THREEMF_ADDON_PATH = "/opt/3mf-addon"
+if os.path.isdir(THREEMF_ADDON_PATH) and THREEMF_ADDON_PATH not in sys.path:
+    sys.path.insert(0, THREEMF_ADDON_PATH)
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--input", required=True)
 parser.add_argument("--output", required=True)
@@ -34,7 +39,20 @@ if ext == ".pdf":
     ext = ".svg"
 
 try:
-    if ext == ".fbx":
+    if ext == ".3mf":
+        try:
+            from io_mesh_3mf.api import import_3mf
+        except ImportError as exc:
+            raise RuntimeError("3MF fallback support is not installed in the conversion worker") from exc
+        result = import_3mf(
+            input_path,
+            import_materials="NONE",
+            reuse_materials=False,
+            auto_smooth=False,
+        )
+        if getattr(result, "status", None) != "FINISHED":
+            raise RuntimeError("Blender 3MF fallback import failed: " + str(getattr(result, "message", result)))
+    elif ext == ".fbx":
         bpy.ops.import_scene.fbx(filepath=input_path)
     elif ext == ".obj":
         bpy.ops.wm.obj_import(filepath=input_path)
