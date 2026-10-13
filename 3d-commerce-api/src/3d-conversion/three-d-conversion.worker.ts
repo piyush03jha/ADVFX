@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import { ProcessingJobStatus } from "@prisma/client";
-import { promises as fs, statSync } from "node:fs";
+import { closeSync, openSync, readSync, promises as fs, statSync } from "node:fs";
 import { extname, join, relative, resolve, sep } from "node:path";
 import { randomUUID } from "node:crypto";
 import { execFile, spawn } from "node:child_process";
@@ -603,12 +603,22 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
       return [join(scripts, "dense-mesh-to-glb.py"), "--ext", e];
     }
     if (e === ".obj") {
-      // The native OBJ path drops materials/UVs, so preserve Blender for smaller
-      // assets and only use native conversion when memory pressure is likely.
+      // Textured/material OBJ files must go through Blender so MTL, UV and
+      // texture references survive. Keep the low-memory converter for large
+      // geometry-only OBJ files.
+      const fd = openSync(sourcePath, "r");
+      const head = Buffer.alloc(65536);
+      let n = 0;
+      try {
+        n = readSync(fd, head, 0, head.length, 0);
+      } finally {
+        closeSync(fd);
+      }
+      const hasMtl = /^\s*mtllib\s+/im.test(head.subarray(0, n).toString("latin1"));
       const configured = Number(process.env.VOXEL3D_NATIVE_OBJ_MIN_MB ?? 30);
       const minMb = Number.isFinite(configured) && configured >= 0 ? configured : 30;
       const size = statSync(sourcePath).size;
-      return size >= minMb * 1024 * 1024
+      return size >= minMb * 1024 * 1024 && !hasMtl
         ? [join(scripts, "dense-mesh-to-glb.py"), "--ext", e]
         : null;
     }
