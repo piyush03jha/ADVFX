@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import { ProcessingJobStatus } from "@prisma/client";
-import { promises as fs } from "node:fs";
+import { promises as fs, statSync } from "node:fs";
 import { extname, join, relative, resolve, sep } from "node:path";
 import { randomUUID } from "node:crypto";
 import { execFile, spawn } from "node:child_process";
@@ -500,7 +500,7 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
     // files such as .mtl, .bin and textures are deliberately not candidates.
     const primaryExtensions = new Set([
       ".abc", ".usd", ".usda", ".usdc", ".usdz",
-      ".svg", ".pdf", ".obj", ".ply", ".stl", ".bvh",
+      ".svg", ".pdf", ".obj", ".ply", ".stl", ".3mf", ".bvh",
       ".fbx", ".glb", ".gltf",
     ]);
 
@@ -512,7 +512,7 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
     if (primaryEntries.length === 0) {
       throw new Error(
         "ZIP archive does not contain a supported primary 3D/model file. " +
-        "Expected one of OBJ, glTF, GLB, FBX, USD, Alembic, PLY, STL, BVH, SVG or PDF.",
+        "Expected one of OBJ, glTF, GLB, FBX, USD, Alembic, PLY, STL, 3MF, BVH, SVG or PDF.",
       );
     }
 
@@ -564,17 +564,43 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Use the bounded-memory native converter for supported 3MF files. Only the
-   * explicit unsupported-content exit code may fall back to Blender; malformed
-   * or over-limit inputs fail closed rather than retrying the expensive path.
+   * Use low-memory native converters for dense mesh formats. 3MF uses the
+   * streaming package-aware converter; STL/PLY and sufficiently large OBJ use
+   * the dense mesh converter. Only explicit unsupported-content exit code 3
+   * may fall back to Blender; malformed/over-limit inputs fail closed.
    */
+  private nativeConverterFor(sourcePath: string, ext: string): string[] | null {
+    if (process.env.NATIVE_MESH_CONVERTERS === "false") return null;
+    const scripts = join(process.cwd(), "scripts");
+    const e = ext.toLowerCase();
+    if (e === ".3mf") {
+      if (process.env.THREEMF_NATIVE_CONVERTER === "false") return null;
+      return [join(scripts, "threemf-to-glb.py")];
+    }
+    if (e === ".stl" || e === ".ply") {
+      return [join(scripts, "dense-mesh-to-glb.py"), "--ext", e];
+    }
+    if (e === ".obj") {
+      // The native OBJ path drops materials/UVs, so preserve Blender for smaller
+      // assets and only use native conversion when memory pressure is likely.
+      const configured = Number(process.env.VOXEL3D_NATIVE_OBJ_MIN_MB ?? 30);
+      const minMb = Number.isFinite(configured) && configured >= 0 ? configured : 30;
+      const size = statSync(sourcePath).size;
+      return size >= minMb * 1024 * 1024
+        ? [join(scripts, "dense-mesh-to-glb.py"), "--ext", e]
+        : null;
+    }
+    return null;
+  }
+
   private async convertToGlb(sourcePath: string, outputPath: string, ext: string) {
-    if (ext.toLowerCase() === ".3mf" && process.env.THREEMF_NATIVE_CONVERTER !== "false") {
-      const script = join(process.cwd(), "scripts", "threemf-to-glb.py");
+    const native = this.nativeConverterFor(sourcePath, ext);
+    if (native) {
+      const [script, ...extra] = native;
       try {
         const { stdout } = await execFileAsync(
           process.env.PYTHON_BIN || "python3",
-          ["-I", script, "--input", sourcePath, "--output", outputPath],
+          ["-I", script, "--input", sourcePath, "--output", outputPath, ...extra],
           { timeout: this.timeoutMs, maxBuffer: 1024 * 1024 },
         );
         this.logger.log(stdout.trim());
@@ -583,11 +609,11 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
         const failure = error as { code?: number; stderr?: string; message?: string };
         if (failure.code !== 3) {
           throw new Error(
-            "Native 3MF conversion failed: " +
+            `Native ${ext} conversion failed: ` +
               (failure.stderr || failure.message || String(error)).trim().slice(-2000),
           );
         }
-        this.logger.warn("Native 3MF converter reports unsupported content; trying Blender fallback");
+        this.logger.warn(`Native ${ext} converter reported unsupported content; falling back to Blender`);
       }
     }
     await this.runBlender(sourcePath, outputPath, ext);
@@ -638,7 +664,11 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
       child.on("error", (error) => finish(error));
       child.on("close", (code, signal) => {
         if (code === 0) return finish();
-        const details = (stderr || stdout || "").trim();
+        const oomHint =
+          signal === "SIGKILL"
+            ? "Blender was killed (likely out of memory on this worker). STL/PLY/3MF and large OBJ use low-memory conversion; for other formats, try a smaller file or a worker with more RAM. "
+            : "";
+        const details = oomHint + (stderr || stdout || "").trim();
         finish(new Error(
           "Blender exited with " + (signal ? "signal " + signal : "code " + code) +
           (details ? ": " + details : ""),
