@@ -23,6 +23,7 @@ Blender 4.5 LTS handles other non-GLB imports. glTF Transform optimizes the resu
 
 - `VOXEL3D_3MF_MAX_TRIANGLES`: default `2000000` triangles. Increase only after measuring peak RSS on the actual worker.
 - `VOXEL3D_3MF_MAX_XML_MB`: default `512` MB per model XML part.
+- `VOXEL3D_3MF_MAX_NODES`: default `10000` glTF nodes to cap extreme instancing.
 - `VOXEL3D_3MF_EXTRA_SCALE`: optional multiplier applied after 3MF unit conversion; default `1`.
 - `THREEMF_NATIVE_CONVERTER=false`: disables the native converter and routes 3MF through Blender.
 - `MODEL_OPTIMIZER_NODE_OPTIONS`: defaults to `--max-old-space-size=384` in the worker code to leave RAM for native allocations and the worker process.
