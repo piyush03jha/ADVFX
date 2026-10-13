@@ -2,15 +2,15 @@
 """Streaming, low-memory STL / OBJ / PLY -> GLB converter (Python stdlib only).
 
 Built for a 1 GB worker where importing a multi-million-triangle mesh into
-Blender is SIGKILLed. Nothing here builds a scene graph; memory is bounded by
-the *output* size, not the input size:
+Blender is SIGKILLed. STL is read in streaming passes. OBJ and PLY retain compact
+indexed geometry arrays during parsing, but avoid Blender's much larger scene
+representation. Clustering memory is bounded by an explicit occupied-cell cap:
 
   * <= VOXEL3D_GLTF_MAX_FACES triangles (default 250000): exact vertex weld
     (identical positions merged, nothing else changed).
-  * more triangles: streaming vertex-clustering decimation. Vertices are
-    snapped to a cubic grid, merged, degenerate triangles dropped; the grid is
-    coarsened/refined (<= 3 passes) until the result is near the face budget.
-    Peak memory is bounded by the number of occupied grid cells (capped).
+  * more triangles: vertex-clustering decimation. Vertices are snapped to a
+    cubic grid, merged, degenerate triangles dropped; the grid is coarsened or
+    refined (<= 3 passes) toward the face budget.
 
 The uploaded source file is never modified; only the derived GLB is reduced.
 
