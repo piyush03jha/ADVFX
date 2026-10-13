@@ -25,6 +25,7 @@ import argparse
 import json
 import math
 import os
+import re
 import struct
 import sys
 import tempfile
@@ -92,6 +93,70 @@ def to_gltf_matrix(m):
     return [m[0], m[1], m[2], 0, m[3], m[4], m[5], 0, m[6], m[7], m[8], 0, m[9], m[10], m[11], 1]
 
 
+def _srgb_to_linear(c):
+    return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+
+
+def parse_hex(text):
+    """Parse #RRGGBB/#RRGGBBAA sRGB into linear RGBA for glTF."""
+    if not text:
+        return None
+    value = text.strip().strip('"').lstrip("#")
+    if len(value) not in (6, 8) or not re.fullmatch(r"[0-9a-fA-F]+", value):
+        return None
+    channels = [int(value[i:i + 2], 16) / 255.0 for i in range(0, len(value), 2)]
+    alpha = channels[3] if len(channels) == 4 else 1.0
+    return (round(_srgb_to_linear(channels[0]), 6),
+            round(_srgb_to_linear(channels[1]), 6),
+            round(_srgb_to_linear(channels[2]), 6), round(alpha, 6))
+
+
+def read_slicer_colors(zf):
+    """Read filament colors and per-object extruder metadata from slicer archives."""
+    names = {n.lower(): n for n in zf.namelist()}
+
+    def read_text(name):
+        real = names.get(name.lower())
+        if real and zf.getinfo(real).file_size <= (8 << 20):
+            return zf.read(real).decode("utf-8", "replace")
+        return None
+
+    filaments, extruders = [], {}
+    text = read_text("Metadata/project_settings.config")
+    if text:
+        try:
+            values = json.loads(text).get("filament_colour", [])
+            if isinstance(values, str):
+                values = [values]
+            filaments = [parse_hex(value) for value in values]
+        except (ValueError, TypeError, AttributeError):
+            pass
+    if not filaments:
+        for name in ("Metadata/Slic3r_PE.config", "Metadata/Prusa_Slicer.config"):
+            text = read_text(name)
+            match = re.search(r"filament_colour\s*=\s*(.+)", text or "")
+            if match:
+                filaments = [parse_hex(value) for value in match.group(1).replace('"', "").split(";")]
+                break
+
+    text = read_text("Metadata/model_settings.config")
+    if text and "<!DOCTYPE" not in text.upper() and "<!ENTITY" not in text.upper():
+        try:
+            import xml.etree.ElementTree as ET
+            for obj in ET.fromstring(text).iter():
+                if local(obj.tag) != "object" or not obj.get("id"):
+                    continue
+                for md in obj:
+                    if local(md.tag) == "metadata" and md.get("key") == "extruder":
+                        try:
+                            extruders[int(obj.get("id"))] = int(md.get("value", "0"))
+                        except (TypeError, ValueError):
+                            pass
+        except (ValueError, TypeError, ET.ParseError):
+            pass
+    return filaments, extruders
+
+
 class ModelFile:
     """SAX handler for one *.model part."""
 
@@ -104,6 +169,10 @@ class ModelFile:
         self.cur = None
         self.verts = None
         self.tris = None
+        self.triangle_pids = None
+        self.triangle_pindices = None
+        self.groups = {}
+        self.cur_group = None
         self.warned = set()
 
     def start(self, name, a):
@@ -112,11 +181,16 @@ class ModelFile:
             self.verts.extend((float(a["x"]), float(a["y"]), float(a["z"])))
         elif n == "triangle":
             self.tris.extend((int(a["v1"]), int(a["v2"]), int(a["v3"])))
+            if self.triangle_pids is not None:
+                self.triangle_pids.append(int(a.get("pid", -1)))
+                self.triangle_pindices.append(int(a.get("p1", -1)))
         elif n == "object":
             self.cur = {
                 "id": int(a["id"]),
                 "type": a.get("type", "model"),
                 "name": a.get("name") or a.get("partnumber"),
+                "pid": int(a["pid"]) if "pid" in a else None,
+                "pindex": int(a.get("pindex", 0)),
                 "verts": None,
                 "tris": None,
                 "comps": [],
@@ -125,6 +199,8 @@ class ModelFile:
             if self.cur is not None:
                 self.verts = array("f")
                 self.tris = array("I")
+                self.triangle_pids = array("i")
+                self.triangle_pindices = array("i")
         elif n == "component":
             if self.cur is not None:
                 self.cur["comps"].append(
@@ -134,6 +210,16 @@ class ModelFile:
             self.items.append(
                 (int(a["objectid"]), attr(a, "path"), parse_matrix(a.get("transform")))
             )
+        elif n in ("basematerials", "colorgroup"):
+            self.cur_group = (int(a["id"]), [])
+        elif n == "base" and self.cur_group:
+            self.cur_group[1].append(parse_hex(a.get("displaycolor")))
+        elif n == "color" and self.cur_group:
+            self.cur_group[1].append(parse_hex(a.get("color")))
+        elif n == "texture2dgroup":
+            if n not in self.warned:
+                self.warned.add(n)
+                print("warning: 3MF texture maps are not carried over", flush=True)
         elif n == "model":
             self.unit = a.get("unit", "millimeter")
         elif n in ("beamlattice", "booleanshape", "slice", "slicestack"):
@@ -153,12 +239,16 @@ class ModelFile:
                 if not math.isfinite(sum(self.verts)):
                     raise Invalid("mesh contains non-finite vertex coordinates")
                 self.cur["verts"], self.cur["tris"] = self.verts, self.tris
+                self.cur["tp"], self.cur["t1"] = self.triangle_pids, self.triangle_pindices
                 self.budget["triangles"] += nt
                 if self.budget["triangles"] > MAX_TRIANGLES:
                     raise Invalid(
                         "model has more than %d triangles (limit VOXEL3D_3MF_MAX_TRIANGLES)" % MAX_TRIANGLES
                     )
             self.verts = self.tris = None
+        elif n in ("basematerials", "colorgroup") and self.cur_group:
+            self.groups[self.cur_group[0]] = self.cur_group[1]
+            self.cur_group = None
         elif n == "object" and self.cur is not None:
             self.objects[self.cur["id"]] = self.cur
             self.cur = None
@@ -250,6 +340,9 @@ class GlbBuilder:
         self.nodes, self.meshes, self.accessors, self.views = [], [], [], []
         self.mesh_ids = {}
         self.triangles_written = 0
+        self.materials = [None]
+        self.material_ids = {}
+        self.filaments, self.extruders = read_slicer_colors(zf)
 
     def part(self, path):
         key = path.lstrip("/")
@@ -270,40 +363,91 @@ class GlbBuilder:
         self.views.append(view)
         return len(self.views) - 1
 
-    def mesh_for(self, key, obj):
+    def material_for(self, color):
+        if color is None:
+            return 0
+        if color not in self.material_ids:
+            material = {
+                "name": "3MF color",
+                "pbrMetallicRoughness": {
+                    "baseColorFactor": list(color),
+                    "metallicFactor": 0.0,
+                    "roughnessFactor": 0.8,
+                },
+            }
+            if color[3] < 1.0:
+                material["alphaMode"] = "BLEND"
+            self.materials.append(material)
+            self.material_ids[color] = len(self.materials) - 1
+        return self.material_ids[color]
+
+    @staticmethod
+    def resolve_color(part, pid, index):
+        colors = part.groups.get(pid) if pid is not None else None
+        if colors and 0 <= index < len(colors):
+            return colors[index]
+        return None
+
+    def mesh_for(self, key, obj, part, hint=None):
         if key in self.mesh_ids:
             return self.mesh_ids[key]
         verts, tris = obj["verts"], obj["tris"]
         nv, nt = len(verts) // 3, len(tris) // 3
         mins = [min(verts[i::3]) for i in range(3)]
         maxs = [max(verts[i::3]) for i in range(3)]
-        vdata, tdata = verts, tris
+        vdata = verts
         if sys.byteorder == "big":
-            vdata, tdata = array("f", verts), array("I", tris)
+            vdata = array("f", verts)
             vdata.byteswap()
-            tdata.byteswap()
         pos_view = self._write(vdata.tobytes(), 34962)
-        idx_view = self._write(tdata.tobytes(), 34963)
         self.accessors.append(
             {"bufferView": pos_view, "componentType": 5126, "count": nv, "type": "VEC3", "min": mins, "max": maxs}
         )
         pos_acc = len(self.accessors) - 1
-        self.accessors.append(
-            {"bufferView": idx_view, "componentType": 5125, "count": nt * 3, "type": "SCALAR"}
-        )
-        idx_acc = len(self.accessors) - 1
-        mesh = {"primitives": [{"attributes": {"POSITION": pos_acc}, "indices": idx_acc, "material": 0, "mode": 4}]}
+
+        own = self.resolve_color(part, obj.get("pid"), obj.get("pindex", 0)) or hint
+        tp, t1 = obj.get("tp"), obj.get("t1")
+        buckets = {}
+        if tp is not None and t1 is not None and (any(v >= 0 for v in tp) or any(v >= 0 for v in t1)):
+            for i in range(nt):
+                pid = tp[i] if tp[i] >= 0 else obj.get("pid")
+                index = t1[i] if t1[i] >= 0 else obj.get("pindex", 0)
+                color = self.resolve_color(part, pid, index) or own
+                buckets.setdefault(color, array("I")).extend(tris[3 * i:3 * i + 3])
+            if len(buckets) > 256:
+                print("warning: too many distinct 3MF colors; using dominant color", flush=True)
+                dominant = max(buckets, key=lambda value: len(buckets[value]))
+                buckets = {dominant: tris}
+        else:
+            buckets[own] = tris
+
+        primitives = []
+        for color, indices in buckets.items():
+            idata = indices
+            if sys.byteorder == "big":
+                idata = array("I", indices)
+                idata.byteswap()
+            index_view = self._write(idata.tobytes(), 34963)
+            self.accessors.append(
+                {"bufferView": index_view, "componentType": 5125, "count": len(indices), "type": "SCALAR"}
+            )
+            primitives.append({
+                "attributes": {"POSITION": pos_acc},
+                "indices": len(self.accessors) - 1,
+                "material": self.material_for(color),
+                "mode": 4,
+            })
+        mesh = {"primitives": primitives}
         if obj.get("name"):
             mesh["name"] = str(obj["name"])
         self.meshes.append(mesh)
         self.triangles_written += nt
         self.mesh_ids[key] = len(self.meshes) - 1
-        # Mesh bytes are on disk now; drop them so peak memory stays low.
-        obj["verts"] = obj["tris"] = None
+        obj["verts"] = obj["tris"] = obj["tp"] = obj["t1"] = None
         obj["_written"] = self.mesh_ids[key]
         return self.mesh_ids[key]
 
-    def node_for(self, path, oid, matrix, stack):
+    def node_for(self, path, oid, matrix, stack, hint=None):
         if len(self.nodes) >= MAX_NODES:
             raise Invalid("model exceeds the node limit (VOXEL3D_3MF_MAX_NODES)")
         part = self.part(path)
@@ -315,18 +459,21 @@ class GlbBuilder:
         key = (part.path, oid)
         if key in stack or len(stack) >= MAX_DEPTH:
             raise Invalid("component cycle or nesting deeper than %d" % MAX_DEPTH)
+        extruder = self.extruders.get(oid) if part.path == self.root_part else None
+        extruder_color = self.filaments[extruder - 1] if extruder and 0 < extruder <= len(self.filaments) else None
+        hint = self.resolve_color(part, obj.get("pid"), obj.get("pindex", 0)) or extruder_color or hint
         node = {}
         if obj.get("name"):
             node["name"] = str(obj["name"])
         if matrix:
             node["matrix"] = to_gltf_matrix(matrix)
         if obj["verts"] is not None:
-            node["mesh"] = self.mesh_for(key, obj)
+            node["mesh"] = self.mesh_for(key, obj, part, hint)
         elif "_written" in obj:
             node["mesh"] = obj["_written"]
         children = []
         for cid, cpath, cmatrix in obj["comps"]:
-            child = self.node_for(cpath or path, cid, cmatrix, stack + (key,))
+            child = self.node_for(cpath or path, cid, cmatrix, stack + (key,), hint)
             if child is not None:
                 children.append(child)
         if children:
@@ -338,6 +485,15 @@ class GlbBuilder:
 
     def build(self):
         root = self.part(self.root_part)
+        default = self.filaments[0] if self.filaments else None
+        self.materials[0] = {
+            "name": "default",
+            "pbrMetallicRoughness": {
+                "baseColorFactor": list(default or (0.8, 0.8, 0.8, 1.0)),
+                "metallicFactor": 0.0,
+                "roughnessFactor": 0.8,
+            },
+        }
         item_nodes = []
         for oid, path, matrix in root.items:
             idx = self.node_for(path or self.root_part, oid, matrix, ())
@@ -370,16 +526,7 @@ def convert(src, dst):
                 "scenes": [{"nodes": [root_node]}],
                 "nodes": builder.nodes,
                 "meshes": builder.meshes,
-                "materials": [
-                    {
-                        "name": "default",
-                        "pbrMetallicRoughness": {
-                            "baseColorFactor": [0.8, 0.8, 0.8, 1.0],
-                            "metallicFactor": 0.0,
-                            "roughnessFactor": 0.8,
-                        },
-                    }
-                ],
+                "materials": builder.materials,
                 "accessors": builder.accessors,
                 "bufferViews": builder.views,
                 "buffers": [{"byteLength": builder.offset}],
