@@ -19,7 +19,7 @@ const TEXTURE_PATHS = {
 export function LogoIntro() {
   const rootRef = useRef<HTMLDivElement>(null);
   const canvasHostRef = useRef<HTMLDivElement>(null);
-  const [show, setShow] = useState(false);
+  const [show, setShow] = useState(true);
 
   useEffect(() => {
     let seen = false;
@@ -56,8 +56,8 @@ export function LogoIntro() {
         loader.load(url, resolve, undefined, reject);
       });
 
-    // Start loading the intro textures immediately; the visible overlay stays hidden
-    // until the first frame can be rendered, avoiding a blank opening frame.
+    // Show the dark intro overlay immediately. It stays blank while textures and
+    // the WebGL scene initialize, then the animation starts once the first frame is ready.
     Promise.all([
       loadTexture(TEXTURE_PATHS.icon),
       loadTexture(TEXTURE_PATHS.word),
