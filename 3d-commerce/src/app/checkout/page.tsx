@@ -122,7 +122,7 @@ export default function CheckoutPage() {
       <main className="min-h-screen overflow-hidden">
         <section className="relative min-w-0 overflow-x-clip pb-12 pt-24 sm:pb-24 sm:pt-32 lg:pb-28 lg:pt-36">
           <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-10 -z-10 h-[460px] w-[460px] -translate-x-1/2 rounded-full bg-primary/[0.07] blur-[140px]" />
-          <Container className="min-w-0 max-w-full">
+          <Container className="min-w-0">
             <div className="mb-6 flex min-w-0 items-start justify-between gap-3 sm:mb-10 sm:items-end sm:gap-6">
               <div>
                 <h1 className="max-w-full break-words font-serif text-[2.15rem] leading-[1.08] tracking-[-0.05em] text-foreground sm:text-5xl lg:text-6xl">Complete your order</h1>
