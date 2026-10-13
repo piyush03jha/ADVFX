@@ -148,15 +148,17 @@ export function LogoIntro() {
     };
   }, []);
 
-  if (!show) return null;
-
   return (
     <div
       id="voxel-intro"
       ref={rootRef}
       aria-hidden="true"
       className="fixed inset-0 z-[300] overflow-hidden bg-[#11131b]"
-      style={{ opacity: 1, willChange: "opacity" }}
+      style={{
+        opacity: 1,
+        visibility: show ? "visible" : "hidden",
+        willChange: "opacity",
+      }}
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(132,108,190,0.22),rgba(17,19,27,0.96)_68%)]" />
       <div ref={canvasHostRef} className="absolute inset-0" />
