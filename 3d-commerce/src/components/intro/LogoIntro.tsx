@@ -19,7 +19,7 @@ const TEXTURE_PATHS = {
 export function LogoIntro() {
   const rootRef = useRef<HTMLDivElement>(null);
   const canvasHostRef = useRef<HTMLDivElement>(null);
-  const [show, setShow] = useState(true);
+  const [show, setShow] = useState(false);
 
   useEffect(() => {
     let seen = false;
@@ -123,6 +123,9 @@ export function LogoIntro() {
           renderer.render(intro.scene, intro.camera);
         };
 
+        // Reveal the overlay only after textures are loaded and the first scene
+        // frame has been rendered, so users never see an empty intro canvas.
+        setShow(true);
         frame = window.requestAnimationFrame(animate);
         timeline.play(0);
       })
