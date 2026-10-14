@@ -5,7 +5,6 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { FormEvent, Suspense, useState } from "react";
 import {
   IconArrowRight,
-  IconBrandGoogle,
   IconCheck,
   IconEye,
   IconEyeOff,
@@ -17,6 +16,7 @@ import {
 } from "@tabler/icons-react";
 
 import { Navbar } from "@/components/layout/SiteNavbar";
+import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import { registerUser } from "@/lib/auth-client";
 import { MathCaptcha } from "@/components/auth/MathCaptcha";
 import { AuthCaptcha } from "@/components/auth/AuthCaptcha";
@@ -131,10 +131,7 @@ function RegisterPageContent() {
                 <p className="mt-3 max-w-md text-sm leading-6 text-muted">A few details now. Everything else stays simple.</p>
               </div>
 
-              <button type="button" disabled className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-border bg-surface text-sm font-medium text-foreground opacity-70">
-                <IconBrandGoogle size={17} />
-                Continue with Google <span className="text-[11px] uppercase tracking-[0.1em] text-muted">Soon</span>
-              </button>
+              <GoogleSignInButton returnTo={returnTo} />
 
               <div className="my-6 flex items-center gap-3">
                 <div className="h-px flex-1 bg-surface" />
