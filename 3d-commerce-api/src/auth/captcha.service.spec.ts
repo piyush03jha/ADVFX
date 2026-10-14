@@ -14,10 +14,10 @@ describe('AuthCaptchaService', () => {
     jest.restoreAllMocks();
     global.fetch = originalFetch;
     delete process.env.AUTH_CAPTCHA_PROVIDER;
-    delete process.env.TURNSTILE_SECRET;
-    delete process.env.TURNSTILE_SECRET_KEY;
-    delete process.env.TURNSTILE_SITE_KEY;
-    delete process.env.TURNSTILE_HOSTNAMES;
+    delete process.env.RECAPTCHA_SECRET;
+    delete process.env.RECAPTCHA_SECRET_KEY;
+    delete process.env.RECAPTCHA_SITE_KEY;
+    delete process.env.RECAPTCHA_EXPECTED_HOSTNAME;
     delete process.env.FRONTEND_URL;
     delete process.env.CORS_ORIGINS;
   });
@@ -39,37 +39,37 @@ describe('AuthCaptchaService', () => {
     expect(() => service.verify(challenge.token, String(answer), 'register')).toThrow(BadRequestException);
   });
 
-  it('issues a Turnstile challenge when configured', () => {
-    process.env.AUTH_CAPTCHA_PROVIDER = 'turnstile';
-    process.env.TURNSTILE_SITE_KEY = 'test-site-key';
-    expect(service.issue('login')).toEqual({ provider: 'turnstile', siteKey: 'test-site-key' });
+  it('issues a reCAPTCHA challenge when configured', () => {
+    process.env.AUTH_CAPTCHA_PROVIDER = 'recaptcha';
+    process.env.RECAPTCHA_SITE_KEY = 'test-site-key';
+    expect(service.issue('login')).toEqual({ provider: 'recaptcha', siteKey: 'test-site-key' });
   });
 
-  it('calls Cloudflare Siteverify and validates action plus hostname', async () => {
-    process.env.AUTH_CAPTCHA_PROVIDER = 'turnstile';
-    process.env.TURNSTILE_SECRET_KEY = 'test-secret';
-    process.env.TURNSTILE_HOSTNAMES = 'voxel3d.org,localhost';
+  it('calls Google Siteverify and validates hostname', async () => {
+    process.env.AUTH_CAPTCHA_PROVIDER = 'recaptcha';
+    process.env.RECAPTCHA_SECRET_KEY = 'test-secret';
+    process.env.RECAPTCHA_EXPECTED_HOSTNAME = 'voxel3d.org';
     const fetchMock = jest.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      json: async () => ({ success: true, action: 'login', hostname: 'voxel3d.org' }),
+      json: async () => ({ success: true, hostname: 'voxel3d.org' }),
     });
     global.fetch = fetchMock as unknown as typeof fetch;
 
-    await expect(service.verifyForAuth('turnstile-token', undefined, 'login')).resolves.toBeUndefined();
+    await expect(service.verifyForAuth('recaptcha-token', undefined, 'login')).resolves.toBeUndefined();
     expect(fetchMock).toHaveBeenCalledWith(
-      'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+      'https://www.google.com/recaptcha/api/siteverify',
       expect.objectContaining({
         method: 'POST',
-        body: expect.stringContaining('"response":"turnstile-token"'),
+        body: expect.any(URLSearchParams),
       }),
     );
   });
 
-  it('rejects failed Cloudflare validation, mismatched action, and hostname', async () => {
-    process.env.AUTH_CAPTCHA_PROVIDER = 'turnstile';
-    process.env.TURNSTILE_SECRET_KEY = 'test-secret';
-    process.env.TURNSTILE_HOSTNAMES = 'voxel3d.org';
+  it('rejects failed Google validation and mismatched hostname', async () => {
+    process.env.AUTH_CAPTCHA_PROVIDER = 'recaptcha';
+    process.env.RECAPTCHA_SECRET_KEY = 'test-secret';
+    process.env.RECAPTCHA_EXPECTED_HOSTNAME = 'voxel3d.org';
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -80,24 +80,17 @@ describe('AuthCaptchaService', () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      json: async () => ({ success: true, action: 'register', hostname: 'voxel3d.org' }),
-    }) as unknown as typeof fetch;
-    await expect(service.verifyForAuth('wrong-action', undefined, 'login')).rejects.toThrow(BadRequestException);
-
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({ success: true, action: 'login', hostname: 'attacker.example' }),
+      json: async () => ({ success: true, hostname: 'attacker.example' }),
     }) as unknown as typeof fetch;
     await expect(service.verifyForAuth('wrong-host', undefined, 'login')).rejects.toThrow(BadRequestException);
   });
 
-  it('fails closed when Cloudflare is unavailable or the secret is absent', async () => {
-    process.env.AUTH_CAPTCHA_PROVIDER = 'turnstile';
-    process.env.TURNSTILE_SECRET_KEY = 'test-secret';
+  it('fails closed when Google is unavailable or the secret is absent', async () => {
+    process.env.AUTH_CAPTCHA_PROVIDER = 'recaptcha';
+    process.env.RECAPTCHA_SECRET_KEY = 'test-secret';
     global.fetch = jest.fn().mockRejectedValue(new Error('network down')) as unknown as typeof fetch;
     await expect(service.verifyForAuth('token', undefined, 'login')).rejects.toThrow(ServiceUnavailableException);
-    delete process.env.TURNSTILE_SECRET_KEY;
+    delete process.env.RECAPTCHA_SECRET_KEY;
     await expect(service.verifyForAuth('token', undefined, 'login')).rejects.toThrow(ServiceUnavailableException);
   });
 });
