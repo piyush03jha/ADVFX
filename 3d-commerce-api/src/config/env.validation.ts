@@ -16,12 +16,13 @@ export function validateEnvironment() {
   }
 
   const captchaProvider = (process.env.AUTH_CAPTCHA_PROVIDER ?? 'math').trim().toLowerCase();
-  if (!['math', 'recaptcha'].includes(captchaProvider)) {
-    throw new Error('AUTH_CAPTCHA_PROVIDER must be math or recaptcha');
+  if (!['math', 'turnstile'].includes(captchaProvider)) {
+    throw new Error('AUTH_CAPTCHA_PROVIDER must be math or turnstile');
   }
-  if (captchaProvider === 'recaptcha') {
-    if (!process.env.RECAPTCHA_SITE_KEY?.trim() || !process.env.RECAPTCHA_SECRET_KEY?.trim()) {
-      throw new Error('AUTH_CAPTCHA_PROVIDER=recaptcha requires RECAPTCHA_SITE_KEY and RECAPTCHA_SECRET_KEY');
+  if (captchaProvider === 'turnstile') {
+    const turnstileSecret = process.env.TURNSTILE_SECRET_KEY ?? process.env.TURNSTILE_SECRET;
+    if (!process.env.TURNSTILE_SITE_KEY?.trim() || !turnstileSecret?.trim()) {
+      throw new Error('AUTH_CAPTCHA_PROVIDER=turnstile requires TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY');
     }
   }
 
