@@ -23,7 +23,13 @@ function LoginPageContent() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const { provider, challenge, siteKey: turnstileSiteKey, token: turnstileToken, setTurnstileToken, answer: captchaAnswer, setAnswer: setCaptchaAnswer, isLoading: isCaptchaLoading, error: captchaError, version: captchaVersion, refresh: refreshCaptcha } = useAuthCaptcha("login");
-  const [error, setError] = useState("");
+  const [error, setError] = useState(() => {
+    const authError = searchParams.get("error");
+    if (authError === "google_unavailable") return "Google sign-in is not configured yet.";
+    if (authError === "google_denied") return "Google sign-in was cancelled.";
+    if (authError === "google_failed") return "Google sign-in failed. Please try again.";
+    return "";
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
