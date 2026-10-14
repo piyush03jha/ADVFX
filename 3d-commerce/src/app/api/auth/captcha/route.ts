@@ -16,9 +16,7 @@ export async function GET(request: Request) {
     }
     if (data.provider !== "recaptcha") return NextResponse.json(data, { headers: { "Cache-Control": "no-store" } });
 
-    const siteKey = (typeof data.siteKey === "string" ? data.siteKey.trim() : "") ||
-      process.env.TURNSTILE_SITE_KEY?.trim() ||
-      process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() || "";
+    const siteKey = typeof data.siteKey === "string" ? data.siteKey.trim() : "";
 
     if (!siteKey) {
       return NextResponse.json({ error: "Security check is not configured. Please contact support." }, { status: 503, headers: { "Cache-Control": "no-store" } });
