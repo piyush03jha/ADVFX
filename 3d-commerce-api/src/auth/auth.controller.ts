@@ -8,6 +8,7 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
+import { GoogleLoginDto } from './dto/google-login.dto';
 import { AuthCaptchaService } from './captcha.service';
 
 @Controller('auth')
@@ -45,6 +46,11 @@ export class AuthController {
       dto.captchaToken,
       dto.captchaAnswer,
     );
+  }
+
+  @Post('google')
+  loginWithGoogle(@Body() dto: GoogleLoginDto) {
+    return this.authService.googleCustomerLogin(dto.code, dto.codeVerifier);
   }
 
   @Get('session')
