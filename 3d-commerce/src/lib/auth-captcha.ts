@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 export type CaptchaPurpose = "login" | "register" | "forgot-password";
-export type CaptchaProvider = "math" | "recaptcha";
+export type CaptchaProvider = "math" | "turnstile";
 export type CaptchaChallenge = {
   token: string;
   first: number;
