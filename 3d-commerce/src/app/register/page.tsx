@@ -51,7 +51,7 @@ function RegisterPageContent() {
       return;
     }
 
-    const authCaptchaToken = provider === "recaptcha" ? turnstileToken : challenge?.token ?? "";
+    const authCaptchaToken = provider === "turnstile" ? turnstileToken : challenge?.token ?? "";
     if (!authCaptchaToken || (provider === "math" && !captchaAnswer)) {
       setError(captchaError || "Please complete the security check.");
       return;
@@ -180,7 +180,7 @@ function RegisterPageContent() {
                   </label>
                 </div>
 
-                {provider === "recaptcha" ? <AuthCaptcha key={captchaVersion} purpose="register" onTokenChange={setTurnstileToken} siteKey={turnstileSiteKey} /> : challenge ? <MathCaptcha {...challenge} answer={captchaAnswer} onAnswerChange={setCaptchaAnswer} onRefresh={() => void refreshCaptcha()} /> : <CaptchaLoading error={captchaError} />}
+                {provider === "turnstile" ? <AuthCaptcha key={captchaVersion} purpose="register" onTokenChange={setTurnstileToken} siteKey={turnstileSiteKey} /> : challenge ? <MathCaptcha {...challenge} answer={captchaAnswer} onAnswerChange={setCaptchaAnswer} onRefresh={() => void refreshCaptcha()} /> : <CaptchaLoading error={captchaError} />}
 
                 <label className="flex cursor-pointer gap-3 rounded-xl border border-border bg-surface p-3.5 text-xs leading-5 text-muted">
                   <input type="checkbox" checked={acceptTerms} onChange={(event) => setAcceptTerms(event.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/20 bg-transparent accent-[hsl(var(--primary))]" />
@@ -193,7 +193,7 @@ function RegisterPageContent() {
                   <div role="alert" className="rounded-xl border border-red-400/15 bg-red-400/[0.06] px-3.5 py-3 text-xs leading-5 text-red-200">{error}</div>
                 )}
 
-                <button type="submit" disabled={isSubmitting || !acceptTerms || isCaptchaLoading || !provider || (provider === "recaptcha" ? !turnstileToken : !challenge || !captchaAnswer)} className="mt-2 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-foreground shadow-[0_16px_42px_rgb(from var(--primary) r g b / 0.18)] transition-all hover:-translate-y-0.5 hover:shadow-[0_20px_52px_rgb(from var(--primary) r g b / 0.25)] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0">
+                <button type="submit" disabled={isSubmitting || !acceptTerms || isCaptchaLoading || !provider || (provider === "turnstile" ? !turnstileToken : !challenge || !captchaAnswer)} className="mt-2 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-foreground shadow-[0_16px_42px_rgb(from var(--primary) r g b / 0.18)] transition-all hover:-translate-y-0.5 hover:shadow-[0_20px_52px_rgb(from var(--primary) r g b / 0.25)] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0">
                   {isSubmitting ? "Creating account…" : "Create account"}
                   {!isSubmitting && <IconArrowRight size={15} />}
                 </button>
