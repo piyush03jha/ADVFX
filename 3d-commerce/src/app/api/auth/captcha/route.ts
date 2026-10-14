@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     if (!response.ok) {
       return NextResponse.json({ error: data.message ?? "Unable to prepare CAPTCHA." }, { status: response.status });
     }
-    if (data.provider !== "turnstile") return NextResponse.json(data, { headers: { "Cache-Control": "no-store" } });
+    if (data.provider !== "recaptcha") return NextResponse.json(data, { headers: { "Cache-Control": "no-store" } });
 
     const siteKey = (typeof data.siteKey === "string" ? data.siteKey.trim() : "") ||
       process.env.TURNSTILE_SITE_KEY?.trim() ||
