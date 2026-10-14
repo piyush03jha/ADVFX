@@ -8,6 +8,7 @@ import {
   createHmac,
   randomBytes,
   randomInt,
+  randomUUID,
   timingSafeEqual,
 } from 'node:crypto';
 
@@ -24,9 +25,10 @@ type CaptchaPayload = {
   issuedAt: number;
 };
 
-type RecaptchaVerifyResponse = {
+type TurnstileVerifyResponse = {
   success?: boolean;
   hostname?: string;
+  action?: string;
   'error-codes'?: string[];
 };
 
@@ -40,10 +42,10 @@ export class AuthCaptchaService {
       throw new BadRequestException('Invalid CAPTCHA purpose.');
     }
 
-    if (this.provider() === 'recaptcha') {
-      const siteKey = process.env.RECAPTCHA_SITE_KEY?.trim() ?? '';
+    if (this.provider() === 'turnstile') {
+      const siteKey = process.env.TURNSTILE_SITE_KEY?.trim() ?? '';
       if (!siteKey) throw new ServiceUnavailableException('Security check is not configured.');
-      return { provider: 'recaptcha' as const, siteKey };
+      return { provider: 'turnstile' as const, siteKey };
     }
 
     const first = randomInt(1, 10);
@@ -70,48 +72,54 @@ export class AuthCaptchaService {
   }
 
   async verifyForAuth(token: string, answer: string | undefined, purpose: CaptchaPurpose): Promise<void> {
-    if (this.provider() === 'recaptcha') {
-      await this.verifyRecaptcha(token);
+    if (this.provider() === 'turnstile') {
+      await this.verifyTurnstile(token, purpose);
       return;
     }
     this.verify(token, answer ?? '', purpose);
   }
 
-  private provider(): 'math' | 'recaptcha' {
-    return process.env.AUTH_CAPTCHA_PROVIDER?.trim().toLowerCase() === 'recaptcha'
-      ? 'recaptcha'
+  private provider(): 'math' | 'turnstile' {
+    return process.env.AUTH_CAPTCHA_PROVIDER?.trim().toLowerCase() === 'turnstile'
+      ? 'turnstile'
       : 'math';
   }
 
-  private async verifyRecaptcha(token: string): Promise<void> {
-    const secret = process.env.RECAPTCHA_SECRET_KEY?.trim();
+  private async verifyTurnstile(token: string, purpose: CaptchaPurpose): Promise<void> {
+    const secret = (process.env.TURNSTILE_SECRET_KEY ?? process.env.TURNSTILE_SECRET)?.trim();
     if (!secret) throw new ServiceUnavailableException('Security check is not configured.');
-    if (!token || token.length > 4096) {
+    if (!token || token.length > 2048) {
       throw new BadRequestException('Please complete the security check.');
     }
 
-    let result: RecaptchaVerifyResponse;
+    let result: TurnstileVerifyResponse;
     try {
-      const response = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+      const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ secret, response: token }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret, response: token, idempotency_key: randomUUID() }),
         signal: AbortSignal.timeout(8000),
       });
-      if (!response.ok) throw new Error(`reCAPTCHA siteverify returned HTTP ${response.status}`);
-      result = (await response.json()) as RecaptchaVerifyResponse;
+      if (!response.ok) throw new Error(`Turnstile siteverify returned HTTP ${response.status}`);
+      result = (await response.json()) as TurnstileVerifyResponse;
     } catch (error) {
-      this.logger.error(`reCAPTCHA siteverify unavailable: ${String(error)}`);
+      this.logger.error(`Turnstile siteverify unavailable: ${String(error)}`);
       throw new ServiceUnavailableException('Security check is unavailable. Please try again.');
     }
 
     if (!result.success) {
-      this.logger.warn(`reCAPTCHA rejected: ${(result['error-codes'] ?? []).join(',') || 'unknown'}`);
+      this.logger.warn(`Turnstile rejected: ${(result['error-codes'] ?? []).join(',') || 'unknown'}`);
+      throw new BadRequestException('Security check failed. Please try again.');
+    }
+    if (result.action !== purpose) {
       throw new BadRequestException('Security check failed. Please try again.');
     }
 
-    const expectedHostname = process.env.RECAPTCHA_EXPECTED_HOSTNAME?.trim().toLowerCase();
-    if (expectedHostname && (result.hostname ?? '').toLowerCase() !== expectedHostname) {
+    const hostnames = (process.env.TURNSTILE_HOSTNAMES ?? '')
+      .split(',')
+      .map((hostname) => hostname.trim().toLowerCase())
+      .filter(Boolean);
+    if (hostnames.length && !hostnames.includes((result.hostname ?? '').toLowerCase())) {
       throw new BadRequestException('Security check failed. Please try again.');
     }
   }
