@@ -29,7 +29,7 @@ interface GoogleUserInfo {
 export class GoogleOAuthService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async exchangeCode(code: string, codeVerifier: string): Promise<GoogleIdentity> {
+  async exchangeCode(code: string): Promise<GoogleIdentity> {
     const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
     const redirectUri = process.env.GOOGLE_REDIRECT_URI?.trim();
@@ -38,8 +38,8 @@ export class GoogleOAuthService {
       throw new UnauthorizedException('Google OAuth is not configured.');
     }
 
-    if (!code?.trim() || !codeVerifier?.trim() || codeVerifier.length > 128) {
-      throw new UnauthorizedException('Google authorization code or verifier is invalid.');
+    if (!code?.trim()) {
+      throw new UnauthorizedException('Google authorization code is required.');
     }
 
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
@@ -50,7 +50,6 @@ export class GoogleOAuthService {
         client_id: clientId,
         client_secret: clientSecret,
         redirect_uri: redirectUri,
-        code_verifier: codeVerifier.trim(),
         grant_type: 'authorization_code',
       }),
     });
