@@ -164,6 +164,7 @@ export class GoogleOAuthService {
             name: true,
             role: true,
             isActive: true,
+            emailVerifiedAt: true,
           },
         });
       } else {
@@ -181,6 +182,7 @@ export class GoogleOAuthService {
             name: true,
             role: true,
             isActive: true,
+            emailVerifiedAt: true,
           },
         });
       }
