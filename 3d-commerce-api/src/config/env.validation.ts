@@ -30,6 +30,17 @@ export function validateEnvironment() {
     throw new Error('AUTH_EXPOSE_DEV_TOKENS must not be enabled in production');
   }
 
+  const googleKeys = ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REDIRECT_URI'] as const;
+  const configuredGoogleKeys = googleKeys.filter((key) => process.env[key]?.trim());
+  if (configuredGoogleKeys.length > 0 && configuredGoogleKeys.length < googleKeys.length) {
+    throw new Error(`Google OAuth is partially configured; set all of: ${googleKeys.join(', ')}`);
+  }
+  if (nodeEnv === 'production' && configuredGoogleKeys.length === googleKeys.length) {
+    if (!/^https:\/\//i.test(process.env.GOOGLE_REDIRECT_URI!.trim())) {
+      throw new Error('GOOGLE_REDIRECT_URI must be an HTTPS URL in production');
+    }
+  }
+
   const storageProvider = (process.env.STORAGE_PROVIDER ?? 'local').toLowerCase();
   if (!['local', 's3', 'r2', 'b2'].includes(storageProvider)) {
     throw new Error('STORAGE_PROVIDER must be local, s3, r2, or b2');
