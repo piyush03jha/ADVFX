@@ -118,13 +118,14 @@ export class AuthService {
     };
   }
 
-  async googleCustomerLogin(code: string) {
-    const identity = await this.googleOAuthService.exchangeCode(code);
-    return this.googleOAuthService.findOrCreateCustomer(
+  async googleCustomerLogin(code: string, codeVerifier: string) {
+    const identity = await this.googleOAuthService.exchangeCode(code, codeVerifier);
+    const user = await this.googleOAuthService.findOrCreateCustomer(
       identity.googleSubject,
       identity.email,
       identity.name,
     );
+    return this.createCustomerSession(user);
   }
 
   async customerLogin(email: string, password: string, captchaToken: string, captchaAnswer?: string) {
