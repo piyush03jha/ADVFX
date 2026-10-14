@@ -23,10 +23,7 @@ export class AuthController {
       throw new BadRequestException('A valid CAPTCHA purpose is required.');
     }
 
-    return {
-      provider: 'math' as const,
-      ...this.captchaService.issue(purpose),
-    };
+    return this.captchaService.issue(purpose);
   }
 
   @Post('register')

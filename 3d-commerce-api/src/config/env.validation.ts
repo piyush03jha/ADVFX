@@ -15,6 +15,17 @@ export function validateEnvironment() {
     }
   }
 
+  const captchaProvider = (process.env.AUTH_CAPTCHA_PROVIDER ?? 'math').trim().toLowerCase();
+  if (!['math', 'turnstile'].includes(captchaProvider)) {
+    throw new Error('AUTH_CAPTCHA_PROVIDER must be math or turnstile');
+  }
+  if (captchaProvider === 'turnstile') {
+    const turnstileSecret = process.env.TURNSTILE_SECRET_KEY ?? process.env.TURNSTILE_SECRET;
+    if (!process.env.TURNSTILE_SITE_KEY?.trim() || !turnstileSecret?.trim()) {
+      throw new Error('AUTH_CAPTCHA_PROVIDER=turnstile requires TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY');
+    }
+  }
+
   if (process.env.AUTH_EXPOSE_DEV_TOKENS === 'true' && nodeEnv === 'production') {
     throw new Error('AUTH_EXPOSE_DEV_TOKENS must not be enabled in production');
   }

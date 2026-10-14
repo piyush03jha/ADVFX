@@ -1,5 +1,16 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
-import { createHmac, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
+import {
+  createHmac,
+  randomBytes,
+  randomInt,
+  randomUUID,
+  timingSafeEqual,
+} from 'node:crypto';
 
 const CAPTCHA_TTL_MS = 5 * 60 * 1000;
 const PURPOSES = new Set(['login', 'register', 'forgot-password']);
@@ -14,13 +25,27 @@ type CaptchaPayload = {
   issuedAt: number;
 };
 
+type TurnstileVerifyResponse = {
+  success?: boolean;
+  hostname?: string;
+  action?: string;
+  'error-codes'?: string[];
+};
+
 @Injectable()
 export class AuthCaptchaService {
+  private readonly logger = new Logger(AuthCaptchaService.name);
   private readonly usedNonces = new Set<string>();
 
   issue(purpose: string) {
     if (!PURPOSES.has(purpose)) {
       throw new BadRequestException('Invalid CAPTCHA purpose.');
+    }
+
+    if (this.provider() === 'turnstile') {
+      const siteKey = process.env.TURNSTILE_SITE_KEY?.trim() ?? '';
+      if (!siteKey) throw new ServiceUnavailableException('Security check is not configured.');
+      return { provider: 'turnstile' as const, siteKey };
     }
 
     const first = randomInt(1, 10);
@@ -36,6 +61,7 @@ export class AuthCaptchaService {
     const proof = this.proof(answer, nonce, expiresAt, typedPurpose);
 
     return {
+      provider: 'math' as const,
       token: Buffer.from(
         JSON.stringify({ nonce, expiresAt, purpose: typedPurpose, proof, issuedAt }),
       ).toString('base64url'),
@@ -45,8 +71,57 @@ export class AuthCaptchaService {
     };
   }
 
-  verifyForAuth(token: string, answer: string | undefined, purpose: CaptchaPurpose) {
+  async verifyForAuth(token: string, answer: string | undefined, purpose: CaptchaPurpose): Promise<void> {
+    if (this.provider() === 'turnstile') {
+      await this.verifyTurnstile(token, purpose);
+      return;
+    }
     this.verify(token, answer ?? '', purpose);
+  }
+
+  private provider(): 'math' | 'turnstile' {
+    return process.env.AUTH_CAPTCHA_PROVIDER?.trim().toLowerCase() === 'turnstile'
+      ? 'turnstile'
+      : 'math';
+  }
+
+  private async verifyTurnstile(token: string, purpose: CaptchaPurpose): Promise<void> {
+    const secret = (process.env.TURNSTILE_SECRET_KEY ?? process.env.TURNSTILE_SECRET)?.trim();
+    if (!secret) throw new ServiceUnavailableException('Security check is not configured.');
+    if (!token || token.length > 2048) {
+      throw new BadRequestException('Please complete the security check.');
+    }
+
+    let result: TurnstileVerifyResponse;
+    try {
+      const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret, response: token, idempotency_key: randomUUID() }),
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!response.ok) throw new Error(`Turnstile siteverify returned HTTP ${response.status}`);
+      result = (await response.json()) as TurnstileVerifyResponse;
+    } catch (error) {
+      this.logger.error(`Turnstile siteverify unavailable: ${String(error)}`);
+      throw new ServiceUnavailableException('Security check is unavailable. Please try again.');
+    }
+
+    if (!result.success) {
+      this.logger.warn(`Turnstile rejected: ${(result['error-codes'] ?? []).join(',') || 'unknown'}`);
+      throw new BadRequestException('Security check failed. Please try again.');
+    }
+    if (result.action !== purpose) {
+      throw new BadRequestException('Security check failed. Please try again.');
+    }
+
+    const hostnames = (process.env.TURNSTILE_HOSTNAMES ?? '')
+      .split(',')
+      .map((hostname) => hostname.trim().toLowerCase())
+      .filter(Boolean);
+    if (hostnames.length && !hostnames.includes((result.hostname ?? '').toLowerCase())) {
+      throw new BadRequestException('Security check failed. Please try again.');
+    }
   }
 
   verify(token: string, answer: string, purpose: CaptchaPurpose) {
