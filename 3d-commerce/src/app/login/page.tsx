@@ -8,6 +8,7 @@ import { IconArrowRight, IconEye, IconEyeOff, IconLock, IconMail, IconShieldChec
 import { Navbar } from "@/components/layout/SiteNavbar";
 import { MathCaptcha } from "@/components/auth/MathCaptcha";
 import { AuthCaptcha } from "@/components/auth/AuthCaptcha";
+import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import { loginUser } from "@/lib/auth-client";
 import { useAuth } from "@/context/AuthContext";
 import { useAuthCaptcha } from "@/lib/auth-captcha";
@@ -22,7 +23,7 @@ function LoginPageContent() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const { provider, challenge, siteKey: turnstileSiteKey, token: turnstileToken, setTurnstileToken, answer: captchaAnswer, setAnswer: setCaptchaAnswer, isLoading: isCaptchaLoading, error: captchaError, version: captchaVersion, refresh: refreshCaptcha } = useAuthCaptcha("login");
-  const [error, setError] = useState("");
+  const [error, setError] = useState(() => googleErrorMessage(searchParams.get("error")));
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -74,6 +75,8 @@ function LoginPageContent() {
           </div>
           <div className="flex items-center p-6 sm:p-8 lg:p-12"><div className="mx-auto w-full max-w-md">
             <div className="mb-8"><p className="text-[11px] font-medium uppercase tracking-[0.2em] text-primary">Welcome back</p><h2 className="mt-2 font-serif text-4xl tracking-[-0.05em] sm:text-5xl">Sign in</h2><p className="mt-3 text-sm leading-6 text-muted">Access your account to continue your order.</p></div>
+            <GoogleSignInButton returnTo={returnTo} />
+            <div className="my-6 flex items-center gap-3"><div className="h-px flex-1 bg-surface" /><span className="text-[11px] uppercase tracking-[0.16em] text-muted/70">or sign in with email</span><div className="h-px flex-1 bg-surface" /></div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <label className="block"><span className="mb-2 block text-[11px] font-medium uppercase tracking-[0.15em] text-muted">Email address</span><div className="relative"><IconMail size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" /><input value={email} onChange={(event) => setEmail(event.target.value)} type="email" required autoComplete="email" placeholder="you@example.com" className="h-12 w-full rounded-xl border border-border bg-surface pl-10 pr-4 text-sm text-foreground outline-none focus:border-primary/40" /></div></label>
               <label className="block"><div className="mb-2 flex items-center justify-between"><span className="text-[11px] font-medium uppercase tracking-[0.15em] text-muted">Password</span><Link href="/forgot-password" className="text-[11px] text-muted hover:text-primary">Forgot password?</Link></div><div className="relative"><IconLock size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" /><input value={password} onChange={(event) => setPassword(event.target.value)} type={showPassword ? "text" : "password"} required autoComplete={remember ? "current-password" : "off"} placeholder="Enter your password" className="h-12 w-full rounded-xl border border-border bg-surface pl-10 pr-11 text-sm text-foreground outline-none focus:border-primary/40" /><button type="button" aria-label={showPassword ? "Hide password" : "Show password"} onClick={() => setShowPassword((value) => !value)} className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center text-muted">{showPassword ? <IconEyeOff size={16} /> : <IconEye size={16} />}</button></div></label>
@@ -116,6 +119,15 @@ function getSafeReturnPath(value: string | null) {
     return "/account";
   }
   return value;
+}
+
+function googleErrorMessage(code: string | null) {
+  switch (code) {
+    case "google_denied": return "Google sign-in was cancelled. You can try again or sign in with email.";
+    case "google_unavailable": return "Google sign-in is not available right now. Please sign in with email.";
+    case "google_failed": return "We couldn't complete Google sign-in. Please try again.";
+    default: return "";
+  }
 }
 
 function CaptchaLoading({ error }: { error: string }) { return <div className="rounded-xl border border-border bg-surface p-3 text-xs text-muted">{error || "Preparing security check…"}</div>; }
