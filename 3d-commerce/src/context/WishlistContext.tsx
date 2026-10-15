@@ -11,6 +11,7 @@ import {
 
 import type { StorefrontProduct } from "@/lib/catalog-api";
 import { useAuth } from "@/context/AuthContext";
+import { resolveMediaUrl } from "@/lib/media-url";
 
 export interface WishlistProduct {
   id: string;
@@ -123,7 +124,18 @@ type BackendWishlistProduct = {
     isPrimary: boolean;
   }>;
   badge?: string | null;
-  variants?: unknown[];
+  variants?: Array<{
+    id: string;
+    name: string;
+    isActive: boolean;
+    price?: {
+      id?: string;
+      currency: string;
+      amountMinor: number;
+      compareAtMinor?: number | null;
+      isActive: boolean;
+    } | null;
+  }>;
 };
 
 type BackendWishlistResponse = {
@@ -136,23 +148,32 @@ type BackendWishlistResponse = {
 };
 
 function mapBackendProduct(product: BackendWishlistProduct): WishlistProduct {
+  const variantPrices = (product.variants ?? [])
+    .filter((variant) => variant.isActive && variant.price?.isActive)
+    .map((variant) => ({
+      amountMinor: variant.price!.amountMinor,
+      compareAtMinor: variant.price!.compareAtMinor ?? undefined,
+      currency: variant.price!.currency,
+    }));
+  const lowestVariantPrice =
+    variantPrices.filter((candidate) => candidate.currency === "INR").sort((a, b) => a.amountMinor - b.amountMinor)[0] ??
+    variantPrices.sort((a, b) => a.amountMinor - b.amountMinor)[0];
   const price =
-    product.prices?.find(
-      (candidate) =>
-        candidate.currency === "INR" && candidate.isActive,
-    ) ??
+    lowestVariantPrice ??
+    product.prices?.find((candidate) => candidate.currency === "INR" && candidate.isActive) ??
     product.prices?.find((candidate) => candidate.isActive) ??
     product.prices?.[0];
 
   const amountMinor = price?.amountMinor ?? 0;
   const compareAtMinor = price?.compareAtMinor ?? undefined;
 
-  const image =
+  const imageUrl =
     product.media?.find(
       (media) => media.type === "IMAGE" && media.isPrimary,
     )?.url ??
     product.media?.find((media) => media.type === "IMAGE")?.url ??
-    "/catogeries/1.jpg";
+    "/categories/1.jpg";
+  const image = resolveMediaUrl(imageUrl) ?? "/categories/1.jpg";
 
   const model =
     product.media?.find(
@@ -181,7 +202,7 @@ function mapBackendProduct(product: BackendWishlistProduct): WishlistProduct {
       compareAtMinor !== undefined && compareAtMinor > amountMinor
         ? `${Math.round(((compareAtMinor - amountMinor) / compareAtMinor) * 100)}% OFF`
         : undefined,
-    model,
+    model: resolveMediaUrl(model) ?? "",
   };
 }
 
