@@ -12,6 +12,7 @@ import {
 import type { StorefrontProduct as Product } from "@/lib/catalog-api";
 import type { StorefrontVariant } from "@/lib/catalog-api";
 import { useAuth } from "@/context/AuthContext";
+import { resolveMediaUrl } from "@/lib/media-url";
 
 export type CartSize = string;
 
@@ -190,13 +191,13 @@ function clearLocalGuestCart() {
 }
 
 function normalizeBackendImage(product: BackendCartProduct) {
-  return (
+  const url =
     product.media?.find(
       (media) => media.type === "IMAGE" && media.isPrimary,
     )?.url ??
-    product.media?.find((media) => media.type === "IMAGE")?.url ??
-    "/catogeries/1.jpg"
-  );
+    product.media?.find((media) => media.type === "IMAGE")?.url;
+
+  return resolveMediaUrl(url) ?? "/categories/1.jpg";
 }
 
 function normalizeBackendModel(product: BackendCartProduct) {
