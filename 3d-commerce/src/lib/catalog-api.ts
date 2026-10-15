@@ -146,6 +146,7 @@ export interface StorefrontProduct {
   isBestseller: boolean;
   stock: number;
   reserved: number;
+  lowStockAt: number;
   trackStock: boolean;
   allowBackorder: boolean;
   createdAt?: string;
@@ -311,6 +312,7 @@ export function mapCatalogProduct(product: CatalogProduct): StorefrontProduct {
     isBestseller: product.isBestseller,
     stock: product.inventory?.stock ?? 0,
     reserved: product.inventory?.reserved ?? 0,
+    lowStockAt: product.inventory?.lowStockAt ?? 5,
     trackStock: product.inventory?.trackStock ?? false,
     allowBackorder: product.inventory?.allowBackorder ?? false,
     createdAt: product.createdAt,
