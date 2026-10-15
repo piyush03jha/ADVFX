@@ -67,7 +67,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       message: message ?? "Password updated successfully.",
-    });
+    }, { status: response.status });
   } catch {
     return NextResponse.json(
       { error: "Authentication service is unavailable. Please try again." },
