@@ -320,8 +320,8 @@ export function mapCatalogProduct(product: CatalogProduct): StorefrontProduct {
     price: amount / 100,
     currency,
     oldPrice: compareAt !== undefined ? compareAt / 100 : undefined,
-    rating: 0,
-    reviewCount: 0,
+    rating: product.rating ?? 0,
+    reviewCount: product.reviewCount ?? 0,
     image: resolveMediaUrl(primaryImage(product)) ?? "/categories/1.jpg",
     images: product.media
       .filter((media) => media.type === "IMAGE")
