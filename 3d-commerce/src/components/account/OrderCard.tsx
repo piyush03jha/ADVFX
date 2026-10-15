@@ -29,7 +29,11 @@ export function OrderCard({ order }: { order: BackendOrder }) {
     >
       <div className="flex gap-3">
         <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-border bg-surface-elevated sm:h-24 sm:w-24">
-          <img src={resolveMediaUrl(firstItem?.imageUrl) ?? "/categories/1.jpg"} alt={firstItem?.productName ?? "Ordered product"} loading="lazy" className="h-full w-full object-cover" />
+          {resolveMediaUrl(firstItem?.imageUrl) ? (
+            <img src={resolveMediaUrl(firstItem?.imageUrl)!} alt={firstItem?.productName ?? "Ordered product"} loading="lazy" className="h-full w-full object-cover" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-[9px] uppercase tracking-[0.12em] text-muted">Physical</div>
+          )}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
