@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { IconArrowUpRight, IconChevronRight } from "@tabler/icons-react";
 import type { BackendOrder } from "@/lib/account-orders";
+import { resolveMediaUrl } from "@/lib/media-url";
 
 function formatMoney(amountMinor: number, currency: string) {
   return new Intl.NumberFormat("en-IN", {
@@ -27,8 +28,8 @@ export function OrderCard({ order }: { order: BackendOrder }) {
       className="group block rounded-2xl border border-white/[0.1] bg-surface p-3 shadow-[0_16px_50px_rgba(0,0,0,0.12)] transition-all hover:-translate-y-0.5 hover:border-primary/30 sm:p-4"
     >
       <div className="flex gap-3">
-        <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-[9px] uppercase tracking-[0.12em] text-primary sm:h-24 sm:w-24">
-          Physical
+        <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-border bg-surface-elevated sm:h-24 sm:w-24">
+          <img src={resolveMediaUrl(firstItem?.imageUrl) ?? "/categories/1.jpg"} alt={firstItem?.productName ?? "Ordered product"} loading="lazy" className="h-full w-full object-cover" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
