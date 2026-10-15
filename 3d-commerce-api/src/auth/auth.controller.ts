@@ -1,7 +1,8 @@
-import { BadRequestException, Body, Controller, Get, Headers, Post, Query, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Headers, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { AuthGuard } from './guards/auth.guard';
+import { CustomerAuthGuard } from './guards/customer-auth.guard';
 import { CustomerLoginDto } from './dto/customer-login.dto';
 import { CustomerRegisterDto } from './dto/customer-register.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
