@@ -21,6 +21,7 @@ export type BackendOrder = {
     quantity: number;
     unitPriceMinor: number;
     totalPriceMinor: number;
+    imageUrl?: string | null;
   }>;
   shippingAddress: {
     id: string;
