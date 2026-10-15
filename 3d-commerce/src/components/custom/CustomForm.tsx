@@ -476,7 +476,7 @@ export function CustomForm({
                 />
                 <span>
                   <span className="block text-sm font-semibold">Need a custom size?</span>
-                  <span className="mt-1 block text-xs leading-5 text-muted">Enter only the total height in centimetres (cm). We’ll confirm fit and final pricing after reviewing your request.</span>
+                  <span className="mt-1 block text-xs leading-5 text-muted">Enter only the total height in centimetres (cm). The displayed estimate uses the selected size tier; our team will confirm final pricing after reviewing your request.</span>
                 </span>
               </label>
               {useCustomSize && (
