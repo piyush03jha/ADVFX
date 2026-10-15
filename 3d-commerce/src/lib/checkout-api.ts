@@ -112,6 +112,7 @@ export type CreatedOrder = {
     quantity: number;
     unitPriceMinor: number;
     totalPriceMinor: number;
+    imageUrl?: string | null;
   }>;
   payment: {
     id: string;
