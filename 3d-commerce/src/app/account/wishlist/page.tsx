@@ -44,10 +44,11 @@ export default function AccountWishlistPage() {
                 className="group min-w-0 overflow-hidden rounded-2xl border border-border bg-surface/50"
               >
                 <div className="relative aspect-[4/4.8] overflow-hidden bg-surface-elevated">
-                  <Link href={`/product/${product.id}`} className="block h-full">
+                  <Link href={`/product/${product.slug ?? product.id}`} className="block h-full">
                     <img
                       src={product.image}
                       alt={product.name}
+                      loading="lazy"
                       className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.035]"
                     />
                   </Link>
