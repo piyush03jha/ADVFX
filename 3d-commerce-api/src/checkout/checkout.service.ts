@@ -91,8 +91,34 @@ export class CheckoutService {
 
     if (!order) throw new NotFoundException('Order not found');
 
+    const productIds = [...new Set(order.items.map((item) => item.productId))];
+    const products = productIds.length
+      ? await this.prisma.product.findMany({
+          where: { id: { in: productIds } },
+          select: {
+            id: true,
+            media: {
+              where: { type: 'IMAGE' },
+              orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }],
+              take: 1,
+              select: { url: true },
+            },
+          },
+        })
+      : [];
+    const imageByProduct = new Map(
+      products.map((product) => [product.id, product.media[0]?.url ?? null]),
+    );
+    const orderWithImages = {
+      ...order,
+      items: order.items.map((item) => ({
+        ...item,
+        imageUrl: imageByProduct.get(item.productId) ?? null,
+      })),
+    };
+
     return {
-      order: order as unknown,
+      order: orderWithImages as unknown,
       orderId: order.id,
       orderNumber: order.orderNumber,
       orderStatus: order.status,
