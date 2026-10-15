@@ -267,10 +267,13 @@ export class ProductsService {
       .slice(0, 8);
 
     const bestsellerIds = new Set(bestsellerScores.map((item) => item.id));
+    const ratings = await this.reviewAggregates(products.map((product) => product.id));
 
     return products.map((product) => ({
       ...product,
       isBestseller: bestsellerIds.has(product.id),
+      rating: ratings.get(product.id)?.rating ?? 0,
+      reviewCount: ratings.get(product.id)?.reviewCount ?? 0,
     }));
   }
 
