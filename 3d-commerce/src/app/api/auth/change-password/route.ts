@@ -58,10 +58,16 @@ export async function POST(request: Request) {
     } | null;
     const message = Array.isArray(data?.message) ? data.message[0] : data?.message;
 
-    return NextResponse.json(
-      data ?? { error: "Unable to update password." },
-      { status: response.status },
-    );
+    if (!response.ok) {
+      return NextResponse.json(
+        { error: data?.error ?? message ?? "Unable to update password." },
+        { status: response.status },
+      );
+    }
+
+    return NextResponse.json({
+      message: message ?? "Password updated successfully.",
+    });
   } catch {
     return NextResponse.json(
       { error: "Authentication service is unavailable. Please try again." },
