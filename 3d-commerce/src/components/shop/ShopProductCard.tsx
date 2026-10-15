@@ -25,12 +25,15 @@ interface ShopProductCardProps {
 }
 
 export function ShopProductCard({ product, priority = false }: ShopProductCardProps) {
-  const imageSrc = resolveMediaUrl(product.image) ?? "/catogeries/1.jpg";
-  // The optimizer only allows configured local paths without query strings;
-  // anything else (remote CDN, signed URLs) is served as-is.
+  const imageSrc = resolveMediaUrl(product.image) ?? "/categories/1.jpg";
+  // API assets are delivered by the same-origin asset proxy and must bypass
+  // Next Image optimization; safe local static paths can use the optimizer.
   const optimizable =
-    imageSrc.startsWith("/") && !imageSrc.includes("?") &&
-    (imageSrc.startsWith("/storage/") || imageSrc.startsWith("/catogeries/"));
+    imageSrc.startsWith("/") &&
+    !imageSrc.includes("?") &&
+    (imageSrc.startsWith("/storage/") ||
+      imageSrc.startsWith("/categories/") ||
+      imageSrc.startsWith("/catogeries/"));
 
   const router = useRouter();
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
