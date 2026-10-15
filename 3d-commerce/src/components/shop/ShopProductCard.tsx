@@ -33,7 +33,8 @@ export function ShopProductCard({ product, priority = false }: ShopProductCardPr
     !imageSrc.includes("?") &&
     (imageSrc.startsWith("/storage/") ||
       imageSrc.startsWith("/categories/") ||
-      imageSrc.startsWith("/catogeries/"));
+      imageSrc.startsWith("/catogeries/") ||
+      imageSrc.startsWith("/api/assets/"));
 
   const router = useRouter();
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
