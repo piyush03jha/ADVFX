@@ -14,6 +14,7 @@ import { getOrderStatus } from "@/lib/order-api";
 import type { CreatedOrder } from "@/lib/checkout-api";
 import { OrderItems } from "@/components/account/OrderItems";
 import { OrderSummary } from "@/components/account/OrderSummary";
+import { resolveMediaUrl } from "@/lib/media-url";
 
 
 export default function OrderConfirmationPage() {
@@ -53,7 +54,7 @@ function OrderConfirmationContent() {
   const orderItems = order.items.map((item) => ({
     productId: item.productId,
     name: item.productName,
-    image: "/catogeries/1.jpg",
+    image: resolveMediaUrl(item.imageUrl) ?? "/categories/1.jpg",
     price: item.unitPriceMinor / 100,
     quantity: item.quantity,
   }));
