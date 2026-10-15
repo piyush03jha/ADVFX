@@ -246,13 +246,13 @@ export default function AccountSettingsPage() {
                     <button
                       type="button"
                       onClick={() => { setPasswordOpen(false); setCurrentPassword(""); setNewPassword(""); setConfirmPassword(""); setPasswordError(null); }}
-                      className="min-h-11 rounded-xl border border-white/[0.12] px-4 text-xs font-medium text-foreground hover:bg-white/[0.04]"
+                      className="min-h-11 w-full rounded-xl border border-white/[0.12] px-4 text-xs font-medium text-foreground hover:bg-white/[0.04] sm:w-auto"
                     >Cancel</button>
                     <button
                       type="button"
                       onClick={() => void handleChangePassword()}
                       disabled={passwordSaving}
-                      className="min-h-11 rounded-xl bg-primary px-4 text-xs font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                      className="min-h-11 w-full rounded-xl bg-primary px-4 text-xs font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                     >{passwordSaving ? "Updating…" : "Update password"}</button>
                   </div>
                 </div>
