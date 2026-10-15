@@ -156,19 +156,31 @@ export function ProductInfo({
       ================================================== */}
 
       <div className="mt-5 flex flex-wrap items-center gap-2">
-        {product.trackStock ? (
-          product.stock > product.reserved ? (
-            <Badge variant="primary">
-              {product.stock - product.reserved} in stock
-            </Badge>
-          ) : product.allowBackorder ? (
-            <Badge>Available to order</Badge>
-          ) : (
-            <Badge>Out of stock</Badge>
-          )
-        ) : (
-          <Badge>Made to order</Badge>
-        )}
+        {(() => {
+          const inventory = selectedVariant ?? product;
+          const available = Math.max(0, (inventory.stock ?? product.stock) - (inventory.reserved ?? product.reserved));
+          const tracksStock = inventory.trackStock ?? product.trackStock;
+          const backorder = inventory.allowBackorder ?? product.allowBackorder;
+          const lowStockAt = inventory.lowStockAt ?? product.lowStockAt;
+
+          if (!tracksStock) return <Badge>Made to order</Badge>;
+          if (available <= 0 && !backorder) {
+            return (
+              <Badge className="border-red-700/30 bg-red-50 text-red-800 dark:border-red-400/30 dark:bg-red-400/10 dark:text-red-200">
+                Out of stock
+              </Badge>
+            );
+          }
+          if (available <= 0 && backorder) return <Badge>Available to order</Badge>;
+          if (available <= lowStockAt) {
+            return (
+              <Badge className="border-orange-800/25 bg-orange-50 text-orange-950 dark:border-orange-300/25 dark:bg-orange-300/10 dark:text-orange-100">
+                Only {available} left
+              </Badge>
+            );
+          }
+          return <Badge variant="success">{available} in stock</Badge>;
+        })()}
       </div>
 
       <p
