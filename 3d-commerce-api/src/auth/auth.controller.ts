@@ -10,6 +10,7 @@ import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
 import { GoogleLoginDto } from './dto/google-login.dto';
 import { AuthCaptchaService } from './captcha.service';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -87,6 +88,21 @@ export class AuthController {
   @Post('reset-password')
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetCustomerPassword(dto.token, dto.password);
+  }
+
+  @UseGuards(CustomerAuthGuard)
+  @Post('change-password')
+  changeCustomerPassword(
+    @Req() req: any,
+    @Headers('authorization') authorization: string | undefined,
+    @Body() dto: ChangePasswordDto,
+  ) {
+    return this.authService.changeCustomerPassword(
+      req.user.id,
+      this.extractBearerToken(authorization),
+      dto.currentPassword,
+      dto.newPassword,
+    );
   }
 
   @Post('admin/login')
