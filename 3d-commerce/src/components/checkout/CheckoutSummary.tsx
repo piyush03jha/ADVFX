@@ -65,19 +65,22 @@ export function CheckoutSummary({
       )}
 
       <div className="mt-5 max-h-[320px] space-y-3 overflow-auto pr-1">
-        {items.map((item) => (
-          <div key={item.key} className={`flex min-w-0 gap-3 rounded-xl border border-border ${innerGradient} p-2.5`}>
-            <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-border bg-background">
-              <Image src={normalizeImagePath(item.product.image)} alt={item.product.name} fill unoptimized={normalizeImagePath(item.product.image).startsWith("/api/assets/")} sizes="64px" className="object-cover" />
-              <span className="absolute right-1 top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-black/80 px-1 text-[11px] font-medium text-white">{item.quantity}</span>
+        {items.map((item) => {
+          const imageSrc = normalizeImagePath(item.product.image);
+          return (
+            <div key={item.key} className={`flex min-w-0 gap-3 rounded-xl border border-border ${innerGradient} p-2.5`}>
+              <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-border bg-background">
+                <Image src={imageSrc} alt={item.product.name} fill unoptimized={imageSrc.startsWith("/api/assets/")} sizes="64px" className="object-cover" />
+                <span className="absolute right-1 top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-black/80 px-1 text-[11px] font-medium text-white">{item.quantity}</span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-medium text-foreground">{item.product.name}</p>
+                <p className="mt-1 text-[11px] text-muted">{item.size}</p>
+                <p className="mt-1 text-xs text-foreground">₹{(item.product.price * item.quantity).toLocaleString("en-IN")}</p>
+              </div>
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-medium text-foreground">{item.product.name}</p>
-              <p className="mt-1 text-[11px] text-muted">{item.size}</p>
-              <p className="mt-1 text-xs text-foreground">₹{(item.product.price * item.quantity).toLocaleString("en-IN")}</p>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className={`mt-5 rounded-xl border border-border ${innerGradient} p-3.5`}>
