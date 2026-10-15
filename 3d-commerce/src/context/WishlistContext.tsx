@@ -195,8 +195,8 @@ function mapBackendProduct(product: BackendWishlistProduct): WishlistProduct {
       compareAtMinor !== undefined
         ? compareAtMinor / 100
         : undefined,
-    rating: 0,
-    reviewCount: 0,
+    rating: product.rating ?? 0,
+    reviewCount: product.reviewCount ?? 0,
     badge: product.badge ?? undefined,
     discount:
       compareAtMinor !== undefined && compareAtMinor > amountMinor
