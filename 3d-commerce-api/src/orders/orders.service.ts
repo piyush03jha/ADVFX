@@ -337,13 +337,70 @@ export class OrdersService {
   }
 
   async findMine(userId: string) {
-    return this.prisma.order.findMany({ where: { userId }, include: { items: true, shippingAddress: true, payment: true, shipment: true, inventoryReservations: true, promotion: true, shippingRule: true }, orderBy: { createdAt: 'desc' } });
+    const orders = await this.prisma.order.findMany({
+      where: { userId },
+      include: { items: true, shippingAddress: true, payment: true, shipment: true, inventoryReservations: true, promotion: true, shippingRule: true },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const productIds = [...new Set(orders.flatMap((order) => order.items.map((item) => item.productId)))];
+    const products = productIds.length
+      ? await this.prisma.product.findMany({
+          where: { id: { in: productIds } },
+          select: {
+            id: true,
+            media: {
+              where: { type: 'IMAGE' },
+              orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }],
+              take: 1,
+              select: { url: true },
+            },
+          },
+        })
+      : [];
+    const imageByProduct = new Map(
+      products.map((product) => [product.id, product.media[0]?.url ?? null]),
+    );
+
+    return orders.map((order) => ({
+      ...order,
+      items: order.items.map((item) => ({
+        ...item,
+        imageUrl: imageByProduct.get(item.productId) ?? null,
+      })),
+    }));
   }
 
   async findOne(userId: string, id: string) {
-    const order = await this.prisma.order.findFirst({ where: { id, userId }, include: { items: true, shippingAddress: true, payment: true, shipment: true, inventoryReservations: true, promotion: true, shippingRule: true } });
+    const order = await this.prisma.order.findFirst({
+      where: { id, userId },
+      include: { items: true, shippingAddress: true, payment: true, shipment: true, inventoryReservations: true, promotion: true, shippingRule: true },
+    });
     if (!order) throw new NotFoundException('Order not found');
-    return order;
+
+    const products = await this.prisma.product.findMany({
+      where: { id: { in: [...new Set(order.items.map((item) => item.productId))] } },
+      select: {
+        id: true,
+        media: {
+          where: { type: 'IMAGE' },
+          orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }],
+          take: 1,
+          select: { url: true },
+        },
+      },
+    });
+    const imageByProduct = new Map(
+      products.map((product) => [product.id, product.media[0]?.url ?? null]),
+    );
+
+    return {
+      ...order,
+      items: order.items.map((item) => ({
+        ...item,
+        imageUrl: imageByProduct.get(item.productId) ?? null,
+      })),
+    };
   }
 
   async findAllAdmin(
