@@ -107,6 +107,8 @@ type BackendWishlistProduct = {
   name: string;
   slug?: string;
   description?: string | null;
+  rating?: number;
+  reviewCount?: number;
   category?: { id: string; name: string; slug: string } | null;
   prices?: Array<{
     id: string;
