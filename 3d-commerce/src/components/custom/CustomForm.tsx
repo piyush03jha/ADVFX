@@ -45,10 +45,7 @@ export function CustomForm({
   const [category, setCategory] = useState<CustomCategory>("person");
   const [size, setSize] = useState("15");
   const [useCustomSize, setUseCustomSize] = useState(false);
-  const [customWidth, setCustomWidth] = useState("");
   const [customHeight, setCustomHeight] = useState("");
-  const [customDepth, setCustomDepth] = useState("");
-  const [customUnit, setCustomUnit] = useState("cm");
   const [frame, setFrame] = useState("single");
   const [files, setFiles] = useState<File[]>([]);
   const [modelFile, setModelFile] = useState<File | null>(null);
@@ -114,10 +111,12 @@ export function CustomForm({
   const isPerson = category === "person";
   const selectedCategory = configuredCategory;
   const price = serverPrice ?? 0;
-  const customDimensions = useCustomSize
-    ? `W ${customWidth} × H ${customHeight} × D ${customDepth} ${customUnit}`
-    : "";
-  const customSizeValid = !useCustomSize || [customWidth, customHeight, customDepth].every((value) => value.trim() !== "" && Number.isFinite(Number(value)) && Number(value) > 0);
+  const customDimensions = useCustomSize ? `Height ${customHeight} cm` : "";
+  const customSizeValid =
+    !useCustomSize ||
+    (customHeight.trim() !== "" &&
+      Number.isFinite(Number(customHeight)) &&
+      Number(customHeight) > 0);
 
   useEffect(() => {
     let cancelled = false;
@@ -188,7 +187,7 @@ export function CustomForm({
     setAttemptedSubmit(true);
 
     if (useCustomSize && !customSizeValid) {
-      setFileError("Enter a valid positive width, height, and depth for your custom size.");
+      setFileError("Enter a valid positive height in centimetres (cm).");
       document.getElementById("custom-size-fields")?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
@@ -212,8 +211,9 @@ export function CustomForm({
         `Category: ${selectedCategory.name}`,
         `Body type: ${isPerson ? selectedBody?.name ?? "Not selected" : "Not applicable"}`,
         `Person in frame: ${isPerson ? selectedFrame?.name ?? "Not selected" : "Not applicable"}`,
-        `Selected size: ${configuredSize?.name ?? `${size} cm`}`,
-        useCustomSize ? `Customer custom dimensions: ${customDimensions}` : "",
+        useCustomSize
+          ? `Requested custom size: ${customDimensions}`
+          : `Selected size: ${configuredSize?.name ?? `${size} cm`}`,
         details.trim() ? `Additional requirements:\n${details.trim()}` : "",
       ].filter(Boolean).join("\n");
 
@@ -309,7 +309,7 @@ export function CustomForm({
         price,
         bodyLabel: isPerson ? selectedBody?.name ?? "Not selected" : "Not applicable",
         headLabel: "Default",
-        sizeLabel: configuredSize?.name ?? `${size} cm`,
+        sizeLabel: useCustomSize ? customDimensions : configuredSize?.name ?? `${size} cm`,
         frameLabel: isPerson ? selectedFrame?.name ?? "Not selected" : "Not applicable",
       });
     } catch (error) {
@@ -476,27 +476,28 @@ export function CustomForm({
                 />
                 <span>
                   <span className="block text-sm font-semibold">Need a custom size?</span>
-                  <span className="mt-1 block text-xs leading-5 text-muted">Enter your exact dimensions. Our team will review them and confirm the final price.</span>
+                  <span className="mt-1 block text-xs leading-5 text-muted">Enter only the total height in centimetres (cm). We’ll confirm fit and final pricing after reviewing your request.</span>
                 </span>
               </label>
               {useCustomSize && (
-                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  <label className="text-xs font-medium">Width
-                    <input type="number" min="0.1" step="any" required value={customWidth} onChange={(event) => setCustomWidth(event.target.value)} placeholder="Width" className="mt-1.5 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm outline-none focus:border-primary/60" />
+                <div className="mt-4">
+                  <label className="block max-w-sm text-xs font-medium text-foreground">
+                    Height (cm)
+                    <input
+                      type="number"
+                      min="0.1"
+                      step="any"
+                      required
+                      value={customHeight}
+                      onChange={(event) => setCustomHeight(event.target.value)}
+                      placeholder="Enter height in cm"
+                      inputMode="decimal"
+                      className="mt-1.5 h-12 w-full rounded-xl border border-border bg-surface px-3.5 text-base outline-none focus:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/15 sm:text-sm"
+                    />
                   </label>
-                  <label className="text-xs font-medium">Height
-                    <input type="number" min="0.1" step="any" required value={customHeight} onChange={(event) => setCustomHeight(event.target.value)} placeholder="Height" className="mt-1.5 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm outline-none focus:border-primary/60" />
-                  </label>
-                  <label className="text-xs font-medium">Depth
-                    <input type="number" min="0.1" step="any" required value={customDepth} onChange={(event) => setCustomDepth(event.target.value)} placeholder="Depth" className="mt-1.5 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm outline-none focus:border-primary/60" />
-                  </label>
-                  <label className="text-xs font-medium">Unit
-                    <select value={customUnit} onChange={(event) => setCustomUnit(event.target.value)} className="mt-1.5 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm outline-none focus:border-primary/60">
-                      <option value="mm">mm</option>
-                      <option value="cm">cm</option>
-                      <option value="in">inches</option>
-                    </select>
-                  </label>
+                  <p className="mt-2 text-[11px] leading-5 text-muted">
+                    Height only. Dimensions are recorded in centimetres.
+                  </p>
                 </div>
               )}
             </section>
@@ -516,7 +517,7 @@ export function CustomForm({
                 <p className="text-[10px] uppercase tracking-[0.16em] text-muted">
                   Size
                 </p>
-                <p className="mt-1 text-sm font-medium">{configuredSize?.name ?? `${size} cm`}</p>
+                <p className="mt-1 text-sm font-medium">{useCustomSize ? customDimensions : configuredSize?.name ?? `${size} cm`}</p>
               </div>
             </div>
           </div>
@@ -575,7 +576,7 @@ export function CustomForm({
           <h3 className="mt-1 text-lg font-semibold">Ready to submit</h3>
           <div className="mt-5 space-y-2.5">
             <SummaryRow label="Category" value={selectedCategory.name} />
-            <SummaryRow label="Size" value={configuredSize?.name ?? `${size} cm`} />
+            <SummaryRow label="Size" value={useCustomSize ? customDimensions : configuredSize?.name ?? `${size} cm`} />
             <SummaryRow
               label={pricingLoading ? "Calculating price" : "Price"}
               value={`₹${price.toLocaleString("en-IN")}`}
