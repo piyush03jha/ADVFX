@@ -8,6 +8,7 @@ import { OrderSummary } from "@/components/account/OrderSummary";
 import { OrderTimeline } from "@/components/account/OrderTimeline";
 import { getBackendApiUrl } from "@/lib/backend-api";
 import { AUTH_COOKIE_NAME } from "@/lib/auth";
+import { resolveMediaUrl } from "@/lib/media-url";
 
 interface OrderPageProps { params: Promise<{ id: string }>; }
 
@@ -42,6 +43,7 @@ async function getOrder(id: string) {
       quantity: number;
       unitPriceMinor: number;
       totalPriceMinor: number;
+      imageUrl?: string | null;
     }>;
     shippingAddress: {
       fullName: string;
@@ -70,7 +72,7 @@ export default async function OrderTrackingPage({ params }: OrderPageProps) {
   const items = order.items.map((item) => ({
     productId: `${item.productId}-${item.id}`,
     name: item.productName,
-    image: "/catogeries/1.jpg",
+    image: resolveMediaUrl(item.imageUrl) ?? "/categories/1.jpg",
     price: item.unitPriceMinor / 100,
     quantity: item.quantity,
   }));
