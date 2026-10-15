@@ -369,6 +369,53 @@ export class AuthService {
     };
   }
 
+  async changeCustomerPassword(
+    userId: string,
+    currentSessionToken: string,
+    currentPassword: string,
+    newPassword: string,
+  ) {
+    if (!currentSessionToken || currentSessionToken.length > 256) {
+      throw new UnauthorizedException('Invalid or expired session');
+    }
+
+    const credentials = await this.prisma.$queryRaw<Array<{ passwordHash: string }>>`
+      SELECT "passwordHash"
+      FROM "CustomerCredential"
+      WHERE "userId" = ${userId}
+      LIMIT 1
+    `;
+
+    if (
+      !credentials[0] ||
+      !(await verifyPassword(currentPassword, credentials[0].passwordHash))
+    ) {
+      throw new UnauthorizedException('Current password is incorrect.');
+    }
+
+    const passwordHash = await hashPassword(newPassword);
+    const currentTokenHash = hashSessionToken(currentSessionToken);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`
+        UPDATE "CustomerCredential"
+        SET "passwordHash" = ${passwordHash}, "updatedAt" = CURRENT_TIMESTAMP
+        WHERE "userId" = ${userId}
+      `;
+
+      // Keep the current device signed in; revoke every other active session.
+      await tx.$executeRaw`
+        UPDATE "CustomerAuthSession"
+        SET "revokedAt" = CURRENT_TIMESTAMP
+        WHERE "userId" = ${userId}
+          AND "revokedAt" IS NULL
+          AND "tokenHash" <> ${currentTokenHash}
+      `;
+    });
+
+    return { message: 'Password updated successfully.' };
+  }
+
   async resetCustomerPassword(token: string, password: string) {
     if (!token || token.length > 256) {
       throw new UnauthorizedException('Invalid or expired password reset token.');
