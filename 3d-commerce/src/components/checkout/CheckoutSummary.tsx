@@ -6,6 +6,7 @@ import { IconLock, IconShieldCheck, IconTruckDelivery } from "@tabler/icons-reac
 import { getCountry, type CountryCode } from "@/config/countries";
 import { useCart, type CartItem } from "@/context/CartContext";
 import type { CheckoutQuote } from "@/lib/checkout-api";
+import { resolveMediaUrl } from "@/lib/media-url";
 
 interface CheckoutSummaryProps {
   country: CountryCode;
@@ -22,14 +23,7 @@ const innerGradient =
   "bg-[linear-gradient(135deg,rgb(from var(--foreground) r g b / 0.04),rgb(from var(--background) r g b / 0.015)_65%,rgb(from var(--primary) r g b / 0.045))]";
 
 function normalizeImagePath(src: string) {
-  if (!src) return "/catogeries/1.jpg";
-  try {
-    const url = new URL(src);
-    if (url.hostname === "example.com") return "/catogeries/1.jpg";
-    return url.toString();
-  } catch {
-    return src.startsWith("/") ? src : `/${src}`;
-  }
+  return resolveMediaUrl(src) ?? "/categories/1.jpg";
 }
 
 function money(minor: number, currency: string) {
