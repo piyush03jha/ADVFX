@@ -81,6 +81,10 @@ export interface CatalogProduct {
   prices: CatalogPrice[];
   variants?: CatalogVariant[];
   media: CatalogMedia[];
+  /** Legacy API fields used by older product records. */
+  image?: string | null;
+  imageUrl?: string | null;
+  images?: string[];
   tags: CatalogTag[];
   metrics?: {
     viewCount: number;
@@ -251,9 +255,18 @@ export function assetUrl(url: string): string {
 }
 
 function primaryImage(product: CatalogProduct): string {
-  return product.media.find((media) => media.type === "IMAGE" && media.isPrimary)?.url
-    ?? product.media.find((media) => media.type === "IMAGE")?.url
-    ?? "/categories/1.jpg";
+  const media = Array.isArray(product.media) ? product.media : [];
+  const images = media.filter(
+    (item) => item?.type === "IMAGE" && typeof item.url === "string" && item.url.trim(),
+  );
+  return (
+    images.find((item) => item.isPrimary)?.url ??
+    images[0]?.url ??
+    product.imageUrl ??
+    product.image ??
+    product.images?.find((item) => typeof item === "string" && item.trim()) ??
+    "/categories/1.jpg"
+  );
 }
 
 function primaryModel(product: CatalogProduct): string {
@@ -325,8 +338,8 @@ export function mapCatalogProduct(product: CatalogProduct): StorefrontProduct {
     rating: product.rating ?? 0,
     reviewCount: product.reviewCount ?? 0,
     image: resolveMediaUrl(primaryImage(product)) ?? "/categories/1.jpg",
-    images: product.media
-      .filter((media) => media.type === "IMAGE")
+    images: (Array.isArray(product.media) ? product.media : [])
+      .filter((media) => media.type === "IMAGE" && typeof media.url === "string" && media.url.trim())
       .sort((a, b) => a.sortOrder - b.sortOrder)
       .map((media) => resolveMediaUrl(media.url) ?? "/categories/1.jpg"),
     model: primaryModel(product),
