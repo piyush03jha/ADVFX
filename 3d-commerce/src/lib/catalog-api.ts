@@ -270,8 +270,9 @@ function primaryImage(product: CatalogProduct): string {
 }
 
 function primaryModel(product: CatalogProduct): string {
-  const models = product.media.filter(
-    (media) => media.type === "MODEL_PREVIEW" && media.url.trim(),
+  const media = Array.isArray(product.media) ? product.media : [];
+  const models = media.filter(
+    (item) => item?.type === "MODEL_PREVIEW" && typeof item.url === "string" && item.url.trim(),
   );
 
   return (
@@ -352,7 +353,7 @@ export function mapCatalogProduct(product: CatalogProduct): StorefrontProduct {
       compareAt !== undefined && compareAt > amount
         ? `${Math.round(((compareAt - amount) / compareAt) * 100)}% OFF`
         : undefined,
-    tags: product.tags.map((item) => item.tag.name),
+    tags: (Array.isArray(product.tags) ? product.tags : []).map((item) => item.tag.name),
     material: product.material,
     scale: product.scale,
     dimensions: product.dimensions,
