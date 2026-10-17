@@ -139,7 +139,9 @@ export class CustomBuildService {
     if (category.slug === "person") {
       const body = by("body", input.bodyType), frame = by("frame", input.subjectType);
       if (!body || !frame) throw new BadRequestException("Person build has an invalid configuration");
-      baseMinor = body.priceMinor + frame.priceMinor;
+      // The category base price is the administrator-configured starting price.
+      // Add selected body/frame adjustments instead of silently ignoring it.
+      baseMinor = category.basePriceMinor + body.priceMinor + frame.priceMinor;
       selected.push(body, frame);
       return {
         amountMinor: Math.round(baseMinor * size.multiplier),
