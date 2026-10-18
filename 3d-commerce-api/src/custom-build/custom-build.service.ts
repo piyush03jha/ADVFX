@@ -1,6 +1,7 @@
 import { CreateCustomBuildOptionDto, UpdateCustomBuildCategoryDto, UpdateCustomBuildOptionDto } from "./custom-build.config.dto";
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
@@ -243,6 +244,27 @@ export class CustomBuildService {
     if (request.status === "CANCELLED") {
       throw new BadRequestException("Cancelled custom requests cannot be purchased");
     }
+    if (request.status === "IN_PRODUCTION") {
+      throw new ConflictException("This custom order has already been paid.");
+    }
+
+    if (request.orderId) {
+      const linkedOrder = await this.prisma.order.findUnique({
+        where: { id: request.orderId },
+        include: {
+          payment: true,
+          shipment: true,
+          shippingAddress: true,
+          customRequest: true,
+        },
+      });
+      if (linkedOrder?.status === "PENDING_PAYMENT") {
+        return { requestId: request.id, order: linkedOrder };
+      }
+      if (linkedOrder) {
+        throw new ConflictException("This custom order already has an order and cannot be checked out again.");
+      }
+    }
 
     const amountMinor = request.priceMinor;
     const idempotency = idempotencyKey?.trim() || undefined;
@@ -317,7 +339,6 @@ export class CustomBuildService {
     if (!user) throw new NotFoundException("User not found");
 
     const configured = await this.calculateConfiguredPrice(dto);
-    const price = configured.amountMinor / 100;
     const sizeLabel = `${dto.sizeCm} cm`;
     const requirements = [
       dto.requirements.trim(),
@@ -346,7 +367,7 @@ export class CustomBuildService {
         personCount: dto.personCount ?? null,
         petCount: dto.petCount ?? null,
         sizeCm: dto.sizeCm,
-        priceMinor: price * 100,
+        priceMinor: configured.amountMinor,
         priceCurrency: "INR",
         pricedAt: new Date(),
         referenceFileCount: 0,
@@ -361,7 +382,7 @@ export class CustomBuildService {
       create: {
         customRequestId: request.id,
         currency: "INR",
-        amountMinor: price * 100,
+        amountMinor: configured.amountMinor,
       },
       update: {
         currency: "INR",
