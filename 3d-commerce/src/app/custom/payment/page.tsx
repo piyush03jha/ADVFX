@@ -86,9 +86,10 @@ function CustomPaymentPageContent() {
 
   const amountMinor = request?.priceMinor ?? 0;
   const currency = request?.priceCurrency ?? "INR";
+  const alreadyPaid = request?.status === "IN_PRODUCTION";
 
   const handlePay = async () => {
-    if (!request || !selectedAddressId || !checkoutReady || amountMinor <= 0) return;
+    if (!request || alreadyPaid || !selectedAddressId || !checkoutReady || amountMinor <= 0) return;
     if (paymentState === "creating" || paymentState === "awaiting_payment" || paymentState === "verifying" || paymentState === "pending" || paymentState === "confirmed") return;
 
     setProcessing(true);
@@ -345,15 +346,23 @@ function CustomPaymentPageContent() {
                   <span className="text-[11px] text-muted">Manufacturing order</span>
                 </div>
 
-                <Button
-                  type="button"
-                  size="lg"
-                  disabled={!selectedAddressId || processing || paymentState === "pending" || paymentState === "confirmed" || !checkoutReady || !request || amountMinor <= 0}
-                  onClick={() => void handlePay()}
-                  className="mt-6 w-full"
-                >
-                  {paymentState === "pending" ? "Confirming payment…" : paymentState === "confirmed" ? "Payment confirmed" : processing ? "Preparing payment…" : !checkoutReady ? "Loading payment…" : `Pay ₹${(amountMinor / 100).toLocaleString("en-IN")}`}
-                </Button>
+                {alreadyPaid ? (
+                  <div className="mt-6 rounded-xl border border-primary/25 bg-primary/[0.05] p-4 text-sm">
+                    <p className="font-medium text-foreground">This custom order has already been paid.</p>
+                    <p className="mt-1 text-xs leading-5 text-muted">It is in the manufacturing workflow. You cannot start another payment for this request.</p>
+                    <Link href="/account/orders" className="mt-3 inline-flex text-xs font-medium text-primary hover:text-primary-hover">View your orders →</Link>
+                  </div>
+                ) : (
+                  <Button
+                    type="button"
+                    size="lg"
+                    disabled={!selectedAddressId || processing || paymentState === "pending" || paymentState === "confirmed" || !checkoutReady || !request || amountMinor <= 0}
+                    onClick={() => void handlePay()}
+                    className="mt-6 w-full"
+                  >
+                    {paymentState === "pending" ? "Confirming payment…" : paymentState === "confirmed" ? "Payment confirmed" : processing ? "Preparing payment…" : !checkoutReady ? "Loading payment…" : `Pay ₹${(amountMinor / 100).toLocaleString("en-IN")}`}
+                  </Button>
+                )}
 
                 <p className="mt-3 text-center text-[11px] leading-4 text-muted">
                   Your custom request enters the manufacturing workflow after successful payment verification.
