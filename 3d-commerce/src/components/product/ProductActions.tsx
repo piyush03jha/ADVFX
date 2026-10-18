@@ -221,7 +221,7 @@ export function ProductActions({ product, selectedVariantId, quantity, onVariant
         <Button
           type="button"
           onClick={() => void addToCart()}
-          disabled={pending}
+          disabled={pending || (selectedAvailable !== null && selectedAvailable <= 0)}
           className="min-h-12 bg-primary text-white shadow-[0_0_30px_var(--glow-primary)] hover:bg-primary-hover"
         >
           {added ? (
@@ -240,7 +240,7 @@ export function ProductActions({ product, selectedVariantId, quantity, onVariant
         <button
           type="button"
           onClick={() => void buyNow()}
-          disabled={pending || buying}
+          disabled={pending || buying || (selectedAvailable !== null && selectedAvailable <= 0)}
           className="flex min-h-12 items-center justify-center gap-2 rounded-full border border-primary/60 bg-transparent px-5 text-xs font-medium uppercase tracking-[0.14em] text-primary transition-all hover:bg-primary/8"
         >
           <IconSparkles size={15} />
