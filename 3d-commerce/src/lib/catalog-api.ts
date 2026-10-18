@@ -338,7 +338,7 @@ export function mapCatalogProduct(product: CatalogProduct): StorefrontProduct {
     oldPrice: compareAt !== undefined ? compareAt / 100 : undefined,
     rating: product.rating ?? 0,
     reviewCount: product.reviewCount ?? 0,
-    image: resolveMediaUrl(primaryImage(product)) ?? "/categories/1.jpg",
+    image: resolveMediaUrl(primaryImage(product)) ?? "/api/assets/categories/1.jpg",
     images: (Array.isArray(product.media) ? product.media : [])
       .filter((media) => media.type === "IMAGE" && typeof media.url === "string" && media.url.trim())
       .sort((a, b) => a.sortOrder - b.sortOrder)
