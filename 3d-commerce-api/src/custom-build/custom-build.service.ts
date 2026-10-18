@@ -386,7 +386,7 @@ export class CustomBuildService {
       },
       update: {
         currency: "INR",
-        amountMinor: price * 100,
+        amountMinor: configured.amountMinor,
       },
     });
 
