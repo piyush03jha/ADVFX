@@ -27,7 +27,7 @@ export async function GET(
 
   if (
     !Array.isArray(path) ||
-    path.length < 3 ||
+    path.length < 2 ||
     !["products", "categories", "custom-build-categories", "custom-build-options"].includes(path[0]) ||
     path.some((segment) => !segment || segment === "." || segment === "..")
   ) {
