@@ -3,9 +3,6 @@
 import Link from "next/link";
 import {
   IconArrowUpRight,
-  IconBrandInstagram,
-  IconBrandYoutube,
-  IconBrandX,
   IconMail,
   IconMapPin,
   IconBrandWhatsapp,
@@ -73,17 +70,6 @@ export function Footer() {
                 />
               </Link>
 
-              <div className="mt-7 flex items-center gap-2 sm:mt-8">
-                <SocialLink href="#" label="Instagram">
-                  <IconBrandInstagram size={15} stroke={1.5} />
-                </SocialLink>
-                <SocialLink href="#" label="X">
-                  <IconBrandX size={15} stroke={1.5} />
-                </SocialLink>
-                <SocialLink href="#" label="YouTube">
-                  <IconBrandYoutube size={15} stroke={1.5} />
-                </SocialLink>
-              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-5 sm:col-span-2 lg:contents">
@@ -106,15 +92,20 @@ export function Footer() {
               <div>
                 <FooterHeading>Contact</FooterHeading>
                 <div className="space-y-3.5">
-                  <ContactItem icon={IconMail} href="mailto:hello.voxel3d@gmail.com">
-                    hello.voxel3d@gmail.com
-                  </ContactItem>
                   <ContactItem
-                    icon={IconBrandWhatsapp}
-                    href="https://wa.me/919600012345"
+                    icon={IconMail}
+                    href={`mailto:${process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? "contact@voxel3d.org"}`}
                   >
-                    WhatsApp: +91 96000 12345
+                    {process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? "contact@voxel3d.org"}
                   </ContactItem>
+                  {process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ? (
+                    <ContactItem
+                      icon={IconBrandWhatsapp}
+                      href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER.replace(/\\D/g, "")}`}
+                    >
+                      WhatsApp: +{process.env.NEXT_PUBLIC_WHATSAPP_NUMBER.replace(/\\D/g, "")}
+                    </ContactItem>
+                  ) : null}
                   <ContactItem icon={IconMapPin}>New Delhi, India</ContactItem>
                 </div>
                 <p className="mt-4 text-[9px] uppercase tracking-[0.1em] text-muted-foreground">
@@ -177,18 +168,6 @@ function FooterLink({ href, children }: { href: string; children: React.ReactNod
     <Link
       href={href}
       className="text-xs text-muted transition-all duration-300 hover:translate-x-1 hover:text-foreground sm:text-xs"
-    >
-      {children}
-    </Link>
-  );
-}
-
-function SocialLink({ href, label, children }: { href: string; label: string; children: React.ReactNode }) {
-  return (
-    <Link
-      href={href}
-      aria-label={label}
-      className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background text-muted transition-all duration-300 hover:border-primary/40 hover:bg-surface-elevated hover:text-primary-hover"
     >
       {children}
     </Link>
