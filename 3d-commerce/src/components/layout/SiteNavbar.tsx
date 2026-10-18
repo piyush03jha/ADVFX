@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { useMotionValueEvent, useScroll } from "motion/react";
 import { useRouter } from "next/navigation";
 import {
   IconHeart,
@@ -38,6 +39,12 @@ export function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isDesktopSearchOpen, setIsDesktopSearchOpen] = useState(false);
+  const [isNavbarCompact, setIsNavbarCompact] = useState(false);
+  const { scrollY } = useScroll();
+
+  useMotionValueEvent(scrollY, "change", (latest) => {
+    setIsNavbarCompact(latest > 100);
+  });
 
   const { itemCount, isLoaded } = useCart();
   const { itemCount: wishlistCount, isLoaded: isWishlistLoaded } = useWishlist();
@@ -181,26 +188,34 @@ export function Navbar() {
           <div className="relative hidden min-[1529px]:block">
             <form
               onSubmit={handleSearchSubmit}
-              className="flex w-[190px] items-center rounded-full border border-border bg-surface/80 px-3 outline-none transition-[border-color,box-shadow] duration-200 focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/20"
+              className={`flex items-center overflow-hidden rounded-full border border-border bg-surface/80 outline-none transition-[width,padding,border-color,box-shadow] duration-300 focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/20 ${isNavbarCompact && !isDesktopSearchOpen ? "w-9 justify-center px-0" : "w-[190px] px-3"}`}
               role="search"
             >
-              <IconSearch
-                size={16}
-                stroke={1.8}
-                className="shrink-0 text-muted"
-              />
-
-              <input
-                type="search"
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Search products"
-                aria-label="Search products"
-                className="h-8 w-full min-w-0 appearance-none border-0 bg-transparent px-2 text-xs text-foreground !outline-none !ring-0 placeholder:text-muted focus:border-0 focus:!outline-none focus:!ring-0 focus-visible:border-0 focus-visible:!outline-none focus-visible:!ring-0"
-              />
+              {isNavbarCompact && !isDesktopSearchOpen ? (
+                <button
+                  type="button"
+                  onClick={() => setIsDesktopSearchOpen(true)}
+                  aria-label="Open product search"
+                  className="flex h-8 w-full shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:text-foreground"
+                >
+                  <IconSearch size={16} stroke={1.8} />
+                </button>
+              ) : (
+                <>
+                  <IconSearch size={16} stroke={1.8} className="shrink-0 text-muted" />
+                  <input
+                    type="search"
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder="Search products"
+                    aria-label="Search products"
+                    className="h-8 w-full min-w-0 appearance-none border-0 bg-transparent px-2 text-xs text-foreground !outline-none !ring-0 placeholder:text-muted focus:border-0 focus:!outline-none focus:!ring-0 focus-visible:border-0 focus-visible:!outline-none focus-visible:!ring-0"
+                  />
+                </>
+              )}
             </form>
 
-            {searchQuery.trim().length >= 3 && (
+            {!(isNavbarCompact && !isDesktopSearchOpen) && searchQuery.trim().length >= 3 && (
               <div className="absolute left-0 right-0 top-11 z-[100] overflow-hidden rounded-2xl border border-border bg-surface-elevated shadow-xl">
                 {suggestions.length > 0 ? (
                   suggestions.map((product) => (
