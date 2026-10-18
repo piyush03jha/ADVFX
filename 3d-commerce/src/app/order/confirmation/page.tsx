@@ -54,7 +54,7 @@ function OrderConfirmationContent() {
   const orderItems = order.items.map((item) => ({
     productId: item.productId,
     name: item.productName,
-    image: resolveMediaUrl(item.imageUrl) ?? "/categories/1.jpg",
+    image: resolveMediaUrl(item.imageUrl) ?? "/placeholder-product.webp",
     price: item.unitPriceMinor / 100,
     quantity: item.quantity,
   }));

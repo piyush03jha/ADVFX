@@ -23,6 +23,7 @@ const nextConfig: NextConfig = {
     localPatterns: [
       { pathname: "/storage/**" },
       { pathname: "/catogeries/**" },
+      { pathname: "/placeholder-product.webp" },
       { pathname: "/api/assets/**" },
     ],
     remotePatterns: [

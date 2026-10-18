@@ -101,9 +101,9 @@ export function Footer() {
                   {process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ? (
                     <ContactItem
                       icon={IconBrandWhatsapp}
-                      href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER.replace(/\\D/g, "")}`}
+                      href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER.replace(/\D/g, "")}`}
                     >
-                      WhatsApp: +{process.env.NEXT_PUBLIC_WHATSAPP_NUMBER.replace(/\\D/g, "")}
+                      WhatsApp: +{process.env.NEXT_PUBLIC_WHATSAPP_NUMBER.replace(/\D/g, "")}
                     </ContactItem>
                   ) : null}
                   <ContactItem icon={IconMapPin}>New Delhi, India</ContactItem>

@@ -30,13 +30,13 @@ function getSizeLabel(size: string) {
 }
 
 function normalizeImagePath(src: string) {
-  if (!src) return "/catogeries/1.jpg";
+  if (!src) return "/placeholder-product.webp";
 
   try {
     const url = new URL(src);
 
     if (url.hostname === "example.com") {
-      return "/catogeries/1.jpg";
+      return "/placeholder-product.webp";
     }
 
     return url.toString();

@@ -25,7 +25,7 @@ interface ShopProductCardProps {
 }
 
 export function ShopProductCard({ product, priority = false }: ShopProductCardProps) {
-  const imageSrc = resolveMediaUrl(product.image) ?? "/api/assets/categories/1.jpg";
+  const imageSrc = resolveMediaUrl(product.image) ?? "/placeholder-product.webp";
   // API assets are delivered by the same-origin asset proxy and must bypass
   // Next Image optimization; safe local static paths can use the optimizer.
   const optimizable =

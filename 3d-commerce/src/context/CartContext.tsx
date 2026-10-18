@@ -197,7 +197,7 @@ function normalizeBackendImage(product: BackendCartProduct) {
     )?.url ??
     product.media?.find((media) => media.type === "IMAGE")?.url;
 
-  return resolveMediaUrl(url) ?? "/categories/1.jpg";
+  return resolveMediaUrl(url) ?? "/placeholder-product.webp";
 }
 
 function normalizeBackendModel(product: BackendCartProduct) {

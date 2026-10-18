@@ -72,7 +72,7 @@ export default async function OrderTrackingPage({ params }: OrderPageProps) {
   const items = order.items.map((item) => ({
     productId: `${item.productId}-${item.id}`,
     name: item.productName,
-    image: resolveMediaUrl(item.imageUrl) ?? "/categories/1.jpg",
+    image: resolveMediaUrl(item.imageUrl) ?? "/placeholder-product.webp",
     price: item.unitPriceMinor / 100,
     quantity: item.quantity,
   }));

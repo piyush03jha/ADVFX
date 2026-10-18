@@ -66,7 +66,7 @@ export function ShopCategories({ selected, onChange }: ShopCategoriesProps) {
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <CategoryCard
             active={selected === "all" || selected === ""}
-            image="/categories/1.jpg"
+            image="/placeholder-product.webp"
             label="All Models"
             description="Complete collection"
             onClick={() => onChange("all")}
@@ -76,7 +76,7 @@ export function ShopCategories({ selected, onChange }: ShopCategoriesProps) {
             <CategoryCard
               key={category.id}
               active={selected === category.slug}
-              image={resolveMediaUrl(category.imageUrl) ?? "/categories/1.jpg"}
+              image={resolveMediaUrl(category.imageUrl) ?? "/placeholder-product.webp"}
               label={category.name}
               description={category.description || "Explore this collection."}
               onClick={() => onChange(category.slug)}

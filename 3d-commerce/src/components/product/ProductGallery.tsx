@@ -42,7 +42,7 @@ export function ProductGallery({ product }: ProductGalleryProps) {
   const isDark = theme === "dark";
 
   const [activeIndex, setActiveIndex] = useState(0);
-  const fallbackImage = "/catogeries/1.jpg";
+  const fallbackImage = "/placeholder-product.webp";
 
   useEffect(() => {
     setActiveIndex(0);

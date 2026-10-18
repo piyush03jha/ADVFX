@@ -265,7 +265,7 @@ function primaryImage(product: CatalogProduct): string {
     product.imageUrl ??
     product.image ??
     product.images?.find((item) => typeof item === "string" && item.trim()) ??
-    "/categories/1.jpg"
+    "/placeholder-product.webp"
   );
 }
 
@@ -338,11 +338,11 @@ export function mapCatalogProduct(product: CatalogProduct): StorefrontProduct {
     oldPrice: compareAt !== undefined ? compareAt / 100 : undefined,
     rating: product.rating ?? 0,
     reviewCount: product.reviewCount ?? 0,
-    image: resolveMediaUrl(primaryImage(product)) ?? "/api/assets/categories/1.jpg",
+    image: resolveMediaUrl(primaryImage(product)) ?? "/placeholder-product.webp",
     images: (Array.isArray(product.media) ? product.media : [])
       .filter((media) => media.type === "IMAGE" && typeof media.url === "string" && media.url.trim())
       .sort((a, b) => a.sortOrder - b.sortOrder)
-      .map((media) => resolveMediaUrl(media.url) ?? "/categories/1.jpg"),
+      .map((media) => resolveMediaUrl(media.url) ?? "/placeholder-product.webp"),
     model: primaryModel(product),
     format: primaryModel(product) ? "GLB" : "Physical",
     fileSize: "",

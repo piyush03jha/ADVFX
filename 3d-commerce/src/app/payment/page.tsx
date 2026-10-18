@@ -469,7 +469,7 @@ export default function PaymentPage() {
                     <div key={item.key} className="flex min-w-0 gap-3">
                       <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-border bg-background">
                         <Image
-                          src={resolveMediaUrl(item.product.image) ?? "/categories/1.jpg"}
+                          src={resolveMediaUrl(item.product.image) ?? "/placeholder-product.webp"}
                           alt={item.product.name}
                           fill
                           unoptimized={resolveMediaUrl(item.product.image)?.startsWith("/api/assets/")}

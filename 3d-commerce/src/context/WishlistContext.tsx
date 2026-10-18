@@ -174,8 +174,8 @@ function mapBackendProduct(product: BackendWishlistProduct): WishlistProduct {
       (media) => media.type === "IMAGE" && media.isPrimary,
     )?.url ??
     product.media?.find((media) => media.type === "IMAGE")?.url ??
-    "/categories/1.jpg";
-  const image = resolveMediaUrl(imageUrl) ?? "/categories/1.jpg";
+    "/placeholder-product.webp";
+  const image = resolveMediaUrl(imageUrl) ?? "/placeholder-product.webp";
 
   const model =
     product.media?.find(

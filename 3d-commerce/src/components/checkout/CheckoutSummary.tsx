@@ -23,7 +23,7 @@ const innerGradient =
   "bg-[linear-gradient(135deg,rgb(from var(--foreground) r g b / 0.04),rgb(from var(--background) r g b / 0.015)_65%,rgb(from var(--primary) r g b / 0.045))]";
 
 function normalizeImagePath(src: string) {
-  return resolveMediaUrl(src) ?? "/categories/1.jpg";
+  return resolveMediaUrl(src) ?? "/placeholder-product.webp";
 }
 
 function money(minor: number, currency: string) {

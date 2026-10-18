@@ -27,7 +27,9 @@ export async function GET(
 
   if (
     !Array.isArray(path) ||
-    path.length < 2 ||
+    // Legacy product assets can be one segment deep; every other namespace
+    // is <namespace>/<id>/<file>.
+    path.length < (path[0] === "products" ? 2 : 3) ||
     !["products", "categories", "custom-build-categories", "custom-build-options"].includes(path[0]) ||
     path.some((segment) => !segment || segment === "." || segment === "..")
   ) {
