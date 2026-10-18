@@ -259,9 +259,25 @@ export class CustomBuildService {
         },
       });
       if (linkedOrder?.status === "PENDING_PAYMENT") {
+        // Reuse the unpaid order, but honour the address picked on this attempt.
+        if (linkedOrder.shippingAddressId !== address.id) {
+          const updated = await this.prisma.order.update({
+            where: { id: linkedOrder.id },
+            data: { shippingAddressId: address.id },
+            include: {
+              payment: true,
+              shipment: true,
+              shippingAddress: true,
+              customRequest: true,
+            },
+          });
+          return { requestId: request.id, order: updated };
+        }
         return { requestId: request.id, order: linkedOrder };
       }
-      if (linkedOrder) {
+      // A cancelled unpaid order must not dead-end the customer: fall through and
+      // create a fresh order. Any other status means the request is already paid.
+      if (linkedOrder && linkedOrder.status !== "CANCELLED") {
         throw new ConflictException("This custom order already has an order and cannot be checked out again.");
       }
     }
