@@ -17,6 +17,7 @@ interface RateLimitState {
 const rateLimitState = new Map<string, RateLimitState>();
 const AUTH_RATE_LIMITS: Record<string, number> = {
   "/auth/login": 10,
+  "/auth/admin/login": 5,
   "/auth/google": 10,
   "/auth/register": 6,
   "/auth/forgot-password": 5,
