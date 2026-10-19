@@ -536,7 +536,8 @@ export class ProductsService {
 
   async getLatestReviews(limit = 6) {
     const reviews = await this.prisma.productReview.findMany({
-      where: { isPublished: true },
+      // Reviews of archived/draft products would link to pages that no longer exist.
+      where: { isPublished: true, product: { status: 'ACTIVE' } },
       select: {
         id: true,
         rating: true,

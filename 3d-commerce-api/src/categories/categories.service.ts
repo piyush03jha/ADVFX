@@ -25,13 +25,30 @@ export class CategoriesService {
     });
   }
 
+  /**
+   * Product counts must only include products that really exist for the
+   * audience: the storefront sees ACTIVE products, admins see everything that
+   * has not been archived (archiving is how products are "deleted").
+   */
+  private productCountSelect(activeOnly: boolean) {
+    return {
+      _count: {
+        select: {
+          products: {
+            where: activeOnly
+              ? { status: 'ACTIVE' as const }
+              : { status: { not: 'ARCHIVED' as const } },
+          },
+        },
+      },
+    };
+  }
+
   async findAll(includeInactive = false) {
     const categories = await this.prisma.category.findMany({
       where: includeInactive ? undefined : { isActive: true },
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
-      include: {
-        _count: { select: { products: true } },
-      },
+      include: this.productCountSelect(!includeInactive),
     });
 
     return categories.map((category) => ({
@@ -40,12 +57,10 @@ export class CategoriesService {
     }));
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, activeProductsOnly = true) {
     const category = await this.prisma.category.findUnique({
       where: { id },
-      include: {
-        _count: { select: { products: true } },
-      },
+      include: this.productCountSelect(activeProductsOnly),
     });
 
     if (!category) {
@@ -167,7 +182,9 @@ export class CategoriesService {
   }
 
   async remove(id: string) {
-    const category = await this.findOne(id);
+    // Count every non-archived product so a category that still holds draft or
+    // live products is deactivated instead of deleted.
+    const category = await this.findOne(id, false);
 
     if (category._count.products > 0) {
       return this.prisma.category.update({

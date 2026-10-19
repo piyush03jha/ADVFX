@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
+import type { AccountStats } from "@/lib/account-stats";
 
 import {
   IconArrowUpRight,
@@ -14,13 +15,18 @@ import {
   IconTruck,
 } from "@tabler/icons-react";
 
-const stats = [
-  { label: "Orders", value: "—", icon: IconPackage, href: "/account/orders" },
-  { label: "In transit", value: "—", icon: IconTruck, href: "/account/orders" },
-  { label: "Addresses", value: "—", icon: IconMapPin, href: "/account/addresses" },
-];
+function buildStats(data: AccountStats | null) {
+  // "—" means the figure could not be loaded; it is never a made-up number.
+  const show = (value: number | undefined) => (value === undefined ? "—" : String(value));
+  return [
+    { label: "Orders", value: show(data?.orders), icon: IconPackage, href: "/account/orders" },
+    { label: "In transit", value: show(data?.inTransit), icon: IconTruck, href: "/account/orders" },
+    { label: "Addresses", value: show(data?.addresses), icon: IconMapPin, href: "/account/addresses" },
+  ];
+}
 
-export function AccountOverview() {
+export function AccountOverview({ stats: accountStats = null }: { stats?: AccountStats | null }) {
+  const stats = buildStats(accountStats);
   const { user } = useAuth();
   const { itemCount: cartCount } = useCart();
   const { itemCount: wishlistCount } = useWishlist();

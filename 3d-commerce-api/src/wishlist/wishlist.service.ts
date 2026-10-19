@@ -35,6 +35,8 @@ export class WishlistService {
       where: { userId },
       include: {
         items: {
+          // Archived/draft products no longer exist for customers.
+          where: { product: { status: 'ACTIVE' } },
           orderBy: { createdAt: 'desc' },
           include: { product: { include: PRODUCT_INCLUDE } },
         },

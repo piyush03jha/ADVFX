@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import { IconChevronDown } from "@tabler/icons-react";
 
+import { getBackendApiUrl } from "@/lib/backend-api";
+
 export const metadata: Metadata = {
   title: "FAQ — Voxel3D",
   description: "Frequently asked questions about Voxel3D products, orders, 3D models, custom creations, shipping, and care.",
 };
 
-const faqs = [
+const fallbackFaqs = [
   {
     question: "What does Voxel3D sell?",
     answer: "Voxel3D creates and sells physical 3D-printed models, collectibles, and custom creations. Products shown on the website are physical products rather than downloadable 3D files.",
@@ -49,7 +51,39 @@ const faqs = [
   },
 ];
 
-export default function FAQPage() {
+type FaqEntry = { question: string; answer: string };
+
+// FAQ content is managed in the admin site-content settings. The bundled list
+// above is only a fallback for when the API is unreachable or nothing is saved.
+async function loadFaqs(): Promise<FaqEntry[]> {
+  try {
+    const response = await fetch(getBackendApiUrl("site-content/faq"), {
+      next: { revalidate: 60 },
+    });
+    if (!response.ok) return fallbackFaqs;
+    const data = (await response.json()) as { value?: unknown };
+    const value = data?.value;
+    if (
+      Array.isArray(value) &&
+      value.length > 0 &&
+      value.every(
+        (item) =>
+          typeof item === "object" &&
+          item !== null &&
+          typeof (item as FaqEntry).question === "string" &&
+          typeof (item as FaqEntry).answer === "string",
+      )
+    ) {
+      return value as FaqEntry[];
+    }
+  } catch {
+    // fall through to the bundled list
+  }
+  return fallbackFaqs;
+}
+
+export default async function FAQPage() {
+  const faqs = await loadFaqs();
   return (
     <main className="min-h-[70vh] bg-background">
       <section className="mx-auto max-w-[980px] px-5 pb-16 pt-12 sm:px-6 sm:pb-24 sm:pt-20 lg:px-8">

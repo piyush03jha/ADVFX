@@ -117,6 +117,8 @@ export class CartService {
   private includeCart() {
     return {
       items: {
+        // Archived/draft products can't be bought, so they must not linger in the cart.
+        where: { product: { status: 'ACTIVE' as const } },
         include: {
           variant: {
             include: { price: true },

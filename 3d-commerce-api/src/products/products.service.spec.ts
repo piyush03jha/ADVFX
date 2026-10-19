@@ -23,6 +23,17 @@ describe('ProductsService', () => {
       .rejects.toBeInstanceOf(ForbiddenException);
   });
 
+  it('does not show latest reviews of archived or draft products', async () => {
+    prisma.productReview.findMany.mockResolvedValue([]);
+
+    await service.getLatestReviews(6);
+
+    expect(prisma.productReview.findMany.mock.calls[0][0].where).toEqual({
+      isPublished: true,
+      product: { status: 'ACTIVE' },
+    });
+  });
+
   it('records a product view through ProductMetrics', async () => {
     prisma.product.findFirst.mockResolvedValue({ id: 'p1' });
     const metrics = { productId: 'p1', viewCount: 1, cartAddCount: 0, purchaseCount: 0, unitsSold: 0 };

@@ -33,6 +33,16 @@ describe('WishlistService', () => {
     });
   });
 
+  it('only lists wishlist items whose product is still ACTIVE', async () => {
+    prisma.wishlist.findUnique.mockResolvedValue({ id: 'w1', items: [] });
+
+    await service.getWishlist('u1');
+
+    expect(prisma.wishlist.findUnique.mock.calls[0][0].include.items.where).toEqual({
+      product: { status: 'ACTIVE' },
+    });
+  });
+
   it('rejects unavailable products', async () => {
     prisma.product.findFirst.mockResolvedValue(null);
 

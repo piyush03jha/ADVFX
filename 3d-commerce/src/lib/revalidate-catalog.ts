@@ -10,4 +10,7 @@ export function revalidateProductCatalog(productId: string) {
   // shop layout covers /shop and all category listing pages beneath it.
   revalidatePath("/product/" + encodeURIComponent(normalizedId));
   revalidatePath(SHOP_CATALOG_PATH, "layout");
+  // The homepage shows category model counts and product rails, so deleting or
+  // changing a product must refresh it as well.
+  revalidatePath("/");
 }
