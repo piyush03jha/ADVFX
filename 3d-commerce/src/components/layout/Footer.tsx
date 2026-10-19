@@ -94,9 +94,9 @@ export function Footer() {
                 <div className="space-y-3.5">
                   <ContactItem
                     icon={IconMail}
-                    href={`mailto:${process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? "contact@voxel3d.org"}`}
+                    href={`mailto:${process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? "hello.voxel3d@gmail.com"}`}
                   >
-                    {process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? "contact@voxel3d.org"}
+                    {process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? "hello.voxel3d@gmail.com"}
                   </ContactItem>
                   {process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ? (
                     <ContactItem

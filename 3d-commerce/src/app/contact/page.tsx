@@ -34,7 +34,7 @@ async function getContactEmail() {
       if (typeof data?.value === "string" && data.value.trim()) return data.value.trim();
     }
   } catch {}
-  return process.env.NEXT_PUBLIC_CONTACT_EMAIL || "contact@voxel3d.org";
+  return process.env.NEXT_PUBLIC_CONTACT_EMAIL || "hello.voxel3d@gmail.com";
 }
 
 export default async function ContactPage() {

@@ -27,7 +27,7 @@ export async function PolicyPage({
   const liveSections=Array.isArray(live?.sections)?live.sections.filter(isSection):null;
   const renderedSections:Section[]=liveSections?.length?liveSections:sections;
   const renderedIntro=typeof live?.intro==="string"&&live.intro.trim()?live.intro:intro;
-  const email=typeof live?.contactEmail==="string"&&live.contactEmail.trim()?live.contactEmail:"hello@voxel3d.in";
+  const email=typeof live?.contactEmail==="string"&&live.contactEmail.trim()?live.contactEmail:"hello.voxel3d@gmail.com";
   return <main className="min-h-screen bg-background px-5 pb-20 pt-32 text-foreground sm:px-8 lg:px-12">
     <div className="mx-auto max-w-4xl">
       <Link href="/" className="text-[10px] uppercase tracking-[0.18em] text-primary hover:text-primary-hover">Voxel3D.</Link>
