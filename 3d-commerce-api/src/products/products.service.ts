@@ -1111,26 +1111,19 @@ export class ProductsService {
     return {
       category: true,
       prices: {
-        where: {
-          isActive: true,
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
+        where: { isActive: true },
+        orderBy: { createdAt: 'desc' },
       },
       media: {
-        where: {
-          type: 'MODEL_PREVIEW',
-        },
-        orderBy: {
-          sortOrder: 'asc',
-        },
+        where: { type: 'MODEL_PREVIEW' },
+        orderBy: { sortOrder: 'asc' },
       },
-      tags: {
-        include: {
-          tag: true,
-        },
+      variants: {
+        where: { isActive: true },
+        include: { price: true },
+        orderBy: { createdAt: 'asc' },
       },
+      tags: { include: { tag: true } },
     };
   }
 
@@ -1140,12 +1133,50 @@ export class ProductsService {
     }>,
   ) {
     const activePrice =
-      product.prices.find(
-        (price) => price.currency === 'INR',
-      ) ?? product.prices[0];
+      product.prices.find((price) => price.currency === 'INR') ??
+      product.prices[0];
+
+    const pricedVariants = product.variants
+      .filter(
+        (variant) =>
+          variant.price?.isActive &&
+          Number.isFinite(variant.price.amountMinor) &&
+          variant.price.amountMinor >= 0 &&
+          variant.price.currency === 'INR',
+      )
+      .map((variant) => ({
+        variant,
+        amountMinor: variant.price!.amountMinor,
+      }));
+
+    const canPurchase = (item: (typeof pricedVariants)[number]) =>
+      !item.variant.trackStock ||
+      item.variant.allowBackorder ||
+      item.variant.stock - item.variant.reserved > 0;
+
+    // Prefer the Small variant when it can currently be purchased. Otherwise
+    // show the cheapest purchasable size, then the cheapest configured size.
+    const smallInStock = pricedVariants.find(
+      (item) =>
+        /small/i.test(item.variant.name) &&
+        canPurchase(item),
+    );
+    const purchasableVariant = pricedVariants
+      .filter(canPurchase)
+      .sort((a, b) => a.amountMinor - b.amountMinor)[0];
+    const fallbackVariant = [...pricedVariants].sort(
+      (a, b) => a.amountMinor - b.amountMinor,
+    )[0];
+    const selectedVariant =
+      smallInStock ?? purchasableVariant ?? fallbackVariant;
+
+    const priceMinor = selectedVariant?.amountMinor ?? activePrice?.amountMinor;
+    const currency =
+      selectedVariant?.variant.price?.currency ??
+      activePrice?.currency ??
+      'INR';
 
     const models = product.media.filter((media) => media.url.trim());
-
     const model =
       models.find((media) => media.isPrimary)?.url ??
       models[0]?.url ??
@@ -1156,8 +1187,8 @@ export class ProductsService {
       slug: product.slug,
       name: product.name,
       description: product.description ?? '',
-      price: activePrice ? activePrice.amountMinor / 100 : 0,
-      currency: activePrice?.currency ?? 'INR',
+      price: priceMinor != null ? priceMinor / 100 : 0,
+      currency,
       model,
       category: product.category?.name ?? '',
     };
