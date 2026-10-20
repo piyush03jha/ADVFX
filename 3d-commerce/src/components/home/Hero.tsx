@@ -176,30 +176,42 @@ export function Hero() {
         timeoutRef.current = null;
 
         const expectedIndex = activeIndex;
-        const nextIndex = (expectedIndex + 1) % heroProducts.length;
 
-        void preloadModel(nextIndex)
-          .then(() => {
-            if (
-              isModelHeldRef.current ||
-              activeIndex !== expectedIndex
-            ) {
-              return;
+        // A broken or unavailable featured model must not trap the hero on
+        // one product. Walk forward through the featured list until a model
+        // successfully preloads, then resume the normal rotation.
+        const findNextAvailable = async (): Promise<number | null> => {
+          for (let offset = 1; offset < heroProducts.length; offset += 1) {
+            const candidateIndex = (expectedIndex + offset) % heroProducts.length;
+            try {
+              await preloadModel(candidateIndex);
+              return candidateIndex;
+            } catch {
+              // Skip this item for this rotation cycle and try the next one.
             }
+          }
+          return null;
+        };
 
-            remainingTimeRef.current = HERO_MODEL_ROTATION_MS;
+        void findNextAvailable().then((nextIndex) => {
+          if (
+            isModelHeldRef.current ||
+            activeIndex !== expectedIndex
+          ) {
+            return;
+          }
 
-            startTransition(() => {
-              setActiveIndex(nextIndex);
-            });
-          })
-          .catch(() => {
-            // Keep the current model visible if the next model cannot be
-            // downloaded. A later rotation attempt can retry it.
-            if (!isModelHeldRef.current && activeIndex === expectedIndex) {
-              scheduleNextProduct(HERO_MODEL_ROTATION_MS);
-            }
+          if (nextIndex === null) {
+            // No other model could be loaded. Retry the list on the next cycle.
+            scheduleNextProduct(HERO_MODEL_ROTATION_MS);
+            return;
+          }
+
+          remainingTimeRef.current = HERO_MODEL_ROTATION_MS;
+          startTransition(() => {
+            setActiveIndex(nextIndex);
           });
+        });
       }, Math.max(0, delay));
     },
     [activeIndex, clearRotationTimer, heroProducts.length, preloadModel],
