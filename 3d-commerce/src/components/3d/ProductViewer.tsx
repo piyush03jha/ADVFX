@@ -16,6 +16,7 @@ import * as THREE from "three";
 import { HERO_MODEL_ROTATION_MS } from "@/config/hero-motion";
 import type { HeroProduct } from "@/config/hero-products";
 import { useModelUrl } from "@/lib/useModelUrl";
+import { modelOrientationCorrection } from "@/lib/model-orientation";
 
 const ENTER_DURATION = 0.85;
 const EXIT_DURATION = 0.7;
@@ -43,6 +44,7 @@ interface InteractionState {
 
 interface HeroModelProps {
   path: string;
+  name: string;
   mode: ModelMode;
   interactionRef: React.MutableRefObject<InteractionState>;
   isInteractionPaused?: boolean;
@@ -51,6 +53,7 @@ interface HeroModelProps {
 
 function LoadedHeroModel({
   path,
+  name,
   mode,
   interactionRef,
   isInteractionPaused = false,
@@ -74,6 +77,7 @@ function LoadedHeroModel({
     const pivot = new THREE.Group();
     pivot.add(model);
     pivot.scale.setScalar(MODEL_SIZE / maxDimension);
+    pivot.rotation.set(...modelOrientationCorrection(name));
 
     const materials: THREE.Material[] = [];
 
@@ -101,7 +105,7 @@ function LoadedHeroModel({
     });
 
     return { model: pivot, materials };
-  }, [scene]);
+  }, [scene, name]);
 
   useEffect(() => {
     elapsedRef.current = 0;
@@ -206,6 +210,7 @@ function LoadedHeroModel({
 
 function HeroModel({
   path,
+  name,
   mode,
   interactionRef,
   isInteractionPaused = false,
@@ -232,6 +237,7 @@ function HeroModel({
   return (
     <LoadedHeroModel
       path={blobUrl}
+      name={name}
       mode={mode}
       interactionRef={interactionRef}
       isInteractionPaused={isInteractionPaused}
@@ -422,6 +428,7 @@ export function ProductViewer({
             <HeroModel
               key={`previous-${previousProduct.id}`}
               path={previousProduct.model}
+              name={previousProduct.name}
               mode="exit"
               interactionRef={interactionRef}
             />
@@ -432,6 +439,7 @@ export function ProductViewer({
           <HeroModel
             key={`active-${activeProduct.id}`}
             path={activeProduct.model}
+            name={activeProduct.name}
             mode="enter"
             interactionRef={interactionRef}
             isInteractionPaused={isInteracting}
