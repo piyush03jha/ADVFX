@@ -153,7 +153,7 @@ export function ProductGallery({ product }: ProductGalleryProps) {
 
         {active.type === "model" && (
           <>
-            <Product3DStage model={product.model} name={product.name} theme={theme} />
+            <Product3DStage model={product.model} theme={theme} />
           </>
         )}
 
