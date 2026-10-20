@@ -6,7 +6,6 @@ import { OrbitControls, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { ModelErrorBoundary } from "@/components/3d/ModelErrorBoundary";
 import { useModelUrl } from "@/lib/useModelUrl";
-import { modelOrientationCorrection } from "@/lib/model-orientation";
 
 interface Product3DStageProps {
   model: string;
@@ -37,7 +36,6 @@ function LoadedProductModel({ blobUrl, name }: { blobUrl: string; name: string }
     const wrapper = new THREE.Group();
     wrapper.add(model);
     wrapper.scale.setScalar(2.4 / maxDimension);
-    wrapper.rotation.set(...modelOrientationCorrection(name));
 
     return wrapper;
   }, [scene, name]);
