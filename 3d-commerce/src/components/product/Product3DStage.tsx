@@ -96,7 +96,6 @@ function WebGLContextMonitor({
 
 export default function Product3DStage({
   model,
-  name,
   theme = "light",
 }: Product3DStageProps) {
   const isDark = theme === "dark";
