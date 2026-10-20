@@ -13,11 +13,7 @@ interface Product3DStageProps {
   theme?: "light" | "dark";
 }
 
-function ProductModel({ model }: { model: string }) {
-  const { blobUrl } = useModelUrl(model);
-
-  if (!blobUrl) return null;
-
+function LoadedProductModel({ blobUrl }: { blobUrl: string }) {
   const { scene } = useGLTF(blobUrl, true, true);
 
   // Do not render the cached GLTF scene directly. drei/useGLTF caches scenes by
@@ -45,6 +41,16 @@ function ProductModel({ model }: { model: string }) {
   }, [scene]);
 
   return <primitive object={normalizedScene} dispose={null} />;
+}
+
+function ProductModel({ model }: { model: string }) {
+  const { blobUrl } = useModelUrl(model);
+
+  // Keep the URL-loading state in its own component. Once the URL is ready,
+  // LoadedProductModel mounts and runs its GLTF and memo hooks consistently.
+  if (!blobUrl) return null;
+
+  return <LoadedProductModel blobUrl={blobUrl} />;
 }
 
 function ModelLoadingFallback() {
@@ -101,9 +107,7 @@ export default function Product3DStage({
     <div
       className={
         "absolute inset-0 min-h-0 touch-none overflow-hidden " +
-        (isDark
-          ? "bg-[#09070f]"
-          : "bg-[#f4f0fb]")
+        (isDark ? "bg-[#09070f]" : "bg-[#f4f0fb]")
       }
       style={{
         backgroundImage: isDark
