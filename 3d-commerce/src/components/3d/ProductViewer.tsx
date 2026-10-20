@@ -43,7 +43,6 @@ interface InteractionState {
 
 interface HeroModelProps {
   path: string;
-  name: string;
   mode: ModelMode;
   interactionRef: React.MutableRefObject<InteractionState>;
   isInteractionPaused?: boolean;
@@ -52,7 +51,6 @@ interface HeroModelProps {
 
 function LoadedHeroModel({
   path,
-  name,
   mode,
   interactionRef,
   isInteractionPaused = false,
@@ -426,7 +424,6 @@ export function ProductViewer({
             <HeroModel
               key={`previous-${previousProduct.id}`}
               path={previousProduct.model}
-              name={previousProduct.name}
               mode="exit"
               interactionRef={interactionRef}
             />
@@ -437,7 +434,6 @@ export function ProductViewer({
           <HeroModel
             key={`active-${activeProduct.id}`}
             path={activeProduct.model}
-            name={activeProduct.name}
             mode="enter"
             interactionRef={interactionRef}
             isInteractionPaused={isInteracting}
