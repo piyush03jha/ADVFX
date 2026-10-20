@@ -16,7 +16,6 @@ import * as THREE from "three";
 import { HERO_MODEL_ROTATION_MS } from "@/config/hero-motion";
 import type { HeroProduct } from "@/config/hero-products";
 import { useModelUrl } from "@/lib/useModelUrl";
-import { modelOrientationCorrection } from "@/lib/model-orientation";
 
 const ENTER_DURATION = 0.85;
 const EXIT_DURATION = 0.7;
@@ -77,7 +76,6 @@ function LoadedHeroModel({
     const pivot = new THREE.Group();
     pivot.add(model);
     pivot.scale.setScalar(MODEL_SIZE / maxDimension);
-    pivot.rotation.set(...modelOrientationCorrection(name));
 
     const materials: THREE.Material[] = [];
 
