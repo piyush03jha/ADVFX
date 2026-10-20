@@ -9,11 +9,10 @@ import { useModelUrl } from "@/lib/useModelUrl";
 
 interface Product3DStageProps {
   model: string;
-  name: string;
   theme?: "light" | "dark";
 }
 
-function LoadedProductModel({ blobUrl, name }: { blobUrl: string; name: string }) {
+function LoadedProductModel({ blobUrl }: { blobUrl: string }) {
   const { scene } = useGLTF(blobUrl, true, true);
 
   // Do not render the cached GLTF scene directly. drei/useGLTF caches scenes by
@@ -38,19 +37,19 @@ function LoadedProductModel({ blobUrl, name }: { blobUrl: string; name: string }
     wrapper.scale.setScalar(2.4 / maxDimension);
 
     return wrapper;
-  }, [scene, name]);
+  }, [scene]);
 
   return <primitive object={normalizedScene} dispose={null} />;
 }
 
-function ProductModel({ model, name }: { model: string; name: string }) {
+function ProductModel({ model }: { model: string }) {
   const { blobUrl } = useModelUrl(model);
 
   // Keep the URL-loading state in its own component. Once the URL is ready,
   // LoadedProductModel mounts and runs its GLTF and memo hooks consistently.
   if (!blobUrl) return null;
 
-  return <LoadedProductModel blobUrl={blobUrl} name={name} />;
+  return <LoadedProductModel blobUrl={blobUrl} />;
 }
 
 function ModelLoadingFallback() {
@@ -144,7 +143,7 @@ export default function Product3DStage({
           }
         >
           <Suspense fallback={<ModelLoadingFallback />}>
-            <ProductModel model={model} name={name} />
+            <ProductModel model={model} />
           </Suspense>
         </ModelErrorBoundary>
 
