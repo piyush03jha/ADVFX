@@ -82,10 +82,6 @@ export function FAQ() {
     );
   };
 
-  const mobileQuestions = showAllMobile
-    ? items
-    : items.slice(0, 3);
-
   return (
     <Section
       id="faq"
@@ -238,82 +234,32 @@ export function FAQ() {
             border-border/80
           "
         >
-          {/* =================================================
-              DESKTOP
-          ================================================= */}
+          {/* Single list (rendered once so answers aren't duplicated in the
+              HTML). On phones only the first three are shown until expanded. */}
 
-          <div className="hidden sm:block">
+          <div>
             {items.map((item, index) => {
-              const isOpen =
-                openId === item.id;
+              const isOpen = openId === item.id;
+              const hiddenOnMobile = !showAllMobile && index >= 3;
 
               return (
-                <FAQItem
+                <div
                   key={item.id}
-                  item={item}
-                  index={index}
-                  isOpen={isOpen}
-                  onToggle={toggleQuestion}
-                  shouldReduceMotion={
-                    shouldReduceMotion
-                  }
-                />
+                  className={hiddenOnMobile ? "hidden sm:block" : undefined}
+                >
+                  <FAQItem
+                    item={item}
+                    index={index}
+                    isOpen={isOpen}
+                    onToggle={toggleQuestion}
+                    shouldReduceMotion={shouldReduceMotion}
+                  />
+                </div>
               );
             })}
           </div>
 
-          {/* =================================================
-              MOBILE
-          ================================================= */}
-
           <div className="sm:hidden">
-            <AnimatePresence initial={false}>
-              {mobileQuestions.map(
-                (item, index) => {
-                  const isOpen =
-                    openId === item.id;
-
-                  return (
-                    <motion.div
-                      key={item.id}
-                      initial={
-                        showAllMobile &&
-                        index >= 3
-                          ? {
-                              opacity: 0,
-                              height: 0,
-                            }
-                          : false
-                      }
-                      animate={{
-                        opacity: 1,
-                        height: "auto",
-                      }}
-                      exit={{
-                        opacity: 0,
-                        height: 0,
-                      }}
-                      transition={{
-                        duration: 0.3,
-                      }}
-                    >
-                      <FAQItem
-                        item={item}
-                        index={index}
-                        isOpen={isOpen}
-                        onToggle={
-                          toggleQuestion
-                        }
-                        shouldReduceMotion={
-                          shouldReduceMotion
-                        }
-                      />
-                    </motion.div>
-                  );
-                },
-              )}
-            </AnimatePresence>
-
             {/* =================================================
                 VIEW ALL
             ================================================= */}

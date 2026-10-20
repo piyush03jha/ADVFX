@@ -148,6 +148,7 @@ export const NavbarLogo = () => (
       style={{ height: 35, width: "auto" }}
       className="block h-[22px] w-auto object-contain sm:h-[35px]"
     />
+    <span className="sr-only">Voxel3D home</span>
   </Link>
 );
 
