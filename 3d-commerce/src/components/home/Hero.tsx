@@ -214,7 +214,7 @@ export function Hero() {
         });
       }, Math.max(0, delay));
     },
-    [activeIndex, clearRotationTimer, heroProducts.length, preloadModel],
+    [activeIndex, clearRotationTimer, heroProducts, preloadModel],
   );
 
   useEffect(() => {
