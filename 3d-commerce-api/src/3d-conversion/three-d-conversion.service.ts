@@ -476,10 +476,8 @@ export class ThreeDConversionService {
 
       await this.notifyStorefrontRevalidation(productId);
 
-      if (job.deleteSourceOnSuccess && job.sourceStorageKey === job.convertedStorageKey) {
-        await this.storage.delete(job.sourceStorageKey).catch((error) => {
-          this.logger.warn(`Unable to delete original GLB source ${job.id}: ${error instanceof Error ? error.message : String(error)}`);
-        });
+      if (job.deleteSourceOnSuccess) {
+        await this.discardConversionIntermediates(job, destinationKey);
       }
 
       return this.serialize(published);
@@ -490,6 +488,57 @@ export class ThreeDConversionService {
       });
       await this.storage.delete(destinationKey).catch(() => undefined);
       throw error;
+    }
+  }
+
+  /**
+   * Once the optimized GLB has been copied to its permanent product location,
+   * the conversion-owned copies (direct GLB source, converted GLB and the
+   * staging "output" object) are dead weight. Delete them so only the
+   * optimized model stays in storage. Keys are cleared on the job row only
+   * after the object is really gone; anything that fails to delete stays
+   * referenced so remove() can still clean it up later.
+   */
+  private async discardConversionIntermediates(
+    job: {
+      id: string;
+      sourceStorageKey: string;
+      convertedStorageKey: string | null;
+      outputStorageKey: string | null;
+    },
+    keepKey: string,
+  ) {
+    const clear: { convertedStorageKey?: null; outputStorageKey?: null } = {};
+    const targets: Array<[string, "convertedStorageKey" | "outputStorageKey" | null]> = [];
+    if (job.convertedStorageKey) targets.push([job.convertedStorageKey, "convertedStorageKey"]);
+    if (job.outputStorageKey) targets.push([job.outputStorageKey, "outputStorageKey"]);
+    // A direct GLB upload is its own converted source and was already covered
+    // above; any other source was removed by the worker, but retry the delete.
+    if (job.sourceStorageKey && job.sourceStorageKey !== "pending") {
+      targets.push([job.sourceStorageKey, null]);
+    }
+
+    const seen = new Set<string>();
+    for (const [key, field] of targets) {
+      if (key === keepKey) continue;
+      if (!seen.has(key)) {
+        seen.add(key);
+        try {
+          await this.storage.delete(key);
+        } catch (error) {
+          this.logger.warn(
+            `Unable to delete conversion intermediate ${key} for job ${job.id}: ${error instanceof Error ? error.message : String(error)}`,
+          );
+          continue;
+        }
+      }
+      if (field) clear[field] = null;
+    }
+
+    if (Object.keys(clear).length > 0) {
+      await this.prisma.threeDConversionJob
+        .update({ where: { id: job.id }, data: clear })
+        .catch(() => undefined);
     }
   }
 

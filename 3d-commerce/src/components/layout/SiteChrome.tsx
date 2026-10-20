@@ -3,7 +3,13 @@
 import { usePathname } from "next/navigation";
 import { Footer } from "@/components/layout/Footer";
 import { WhatsAppBot } from "@/components/layout/WhatsAppBot";
-import { LogoIntro } from "@/components/intro/LogoIntro";
+import dynamic from "next/dynamic";
+
+// The intro pulls in three.js, so keep it out of the shared bundle: it is only
+// downloaded on the homepage, where it actually plays.
+const LogoIntro = dynamic(() =>
+  import("@/components/intro/LogoIntro").then((m) => m.LogoIntro),
+);
 
 export function SiteChrome() {
   const pathname = usePathname();
@@ -12,7 +18,7 @@ export function SiteChrome() {
 
   return (
     <>
-      <LogoIntro />
+      {pathname === "/" && <LogoIntro />}
       <WhatsAppBot />
       <Footer />
     </>

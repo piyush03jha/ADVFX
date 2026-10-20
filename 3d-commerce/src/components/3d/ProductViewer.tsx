@@ -276,6 +276,31 @@ export function ProductViewer({
   const [isLoading, setIsLoading] = useState(true);
   const [isInteracting, setIsInteracting] = useState(false);
 
+  // Stop rendering while the hero is scrolled out of view or the tab is hidden,
+  // so the GPU/main thread are free for scrolling and the rest of the page.
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [isOnScreen, setIsOnScreen] = useState(true);
+  const [isTabVisible, setIsTabVisible] = useState(true);
+
+  useEffect(() => {
+    const node = wrapperRef.current;
+    if (!node || typeof IntersectionObserver === "undefined") return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsOnScreen(entry.isIntersecting),
+      { threshold: 0 },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const update = () => setIsTabVisible(document.visibilityState !== "hidden");
+    update();
+    document.addEventListener("visibilitychange", update);
+    return () => document.removeEventListener("visibilitychange", update);
+  }, []);
+
   const setInteraction = useCallback(
     (held: boolean) => {
       interactionRef.current.active = held;
@@ -367,10 +392,14 @@ export function ProductViewer({
 
   return (
     <div
+      ref={wrapperRef}
       className={`relative h-full w-full ${
         isInteracting ? "cursor-grabbing" : "cursor-grab"
       }`}
-      style={{ touchAction: "none" }}
+      // pan-y keeps vertical page scrolling working when a finger starts on the
+      // model (touch-action: none trapped scrolling on phones); horizontal
+      // drags still rotate the model.
+      style={{ touchAction: "pan-y" }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
@@ -391,7 +420,7 @@ export function ProductViewer({
 
       <Canvas
         className="relative z-10"
-        frameloop="always"
+        frameloop={isOnScreen && isTabVisible ? "always" : "never"}
         camera={{ position: [0, 0.05, 9.8], fov: 34 }}
         dpr={[1, 1.1]}
         gl={{

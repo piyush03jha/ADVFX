@@ -6,7 +6,9 @@ import { markIntroDone } from "@/lib/introGate";
 import { createIntroScene } from "./introScene";
 import { createIntroTimeline } from "./introTimeline";
 
-const PLAY_ONCE_PER_SESSION = false;
+// Play the intro once per browser session; replaying it on every page load
+// delayed the hero and made the site feel slow.
+const PLAY_ONCE_PER_SESSION = true;
 const SESSION_KEY = "voxel-intro-played";
 
 const TEXTURE_PATHS = {
