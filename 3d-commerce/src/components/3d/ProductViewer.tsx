@@ -101,7 +101,7 @@ function LoadedHeroModel({
     });
 
     return { model: pivot, materials };
-  }, [scene, name]);
+  }, [scene]);
 
   useEffect(() => {
     elapsedRef.current = 0;
@@ -206,7 +206,6 @@ function LoadedHeroModel({
 
 function HeroModel({
   path,
-  name,
   mode,
   interactionRef,
   isInteractionPaused = false,
@@ -233,7 +232,6 @@ function HeroModel({
   return (
     <LoadedHeroModel
       path={blobUrl}
-      name={name}
       mode={mode}
       interactionRef={interactionRef}
       isInteractionPaused={isInteractionPaused}
@@ -311,6 +309,9 @@ export function ProductViewer({
 
   const handlePointerDown = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
+      // Ignore non-primary mouse buttons, but allow touch and pen input.
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+      event.preventDefault();
       interactionRef.current.active = true;
       interactionRef.current.lastX = event.clientX;
       interactionRef.current.lastY = event.clientY;
@@ -318,7 +319,11 @@ export function ProductViewer({
       setIsInteracting(true);
       onHoldChange?.(true);
 
-      event.currentTarget.setPointerCapture(event.pointerId);
+      try {
+        event.currentTarget.setPointerCapture(event.pointerId);
+      } catch {
+        // Some browsers can reject capture if the pointer has already ended.
+      }
     },
     [onHoldChange],
   );
@@ -377,7 +382,7 @@ export function ProductViewer({
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerCancel}
-      onPointerLeave={handlePointerCancel}
+      onLostPointerCapture={handlePointerCancel}
     >
       <div
         aria-hidden="true"
