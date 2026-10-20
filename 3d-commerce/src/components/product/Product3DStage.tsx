@@ -6,6 +6,7 @@ import { OrbitControls, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { ModelErrorBoundary } from "@/components/3d/ModelErrorBoundary";
 import { useModelUrl } from "@/lib/useModelUrl";
+import { modelOrientationCorrection } from "@/lib/model-orientation";
 
 interface Product3DStageProps {
   model: string;
@@ -13,7 +14,7 @@ interface Product3DStageProps {
   theme?: "light" | "dark";
 }
 
-function LoadedProductModel({ blobUrl }: { blobUrl: string }) {
+function LoadedProductModel({ blobUrl, name }: { blobUrl: string; name: string }) {
   const { scene } = useGLTF(blobUrl, true, true);
 
   // Do not render the cached GLTF scene directly. drei/useGLTF caches scenes by
@@ -36,21 +37,22 @@ function LoadedProductModel({ blobUrl }: { blobUrl: string }) {
     const wrapper = new THREE.Group();
     wrapper.add(model);
     wrapper.scale.setScalar(2.4 / maxDimension);
+    wrapper.rotation.set(...modelOrientationCorrection(name));
 
     return wrapper;
-  }, [scene]);
+  }, [scene, name]);
 
   return <primitive object={normalizedScene} dispose={null} />;
 }
 
-function ProductModel({ model }: { model: string }) {
+function ProductModel({ model, name }: { model: string; name: string }) {
   const { blobUrl } = useModelUrl(model);
 
   // Keep the URL-loading state in its own component. Once the URL is ready,
   // LoadedProductModel mounts and runs its GLTF and memo hooks consistently.
   if (!blobUrl) return null;
 
-  return <LoadedProductModel blobUrl={blobUrl} />;
+  return <LoadedProductModel blobUrl={blobUrl} name={name} />;
 }
 
 function ModelLoadingFallback() {
@@ -144,7 +146,7 @@ export default function Product3DStage({
           }
         >
           <Suspense fallback={<ModelLoadingFallback />}>
-            <ProductModel model={model} />
+            <ProductModel model={model} name={name} />
           </Suspense>
         </ModelErrorBoundary>
 
