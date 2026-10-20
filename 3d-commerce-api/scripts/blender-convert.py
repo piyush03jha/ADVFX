@@ -63,6 +63,23 @@ try:
     elif ext in {".gltf", ".glb"}:
         bpy.ops.import_scene.gltf(filepath=input_path)
     elif ext in {".usd", ".usda", ".usdc", ".usdz"}:
+        # USD declares its stage up-axis (Y or Z). Blender's USD importer
+        # converts Y-up stages to Blender's Z-up scene automatically, and the
+        # glTF exporter below converts Blender Z-up to glTF Y-up. Do not add an
+        # unconditional 90-degree rotation: it breaks valid Z-up USD assets
+        # and models whose authored pose is already correct.
+        try:
+            from pxr import Usd, UsdGeom
+
+            stage = Usd.Stage.Open(input_path)
+            if stage:
+                up_axis = str(UsdGeom.GetStageUpAxis(stage))
+                print("USD source stage up-axis:", up_axis)
+            else:
+                print("WARNING: USD stage metadata could not be read before import")
+        except Exception as exc:
+            print("WARNING: USD up-axis metadata unavailable:", str(exc))
+
         bpy.ops.wm.usd_import(filepath=input_path)
     elif ext == ".abc":
         bpy.ops.wm.alembic_import(filepath=input_path)
