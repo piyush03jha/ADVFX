@@ -1,8 +1,8 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
-import { Center, OrbitControls, useGLTF } from "@react-three/drei";
+import { OrbitControls, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { ModelErrorBoundary } from "@/components/3d/ModelErrorBoundary";
 import { useModelUrl } from "@/lib/useModelUrl";
@@ -20,11 +20,31 @@ function ProductModel({ model }: { model: string }) {
 
   const { scene } = useGLTF(blobUrl, true, true);
 
-  return (
-    <Center precise>
-      <primitive object={scene} dispose={null} />
-    </Center>
-  );
+  // Do not render the cached GLTF scene directly. drei/useGLTF caches scenes by
+  // URL, so a viewer that changes the root transform can affect other viewers
+  // using the same model. Clone it, center its bounds, and normalize its size
+  // to the product viewer's camera instead.
+  const normalizedScene = useMemo(() => {
+    const model = scene.clone(true);
+    const bounds = new THREE.Box3().setFromObject(model);
+    const center = bounds.getCenter(new THREE.Vector3());
+    const size = bounds.getSize(new THREE.Vector3());
+    const maxDimension = Math.max(size.x, size.y, size.z);
+
+    if (!Number.isFinite(maxDimension) || maxDimension <= 0) {
+      return model;
+    }
+
+    model.position.sub(center);
+
+    const wrapper = new THREE.Group();
+    wrapper.add(model);
+    wrapper.scale.setScalar(2.4 / maxDimension);
+
+    return wrapper;
+  }, [scene]);
+
+  return <primitive object={normalizedScene} dispose={null} />;
 }
 
 function ModelLoadingFallback() {
