@@ -98,9 +98,21 @@ export default function Product3DStage({
   const [contextLost, setContextLost] = useState(false);
 
   return (
-    <div className="absolute inset-0 min-h-0 touch-none">
+    <div
+      className={
+        "absolute inset-0 min-h-0 touch-none overflow-hidden " +
+        (isDark
+          ? "bg-[#09070f]"
+          : "bg-[#f4f0fb]")
+      }
+      style={{
+        backgroundImage: isDark
+          ? "radial-gradient(ellipse at 50% 45%, rgba(139, 92, 246, 0.28) 0%, rgba(88, 28, 135, 0.14) 32%, transparent 68%), radial-gradient(ellipse at 50% 50%, #17111f 0%, #09070f 76%)"
+          : "radial-gradient(ellipse at 50% 45%, rgba(167, 139, 250, 0.34) 0%, rgba(221, 214, 254, 0.42) 30%, transparent 68%), radial-gradient(ellipse at 50% 50%, #ffffff 0%, #f0eafa 78%)",
+      }}
+    >
       <Canvas
-        camera={{ position: [0, 0, 4], fov: 38, near: 0.01, far: 100 }}
+        camera={{ position: [0, 0, 4], fov: 34, near: 0.01, far: 100 }}
         dpr={1}
         frameloop="demand"
         gl={{
@@ -116,7 +128,6 @@ export default function Product3DStage({
           onRestored={() => setContextLost(false)}
         />
 
-        <color attach="background" args={[isDark ? "#08080a" : "#f1f1f3"]} />
         <ambientLight intensity={isDark ? 1 : 1.2} />
         <directionalLight position={[4, 6, 5]} intensity={isDark ? 1.6 : 1.8} />
         <directionalLight position={[-4, 2, -3]} intensity={isDark ? 0.7 : 0.85} />
@@ -140,13 +151,13 @@ export default function Product3DStage({
           enablePan={false}
           enableDamping
           dampingFactor={0.055}
-          minDistance={0.35}
-          maxDistance={5.5}
+          minDistance={0.08}
+          maxDistance={8}
           minPolarAngle={0.12}
           maxPolarAngle={Math.PI - 0.12}
           target={[0, 0, 0]}
           rotateSpeed={0.75}
-          zoomSpeed={0.8}
+          zoomSpeed={1.25}
           touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }}
           mouseButtons={{ LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE }}
           reverseOrbit
