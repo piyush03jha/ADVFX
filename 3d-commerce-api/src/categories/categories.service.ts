@@ -270,8 +270,12 @@ export class CategoriesService {
     if (errors.length) return { ok: false, dryRun: input.dryRun !== false, errors, summary: { rows: rows.length, errors: errors.length } };
 
     const mode = input.mode ?? 'upsert';
-    const existing = await this.prisma.category.findMany({ select: { id: true, name: true, slug: true, parentId: true, children: { select: { id: true } } } });
+    const existing = await this.prisma.category.findMany({
+      select: { id: true, name: true, slug: true, parentId: true, children: { select: { id: true } } },
+    });
     const bySlug = new Map(existing.map((category) => [category.slug, category]));
+    const categorySlugs = new Set(normalized.map((row) => row.categorySlug));
+    const childSlugs = new Set(normalized.map((row) => row.subSlug).filter((slug): slug is string => Boolean(slug)));
     const toCreateSlugs = new Set<string>();
     const toUpdateSlugs = new Set<string>();
     for (const row of normalized) {
@@ -295,6 +299,16 @@ export class CategoriesService {
         if (foundChild?.parentId && foundParent && foundChild.parentId !== foundParent.id && mode === 'create') {
           errors.push({ row: row.rowNumber, message: `"${row.subSlug}" is already assigned to a different parent` });
         }
+        if (foundChild && !foundChild.parentId && mode === 'create') {
+          errors.push({ row: row.rowNumber, message: `"${row.subSlug}" already exists as a main category` });
+        }
+      }
+    }
+    // A child slug cannot collide with a main category slug in this file.
+    for (const slug of childSlugs) {
+      if (categorySlugs.has(slug)) {
+        const row = normalized.find((item) => item.subSlug === slug);
+        errors.push({ row: row?.rowNumber ?? 2, message: `slug "${slug}" cannot be both a main category and a subcategory` });
       }
     }
     if (errors.length) return { ok: false, dryRun: input.dryRun !== false, errors, summary: { rows: rows.length, errors: errors.length } };
