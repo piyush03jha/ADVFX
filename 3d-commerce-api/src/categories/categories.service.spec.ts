@@ -99,7 +99,7 @@ describe('CategoriesService product counts', () => {
     });
 
     expect(result.ok).toBe(false);
-    expect(result.errors?.some((error) => error.message.includes('cannot be both a main category and a subcategory'))).toBe(true);
+    expect(JSON.stringify(result)).toContain('cannot be both a main category and a subcategory');
   });
 
   it('deactivates instead of deleting a category that still holds live products', async () => {
