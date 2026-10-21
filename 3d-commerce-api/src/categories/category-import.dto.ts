@@ -1,5 +1,5 @@
+import { Transform, Type } from 'class-transformer';
 import { IsArray, IsBoolean, IsIn, IsOptional, IsString, ValidateNested } from 'class-validator';
-import { Type } from 'class-transformer';
 
 export class CategoryImportRowDto {
   @IsString()
@@ -25,7 +25,13 @@ export class CategoryImportRowDto {
   description?: string;
 
   @IsOptional()
-  @Type(() => Boolean)
+  @Transform(({ value }) => {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') return value !== 0;
+    if (typeof value === 'string') return ['true', '1', 'yes', 'active'].includes(value.trim().toLowerCase());
+    return value;
+  })
+  @IsBoolean()
   is_active?: boolean;
 }
 
