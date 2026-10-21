@@ -34,6 +34,10 @@ export class CreateCategoryDto {
   imageUrl?: string;
 
   @IsOptional()
+  @IsString()
+  parentId?: string | null;
+
+  @IsOptional()
   @IsInt()
   @Min(0)
   sortOrder?: number;
