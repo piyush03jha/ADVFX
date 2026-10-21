@@ -483,7 +483,7 @@ export default function AdminCategories() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="flex items-center gap-2 text-sm font-semibold"><IconFileSpreadsheet size={18} className="text-primary" /> Bulk import categories</p>
-            <p className="mt-1 text-xs text-muted">Upload one CSV for main categories and subcategories. Images are optional and can be added later.</p>
+            <p className="mt-1 text-xs text-muted">Upload one Excel workbook (.xlsx) or CSV for main categories and subcategories. Images are optional and can be added later.</p>
           </div>
           <select value={importMode} onChange={(e) => setImportMode(e.target.value as "create" | "upsert")} className="h-10 rounded-xl border border-border bg-background px-3 text-xs">
             <option value="upsert">Create or update by slug</option>
