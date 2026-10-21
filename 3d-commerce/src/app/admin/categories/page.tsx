@@ -141,7 +141,7 @@ export default function AdminCategories() {
   const parentCategories = useMemo(() => categories.filter((c) => !c.parentId), [categories]);
 
   function normalizeHeader(value: string) {
-    return value.trim().toLowerCase().replace(/[\s-]+/g, "_");
+    return value.replace(/^\uFEFF/, "").trim().toLowerCase().replace(/[\s-]+/g, "_");
   }
 
   function parseCsv(text: string): string[][] {
@@ -173,7 +173,9 @@ export default function AdminCategories() {
       category_slug: ["category_slug", "main_category_slug", "parent_slug", "slug"],
       subcategory_name: ["subcategory_name", "sub_category", "sub_category_name", "child_category"],
       subcategory_slug: ["subcategory_slug", "sub_category_slug", "child_slug"],
-      rank: ["rank", "sort_order", "category_rank", "display_order", "subcategory_rank"],
+      rank: ["rank", "sort_order", "display_order"],
+      category_rank: ["category_rank", "main_category_rank"],
+      subcategory_rank: ["subcategory_rank", "sub_category_rank"],
       description: ["description", "category_description"],
       is_active: ["is_active", "active", "status"],
     };
@@ -195,6 +197,8 @@ export default function AdminCategories() {
         subcategory_name: value("subcategory_name"),
         subcategory_slug: value("subcategory_slug").toLowerCase(),
         rank: value("rank") === "" ? idx : Number(value("rank")),
+        category_rank: value("category_rank") === "" ? (value("rank") === "" ? idx : Number(value("rank"))) : Number(value("category_rank")),
+        subcategory_rank: value("subcategory_rank") === "" ? (value("rank") === "" ? idx : Number(value("rank"))) : Number(value("subcategory_rank")),
         description: value("description"),
         is_active: activeValue === "" ? true : ["true", "1", "yes", "active"].includes(activeValue),
       };
@@ -246,11 +250,11 @@ export default function AdminCategories() {
 
   function downloadTemplate() {
     const csv = [
-      "category_name,category_slug,subcategory_name,subcategory_slug,rank,description,is_active",
-      "Miniatures,miniatures,Characters,miniature-characters,1,,true",
-      "Miniatures,miniatures,Animals,miniature-animals,2,,true",
-      "Miniatures,miniatures,Vehicles,miniature-vehicles,3,,true",
-      "Accessories,accessories,,,,,true",
+      "category_name,category_slug,subcategory_name,subcategory_slug,category_rank,subcategory_rank,description,is_active",
+      "Miniatures,miniatures,Characters,miniature-characters,1,1,,true",
+      "Miniatures,miniatures,Animals,miniature-animals,1,2,,true",
+      "Miniatures,miniatures,Vehicles,miniature-vehicles,1,3,,true",
+      "Accessories,accessories,,,,,,true",
     ].join("\r\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const href = URL.createObjectURL(blob);
@@ -370,7 +374,7 @@ export default function AdminCategories() {
           <button type="button" disabled={!importFile || importBusy} onClick={() => void previewImport()} className="rounded-full border border-border px-4 py-2.5 text-xs font-semibold disabled:opacity-50">{importBusy ? "Validating…" : "Validate & preview"}</button>
           {importPreview?.summary && <button type="button" disabled={importBusy || Boolean(importPreview.errors?.length)} onClick={() => void confirmImport()} className="rounded-full bg-primary px-4 py-2.5 text-xs font-semibold text-white disabled:opacity-50">{importBusy ? "Importing…" : "Confirm import"}</button>}
         </div>
-        <p className="mt-2 text-[10px] text-muted">Expected columns: category_name, category_slug, subcategory_name, subcategory_slug, rank, description, is_active. Export Excel as CSV UTF-8 first.</p>
+        <p className="mt-2 text-[10px] text-muted">Expected columns: category_name, category_slug, subcategory_name, subcategory_slug, category_rank, subcategory_rank, description, is_active. Export the Excel workbook as CSV UTF-8 first. The importer accepts repeated main-category rows and does not delete rows missing from the file.</p>
         {importPreview?.summary && <div className="mt-4 rounded-xl border border-border p-3 text-xs"><p className="font-semibold">Preview</p><p className="mt-1 text-muted">{Object.entries(importPreview.summary).map(([key, value]) => `${key}: ${value}`).join(" · ")}</p></div>}
         {!!importPreview?.errors?.length && <div className="mt-3 max-h-56 overflow-auto rounded-xl border border-red-500/30 p-3 text-xs text-red-300"><p className="font-semibold">{importPreview.errors.length} validation issue(s)</p>{importPreview.errors.slice(0, 100).map((error, index) => <p key={index} className="mt-1">Row {error.row}: {error.message}</p>)}</div>}
       </section>
