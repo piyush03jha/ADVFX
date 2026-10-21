@@ -292,14 +292,30 @@ export class ProductsService {
     const and: Prisma.ProductWhereInput[] = [];
 
     if (query.categories?.length) {
-      and.push({
-        category: {
+      const selectedCategories = await this.prisma.category.findMany({
+        where: {
+          isActive: true,
           OR: query.categories.flatMap((value) => [
             { name: { equals: value, mode: 'insensitive' as const } },
             { slug: { equals: value, mode: 'insensitive' as const } },
           ]),
         },
+        select: { id: true, parentId: true },
       });
+      const selectedRootIds = selectedCategories
+        .filter((category) => !category.parentId)
+        .map((category) => category.id);
+      const expandedCategories = selectedRootIds.length
+        ? await this.prisma.category.findMany({
+            where: { isActive: true, parentId: { in: selectedRootIds } },
+            select: { id: true },
+          })
+        : [];
+      const categoryIds = new Set([
+        ...selectedCategories.map((category) => category.id),
+        ...expandedCategories.map((category) => category.id),
+      ]);
+      and.push({ categoryId: { in: [...categoryIds] } });
     }
 
     const search = query.q?.trim();

@@ -12,6 +12,7 @@ describe('PaymentsService', () => {
     prisma.payment.findFirst.mockResolvedValue({ id: 'pay1', orderId: 'ord1', providerPaymentId: null, status: 'PENDING' });
 
     const tx = {
+      $queryRaw: jest.fn().mockResolvedValue([{ id: 'pay1' }]),
       payment: {
         findUnique: jest.fn().mockResolvedValue({ id: 'pay1', orderId: 'ord1', status: 'PENDING', providerPaymentId: null }),
         update: jest.fn(),

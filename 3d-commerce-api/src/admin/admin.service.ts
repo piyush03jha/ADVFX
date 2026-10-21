@@ -182,7 +182,7 @@ export class AdminService {
         include: { category: true, prices: { where: { isActive: true }, orderBy: { createdAt: 'desc' }, take: 1 }, inventory: true, variants: { include: { price: true }, orderBy: { createdAt: 'asc' } }, media: { orderBy: { sortOrder: 'asc' } }, metrics: true },
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.category.findMany({ where: { isActive: true }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] }),
+      this.prisma.category.findMany({ where: { isActive: true }, orderBy: [{ parentId: 'asc' }, { sortOrder: 'asc' }, { name: 'asc' }] }),
     ]);
     return { products, categories };
   }

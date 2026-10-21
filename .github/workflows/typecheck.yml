@@ -37,6 +37,8 @@ jobs:
       - name: Install backend dependencies
         working-directory: 3d-commerce-api
         run: npm install --no-audit --no-fund
+        env:
+          DATABASE_URL: postgresql://u:p@localhost:5432/d
 
       - name: Generate Prisma client
         working-directory: 3d-commerce-api

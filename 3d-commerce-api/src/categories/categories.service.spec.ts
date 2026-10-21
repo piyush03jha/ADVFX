@@ -5,6 +5,7 @@ describe('CategoriesService product counts', () => {
     category: {
       findMany: jest.fn(),
       findUnique: jest.fn(),
+      count: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
     },
@@ -16,6 +17,7 @@ describe('CategoriesService product counts', () => {
 
   beforeEach(() => {
     jest.resetAllMocks();
+    prisma.category.count.mockResolvedValue(0);
     service = new CategoriesService(prisma, storage);
   });
 
@@ -47,6 +49,57 @@ describe('CategoriesService product counts', () => {
 
     expect(category._count.products).toBe(0);
     expect(countWhere(prisma.category.findMany.mock.calls[0])).toEqual({ status: 'ACTIVE' });
+  });
+
+  it('allows a main category to repeat across rows for different subcategories', async () => {
+    prisma.category.findMany.mockResolvedValue([]);
+
+    const result = await service.importCategories({
+      dryRun: true,
+      rows: [
+        {
+          category_name: 'Miniatures',
+          category_slug: 'miniatures',
+          subcategory_name: 'Characters',
+          subcategory_slug: 'miniature-characters',
+          category_rank: 1,
+          subcategory_rank: 1,
+          is_active: true,
+        },
+        {
+          category_name: 'Miniatures',
+          category_slug: 'miniatures',
+          subcategory_name: 'Animals',
+          subcategory_slug: 'miniature-animals',
+          category_rank: 1,
+          subcategory_rank: 2,
+          is_active: true,
+        },
+      ],
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.dryRun).toBe(true);
+    expect(result.summary).toMatchObject({ uniqueCategories: 1, subcategories: 2, creates: 3 });
+  });
+
+  it('rejects a slug used as both a main category and a subcategory', async () => {
+    prisma.category.findMany.mockResolvedValue([]);
+
+    const result = await service.importCategories({
+      dryRun: true,
+      rows: [
+        {
+          category_name: 'Miniatures',
+          category_slug: 'miniatures',
+          subcategory_name: 'Duplicate',
+          subcategory_slug: 'miniatures',
+        },
+      ],
+    });
+
+    expect(result.ok).toBe(false);
+    expect(JSON.stringify(result)).toContain('cannot be both a main category and a subcategory');
   });
 
   it('deactivates instead of deleting a category that still holds live products', async () => {
