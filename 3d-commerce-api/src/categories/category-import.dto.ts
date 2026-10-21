@@ -21,6 +21,14 @@ export class CategoryImportRowDto {
   rank?: number;
 
   @IsOptional()
+  @Type(() => Number)
+  category_rank?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  subcategory_rank?: number;
+
+  @IsOptional()
   @IsString()
   description?: string;
 
