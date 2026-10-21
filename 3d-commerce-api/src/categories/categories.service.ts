@@ -349,7 +349,7 @@ export class CategoriesService {
           parentCache.set(row.categorySlug, parentId);
           if (existedParent && mode === 'upsert') updated += 1;
           else if (!existedParent) created += 1;
-          bySlug.set(parent.slug, { id: parent.id, name: parent.name, slug: parent.slug, parentId: null });
+          bySlug.set(parent.slug, { id: parent.id, name: parent.name, slug: parent.slug, parentId: null, children: [] });
         }
         if (row.subSlug && row.subName) {
           const previous = await tx.category.findUnique({ where: { slug: row.subSlug }, select: { id: true, parentId: true } });
@@ -360,7 +360,7 @@ export class CategoriesService {
           });
           if (previous && mode === 'upsert') updated += 1;
           else if (!previous) created += 1;
-          bySlug.set(child.slug, { id: child.id, name: child.name, slug: child.slug, parentId });
+          bySlug.set(child.slug, { id: child.id, name: child.name, slug: child.slug, parentId, children: [] });
         }
       }
       return { created, updated };
