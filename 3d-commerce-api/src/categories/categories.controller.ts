@@ -18,6 +18,7 @@ import { AdminGuard } from '../auth/guards/admin.guard';
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
+import { CategoryImportDto } from './category-import.dto';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
 @Controller('categories')
@@ -32,6 +33,12 @@ export class CategoriesController {
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.categoriesService.findOne(id);
+  }
+
+  @UseGuards(AuthGuard, AdminGuard)
+  @Post('import')
+  importCategories(@Body() dto: CategoryImportDto) {
+    return this.categoriesService.importCategories(dto);
   }
 
   @UseGuards(AuthGuard, AdminGuard)
