@@ -238,9 +238,9 @@ export class CategoriesService {
       const subName = String(row.subcategory_name ?? '').trim() || null;
       const subSlug = String(row.subcategory_slug ?? '').trim().toLowerCase() || null;
       const rankValue = row.rank;
-      const commonRank = rankValue === undefined || rankValue === null || rankValue === '' ? index : Number(rankValue);
-      const categoryRank = row.category_rank === undefined || row.category_rank === null || row.category_rank === '' ? commonRank : Number(row.category_rank);
-      const subRank = row.subcategory_rank === undefined || row.subcategory_rank === null || row.subcategory_rank === '' ? commonRank : Number(row.subcategory_rank);
+      const commonRank = rankValue === undefined || rankValue === null ? index : Number(rankValue);
+      const categoryRank = row.category_rank === undefined || row.category_rank === null ? commonRank : Number(row.category_rank);
+      const subRank = row.subcategory_rank === undefined || row.subcategory_rank === null ? commonRank : Number(row.subcategory_rank);
       const active = row.is_active === undefined ? true : Boolean(row.is_active);
       if (!categoryName) errors.push({ row: rowNumber, message: 'category_name is required' });
       if (!slugPattern.test(categorySlug)) errors.push({ row: rowNumber, message: 'category_slug must be lowercase letters/numbers separated by hyphens' });
