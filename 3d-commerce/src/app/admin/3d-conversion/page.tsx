@@ -372,6 +372,12 @@ export default function ThreeDConversionPage() {
               <span key={format} className="rounded-full border border-border bg-surface px-2.5 py-1 text-[10px] font-medium text-muted">{format}</span>
             ))}
           </div>
+          <ul className="mx-auto mt-4 max-w-xl space-y-1 text-left text-[11px] leading-5 text-muted">
+            <li><span className="font-semibold text-foreground">SVG / PDF:</span> filled shapes become extruded solids and stroke-only paths become thin tubes. PDF uses page 1. Convert text to outlines first; embedded images are ignored.</li>
+            <li><span className="font-semibold text-foreground">BVH:</span> a motion-capture file has no surface, so the skeleton is shown as bones that follow the animation.</li>
+            <li><span className="font-semibold text-foreground">Alembic (.abc):</span> the first frame of the cache is converted.</li>
+            <li><span className="font-semibold text-foreground">glTF (.gltf):</span> a single .gltf must have its buffers and textures embedded. If it references a separate .bin or image files, upload a ZIP containing them, or export a .glb instead.</li>
+          </ul>
           <AdminButton className="mt-7" variant="primary" onClick={() => inputRef.current?.click()} disabled={uploading}>
             <IconUpload size={16} />
             {uploading ? "Uploading " + progress + "%" : "Choose file"}

@@ -34,6 +34,16 @@ const MAX_REFERENCE_TOTAL_SIZE = 50 * 1024 * 1024;
 const MAX_MODEL_FILES = 1;
 const MAX_MODEL_FILE_SIZE = 100 * 1024 * 1024;
 
+/**
+ * Lower-case file extension without the dot ("Model.GLB" -> "glb").
+ * This was previously matched with /\\.([a-z0-9]+)$/, which looks for a literal
+ * backslash and therefore returned '' for every real filename, rejecting every
+ * custom-request upload.
+ */
+function extensionOf(filename: string): string {
+  return filename.toLowerCase().match(/\.([a-z0-9]+)$/)?.[1] ?? '';
+}
+
 @Controller('custom-requests/:requestId/files')
 export class CustomBuildFilesController {
   constructor(
@@ -59,7 +69,7 @@ export class CustomBuildFilesController {
 
     const uploaded = await this.readMultipart(req, MAX_MODEL_FILE_SIZE);
 
-    const extension = uploaded.filename.toLowerCase().match(/\\.([a-z0-9]+)$/)?.[1] ?? '';
+    const extension = extensionOf(uploaded.filename);
     const isImage = REFERENCE_MIME_TYPES.has(uploaded.mimetype);
     if (isImage && uploaded.buffer.length > MAX_REFERENCE_FILE_SIZE) {
       throw new BadRequestException(`Reference images cannot exceed ${MAX_REFERENCE_FILE_SIZE / (1024 * 1024)} MB each.`);
@@ -79,8 +89,7 @@ export class CustomBuildFilesController {
 
     if (isModel) {
       const existingModel = existingMedia.some((media) => {
-        const existingExtension =
-          media.originalName.toLowerCase().match(/\\.([a-z0-9]+)$/)?.[1] ?? '';
+        const existingExtension = extensionOf(media.originalName);
         return MODEL_EXTENSIONS.has(existingExtension);
       });
 
@@ -97,8 +106,7 @@ export class CustomBuildFilesController {
       }
     } else {
       const imageCount = existingMedia.filter((media) => {
-        const existingExtension =
-          media.originalName.toLowerCase().match(/\\.([a-z0-9]+)$/)?.[1] ?? '';
+        const existingExtension = extensionOf(media.originalName);
         return ['jpg', 'jpeg', 'png'].includes(existingExtension);
       }).length;
 
@@ -114,8 +122,7 @@ export class CustomBuildFilesController {
 
       const existingImageTotal = existingMedia
         .filter((media) => {
-          const existingExtension =
-            media.originalName.toLowerCase().match(/\\.([a-z0-9]+)$/)?.[1] ?? '';
+          const existingExtension = extensionOf(media.originalName);
           return ['jpg', 'jpeg', 'png'].includes(existingExtension);
         })
         .reduce((total, media) => total + Number(media.fileSize), 0);

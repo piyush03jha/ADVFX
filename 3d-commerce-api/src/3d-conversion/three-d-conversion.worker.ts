@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import { ProcessingJobStatus } from "@prisma/client";
-import { closeSync, openSync, readSync, promises as fs, statSync } from "node:fs";
+import { closeSync, createReadStream, openSync, readSync, promises as fs, statSync } from "node:fs";
 import { extname, join, relative, resolve, sep } from "node:path";
 import { randomUUID } from "node:crypto";
 import { execFile, spawn } from "node:child_process";
@@ -121,6 +121,11 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
       await this.storage.downloadTo(sourceKey, sourcePath);
 
       let animationCount = 0;
+
+      // A lone .gltf is downloaded without its siblings, so external buffers
+      // and textures can never resolve. Say so up front instead of surfacing a
+      // Blender "Missing resource" stack trace.
+      if (job.inputExt === ".gltf") await this.assertGltfSelfContained(sourcePath);
 
       const blenderInput =
         job.inputExt === ".zip"
@@ -332,6 +337,34 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
       await fs.rm(centeredPath, { force: true }).catch(() => undefined);
       this.logger.warn(
         `Could not center GLB pivot; retaining original placement: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  /**
+   * Reject a standalone .gltf whose buffers or images are external files.
+   * Streams the file in chunks (an embedded .gltf can be hundreds of MB) and
+   * only inspects short "uri" values; embedded data: URIs are far longer.
+   */
+  private async assertGltfSelfContained(path: string) {
+    const external = new Set<string>();
+    const pattern = /"uri"\s*:\s*"([^"]{1,300})"/g;
+    let carry = "";
+
+    for await (const chunk of createReadStream(path, { encoding: "utf8", highWaterMark: 4 * 1024 * 1024 })) {
+      const text = carry + String(chunk);
+      pattern.lastIndex = 0;
+      for (let match = pattern.exec(text); match; match = pattern.exec(text)) {
+        if (!match[1].startsWith("data:")) external.add(match[1]);
+      }
+      carry = text.slice(-512);
+    }
+
+    if (external.size > 0) {
+      const names = [...external].slice(0, 5).join(", ") + (external.size > 5 ? ", ..." : "");
+      throw new Error(
+        `This .gltf references external files (${names}) that were not uploaded with it. ` +
+          "Upload a ZIP containing the .gltf together with its .bin and texture files, or export a single .glb instead.",
       );
     }
   }
@@ -700,7 +733,14 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
           signal === "SIGKILL"
             ? "Blender was killed (likely out of memory on this worker). STL/PLY/3MF and large OBJ use low-memory conversion; for other formats, try a smaller file or a worker with more RAM. "
             : "";
-        const details = oomHint + (stderr || stdout || "").trim();
+        const output = (stderr || stdout || "").trim();
+        // Prefer the converter's own final message (the last RuntimeError in
+        // the Python traceback) over the full Blender log.
+        const lastRuntimeError = [...output.matchAll(/RuntimeError: (.+)/g)].pop()?.[1]?.trim();
+        const missingResource = /Missing resource, '([^']+)'/.exec(output)?.[1];
+        const details = missingResource
+          ? `The glTF references a file that was not provided (${missingResource}). Upload a ZIP containing the .gltf with its .bin and texture files, or export a single .glb.`
+          : oomHint + (lastRuntimeError ?? output);
         finish(new Error(
           "Blender exited with " + (signal ? "signal " + signal : "code " + code) +
           (details ? ": " + details : ""),

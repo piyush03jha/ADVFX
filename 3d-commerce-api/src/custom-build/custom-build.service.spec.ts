@@ -13,6 +13,8 @@ describe('CustomBuildService', () => {
       update: jest.fn(),
     },
     customRequestQuote: { upsert: jest.fn() },
+    customBuildCategory: { findUnique: jest.fn() },
+    customBuildHeightRange: { findFirst: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
     address: { findFirst: jest.fn() },
     order: {
       findUnique: jest.fn(),
@@ -96,6 +98,58 @@ describe('CustomBuildService', () => {
       create: expect.objectContaining({ amountMinor: 1999 }),
       update: expect.objectContaining({ amountMinor: 1999 }),
     }));
+  });
+
+  describe('height range pricing', () => {
+    const ranges = [
+      { id: 'h1', minCm: 8, maxCm: 12, priceMinor: 150000 },
+      { id: 'h2', minCm: 12.1, maxCm: 20, priceMinor: 250000 },
+    ];
+    const category = (slug: string) => ({
+      id: 'c1',
+      slug,
+      name: slug,
+      isActive: true,
+      currency: 'INR',
+      options: [
+        { section: 'body', slug: 'full', name: 'Full', priceMinor: 100000 },
+        { section: 'frame', slug: 'couple', name: 'Couple', priceMinor: 50000 },
+      ],
+      heightRanges: ranges,
+    });
+
+    it('charges the admin range price for any height inside the range', async () => {
+      prisma.customBuildCategory.findUnique.mockResolvedValue(category('object'));
+      for (const sizeCm of [8, 10, 12]) {
+        await expect(service.quote({ category: 'object', sizeCm })).resolves.toEqual(
+          expect.objectContaining({ amountMinor: 150000 }),
+        );
+      }
+      await expect(service.quote({ category: 'object', sizeCm: 12.1 })).resolves.toEqual(
+        expect.objectContaining({ amountMinor: 250000 }),
+      );
+    });
+
+    it('adds the admin body and frame prices on top of the range price for person builds', async () => {
+      prisma.customBuildCategory.findUnique.mockResolvedValue(category('person'));
+      await expect(
+        service.quote({ category: 'person', bodyType: 'full', subjectType: 'couple', sizeCm: 10 }),
+      ).resolves.toEqual(expect.objectContaining({ amountMinor: 150000 + 100000 + 50000 }));
+    });
+
+    it('rejects a height that no admin range covers', async () => {
+      prisma.customBuildCategory.findUnique.mockResolvedValue(category('object'));
+      await expect(service.quote({ category: 'object', sizeCm: 30 })).rejects.toThrow(/No price is configured/);
+      await expect(service.quote({ category: 'object', sizeCm: 7.9 })).rejects.toThrow(/8–12 cm/);
+    });
+
+    it('refuses to save an overlapping active range', async () => {
+      prisma.customBuildHeightRange.findFirst.mockResolvedValue({ minCm: 8, maxCm: 12 });
+      await expect(service.updateConfigHeightRange('h2', { minCm: 11 })).rejects.toBeDefined();
+      prisma.customBuildHeightRange.findUnique.mockResolvedValue({ id: 'h2', categoryId: 'c1', minCm: 12.1, maxCm: 20, isActive: true });
+      await expect(service.updateConfigHeightRange('h2', { minCm: 11 })).rejects.toThrow(/Overlaps/);
+      await expect(service.updateConfigHeightRange('h2', { minCm: 25 })).rejects.toThrow(/Minimum height/);
+    });
   });
 
   describe('checkout', () => {
