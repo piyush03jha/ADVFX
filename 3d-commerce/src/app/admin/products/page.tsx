@@ -9,12 +9,13 @@ import { uploadModelDirect } from "@/lib/model-upload";
 type ProductVariant={id:string;name:string;size?:string|null;sku?:string|null;isActive:boolean;stock?:number;reserved?:number;lowStockAt?:number;trackStock?:boolean;allowBackorder?:boolean;price?:{amountMinor:number;compareAtMinor?:number|null;isActive:boolean}|null};
 type Product={id:string;name:string;slug:string;status:string;isFeatured:boolean;isTrending:boolean;isBestseller:boolean;category?:{id:string;name:string}|null;prices:any[];variants?:ProductVariant[];material?:string|null;scale?:string|null;dimensions?:string|null;height?:string|null;base?:string|null;packaging?:string|null;weight?:string|null;inventory?:{stock:number;reserved:number;lowStockAt:number}|null;media?:Array<{id:string;type:string;url:string;altText?:string|null;isPrimary:boolean;sortOrder:number}>};
 type ProductFile={id:string;originalName:string;storageUrl:string;format:string;fileType:string;mimeType:string;fileSize:string|number;processingStatus:string};
-type Category={id:string;name:string};
+type Category={id:string;name:string;slug:string;parentId?:string|null;parent?:{id:string;name:string;slug:string}|null};
 
 export default function AdminProducts(){
   const [data,setData]=useState<{products:Product[];categories:Category[]}>({products:[],categories:[]});
   const [search,setSearch]=useState(""); const [loading,setLoading]=useState(true); const [saving,setSaving]=useState(false); const [message,setMessage]=useState("");
-  const [form,setForm]=useState({name:"",slug:"",description:"",categoryId:"",status:"ACTIVE",stock:"0",isFeatured:false,material:"",scale:"",dimensions:"",height:"",base:"",packaging:"",weight:""});
+  const [form,setForm]=useState({name:"",slug:"",description:"",categoryId:"",parentCategoryId:"",status:"ACTIVE",stock:"0",isFeatured:false,material:"",scale:"",dimensions:"",height:"",base:"",packaging:"",weight:""});
+  const [editParentCategoryId,setEditParentCategoryId]=useState("");
   const [productImages,setProductImages]=useState<File[]>([]);
   const [productGlb,setProductGlb]=useState<File|null>(null);
   const [assetProductId,setAssetProductId]=useState<string|null>(null);
@@ -49,6 +50,8 @@ export default function AdminProducts(){
   },[assetProductId,assetFiles]);
 
   const rows=useMemo(()=>data.products.filter(p=>[p.name,p.slug,p.category?.name||""].join(" ").toLowerCase().includes(search.trim().toLowerCase())),[data.products,search]);
+  const mainCategories=useMemo(()=>data.categories.filter(category=>!category.parentId),[data.categories]);
+  const subcategoriesFor=(parentId:string)=>data.categories.filter(category=>category.parentId===parentId);
 
   async function updateProduct(id:string,patch:Record<string,unknown>){setSaving(true);try{const r=await fetch("/api/products/"+id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(patch)});if(!r.ok)throw new Error();setMessage("Product updated.");await load()}catch{setMessage("Unable to update product.")}finally{setSaving(false)}}
   async function updateVariant(productId:string,variantId:string,payload:Record<string,unknown>){
@@ -106,7 +109,7 @@ export default function AdminProducts(){
           setUploadProgress((prev) => ({ ...prev, [p.id]: percent })),
         );
       }
-      setForm({name:"",slug:"",description:"",categoryId:"",status:"ACTIVE",stock:"0",isFeatured:false,material:"",scale:"",dimensions:"",height:"",base:"",packaging:"",weight:""});
+      setForm({name:"",slug:"",description:"",categoryId:"",parentCategoryId:"",status:"ACTIVE",stock:"0",isFeatured:false,material:"",scale:"",dimensions:"",height:"",base:"",packaging:"",weight:""});
       setProductImages([]);
       setProductGlb(null);
       setCreateVariantPrices({small:"",medium:"",large:""});
@@ -117,7 +120,7 @@ export default function AdminProducts(){
   }
 
   function startProductEdit(p:Product){
-    setEditingProduct(p.id);setEditForm({name:p.name,slug:p.slug,description:"",categoryId:p.category?.id||"",status:p.status,isFeatured:p.isFeatured,isTrending:p.isTrending,isBestseller:p.isBestseller,badge:"",material:p.material||"",scale:p.scale||"",dimensions:p.dimensions||"",height:p.height||"",base:p.base||"",packaging:p.packaging||"",weight:p.weight||""});
+    setEditingProduct(p.id);const productCategory=data.categories.find(category=>category.id===p.category?.id);const parentId=productCategory?.parentId||productCategory?.id||"";setEditParentCategoryId(parentId);setEditForm({name:p.name,slug:p.slug,description:"",categoryId:p.category?.id||"",status:p.status,isFeatured:p.isFeatured,isTrending:p.isTrending,isBestseller:p.isBestseller,badge:"",material:p.material||"",scale:p.scale||"",dimensions:p.dimensions||"",height:p.height||"",base:p.base||"",packaging:p.packaging||"",weight:p.weight||""});
   }
   async function saveProductEdit(id:string){
     setSaving(true);setMessage("");
@@ -239,7 +242,10 @@ export default function AdminProducts(){
         </div>
       </div>
       <input value={form.stock} onChange={e=>setForm({...form,stock:e.target.value})} type="number" min="0" placeholder="Stock" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
-      <select value={form.categoryId} onChange={e=>setForm({...form,categoryId:e.target.value})} className="h-10 rounded-xl border border-border bg-background px-3 text-xs"><option value="">No category</option>{data.categories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>
+      <div className="grid gap-2">
+        <select value={form.parentCategoryId} onChange={e=>setForm({...form,parentCategoryId:e.target.value,categoryId:""})} className="h-10 rounded-xl border border-border bg-background px-3 text-xs"><option value="">Choose main category</option>{mainCategories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>
+        <select value={form.categoryId} disabled={!form.parentCategoryId || !subcategoriesFor(form.parentCategoryId).length} onChange={e=>setForm({...form,categoryId:e.target.value})} className="h-10 rounded-xl border border-border bg-background px-3 text-xs"><option value="">No subcategory (use main category)</option>{subcategoriesFor(form.parentCategoryId).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>
+      </div>
       <select value={form.status} onChange={e=>setForm({...form,status:e.target.value})} className="h-10 rounded-xl border border-border bg-background px-3 text-xs"><option value="ACTIVE">Active</option><option value="DRAFT">Draft</option></select>
       <textarea value={form.description} onChange={e=>setForm({...form,description:e.target.value})} placeholder="Description" className="min-h-10 rounded-xl border border-border bg-background px-3 py-2 text-xs sm:col-span-2"/><div className="sm:col-span-2 lg:col-span-4"><p className="mb-2 text-[9px] font-medium uppercase tracking-[0.14em] text-muted">Product specifications</p><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><input value={form.material} onChange={e=>setForm({...form,material:e.target.value})} placeholder="Material" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/><input value={form.scale} onChange={e=>setForm({...form,scale:e.target.value})} placeholder="Scale" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/><input value={form.dimensions} onChange={e=>setForm({...form,dimensions:e.target.value})} placeholder="Dimensions" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/><input value={form.height} onChange={e=>setForm({...form,height:e.target.value})} placeholder="Height" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/><input value={form.base} onChange={e=>setForm({...form,base:e.target.value})} placeholder="Base" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/><input value={form.packaging} onChange={e=>setForm({...form,packaging:e.target.value})} placeholder="Packaging" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/><input value={form.weight} onChange={e=>setForm({...form,weight:e.target.value})} placeholder="Weight" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/></div></div>
       <label className="flex items-center gap-2 text-xs text-muted"><input type="checkbox" checked={form.isFeatured} onChange={e=>setForm({...form,isFeatured:e.target.checked})}/> Show in hero</label>
