@@ -9,6 +9,9 @@ export interface ShopCategory {
   imageUrl?: string | null;
   sortOrder?: number;
   isActive?: boolean;
+  parentId?: string | null;
+  parent?: { id: string; name: string; slug: string } | null;
+  children?: ShopCategory[];
   _count?: { products: number };
 }
 
@@ -25,7 +28,7 @@ export async function fetchShopCategories(): Promise<ShopCategory[]> {
 
     if (!Array.isArray(data)) return [];
 
-    return data
+    const categories = data
       .filter(
         (category): category is ShopCategory =>
           typeof category === "object" &&
@@ -38,6 +41,8 @@ export async function fetchShopCategories(): Promise<ShopCategory[]> {
         ...category,
         imageUrl: resolveMediaUrl(category.imageUrl),
       }));
+
+    return categories;
   } catch {
     return [];
   }
