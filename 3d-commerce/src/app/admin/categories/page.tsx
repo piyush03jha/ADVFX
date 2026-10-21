@@ -163,10 +163,134 @@ export default function AdminCategories() {
     return rows.filter((r) => r.some((value) => value.trim() !== ""));
   }
 
+  async function readXlsxRows(file: File): Promise<string[][]> {
+    if (file.size > 10 * 1024 * 1024) throw new Error("Excel files must be 10 MB or smaller.");
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const decoder = new TextDecoder("utf-8");
+    const eocdSignature = 0x06054b50;
+    let eocd = -1;
+    for (let offset = Math.max(0, bytes.length - 65557); offset <= bytes.length - 22; offset++) {
+      if (view.getUint32(offset, true) === eocdSignature) eocd = offset;
+    }
+    if (eocd < 0) throw new Error("This is not a valid .xlsx file.");
+    const entryCount = view.getUint16(eocd + 10, true);
+    const centralOffset = view.getUint32(eocd + 16, true);
+    const entries = new Map<string, { offset: number; compressedSize: number; size: number; method: number; flags: number }>();
+    let cursor = centralOffset;
+    for (let index = 0; index < entryCount; index++) {
+      if (view.getUint32(cursor, true) !== 0x02014b50) throw new Error("The Excel file's ZIP directory is invalid.");
+      const flags = view.getUint16(cursor + 8, true);
+      const method = view.getUint16(cursor + 10, true);
+      const compressedSize = view.getUint32(cursor + 20, true);
+      const size = view.getUint32(cursor + 24, true);
+      const nameLength = view.getUint16(cursor + 28, true);
+      const extraLength = view.getUint16(cursor + 30, true);
+      const commentLength = view.getUint16(cursor + 32, true);
+      const localOffset = view.getUint32(cursor + 42, true);
+      const name = decoder.decode(bytes.slice(cursor + 46, cursor + 46 + nameLength)).replace(/\\/g, "/");
+      entries.set(name, { offset: localOffset, compressedSize, size, method, flags });
+      cursor += 46 + nameLength + extraLength + commentLength;
+    }
+
+    let expandedBytes = 0;
+    const readEntry = async (name: string): Promise<Uint8Array | null> => {
+      const entry = entries.get(name);
+      if (!entry) return null;
+      if ((entry.flags & 1) !== 0) throw new Error("Password-protected Excel files are not supported.");
+      if (entry.size > 20 * 1024 * 1024) throw new Error("The Excel workbook contains an unexpectedly large file.");
+      const local = entry.offset;
+      if (view.getUint32(local, true) !== 0x04034b50) throw new Error("The Excel file contains an invalid entry.");
+      const nameLength = view.getUint16(local + 26, true);
+      const extraLength = view.getUint16(local + 28, true);
+      const dataStart = local + 30 + nameLength + extraLength;
+      const compressed = bytes.slice(dataStart, dataStart + entry.compressedSize);
+      let result: Uint8Array;
+      if (entry.method === 0) {
+        result = compressed;
+      } else if (entry.method === 8) {
+        if (typeof DecompressionStream === "undefined") {
+          throw new Error("This browser cannot read .xlsx files. Export the workbook as CSV UTF-8 and upload the CSV instead.");
+        }
+        try {
+          const stream = new Blob([compressed.buffer as ArrayBuffer]).stream()
+            .pipeThrough(new DecompressionStream("deflate-raw" as CompressionFormat));
+          result = new Uint8Array(await new Response(stream).arrayBuffer());
+        } catch {
+          throw new Error("Unable to decompress this Excel workbook. Export it as CSV UTF-8 and try again.");
+        }
+      } else {
+        throw new Error("This Excel workbook uses an unsupported ZIP compression method.");
+      }
+      expandedBytes += result.byteLength;
+      if (expandedBytes > 30 * 1024 * 1024) throw new Error("The expanded Excel workbook is too large to import safely.");
+      if (entry.size && result.byteLength !== entry.size) throw new Error("The Excel workbook contains a truncated entry.");
+      return result;
+    };
+    const readText = async (name: string) => {
+      const value = await readEntry(name);
+      return value ? decoder.decode(value) : null;
+    };
+    const parseXml = (value: string, label: string) => {
+      const parsed = new DOMParser().parseFromString(value, "application/xml");
+      if (parsed.getElementsByTagName("parsererror").length) throw new Error("Unable to read Excel " + label + ".");
+      return parsed;
+    };
+
+    const workbookXml = await readText("xl/workbook.xml");
+    const relationshipsXml = await readText("xl/_rels/workbook.xml.rels");
+    if (!workbookXml || !relationshipsXml) throw new Error("The Excel workbook is missing workbook metadata.");
+    const workbook = parseXml(workbookXml, "workbook");
+    const relationships = parseXml(relationshipsXml, "workbook relationships");
+    const firstSheet = workbook.getElementsByTagNameNS("*", "sheet")[0];
+    const relationshipId = firstSheet?.getAttribute("r:id") ?? firstSheet?.getAttributeNS("http://schemas.openxmlformats.org/officeDocument/2006/relationships", "id");
+    if (!relationshipId) throw new Error("The Excel workbook does not contain a worksheet.");
+    const relationship = Array.from(relationships.getElementsByTagNameNS("*", "Relationship"))
+      .find((item) => item.getAttribute("Id") === relationshipId);
+    const target = relationship?.getAttribute("Target");
+    if (!target) throw new Error("Could not resolve the first worksheet in this Excel workbook.");
+    const sheetPath = target.startsWith("/") ? target.slice(1) : target.startsWith("xl/") ? target : "xl/" + target.replace(/^\\.\\//, "");
+    const sheetXml = await readText(sheetPath);
+    if (!sheetXml) throw new Error("The first worksheet is missing from the Excel workbook.");
+    const sheet = parseXml(sheetXml, "worksheet");
+    const sharedStringsXml = await readText("xl/sharedStrings.xml");
+    const sharedStrings = sharedStringsXml
+      ? Array.from(parseXml(sharedStringsXml, "shared strings").getElementsByTagNameNS("*", "si"))
+          .map((item) => Array.from(item.getElementsByTagNameNS("*", "t")).map((text) => text.textContent ?? "").join(""))
+      : [];
+    const rows: string[][] = [];
+    const columnIndex = (reference: string | null) => {
+      const letters = reference?.match(/^[A-Z]+/)?.[0];
+      if (!letters) return 0;
+      let value = 0;
+      for (const letter of letters) value = value * 26 + letter.charCodeAt(0) - 64;
+      return value - 1;
+    };
+    for (const rowNode of Array.from(sheet.getElementsByTagNameNS("*", "row"))) {
+      const rowNumber = Math.max(1, Number(rowNode.getAttribute("r")) || rows.length + 1);
+      const cells: string[] = [];
+      for (const cell of Array.from(rowNode.getElementsByTagNameNS("*", "c"))) {
+        const index = columnIndex(cell.getAttribute("r"));
+        const type = cell.getAttribute("t");
+        let value = "";
+        if (type === "inlineStr") {
+          value = Array.from(cell.getElementsByTagNameNS("*", "t")).map((text) => text.textContent ?? "").join("");
+        } else {
+          const raw = cell.getElementsByTagNameNS("*", "v")[0]?.textContent ?? "";
+          value = type === "s" ? (sharedStrings[Number(raw)] ?? "") : type === "b" ? (raw === "1" ? "true" : "false") : raw;
+        }
+        cells[index] = value;
+      }
+      rows[rowNumber - 1] = cells;
+    }
+    return rows.filter((row) => row.some((value) => String(value ?? "").trim() !== ""));
+  }
+
   async function readImportFile(file: File) {
-    const text = await file.text();
-    const raw = parseCsv(text);
-    if (raw.length < 2) throw new Error("The CSV needs a header and at least one data row.");
+    const extension = file.name.toLowerCase().split(".").pop();
+    const raw = extension === "xlsx" ? await readXlsxRows(file) : extension === "csv" ? parseCsv(await file.text()) : null;
+    if (!raw) throw new Error("Choose an .xlsx workbook or a CSV UTF-8 file.");
+    if (raw.length < 2) throw new Error("The spreadsheet needs a header and at least one data row.");
     const headers = raw[0].map(normalizeHeader);
     const aliases: Record<string, string[]> = {
       category_name: ["category_name", "main_category", "parent_category", "category"],
@@ -209,9 +333,6 @@ export default function AdminCategories() {
     if (!file) { setMessage("Choose a CSV spreadsheet first."); return; }
     setImportBusy(true); setMessage(""); setImportPreview(null);
     try {
-      if (!file.name.toLowerCase().endsWith(".csv")) {
-        throw new Error("For reliable import, export the Excel workbook as CSV UTF-8 (.csv) and upload it here.");
-      }
       const rows = await readImportFile(file);
       const response = await fetch("/api/categories/import", {
         method: "POST",
@@ -370,11 +491,11 @@ export default function AdminCategories() {
           </select>
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-3">
-          <input ref={importRef} type="file" accept=".csv,text/csv" onChange={(e) => { setImportFile(e.target.files?.[0] ?? null); setImportPreview(null); }} className="block max-w-full text-xs text-muted file:mr-3 file:rounded-lg file:border file:border-border file:bg-background file:px-3 file:py-2" />
+          <input ref={importRef} type="file" accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(e) => { setImportFile(e.target.files?.[0] ?? null); setImportPreview(null); }} className="block max-w-full text-xs text-muted file:mr-3 file:rounded-lg file:border file:border-border file:bg-background file:px-3 file:py-2" />
           <button type="button" disabled={!importFile || importBusy} onClick={() => void previewImport()} className="rounded-full border border-border px-4 py-2.5 text-xs font-semibold disabled:opacity-50">{importBusy ? "Validating…" : "Validate & preview"}</button>
           {importPreview?.summary && <button type="button" disabled={importBusy || Boolean(importPreview.errors?.length)} onClick={() => void confirmImport()} className="rounded-full bg-primary px-4 py-2.5 text-xs font-semibold text-white disabled:opacity-50">{importBusy ? "Importing…" : "Confirm import"}</button>}
         </div>
-        <p className="mt-2 text-[10px] text-muted">Expected columns: category_name, category_slug, subcategory_name, subcategory_slug, category_rank, subcategory_rank, description, is_active. Export the Excel workbook as CSV UTF-8 first. The importer accepts repeated main-category rows and does not delete rows missing from the file.</p>
+        <p className="mt-2 text-[10px] text-muted">Expected columns: category_name, category_slug, subcategory_name, subcategory_slug, category_rank, subcategory_rank, description, is_active. Direct .xlsx and Excel-exported CSV UTF-8 are supported. For .xlsx, the first worksheet is used. Repeated main-category rows are allowed; missing spreadsheet rows never delete existing categories.</p>
         {importPreview?.summary && <div className="mt-4 rounded-xl border border-border p-3 text-xs"><p className="font-semibold">Preview</p><p className="mt-1 text-muted">{Object.entries(importPreview.summary).map(([key, value]) => `${key}: ${value}`).join(" · ")}</p></div>}
         {!!importPreview?.errors?.length && <div className="mt-3 max-h-56 overflow-auto rounded-xl border border-red-500/30 p-3 text-xs text-red-300"><p className="font-semibold">{importPreview.errors.length} validation issue(s)</p>{importPreview.errors.slice(0, 100).map((error, index) => <p key={index} className="mt-1">Row {error.row}: {error.message}</p>)}</div>}
       </section>
