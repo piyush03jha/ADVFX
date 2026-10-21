@@ -249,7 +249,7 @@ export default function AdminCategories() {
       .find((item) => item.getAttribute("Id") === relationshipId);
     const target = relationship?.getAttribute("Target");
     if (!target) throw new Error("Could not resolve the first worksheet in this Excel workbook.");
-    const sheetPath = target.startsWith("/") ? target.slice(1) : target.startsWith("xl/") ? target : "xl/" + target.replace(/^\\.\\//, "");
+    const sheetPath = target.startsWith("/") ? target.slice(1) : target.startsWith("xl/") ? target : "xl/" + target.startsWith("./") ? target.slice(2) : target;
     const sheetXml = await readText(sheetPath);
     if (!sheetXml) throw new Error("The first worksheet is missing from the Excel workbook.");
     const sheet = parseXml(sheetXml, "worksheet");
