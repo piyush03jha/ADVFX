@@ -238,11 +238,14 @@ export class CategoriesService {
       const subName = String(row.subcategory_name ?? '').trim() || null;
       const subSlug = String(row.subcategory_slug ?? '').trim().toLowerCase() || null;
       const rankValue = row.rank;
-      const rank = rankValue === undefined || rankValue === null || rankValue === '' ? index : Number(rankValue);
+      const commonRank = rankValue === undefined || rankValue === null || rankValue === '' ? index : Number(rankValue);
+      const categoryRank = row.category_rank === undefined || row.category_rank === null || row.category_rank === '' ? commonRank : Number(row.category_rank);
+      const subRank = row.subcategory_rank === undefined || row.subcategory_rank === null || row.subcategory_rank === '' ? commonRank : Number(row.subcategory_rank);
       const active = row.is_active === undefined ? true : Boolean(row.is_active);
       if (!categoryName) errors.push({ row: rowNumber, message: 'category_name is required' });
       if (!slugPattern.test(categorySlug)) errors.push({ row: rowNumber, message: 'category_slug must be lowercase letters/numbers separated by hyphens' });
-      if (!Number.isInteger(rank) || rank < 0) errors.push({ row: rowNumber, message: 'rank must be a non-negative whole number' });
+      if (!Number.isInteger(categoryRank) || categoryRank < 0) errors.push({ row: rowNumber, message: 'category_rank/rank must be a non-negative whole number' });
+      if (subSlug && (!Number.isInteger(subRank) || subRank < 0)) errors.push({ row: rowNumber, message: 'subcategory_rank/rank must be a non-negative whole number' });
       if (Boolean(subName) !== Boolean(subSlug)) errors.push({ row: rowNumber, message: 'subcategory_name and subcategory_slug must both be filled or both blank' });
       if (subSlug && !slugPattern.test(subSlug)) errors.push({ row: rowNumber, message: 'subcategory_slug is invalid' });
 
@@ -264,7 +267,7 @@ export class CategoriesService {
       }
       normalized.push({
         categoryName, categorySlug, subName, subSlug,
-        categoryRank: rank, subRank: rank,
+        categoryRank, subRank,
         description: String(row.description ?? '').trim() || null,
         active, rowNumber,
       });
