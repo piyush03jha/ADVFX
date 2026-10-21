@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { resolveMediaUrl } from "@/lib/media-url";
 import {
   IconEdit,
@@ -10,6 +10,7 @@ import {
   IconTrash,
   IconUpload,
   IconX,
+  IconFileSpreadsheet,
 } from "@tabler/icons-react";
 
 type Category = {
@@ -20,6 +21,9 @@ type Category = {
   imageUrl?: string | null;
   sortOrder: number;
   isActive: boolean;
+  parentId?: string | null;
+  parent?: { id: string; name: string; slug: string } | null;
+  children?: Category[];
   _count?: { products: number };
 };
 
@@ -28,6 +32,7 @@ const empty = {
   slug: "",
   description: "",
   sortOrder: "0",
+  parentId: "",
   isActive: true,
 };
 
@@ -40,6 +45,11 @@ export default function AdminCategories() {
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [createImageFile, setCreateImageFile] = useState<File | null>(null);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importMode, setImportMode] = useState<"create" | "upsert">("upsert");
+  const [importBusy, setImportBusy] = useState(false);
+  const [importPreview, setImportPreview] = useState<{ rows: Array<Record<string, string>>; summary?: Record<string, number | string>; errors?: Array<{ row: number; message: string }> } | null>(null);
+  const importRef = useRef<HTMLInputElement | null>(null);
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const createImageRef = useRef<HTMLInputElement | null>(null);
 
@@ -69,6 +79,7 @@ export default function AdminCategories() {
       slug: c.slug,
       description: c.description || "",
       sortOrder: String(c.sortOrder ?? 0),
+      parentId: c.parentId ?? "",
       isActive: c.isActive,
     });
   }
@@ -89,6 +100,7 @@ export default function AdminCategories() {
         slug: form.slug.trim(),
         description: form.description.trim() || undefined,
         sortOrder: Number(form.sortOrder) || 0,
+        parentId: form.parentId || null,
         isActive: form.isActive,
       };
 
@@ -123,6 +135,128 @@ export default function AdminCategories() {
     } finally {
       setSaving(false);
     }
+  }
+
+
+  const parentCategories = useMemo(() => categories.filter((c) => !c.parentId), [categories]);
+
+  function normalizeHeader(value: string) {
+    return value.trim().toLowerCase().replace(/[\s-]+/g, "_");
+  }
+
+  function parseCsv(text: string): string[][] {
+    const rows: string[][] = [];
+    let row: string[] = [];
+    let cell = "";
+    let quoted = false;
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      if (char === '"' && quoted && text[i + 1] === '"') { cell += '"'; i++; }
+      else if (char === '"') quoted = !quoted;
+      else if (char === "," && !quoted) { row.push(cell); cell = ""; }
+      else if ((char === "\n" || char === "\r") && !quoted) {
+        if (char === "\r" && text[i + 1] === "\n") i++;
+        row.push(cell); rows.push(row); row = []; cell = "";
+      } else cell += char;
+    }
+    if (cell.length || row.length) { row.push(cell); rows.push(row); }
+    return rows.filter((r) => r.some((value) => value.trim() !== ""));
+  }
+
+  async function readImportFile(file: File) {
+    const text = await file.text();
+    const raw = parseCsv(text);
+    if (raw.length < 2) throw new Error("The CSV needs a header and at least one data row.");
+    const headers = raw[0].map(normalizeHeader);
+    const aliases: Record<string, string[]> = {
+      category_name: ["category_name", "main_category", "parent_category", "category"],
+      category_slug: ["category_slug", "main_category_slug", "parent_slug", "slug"],
+      subcategory_name: ["subcategory_name", "sub_category", "sub_category_name", "child_category"],
+      subcategory_slug: ["subcategory_slug", "sub_category_slug", "child_slug"],
+      rank: ["rank", "sort_order", "category_rank", "display_order", "subcategory_rank"],
+      description: ["description", "category_description"],
+      is_active: ["is_active", "active", "status"],
+    };
+    const indexFor = (key: string) => headers.findIndex((h) => aliases[key].includes(h));
+    const categoryNameIndex = indexFor("category_name");
+    const categorySlugIndex = indexFor("category_slug");
+    if (categoryNameIndex < 0 || categorySlugIndex < 0) {
+      throw new Error("Required headers: category_name and category_slug. Add optional subcategory_name, subcategory_slug, rank, description and is_active.");
+    }
+    return raw.slice(1).map((row, idx) => {
+      const value = (key: string) => {
+        const column = indexFor(key);
+        return column < 0 ? "" : (row[column] ?? "").trim();
+      };
+      const activeValue = value("is_active").toLowerCase();
+      return {
+        category_name: row[categoryNameIndex]?.trim() ?? "",
+        category_slug: row[categorySlugIndex]?.trim().toLowerCase() ?? "",
+        subcategory_name: value("subcategory_name"),
+        subcategory_slug: value("subcategory_slug").toLowerCase(),
+        rank: value("rank") === "" ? idx : Number(value("rank")),
+        description: value("description"),
+        is_active: activeValue === "" ? true : ["true", "1", "yes", "active"].includes(activeValue),
+      };
+    });
+  }
+
+  async function previewImport(file = importFile) {
+    if (!file) { setMessage("Choose a CSV spreadsheet first."); return; }
+    setImportBusy(true); setMessage(""); setImportPreview(null);
+    try {
+      if (!file.name.toLowerCase().endsWith(".csv")) {
+        throw new Error("For reliable import, export the Excel workbook as CSV UTF-8 (.csv) and upload it here.");
+      }
+      const rows = await readImportFile(file);
+      const response = await fetch("/api/categories/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rows, mode: importMode, dryRun: true }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(data?.message || data?.error || "Could not validate spreadsheet.");
+      setImportPreview({ rows: rows as unknown as Array<Record<string, string>>, summary: data.summary, errors: data.errors ?? [] });
+      setMessage(data.ok ? "Validation passed. Review the counts, then confirm to import." : "Fix the listed rows and upload again.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to preview file.");
+    } finally { setImportBusy(false); }
+  }
+
+  async function confirmImport() {
+    if (!importFile) return;
+    setImportBusy(true); setMessage("");
+    try {
+      const rows = await readImportFile(importFile);
+      const response = await fetch("/api/categories/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rows, mode: importMode, dryRun: false }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data?.ok) throw new Error(data?.message || data?.error || data?.errors?.[0]?.message || "Import failed. No changes were saved.");
+      setMessage(`Import finished. Created ${data.summary.created}, updated ${data.summary.updated}. Images can be added later.`);
+      setImportPreview(null); setImportFile(null);
+      if (importRef.current) importRef.current.value = "";
+      await load();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Category import failed.");
+    } finally { setImportBusy(false); }
+  }
+
+  function downloadTemplate() {
+    const csv = [
+      "category_name,category_slug,subcategory_name,subcategory_slug,rank,description,is_active",
+      "Miniatures,miniatures,Characters,miniature-characters,1,,true",
+      "Miniatures,miniatures,Animals,miniature-animals,2,,true",
+      "Miniatures,miniatures,Vehicles,miniature-vehicles,3,,true",
+      "Accessories,accessories,,,,,true",
+    ].join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const href = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = href; link.download = "voxel3d-category-import-template.csv"; link.click();
+    URL.revokeObjectURL(href);
   }
 
   async function uploadImage(id: string, file: File | undefined) {
@@ -217,7 +351,29 @@ export default function AdminCategories() {
         >
           <IconRefresh size={16} />
         </button>
+        <button type="button" onClick={downloadTemplate} className="rounded-xl border border-border px-3 py-2 text-xs">Download CSV template</button>
       </div>
+
+      <section className="mt-6 rounded-2xl border border-border bg-surface p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="flex items-center gap-2 text-sm font-semibold"><IconFileSpreadsheet size={18} className="text-primary" /> Bulk import categories</p>
+            <p className="mt-1 text-xs text-muted">Upload one CSV for main categories and subcategories. Images are optional and can be added later.</p>
+          </div>
+          <select value={importMode} onChange={(e) => setImportMode(e.target.value as "create" | "upsert")} className="h-10 rounded-xl border border-border bg-background px-3 text-xs">
+            <option value="upsert">Create or update by slug</option>
+            <option value="create">Create only (reject existing slugs)</option>
+          </select>
+        </div>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <input ref={importRef} type="file" accept=".csv,text/csv" onChange={(e) => { setImportFile(e.target.files?.[0] ?? null); setImportPreview(null); }} className="block max-w-full text-xs text-muted file:mr-3 file:rounded-lg file:border file:border-border file:bg-background file:px-3 file:py-2" />
+          <button type="button" disabled={!importFile || importBusy} onClick={() => void previewImport()} className="rounded-full border border-border px-4 py-2.5 text-xs font-semibold disabled:opacity-50">{importBusy ? "Validating…" : "Validate & preview"}</button>
+          {importPreview?.summary && <button type="button" disabled={importBusy || Boolean(importPreview.errors?.length)} onClick={() => void confirmImport()} className="rounded-full bg-primary px-4 py-2.5 text-xs font-semibold text-white disabled:opacity-50">{importBusy ? "Importing…" : "Confirm import"}</button>}
+        </div>
+        <p className="mt-2 text-[10px] text-muted">Expected columns: category_name, category_slug, subcategory_name, subcategory_slug, rank, description, is_active. Export Excel as CSV UTF-8 first.</p>
+        {importPreview?.summary && <div className="mt-4 rounded-xl border border-border p-3 text-xs"><p className="font-semibold">Preview</p><p className="mt-1 text-muted">{Object.entries(importPreview.summary).map(([key, value]) => `${key}: ${value}`).join(" · ")}</p></div>}
+        {!!importPreview?.errors?.length && <div className="mt-3 max-h-56 overflow-auto rounded-xl border border-red-500/30 p-3 text-xs text-red-300"><p className="font-semibold">{importPreview.errors.length} validation issue(s)</p>{importPreview.errors.slice(0, 100).map((error, index) => <p key={index} className="mt-1">Row {error.row}: {error.message}</p>)}</div>}
+      </section>
 
       <form
         onSubmit={save}
@@ -267,6 +423,16 @@ export default function AdminCategories() {
             placeholder="Sort order"
             className="h-10 rounded-xl border border-border bg-background px-3 text-xs"
           />
+          <select
+            value={form.parentId}
+            onChange={(e) => setForm({ ...form, parentId: e.target.value })}
+            className="h-10 rounded-xl border border-border bg-background px-3 text-xs"
+          >
+            <option value="">Main category (no parent)</option>
+            {parentCategories.filter((category) => category.id !== editing).map((category) => (
+              <option key={category.id} value={category.id}>{category.name}</option>
+            ))}
+          </select>
           <textarea
             maxLength={1000}
             value={form.description}
@@ -369,7 +535,7 @@ export default function AdminCategories() {
 
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium">{c.name}</p>
+                    <p className="text-sm font-medium">{c.parent ? c.parent.name + " / " : ""}{c.name}</p>
                     <span
                       className={
                         c.isActive
@@ -381,7 +547,7 @@ export default function AdminCategories() {
                     </span>
                   </div>
                   <p className="mt-1 text-[10px] text-muted">
-                    {c.slug} · order {c.sortOrder} · {c._count?.products ?? 0} products
+                    {c.slug} · order {c.sortOrder} · {c._count?.products ?? 0} products{c.parentId ? " · Subcategory" : " · Main category"}
                   </p>
                   {c.description && (
                     <p className="mt-1 max-w-2xl text-[10px] text-muted">
