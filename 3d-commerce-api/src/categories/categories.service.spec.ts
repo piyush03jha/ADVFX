@@ -5,6 +5,7 @@ describe('CategoriesService product counts', () => {
     category: {
       findMany: jest.fn(),
       findUnique: jest.fn(),
+      count: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
     },
@@ -16,6 +17,7 @@ describe('CategoriesService product counts', () => {
 
   beforeEach(() => {
     jest.resetAllMocks();
+    prisma.category.count.mockResolvedValue(0);
     service = new CategoriesService(prisma, storage);
   });
 
