@@ -1107,7 +1107,7 @@ export class ProductsService {
     }
   }
 
-  private heroProductInclude(): Prisma.ProductInclude {
+  private heroProductInclude() {
     return {
       category: true,
       prices: {
@@ -1124,7 +1124,7 @@ export class ProductsService {
         orderBy: { createdAt: 'asc' },
       },
       tags: { include: { tag: true } },
-    };
+    } satisfies Prisma.ProductInclude;
   }
 
   private toHeroProduct(
