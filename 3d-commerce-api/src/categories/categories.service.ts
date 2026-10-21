@@ -229,6 +229,7 @@ export class CategoriesService {
     const errors: Array<{ row: number; message: string }> = [];
     const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
     const seenCategorySlugs = new Map<string, { row: number; name: string }>();
+    const seenNames = new Map<string, { row: number; slug: string }>();
     const seenChildSlugs = new Map<string, number>();
     const seenPairs = new Map<string, number>();
     rows.forEach((row, index) => {
@@ -260,6 +261,20 @@ export class CategoriesService {
       if (seenPairs.has(key)) errors.push({ row: rowNumber, message: `duplicate category/subcategory pair; first seen on row ${seenPairs.get(key)}` });
       else seenPairs.set(key, rowNumber);
 
+      for (const item of [
+        { name: categoryName, slug: categorySlug },
+        ...(subName && subSlug ? [{ name: subName, slug: subSlug }] : []),
+      ]) {
+        if (!item.name || !item.slug) continue;
+        const nameKey = item.name.toLocaleLowerCase();
+        const previousName = seenNames.get(nameKey);
+        if (previousName && previousName.slug !== item.slug) {
+          errors.push({ row: rowNumber, message: `category name "${item.name}" is used with multiple slugs (first seen on row ${previousName.row})` });
+        } else if (!previousName) {
+          seenNames.set(nameKey, { row: rowNumber, slug: item.slug });
+        }
+      }
+
       if (subSlug) {
         const previousChild = seenChildSlugs.get(subSlug);
         if (previousChild) errors.push({ row: rowNumber, message: `duplicate subcategory slug "${subSlug}" within file; first seen on row ${previousChild}` });
@@ -283,6 +298,7 @@ export class CategoriesService {
       select: { id: true, name: true, slug: true, parentId: true, children: { select: { id: true } } },
     });
     const bySlug = new Map(existing.map((category) => [category.slug, category]));
+    const byName = new Map(existing.map((category) => [category.name.trim().toLocaleLowerCase(), category]));
     const categorySlugs = new Set(normalized.map((row) => row.categorySlug));
     const childSlugs = new Set(normalized.map((row) => row.subSlug).filter((slug): slug is string => Boolean(slug)));
     const toCreateSlugs = new Set<string>();
@@ -293,6 +309,10 @@ export class CategoriesService {
         ...(row.subSlug && row.subName ? [{ slug: row.subSlug, name: row.subName }] : []),
       ]) {
         const found = bySlug.get(item.slug);
+        const nameOwner = byName.get(item.name.trim().toLocaleLowerCase());
+        if (nameOwner && nameOwner.slug !== item.slug) {
+          errors.push({ row: row.rowNumber, message: `category name "${item.name}" already belongs to slug "${nameOwner.slug}"` });
+        }
         if (found) {
           if (mode === 'create') errors.push({ row: row.rowNumber, message: `slug "${item.slug}" already exists` });
           else toUpdateSlugs.add(item.slug);
