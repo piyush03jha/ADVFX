@@ -222,7 +222,8 @@ export class CategoriesService {
     const normalized: Normalized[] = [];
     const errors: Array<{ row: number; message: string }> = [];
     const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-    const seenSlugs = new Map<string, number>();
+    const seenCategorySlugs = new Map<string, { row: number; name: string }>();
+    const seenChildSlugs = new Map<string, number>();
     const seenPairs = new Map<string, number>();
     rows.forEach((row, index) => {
       const rowNumber = index + 2;
@@ -238,12 +239,22 @@ export class CategoriesService {
       if (!Number.isInteger(rank) || rank < 0) errors.push({ row: rowNumber, message: 'rank must be a non-negative whole number' });
       if (Boolean(subName) !== Boolean(subSlug)) errors.push({ row: rowNumber, message: 'subcategory_name and subcategory_slug must both be filled or both blank' });
       if (subSlug && !slugPattern.test(subSlug)) errors.push({ row: rowNumber, message: 'subcategory_slug is invalid' });
+
+      const previousCategory = seenCategorySlugs.get(categorySlug);
+      if (previousCategory && previousCategory.name !== categoryName) {
+        errors.push({ row: rowNumber, message: `category slug "${categorySlug}" has conflicting names (first seen on row ${previousCategory.row})` });
+      } else if (!previousCategory) {
+        seenCategorySlugs.set(categorySlug, { row: rowNumber, name: categoryName });
+      }
+
       const key = categorySlug + '|' + (subSlug ?? '');
       if (seenPairs.has(key)) errors.push({ row: rowNumber, message: `duplicate category/subcategory pair; first seen on row ${seenPairs.get(key)}` });
       else seenPairs.set(key, rowNumber);
-      for (const slug of [categorySlug, subSlug].filter((value): value is string => Boolean(value))) {
-        if (seenSlugs.has(slug)) errors.push({ row: rowNumber, message: `duplicate slug "${slug}" within file; first seen on row ${seenSlugs.get(slug)}` });
-        else seenSlugs.set(slug, rowNumber);
+
+      if (subSlug) {
+        const previousChild = seenChildSlugs.get(subSlug);
+        if (previousChild) errors.push({ row: rowNumber, message: `duplicate subcategory slug "${subSlug}" within file; first seen on row ${previousChild}` });
+        else seenChildSlugs.set(subSlug, rowNumber);
       }
       normalized.push({
         categoryName, categorySlug, subName, subSlug,
@@ -252,10 +263,14 @@ export class CategoriesService {
         active, rowNumber,
       });
     });
+    for (const [slug, info] of seenCategorySlugs) {
+      const childRow = seenChildSlugs.get(slug);
+      if (childRow) errors.push({ row: childRow, message: `slug "${slug}" cannot be both a main category and a subcategory` });
+    }
     if (errors.length) return { ok: false, dryRun: input.dryRun !== false, errors, summary: { rows: rows.length, errors: errors.length } };
 
     const mode = input.mode ?? 'upsert';
-    const existing = await this.prisma.category.findMany({ select: { id: true, name: true, slug: true, parentId: true } });
+    const existing = await this.prisma.category.findMany({ select: { id: true, name: true, slug: true, parentId: true, children: { select: { id: true } } } });
     const bySlug = new Map(existing.map((category) => [category.slug, category]));
     const toCreateSlugs = new Set<string>();
     const toUpdateSlugs = new Set<string>();
@@ -274,6 +289,9 @@ export class CategoriesService {
       if (foundParent?.parentId) errors.push({ row: row.rowNumber, message: `"${row.categorySlug}" already exists as a subcategory; it cannot be a parent` });
       if (row.subSlug) {
         const foundChild = bySlug.get(row.subSlug);
+        if (foundChild && foundChild.children.length) {
+          errors.push({ row: row.rowNumber, message: `"${row.subSlug}" already has subcategories and cannot be moved under another category` });
+        }
         if (foundChild?.parentId && foundParent && foundChild.parentId !== foundParent.id && mode === 'create') {
           errors.push({ row: row.rowNumber, message: `"${row.subSlug}" is already assigned to a different parent` });
         }
@@ -284,7 +302,7 @@ export class CategoriesService {
     const preview = {
       rows: rows.length,
       uniqueCategories: new Set(normalized.map((row) => row.categorySlug)).size,
-      subcategories: normalized.filter((row) => row.subSlug).length,
+      subcategories: new Set(normalized.map((row) => row.subSlug).filter((slug): slug is string => Boolean(slug))).size,
       creates: toCreateSlugs.size,
       updates: toUpdateSlugs.size,
       mode,
