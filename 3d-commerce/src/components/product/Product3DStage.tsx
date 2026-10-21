@@ -180,7 +180,7 @@ export default function Product3DStage({
       )}
 
       <span className="sr-only">
-        Interactive 3D preview of {name}. Drag to rotate and pinch or scroll to zoom.
+        Interactive 3D product preview. Drag to rotate and pinch or scroll to zoom.
       </span>
     </div>
   );
