@@ -230,7 +230,8 @@ export class CategoriesService {
       const categorySlug = String(row.category_slug ?? '').trim().toLowerCase();
       const subName = String(row.subcategory_name ?? '').trim() || null;
       const subSlug = String(row.subcategory_slug ?? '').trim().toLowerCase() || null;
-      const rank = row.rank === undefined || row.rank === null || row.rank === '' ? index : Number(row.rank);
+      const rankValue = row.rank;
+      const rank = rankValue === undefined || rankValue === null || rankValue === '' ? index : Number(rankValue);
       const active = row.is_active === undefined ? true : Boolean(row.is_active);
       if (!categoryName) errors.push({ row: rowNumber, message: 'category_name is required' });
       if (!slugPattern.test(categorySlug)) errors.push({ row: rowNumber, message: 'category_slug must be lowercase letters/numbers separated by hyphens' });
@@ -293,26 +294,32 @@ export class CategoriesService {
     const result = await this.prisma.$transaction(async (tx) => {
       let created = 0;
       let updated = 0;
+      const parentCache = new Map<string, string>();
       for (const row of normalized) {
-        const parent = await tx.category.upsert({
-          where: { slug: row.categorySlug },
-          create: { name: row.categoryName, slug: row.categorySlug, sortOrder: row.categoryRank, description: row.description, isActive: row.active, parentId: null },
-          update: mode === 'upsert' ? { name: row.categoryName, sortOrder: row.categoryRank, description: row.description, isActive: row.active, parentId: null } : {},
-        });
-        const existedParent = bySlug.has(row.categorySlug);
-        if (existedParent && mode === 'upsert') updated += 1;
-        else if (!existedParent) created += 1;
-        bySlug.set(parent.slug, { id: parent.id, name: parent.name, slug: parent.slug, parentId: null });
+        let parentId = parentCache.get(row.categorySlug);
+        if (!parentId) {
+          const existedParent = bySlug.has(row.categorySlug);
+          const parent = await tx.category.upsert({
+            where: { slug: row.categorySlug },
+            create: { name: row.categoryName, slug: row.categorySlug, sortOrder: row.categoryRank, description: row.description, isActive: row.active, parentId: null },
+            update: mode === 'upsert' ? { name: row.categoryName, sortOrder: row.categoryRank, description: row.description, isActive: row.active, parentId: null } : {},
+          });
+          parentId = parent.id;
+          parentCache.set(row.categorySlug, parentId);
+          if (existedParent && mode === 'upsert') updated += 1;
+          else if (!existedParent) created += 1;
+          bySlug.set(parent.slug, { id: parent.id, name: parent.name, slug: parent.slug, parentId: null });
+        }
         if (row.subSlug && row.subName) {
           const previous = await tx.category.findUnique({ where: { slug: row.subSlug }, select: { id: true, parentId: true } });
           const child = await tx.category.upsert({
             where: { slug: row.subSlug },
-            create: { name: row.subName, slug: row.subSlug, parentId: parent.id, sortOrder: row.subRank, description: null, isActive: row.active },
-            update: mode === 'upsert' ? { name: row.subName, parentId: parent.id, sortOrder: row.subRank, isActive: row.active } : {},
+            create: { name: row.subName, slug: row.subSlug, parentId, sortOrder: row.subRank, description: null, isActive: row.active },
+            update: mode === 'upsert' ? { name: row.subName, parentId, sortOrder: row.subRank, isActive: row.active } : {},
           });
           if (previous && mode === 'upsert') updated += 1;
           else if (!previous) created += 1;
-          bySlug.set(child.slug, { id: child.id, name: child.name, slug: child.slug, parentId: parent.id });
+          bySlug.set(child.slug, { id: child.id, name: child.name, slug: child.slug, parentId });
         }
       }
       return { created, updated };
