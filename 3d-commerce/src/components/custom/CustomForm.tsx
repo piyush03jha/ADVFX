@@ -1,13 +1,14 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { IconCheck, IconChevronDown, IconStar } from "@tabler/icons-react";
+import { IconCheck, IconStar } from "@tabler/icons-react";
 import { processSteps } from "./customOptions";
 import { CustomUploadZone } from "./CustomUploadZone";
 import { resolveMediaUrl } from "@/lib/media-url";
 
 type ConfigOption = { id:string; section:string; slug:string; name:string; description?:string|null; imageUrl?:string|null; priceMinor:number; multiplier?:number|null; sortOrder:number; isActive:boolean };
-type ConfigCategory = { id:string; slug:CustomCategory; name:string; description?:string|null; imageUrl?:string|null; basePriceMinor:number; options:ConfigOption[] };
+type HeightRange = { id:string; minCm:number; maxCm:number; priceMinor:number };
+type ConfigCategory = { id:string; slug:CustomCategory; name:string; description?:string|null; imageUrl?:string|null; basePriceMinor:number; options:ConfigOption[]; heightRanges:HeightRange[] };
 
 export type CustomCategory =
   | "person"
@@ -43,8 +44,6 @@ export function CustomForm({
   onSubmit,
 }: CustomFormProps) {
   const [category, setCategory] = useState<CustomCategory>("person");
-  const [size, setSize] = useState("15");
-  const [useCustomSize, setUseCustomSize] = useState(false);
   const [customHeight, setCustomHeight] = useState("");
   const [frame, setFrame] = useState("single");
   const [files, setFiles] = useState<File[]>([]);
@@ -57,7 +56,7 @@ export function CustomForm({
   const [serverPrice, setServerPrice] = useState<number | null>(null);
   const [pricingError, setPricingError] = useState<string | null>(null);
   const [pricingLoading, setPricingLoading] = useState(false);
-  const [config, setConfig] = useState<{categories:ConfigCategory[];sizeOptions:ConfigOption[]}|null>(null);
+  const [config, setConfig] = useState<{categories:ConfigCategory[]}|null>(null);
   const [configError, setConfigError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -68,7 +67,7 @@ export function CustomForm({
         if (!response.ok || !data?.categories?.length) {
           throw new Error(data?.error ?? data?.message ?? "Custom configuration is unavailable.");
         }
-        return data as { categories: ConfigCategory[]; sizeOptions: ConfigOption[] };
+        return data as { categories: ConfigCategory[] };
       })
       .then((data) => {
         if (!cancelled) {
@@ -97,32 +96,36 @@ export function CustomForm({
     const frameOption = nextCategory.options.find((item) => item.section === "frame" && item.slug === frame)
       ?? nextCategory.options.find((item) => item.section === "frame");
     if (frameOption && frameOption.slug !== frame) setFrame(frameOption.slug);
-
-    const sizeOption = config.sizeOptions.find((item) => item.slug === size) ?? config.sizeOptions[0];
-    if (sizeOption && sizeOption.slug !== size) setSize(sizeOption.slug);
-  }, [config, category, body, frame, size, onBodyChange]);
+  }, [config, category, body, frame, onBodyChange]);
 
   const configuredCategory = config?.categories.find((option) => option.slug === category) ?? config?.categories[0];
   const configured = (section: string, slug?: string) =>
     configuredCategory?.options.find((option) => option.section === section && option.slug === slug);
   const selectedBody = configured("body", body);
-  const configuredSize = config?.sizeOptions.find((option) => option.slug === size) ?? config?.sizeOptions[0];
   const selectedFrame = configured("frame", frame);
   const isPerson = category === "person";
   const selectedCategory = configuredCategory;
-  const price = serverPrice ?? 0;
-  const customDimensions = useCustomSize ? `Height ${customHeight} cm` : "";
+  const heightRanges = configuredCategory?.heightRanges ?? [];
+  const heightCm = Math.round(Number(customHeight) * 10) / 10;
+  const heightLabel = customHeight.trim() === "" ? "Not entered" : `${heightCm} cm`;
+  const customDimensions = `Height ${heightCm} cm`;
   const customSizeValid =
-    !useCustomSize ||
-    (customHeight.trim() !== "" &&
-      Number.isFinite(Number(customHeight)) &&
-      Number(customHeight) > 0);
+    customHeight.trim() !== "" && Number.isFinite(heightCm) && heightCm > 0;
+
+  // The quote API returns minor units (paise); show whole rupees like the
+  // payment page does. Nothing is priced until a valid height is entered.
+  const price = customSizeValid && serverPrice != null ? serverPrice / 100 : 0;
+  const priceReady = customSizeValid && serverPrice != null && !pricingLoading && !pricingError;
 
   useEffect(() => {
-    let cancelled = false;
-    setPricingLoading(true);
-    setPricingError(null);
+    // The price is the admin-configured price for the typed height, so it is
+    // only requested once a valid height has been entered.
+    if (!customSizeValid) return;
 
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+    setPricingError(null);
+    setPricingLoading(true);
     void fetch("/api/custom-requests/quote", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -130,14 +133,15 @@ export function CustomForm({
         category,
         bodyType: isPerson ? body : undefined,
         subjectType: isPerson ? frame : undefined,
-        sizeCm: Number(size),
+        sizeCm: heightCm,
       }),
       cache: "no-store",
     })
       .then(async (response) => {
         const data = await response.json().catch(() => null);
         if (!response.ok) {
-          throw new Error(data?.error ?? data?.message ?? "Unable to calculate custom price.");
+          const detail = Array.isArray(data?.message) ? data.message[0] : data?.message;
+          throw new Error(detail ?? data?.error ?? "Unable to calculate custom price.");
         }
         return data as { amountMinor: number };
       })
@@ -155,11 +159,13 @@ export function CustomForm({
       .finally(() => {
         if (!cancelled) setPricingLoading(false);
       });
+    }, 350);
 
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
     };
-  }, [category, body, frame, isPerson, size]);
+  }, [category, body, frame, isPerson, heightCm, customSizeValid]);
 
   const displayCategories = config?.categories ?? [];
   const hasReference = files.length > 0;
@@ -186,8 +192,8 @@ export function CustomForm({
     event.preventDefault();
     setAttemptedSubmit(true);
 
-    if (useCustomSize && !customSizeValid) {
-      setFileError("Enter a valid positive height in centimetres (cm).");
+    if (!customSizeValid) {
+      setFileError("Enter your height in centimetres (cm).");
       document.getElementById("custom-size-fields")?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
@@ -211,13 +217,11 @@ export function CustomForm({
         `Category: ${selectedCategory.name}`,
         `Body type: ${isPerson ? selectedBody?.name ?? "Not selected" : "Not applicable"}`,
         `Person in frame: ${isPerson ? selectedFrame?.name ?? "Not selected" : "Not applicable"}`,
-        useCustomSize
-          ? `Requested custom size: ${customDimensions}`
-          : `Selected size: ${configuredSize?.name ?? `${size} cm`}`,
+        `Requested size: ${customDimensions}`,
         details.trim() ? `Additional requirements:\n${details.trim()}` : "",
       ].filter(Boolean).join("\n");
 
-      if (serverPrice == null || pricingLoading || pricingError) {
+      if (!priceReady) {
         throw new Error(pricingError ?? "Custom price is still being calculated.");
       }
 
@@ -227,7 +231,7 @@ export function CustomForm({
         body: JSON.stringify({
           title: `Custom ${selectedCategory.name}`,
           requirements,
-          dimensions: useCustomSize ? customDimensions : configuredSize?.name ?? `${size} cm`,
+          dimensions: customDimensions,
           notes: details.trim() || undefined,
           category,
           bodyType: isPerson ? body : undefined,
@@ -235,7 +239,7 @@ export function CustomForm({
           personCount:
             frame === "single" ? 1 : frame === "couple" ? 2 : frame === "group" ? 3 : 1,
           petCount: frame === "pet" ? 1 : 0,
-          sizeCm: Number(size),
+          sizeCm: heightCm,
         }),
         cache: "no-store",
       });
@@ -309,7 +313,7 @@ export function CustomForm({
         price,
         bodyLabel: isPerson ? selectedBody?.name ?? "Not selected" : "Not applicable",
         headLabel: "Default",
-        sizeLabel: useCustomSize ? customDimensions : configuredSize?.name ?? `${size} cm`,
+        sizeLabel: customDimensions,
         frameLabel: isPerson ? selectedFrame?.name ?? "Not selected" : "Not applicable",
       });
     } catch (error) {
@@ -333,7 +337,7 @@ export function CustomForm({
     );
   }
 
-  if (!selectedCategory || !configuredSize) {
+  if (!selectedCategory) {
     return (
       <section className="mx-auto max-w-3xl rounded-3xl border border-border bg-surface p-8 text-center">
         <p className="text-sm text-muted">No active custom configuration is available.</p>
@@ -393,7 +397,7 @@ export function CustomForm({
               <span className="font-medium">Custom service</span>
             </div>
             <p className="mt-3 text-sm leading-6 text-muted sm:mt-4">
-              Upload your reference photos, choose the size, and tell us what you need. We review it, prepare the model, make the physical piece, and arrange delivery.
+              Upload your reference photos, enter the height you need, and tell us what you need. We review it, prepare the model, make the physical piece, and arrange delivery.
             </p>
           </div>
 
@@ -405,11 +409,11 @@ export function CustomForm({
                     key={option.id}
                     type="button"
                     onClick={() => selectCategory(option.slug)}
-                    className={`group overflow-hidden rounded-2xl border text-left transition ${category === option.id ? "border-primary/70 bg-primary/[0.07]" : "border-border bg-surface hover:border-primary/35 hover:bg-surface-hover"}`}
+                    className={`group overflow-hidden rounded-2xl border text-left transition ${category === option.slug ? "border-primary/70 bg-primary/[0.07]" : "border-border bg-surface hover:border-primary/35 hover:bg-surface-hover"}`}
                   >
                     <div className="relative aspect-[4/3] overflow-hidden bg-surface-elevated">
                       {resolveMediaUrl(option.imageUrl) ? <img src={resolveMediaUrl(option.imageUrl)!} alt="" className="h-full w-full object-cover opacity-80 transition duration-500 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center text-[9px] uppercase tracking-[0.12em] text-muted">No image</div>}
-                      {category === option.id && (
+                      {category === option.slug && (
                         <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-white">
                           <IconCheck size={11} />
                         </span>
@@ -447,59 +451,38 @@ export function CustomForm({
                   Built for {selectedCategory?.name.toLowerCase()}
                 </p>
                 <p className="mt-1 text-xs leading-5 text-muted">
-                  Upload your references below. The selected size is stored with your request.
+                  Upload your references below and enter the height you need.
                 </p>
               </div>
             )}
 
-            {!useCustomSize && (
-            <CompactSection step={isPerson ? 3 : 2} label="Size">
-              <div className="relative">
-                <select value={size} onChange={(event) => { const value = event.target.value; setSize(value); setPreviewLabel(isPerson ? selectedBody?.name ?? selectedCategory.name : selectedCategory.name); }} className="h-12 w-full appearance-none rounded-xl border border-border bg-surface px-3.5 pr-10 text-sm font-medium outline-none focus:border-primary/60">
-                  {(config?.sizeOptions ?? []).map((option) => (
-                    <option key={option.slug} value={option.slug}>{option.name}</option>
-                  ))}
-                </select>
-                <IconChevronDown size={17} className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-muted" />
-              </div>
-            </CompactSection>
-
-            )}
-
             <section id="custom-size-fields" className="rounded-2xl border border-border bg-background/35 p-4">
-              <label className="flex cursor-pointer items-start gap-3">
-                <input
-                  type="checkbox"
-                  checked={useCustomSize}
-                  onChange={(event) => setUseCustomSize(event.target.checked)}
-                  className="mt-0.5 h-4 w-4 accent-primary"
-                />
-                <span>
-                  <span className="block text-sm font-semibold">Need a custom size?</span>
-                  <span className="mt-1 block text-xs leading-5 text-muted">Enter only the total height in centimetres (cm). The displayed estimate uses the selected size tier; our team will confirm final pricing after reviewing your request.</span>
-                </span>
-              </label>
-              {useCustomSize && (
-                <div className="mt-4">
-                  <label className="block max-w-sm text-xs font-medium text-foreground">
-                    Height (cm)
-                    <input
-                      type="number"
-                      min="0.1"
-                      step="any"
-                      required
-                      value={customHeight}
-                      onChange={(event) => setCustomHeight(event.target.value)}
-                      placeholder="Enter height in cm"
-                      inputMode="decimal"
-                      className="mt-1.5 h-12 w-full rounded-xl border border-border bg-surface px-3.5 text-base outline-none focus:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/15 sm:text-sm"
-                    />
-                  </label>
+              <CompactSection step={isPerson ? 3 : 2} label="Height" hint={heightRanges.length ? "cm" : undefined}>
+                <label className="block text-xs font-medium text-foreground">
+                  Height (cm)
+                  <input
+                    type="number"
+                    min="0.1"
+                    step="0.1"
+                    required
+                    value={customHeight}
+                    onChange={(event) => setCustomHeight(event.target.value)}
+                    placeholder="Enter height in cm"
+                    inputMode="decimal"
+                    className="mt-1.5 h-12 w-full rounded-xl border border-border bg-surface px-3.5 text-base outline-none focus:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/15 sm:text-sm"
+                  />
+                </label>
+                {heightRanges.length > 0 ? (
                   <p className="mt-2 text-[11px] leading-5 text-muted">
-                    Height only. Dimensions are recorded in centimetres.
+                    Available heights: {heightRanges.map((range) => `${range.minCm}–${range.maxCm} cm`).join(", ")}.
                   </p>
-                </div>
-              )}
+                ) : (
+                  <p className="mt-2 text-[11px] leading-5 text-muted">Height pricing is not configured for this category yet.</p>
+                )}
+                {pricingError && customSizeValid && (
+                  <p className="mt-2 text-xs text-error" role="alert">{pricingError}</p>
+                )}
+              </CompactSection>
             </section>
           </div>
 
@@ -515,9 +498,9 @@ export function CustomForm({
               </div>
               <div className="text-right">
                 <p className="text-[10px] uppercase tracking-[0.16em] text-muted">
-                  Size
+                  Height
                 </p>
-                <p className="mt-1 text-sm font-medium">{useCustomSize ? customDimensions : configuredSize?.name ?? `${size} cm`}</p>
+                <p className="mt-1 text-sm font-medium">{heightLabel}</p>
               </div>
             </div>
           </div>
@@ -576,7 +559,7 @@ export function CustomForm({
           <h3 className="mt-1 text-lg font-semibold">Ready to submit</h3>
           <div className="mt-5 space-y-2.5">
             <SummaryRow label="Category" value={selectedCategory.name} />
-            <SummaryRow label="Size" value={useCustomSize ? customDimensions : configuredSize?.name ?? `${size} cm`} />
+            <SummaryRow label="Height" value={heightLabel} />
             <SummaryRow
               label={pricingLoading ? "Calculating price" : "Price"}
               value={`₹${price.toLocaleString("en-IN")}`}
@@ -585,7 +568,7 @@ export function CustomForm({
 
           <button
             type="submit"
-            disabled={submitting || pricingLoading || Boolean(pricingError) || serverPrice == null}
+            disabled={submitting || !priceReady}
             className="mt-6 hidden h-12 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45 lg:flex"
           >
             {submitting
@@ -600,7 +583,7 @@ export function CustomForm({
       <div className="sticky bottom-0 z-30 -mx-4 mt-4 border-t border-border bg-surface/95 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl sm:-mx-6 sm:px-6 lg:hidden">
         <div className="mx-auto flex max-w-xl items-center gap-3">
           <div className="min-w-0 shrink-0"><p className="text-[11px] uppercase tracking-[0.14em] text-muted">{pricingLoading ? "Calculating…" : "Estimated"}</p><p className="text-xl font-semibold tracking-[-0.03em]">₹{price.toLocaleString("en-IN")}</p></div>
-          <button type="submit" disabled={submitting || pricingLoading || Boolean(pricingError) || serverPrice == null} className="flex h-12 min-w-0 flex-1 items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45">{submitting ? "Preparing payment…" : hasReference ? "Continue to payment" : "Add a photo to continue"}</button>
+          <button type="submit" disabled={submitting || !priceReady} className="flex h-12 min-w-0 flex-1 items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45">{submitting ? "Preparing payment…" : hasReference ? "Continue to payment" : "Add a photo to continue"}</button>
         </div>
       </div>
 

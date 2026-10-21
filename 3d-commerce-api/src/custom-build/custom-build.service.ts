@@ -1,4 +1,4 @@
-import { CreateCustomBuildOptionDto, UpdateCustomBuildCategoryDto, UpdateCustomBuildOptionDto } from "./custom-build.config.dto";
+import { CreateCustomBuildHeightRangeDto, CreateCustomBuildOptionDto, UpdateCustomBuildCategoryDto, UpdateCustomBuildHeightRangeDto, UpdateCustomBuildOptionDto } from "./custom-build.config.dto";
 import {
   BadRequestException,
   ConflictException,
@@ -27,40 +27,6 @@ type CustomPricingInput = Pick<
   | "sizeCm"
 >;
 
-const CATEGORY_BASE: Record<string, number> = {
-  person: 0,
-  pet: 2999,
-  object: 2799,
-  vehicle: 3299,
-  character: 2999,
-  other: 2499,
-};
-
-const BODY_BASE: Record<string, number> = {
-  half: 2499,
-  full: 3499,
-};
-
-const HEAD_ADD: Record<string, number> = {
-  stationary: 0,
-};
-
-const SUBJECT_ADD: Record<string, number> = {
-  single: 0,
-  couple: 1800,
-  pet: 1200,
-  group: 3200,
-};
-
-const SIZE_MULTIPLIER: Record<number, number> = {
-  8: 0.75,
-  12: 0.9,
-  15: 1,
-  20: 1.35,
-  25: 1.75,
-  30: 2.15,
-};
-
 const TRANSITIONS: Record<CustomRequestStatus, CustomRequestStatus[]> = {
   SUBMITTED: ["UNDER_REVIEW", "CANCELLED"],
   UNDER_REVIEW: ["IN_PRODUCTION", "CANCELLED"],
@@ -81,44 +47,6 @@ export class CustomBuildService {
     private readonly storage: StorageService,
   ) {}
 
-  calculatePrice(input: CustomPricingInput) {
-    const multiplier = SIZE_MULTIPLIER[input.sizeCm];
-    if (!multiplier) {
-      throw new BadRequestException("Unsupported custom size");
-    }
-
-    if (input.category === "person") {
-      if (!input.bodyType || !input.subjectType) {
-        throw new BadRequestException(
-          "Person custom builds require body type, head type and subject type",
-        );
-      }
-
-      if (input.subjectType === "couple") {
-        input.personCount = input.personCount ?? 2;
-      } else if (input.subjectType === "group") {
-        if ((input.personCount ?? 0) < 3) {
-          throw new BadRequestException(
-            "Family/group builds require at least 3 people",
-          );
-        }
-      } else if (input.subjectType === "single") {
-        input.personCount = 1;
-      } else if (input.subjectType === "pet") {
-        input.personCount = 1;
-        input.petCount = input.petCount ?? 1;
-      }
-
-      const base =
-        BODY_BASE[input.bodyType] +
-        SUBJECT_ADD[input.subjectType];
-
-      return Math.round(base * multiplier);
-    }
-
-    return Math.round(CATEGORY_BASE[input.category] * multiplier);
-  }
-
   async quote(input: CustomPricingInput) {
     const calculated = await this.calculateConfiguredPrice(input);
     return { currency: calculated.currency, amountMinor: calculated.amountMinor, priceMinor: calculated.amountMinor, breakdown: calculated.breakdown };
@@ -127,43 +55,40 @@ export class CustomBuildService {
   private async calculateConfiguredPrice(input: CustomPricingInput) {
     const category = await this.prisma.customBuildCategory.findUnique({
       where: { slug: input.category },
-      include: { options: { where: { isActive: true }, orderBy: [{ section: "asc" }, { sortOrder: "asc" }] } },
+      include: {
+        options: { where: { isActive: true }, orderBy: [{ section: "asc" }, { sortOrder: "asc" }] },
+        heightRanges: { where: { isActive: true }, orderBy: { minCm: "asc" } },
+      },
     });
     if (!category || !category.isActive) throw new BadRequestException("Custom category is unavailable");
-    const size = await this.prisma.customBuildOption.findFirst({
-      where: { categoryId: category.id, section: "size", slug: String(input.sizeCm), isActive: true },
-    });
-    if (!size?.multiplier) throw new BadRequestException("Unsupported custom size");
+
+    // Heights are entered to one decimal place; round so 12.0000001 cannot fall
+    // between two admin ranges.
+    const heightCm = Math.round(input.sizeCm * 10) / 10;
+    const range = category.heightRanges.find((item) => heightCm >= item.minCm && heightCm <= item.maxCm);
+    if (!range) {
+      const available = category.heightRanges.map((item) => `${item.minCm}–${item.maxCm} cm`).join(", ");
+      throw new BadRequestException(
+        available
+          ? `No price is configured for a height of ${heightCm} cm. Available heights: ${available}.`
+          : "No height pricing is configured for this category yet.",
+      );
+    }
+
     const by = (section: string, slug?: string) => slug ? category.options.find((o) => o.section === section && o.slug === slug) : undefined;
-    let baseMinor = category.basePriceMinor;
-    const selected: any[] = [];
+    const selected: { section: string; slug: string; name: string; priceMinor: number }[] = [];
+    // The admin-set range price is the base price. Selected body/frame options
+    // add their own admin-set price on top, exactly as they are shown on the form.
+    let amountMinor = range.priceMinor;
     if (category.slug === "person") {
       const body = by("body", input.bodyType), frame = by("frame", input.subjectType);
       if (!body || !frame) throw new BadRequestException("Person build has an invalid configuration");
-      // The category base price is the administrator-configured starting price.
-      // Add selected body/frame adjustments instead of silently ignoring it.
-      baseMinor = category.basePriceMinor + body.priceMinor + frame.priceMinor;
+      amountMinor += body.priceMinor + frame.priceMinor;
       selected.push(body, frame);
-      return {
-        amountMinor: Math.round(baseMinor * size.multiplier),
-        currency: category.currency,
-        breakdown: {
-          category: category.slug,
-          categoryName: category.name,
-          bodyType: input.bodyType ?? null,
-          headType: input.headType ?? null,
-          subjectType: input.subjectType ?? null,
-          personCount: input.personCount ?? null,
-          petCount: input.petCount ?? null,
-          sizeCm: input.sizeCm,
-          multiplier: size.multiplier,
-          selectedOptions: selected.map((o) => ({ section: o.section, slug: o.slug, name: o.name, priceMinor: o.priceMinor })),
-        },
-      };
     }
 
     return {
-      amountMinor: Math.round(baseMinor * size.multiplier),
+      amountMinor,
       currency: category.currency,
       breakdown: {
         category: category.slug,
@@ -173,23 +98,33 @@ export class CustomBuildService {
         subjectType: input.subjectType ?? null,
         personCount: input.personCount ?? null,
         petCount: input.petCount ?? null,
-        sizeCm: input.sizeCm,
-        multiplier: size.multiplier,
+        heightCm,
+        heightRange: { minCm: range.minCm, maxCm: range.maxCm, priceMinor: range.priceMinor },
         selectedOptions: selected.map((o) => ({ section: o.section, slug: o.slug, name: o.name, priceMinor: o.priceMinor })),
       },
     };
   }
 
   async getPublicConfig() {
-    const [categories, sizeOptions] = await Promise.all([
-      this.prisma.customBuildCategory.findMany({ where: { isActive: true }, include: { options: { where: { isActive: true }, orderBy: [{ section: "asc" }, { sortOrder: "asc" }] } }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }] }),
-      this.prisma.customBuildOption.findMany({ where: { category: { slug: "person" }, section: "size", isActive: true }, orderBy: { sortOrder: "asc" } }),
-    ]);
-    return { categories, sizeOptions };
+    const categories = await this.prisma.customBuildCategory.findMany({
+      where: { isActive: true },
+      include: {
+        options: { where: { isActive: true }, orderBy: [{ section: "asc" }, { sortOrder: "asc" }] },
+        heightRanges: { where: { isActive: true }, orderBy: { minCm: "asc" } },
+      },
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+    });
+    return { categories };
   }
 
   async getAdminConfig() {
-    return this.prisma.customBuildCategory.findMany({ include: { options: { orderBy: [{ section: "asc" }, { sortOrder: "asc" }] } }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }] });
+    return this.prisma.customBuildCategory.findMany({
+      include: {
+        options: { orderBy: [{ section: "asc" }, { sortOrder: "asc" }] },
+        heightRanges: { orderBy: { minCm: "asc" } },
+      },
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+    });
   }
 
   async createConfigCategory(data: { slug: string; name: string; description?: string; basePriceMinor?: number; sortOrder?: number; isActive?: boolean }) {
@@ -199,6 +134,44 @@ export class CustomBuildService {
   async createConfigOption(categoryId: string, dto: CreateCustomBuildOptionDto) { return this.prisma.customBuildOption.create({ data: { ...dto, categoryId, priceMinor: dto.priceMinor ?? 0, sortOrder: dto.sortOrder ?? 0, isActive: dto.isActive !== false } }); }
   async updateConfigOption(id: string, dto: UpdateCustomBuildOptionDto) { return this.prisma.customBuildOption.update({ where: { id }, data: dto }); }
   async deleteConfigOption(id: string) { return this.prisma.customBuildOption.delete({ where: { id } }); }
+
+  private async assertHeightRangeValid(categoryId: string, minCm: number, maxCm: number, isActive: boolean, ignoreId?: string) {
+    if (minCm > maxCm) throw new BadRequestException("Minimum height cannot be greater than maximum height");
+    if (!isActive) return;
+    const overlapping = await this.prisma.customBuildHeightRange.findFirst({
+      where: { categoryId, isActive: true, id: ignoreId ? { not: ignoreId } : undefined, minCm: { lte: maxCm }, maxCm: { gte: minCm } },
+    });
+    if (overlapping) {
+      throw new ConflictException(`Overlaps the existing ${overlapping.minCm}–${overlapping.maxCm} cm range. Ranges are inclusive and must not overlap.`);
+    }
+  }
+
+  async createConfigHeightRange(categoryId: string, dto: CreateCustomBuildHeightRangeDto) {
+    const category = await this.prisma.customBuildCategory.findUnique({ where: { id: categoryId }, select: { id: true } });
+    if (!category) throw new NotFoundException("Custom category not found");
+    const isActive = dto.isActive !== false;
+    await this.assertHeightRangeValid(categoryId, dto.minCm, dto.maxCm, isActive);
+    return this.prisma.customBuildHeightRange.create({
+      data: { categoryId, minCm: dto.minCm, maxCm: dto.maxCm, priceMinor: dto.priceMinor, sortOrder: dto.sortOrder ?? 0, isActive },
+    });
+  }
+
+  async updateConfigHeightRange(id: string, dto: UpdateCustomBuildHeightRangeDto) {
+    const current = await this.prisma.customBuildHeightRange.findUnique({ where: { id } });
+    if (!current) throw new NotFoundException("Height range not found");
+    await this.assertHeightRangeValid(
+      current.categoryId,
+      dto.minCm ?? current.minCm,
+      dto.maxCm ?? current.maxCm,
+      dto.isActive ?? current.isActive,
+      id,
+    );
+    return this.prisma.customBuildHeightRange.update({ where: { id }, data: dto });
+  }
+
+  async deleteConfigHeightRange(id: string) {
+    return this.prisma.customBuildHeightRange.delete({ where: { id } });
+  }
 
   async uploadConfigOptionImage(id: string, file: { originalname: string; mimetype: string; buffer: Buffer }) {
     const option = await this.prisma.customBuildOption.findUnique({ where: { id } });

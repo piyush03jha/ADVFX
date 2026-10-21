@@ -1,4 +1,5 @@
-import { IsIn, IsInt, IsOptional, IsString, Max, Min } from "class-validator";
+import { Type } from "class-transformer";
+import { IsIn, IsInt, IsNumber, IsOptional, IsString, Max, Min } from "class-validator";
 
 export class CustomPricingDto {
   @IsString()
@@ -32,7 +33,9 @@ export class CustomPricingDto {
   @Max(20)
   petCount?: number;
 
-  @IsInt()
-  @IsIn([8, 12, 15, 20, 25, 30])
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 1 })
+  @Min(0.1)
+  @Max(1000)
   sizeCm: number;
 }

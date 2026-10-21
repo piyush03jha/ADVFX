@@ -1326,10 +1326,28 @@ model CustomBuildCategory {
   sortOrder     Int      @default(0)
   isActive      Boolean  @default(true)
   options       CustomBuildOption[]
+  heightRanges  CustomBuildHeightRange[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   @@index([isActive, sortOrder])
+}
+
+/// Admin-managed price for a range of requested heights (inclusive, in cm).
+/// The customer types a height; the range containing it supplies the base price.
+model CustomBuildHeightRange {
+  id         String   @id @default(cuid())
+  categoryId String
+  category   CustomBuildCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  minCm      Float
+  maxCm      Float
+  priceMinor Int
+  sortOrder  Int      @default(0)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([categoryId, isActive, minCm])
 }
 
 model CustomBuildOption {
@@ -1371,7 +1389,7 @@ model CustomRequest {
   subjectType     String?
   personCount     Int?
   petCount        Int?
-  sizeCm          Int?
+  sizeCm          Float?
   priceMinor      Int?
   priceCurrency   String?
   pricedAt        DateTime?

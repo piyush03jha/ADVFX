@@ -2,7 +2,7 @@ import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post,
 import { AdminGuard } from "../auth/guards/admin.guard";
 import { AuthGuard } from "../auth/guards/auth.guard";
 import { CustomBuildService } from "./custom-build.service";
-import { CreateCustomBuildOptionDto, UpdateCustomBuildCategoryDto, UpdateCustomBuildOptionDto } from "./custom-build.config.dto";
+import { CreateCustomBuildHeightRangeDto, CreateCustomBuildOptionDto, UpdateCustomBuildCategoryDto, UpdateCustomBuildHeightRangeDto, UpdateCustomBuildOptionDto } from "./custom-build.config.dto";
 import type { FastifyReply, FastifyRequest } from "fastify";
 
 @UseGuards(AuthGuard, AdminGuard)
@@ -37,6 +37,21 @@ export class CustomBuildAdminController {
   @Delete("options/:id")
   deleteOption(@Param("id") id: string) {
     return this.service.deleteConfigOption(id);
+  }
+
+  @Post("categories/:id/height-ranges")
+  createHeightRange(@Param("id") id: string, @Body() dto: CreateCustomBuildHeightRangeDto) {
+    return this.service.createConfigHeightRange(id, dto);
+  }
+
+  @Patch("height-ranges/:id")
+  updateHeightRange(@Param("id") id: string, @Body() dto: UpdateCustomBuildHeightRangeDto) {
+    return this.service.updateConfigHeightRange(id, dto);
+  }
+
+  @Delete("height-ranges/:id")
+  deleteHeightRange(@Param("id") id: string) {
+    return this.service.deleteConfigHeightRange(id);
   }
 
   @Post("options/:id/image")
