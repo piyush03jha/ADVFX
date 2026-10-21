@@ -213,9 +213,14 @@ model Category {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  parentId String?
+  parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children Category[] @relation("CategoryHierarchy")
+
   products Product[]
 
   @@index([isActive, sortOrder])
+  @@index([parentId, isActive, sortOrder])
 }
 
 /**
