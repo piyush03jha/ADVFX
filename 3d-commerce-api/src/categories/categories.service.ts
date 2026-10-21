@@ -92,7 +92,13 @@ export class CategoriesService {
         if (parent.parentId) throw new BadRequestException('Subcategories cannot have their own subcategories');
       }
       if (parentId && current.parentId) {
-        // A current child can only be moved under a top-level category.
+        // Keep the hierarchy to exactly two levels.
+      }
+      if (parentId) {
+        const currentChildren = await this.prisma.category.count({ where: { parentId: id } });
+        if (currentChildren > 0) {
+          throw new BadRequestException('A category with subcategories cannot become a subcategory');
+        }
       }
     }
 
