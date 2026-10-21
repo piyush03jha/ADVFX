@@ -267,7 +267,6 @@ export default function AdminCategories() {
       return value - 1;
     };
     for (const rowNode of Array.from(sheet.getElementsByTagNameNS("*", "row"))) {
-      const rowNumber = Math.max(1, Number(rowNode.getAttribute("r")) || rows.length + 1);
       const cells: string[] = [];
       for (const cell of Array.from(rowNode.getElementsByTagNameNS("*", "c"))) {
         const index = columnIndex(cell.getAttribute("r"));
@@ -281,7 +280,7 @@ export default function AdminCategories() {
         }
         cells[index] = value;
       }
-      rows[rowNumber - 1] = cells;
+      rows.push(cells);
     }
     return rows.filter((row) => row.some((value) => String(value ?? "").trim() !== ""));
   }
@@ -307,7 +306,7 @@ export default function AdminCategories() {
     const categoryNameIndex = indexFor("category_name");
     const categorySlugIndex = indexFor("category_slug");
     if (categoryNameIndex < 0 || categorySlugIndex < 0) {
-      throw new Error("Required headers: category_name and category_slug. Add optional subcategory_name, subcategory_slug, rank, description and is_active.");
+      throw new Error("Required headers: category_name and category_slug. Optional headers: subcategory_name, subcategory_slug, category_rank, subcategory_rank, rank, description and is_active.");
     }
     return raw.slice(1).map((row, idx) => {
       const value = (key: string) => {
@@ -330,7 +329,7 @@ export default function AdminCategories() {
   }
 
   async function previewImport(file = importFile) {
-    if (!file) { setMessage("Choose a CSV spreadsheet first."); return; }
+    if (!file) { setMessage("Choose an Excel workbook or CSV file first."); return; }
     setImportBusy(true); setMessage(""); setImportPreview(null);
     try {
       const rows = await readImportFile(file);
