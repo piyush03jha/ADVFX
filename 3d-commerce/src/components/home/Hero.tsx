@@ -41,9 +41,7 @@ export function Hero() {
         setIsLoading(true);
         setHasError(false);
 
-        const response = await fetch("/api/products/hero", {
-          cache: "no-store",
-        });
+        const response = await fetch("/api/products/hero");
 
         if (!response.ok) {
           throw new Error(`Hero request failed with ${response.status}`);
