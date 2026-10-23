@@ -53,13 +53,22 @@ export function NewArrivals() {
           </Button>
         </motion.div>
 
-        <div className="flex gap-3 overflow-x-auto overscroll-x-contain pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-5 desk:grid desk:grid-cols-4 desk:overflow-visible desk:pb-0">
-          {products.map((product, index) => (
-            <motion.div key={product.id} initial={animationInitial} whileInView={animationWhileInView} viewport={{ once: true, amount: 0.1 }} transition={{ duration: 0.55, delay: shouldReduceMotion ? 0 : index * 0.06, ease: [0.22, 1, 0.36, 1] }} className="w-[190px] shrink-0 snap-start sm:w-[260px] desk:w-auto">
-              <ProductCard product={product} />
-            </motion.div>
-          ))}
-        </div>
+        {products.length > 0 ? (
+          <div className="flex gap-3 overflow-x-auto overscroll-x-contain pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-5 desk:grid desk:grid-cols-4 desk:overflow-visible desk:pb-0">
+            {products.map((product, index) => (
+              <motion.div key={product.id} initial={animationInitial} whileInView={animationWhileInView} viewport={{ once: true, amount: 0.1 }} transition={{ duration: 0.55, delay: shouldReduceMotion ? 0 : index * 0.06, ease: [0.22, 1, 0.36, 1] }} className="w-[190px] shrink-0 snap-start sm:w-[260px] desk:w-auto">
+                <ProductCard product={product} />
+              </motion.div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-border bg-surface/40 px-5 py-8 text-center">
+            <p className="mx-auto max-w-2xl text-sm leading-6 text-muted">
+              New physical models and collectibles are added to the Voxel3D shop as they become available. Browse the complete collection to see currently published products.
+            </p>
+            <Button href="/shop" variant="outline" size="sm" className="mt-4">Browse the collection</Button>
+          </div>
+        )}
 
         <div className="mt-6 flex justify-center sm:hidden">
           <Button href="/shop" variant="outline" size="sm" className="group">
