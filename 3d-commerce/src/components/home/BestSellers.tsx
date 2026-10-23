@@ -16,7 +16,7 @@ export function BestSellers() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/products", { cache: "no-store" })
+    fetch("/api/products")
       .then(async (response) => {
         if (!response.ok) throw new Error("catalog");
         return (await response.json()) as CatalogProduct[];
