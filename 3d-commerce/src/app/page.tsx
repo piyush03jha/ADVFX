@@ -33,13 +33,13 @@ async function loadProducts(): Promise<CatalogProduct[]> {
     });
     if (!response.ok) return [];
     const payload: unknown = await response.json();
-    if (Array.isArray(payload)) return payload as CatalogProduct[];
+    if (Array.isArray(payload)) return (payload as CatalogProduct[]).filter((product) => product.status === "ACTIVE");
     if (payload && typeof payload === "object") {
       const value = payload as { items?: unknown; data?: unknown; products?: unknown };
       for (const candidate of [value.items, value.data, value.products]) {
-        if (Array.isArray(candidate)) return candidate as CatalogProduct[];
+        if (Array.isArray(candidate)) return (candidate as CatalogProduct[]).filter((product) => product.status === "ACTIVE");
         if (candidate && typeof candidate === "object" && Array.isArray((candidate as { items?: unknown }).items)) {
-          return (candidate as { items: CatalogProduct[] }).items;
+          return (candidate as { items: CatalogProduct[] }).items.filter((product) => product.status === "ACTIVE");
         }
       }
     }
