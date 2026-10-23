@@ -96,10 +96,10 @@ export function ShopProductGrid({
   const handleCategoryChange = (categorySlug: string) => {
     if (lockedCategory) return;
 
+    // Category navigation is single-select: selecting a new category
+    // replaces the previous one; selecting the active category clears it.
     navigate({
-      categories: state.categories.includes(categorySlug)
-        ? state.categories.filter((item) => item !== categorySlug)
-        : [...state.categories, categorySlug],
+      categories: state.categories.includes(categorySlug) ? [] : [categorySlug],
     });
   };
 
