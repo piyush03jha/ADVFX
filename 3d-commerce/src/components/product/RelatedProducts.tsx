@@ -119,12 +119,11 @@ export function RelatedProducts({
           [scrollbar-width:none]
           [&::-webkit-scrollbar]:hidden
           sm:mx-0
-          sm:grid
-          sm:grid-cols-3
-          sm:overflow-visible
           sm:px-0
-          sm:pb-0
-          lg:grid-cols-4
+          desk:grid
+          desk:grid-cols-4
+          desk:overflow-visible
+          desk:pb-0
         "
       >
         {products.map((product) => (
@@ -133,7 +132,7 @@ export function RelatedProducts({
             href={`/product/${product.slug}`}
             scroll={true}
             onClick={handleProductClick}
-            className="group w-[190px] shrink-0 snap-start sm:w-auto"
+            className="group w-[190px] shrink-0 snap-start sm:w-[240px] desk:w-auto"
           >
             <Card
               interactive

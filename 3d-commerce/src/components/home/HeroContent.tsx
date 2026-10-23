@@ -30,7 +30,7 @@ export function HeroContent({
           Premium 3D Printed Models &amp; Collectibles
         </h1>
 
-        <h2 className="max-w-[600px] text-3xl font-semibold leading-[0.94] tracking-[-0.055em] text-foreground sm:text-5xl lg:text-[clamp(4rem,5.8vw,6.5rem)]">
+        <h2 className="max-w-[600px] text-3xl font-semibold leading-[0.94] tracking-[-0.055em] text-foreground sm:text-5xl lg:text-[clamp(2.75rem,6.4vw,6.5rem)]">
           {product.name}
         </h2>
 

@@ -26,12 +26,12 @@ export function CustomBuild() {
               whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
               viewport={{ once: true, amount: 0.2 }}
               transition={{ duration: 0.65 }}
-              className="flex flex-col justify-center px-5 py-7 sm:px-10 sm:py-14 lg:px-14 lg:py-16"
+              className="flex flex-col justify-center px-5 py-7 sm:px-10 sm:py-14 lg:px-8 lg:py-12 wide:px-14 wide:py-16"
             >
               <p className="text-[10px] font-medium uppercase tracking-[0.25em] text-primary sm:text-xs">
                 Custom made
               </p>
-              <h2 className="mt-3 max-w-xl font-serif text-[2rem] leading-[0.98] tracking-[-0.05em] text-foreground sm:mt-4 sm:text-5xl lg:text-[4.25rem]">
+              <h2 className="mt-3 max-w-xl font-serif text-[2rem] leading-[0.98] tracking-[-0.05em] text-foreground sm:mt-4 sm:text-5xl lg:text-[2.75rem] wide:text-[4.25rem]">
                 Your idea,
                 <span className="block text-muted">made tangible.</span>
               </h2>

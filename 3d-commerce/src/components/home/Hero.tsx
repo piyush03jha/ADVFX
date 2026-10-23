@@ -308,7 +308,7 @@ export function Hero() {
             </h1>
             <p className="mt-4 text-sm leading-6 text-muted">{message}</p>
             {hasError && (
-              <p className="mt-2 text-xs text-muted/70">
+              <p className="mt-2 text-xs text-muted">
                 The storefront will use featured catalog products as soon as
                 the catalog service is available.
               </p>

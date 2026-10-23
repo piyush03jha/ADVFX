@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+/* Tablets (>= 768px) get the desktop layout: full navbar, two-column hero and
+   product page, multi-column footer. Rows of products that do not fit scroll
+   horizontally. Rules that must only apply on true desktops use the desk: variant (named, because
+   arbitrary min-[…] variants sort before named ones and would lose the cascade). */
+@theme {
+  --breakpoint-lg: 48rem;
+  --breakpoint-desk: 64rem; /* true desktop, 1024px */
+  --breakpoint-wide: 68.75rem; /* 1100px */
+}
+
 /* =========================================================
    ADVFX DESIGN SYSTEM
    Light mode is the default.

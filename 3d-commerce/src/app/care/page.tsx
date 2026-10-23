@@ -43,7 +43,7 @@ const careItems = [
 
 export default function CareGuidePage() {
   return (
-    <main className="min-h-[70vh] bg-background">
+    <main id="main-content" className="min-h-[70vh] bg-background">
       <section className="mx-auto max-w-[1100px] px-5 pb-16 pt-12 sm:px-6 sm:pb-24 sm:pt-20 lg:px-8">
         <div className="max-w-3xl">
           <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-primary">

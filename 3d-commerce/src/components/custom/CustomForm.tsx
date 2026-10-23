@@ -353,8 +353,8 @@ export function CustomForm({
         <span className="text-foreground">Custom</span>
       </div>
 
-      <div className="grid overflow-hidden rounded-[20px] border border-border bg-surface/80 shadow-[0_12px_40px_rgba(0,0,0,0.08)] sm:rounded-[24px] sm:shadow-[0_30px_100px_rgba(0,0,0,0.12)] lg:backdrop-blur-xl lg:grid-cols-[minmax(0,1.08fr)_minmax(440px,0.92fr)]">
-        <div className="relative flex min-h-0 flex-col bg-surface p-3 sm:p-4 lg:h-[calc(100svh-120px)] lg:max-h-[820px] lg:min-h-[620px]">
+      <div className="grid overflow-hidden rounded-[20px] border border-border bg-surface/80 shadow-[0_12px_40px_rgba(0,0,0,0.08)] sm:rounded-[24px] sm:shadow-[0_30px_100px_rgba(0,0,0,0.12)] desk:backdrop-blur-xl desk:grid-cols-[minmax(0,1.08fr)_minmax(440px,0.92fr)]">
+        <div className="relative flex min-h-0 flex-col bg-surface p-3 sm:p-4 desk:h-[calc(100svh-120px)] desk:max-h-[820px] desk:min-h-[620px]">
           <div className="relative min-h-0 flex-1 overflow-hidden rounded-[18px] border border-border bg-surface-elevated">
             {previewImage ? <img src={previewImage} alt={previewLabel} className="absolute inset-0 h-full w-full object-contain transition duration-500" /> : <div className="absolute inset-0 flex items-center justify-center text-xs uppercase tracking-[0.16em] text-muted">{selectedCategory?.name ?? "Custom studio"}</div>}
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-foreground/35 via-transparent to-foreground/5" />
@@ -380,7 +380,7 @@ export function CustomForm({
 
         </div>
 
-        <div className="flex flex-col bg-surface/80 p-4 sm:p-7 lg:max-h-[calc(100svh-120px)] lg:overflow-y-auto lg:p-9">
+        <div className="flex flex-col bg-surface/80 p-4 sm:p-7 desk:max-h-[calc(100svh-120px)] desk:overflow-y-auto desk:p-9">
           <div className="border-b border-border pb-5">
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
               Custom creation studio
@@ -486,7 +486,7 @@ export function CustomForm({
             </section>
           </div>
 
-          <div className="mt-auto hidden pt-7 lg:block">
+          <div className="mt-auto hidden pt-7 desk:block">
             <div className="flex items-end justify-between gap-4 border-t border-border pt-5">
               <div>
                 <p className="text-[10px] uppercase tracking-[0.16em] text-muted">
@@ -507,7 +507,7 @@ export function CustomForm({
         </div>
       </div>
 
-      <div className="mt-4 grid gap-4 sm:mt-5 sm:gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.42fr)]">
+      <div className="mt-4 grid gap-4 sm:mt-5 sm:gap-5 desk:grid-cols-[minmax(0,1fr)_minmax(300px,0.42fr)]">
         <div id="custom-references" className="scroll-mt-24 rounded-[20px] border border-border bg-surface/45 p-4 sm:rounded-[24px] sm:p-7">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
@@ -569,7 +569,7 @@ export function CustomForm({
           <button
             type="submit"
             disabled={submitting || !priceReady}
-            className="mt-6 hidden h-12 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45 lg:flex"
+            className="mt-6 hidden h-12 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45 desk:flex"
           >
             {submitting
               ? "Preparing payment…"
@@ -580,7 +580,7 @@ export function CustomForm({
         </aside>
       </div>
 
-      <div className="sticky bottom-0 z-30 -mx-4 mt-4 border-t border-border bg-surface/95 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl sm:-mx-6 sm:px-6 lg:hidden">
+      <div className="sticky bottom-0 z-30 -mx-4 mt-4 border-t border-border bg-surface/95 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl sm:-mx-6 sm:px-6 desk:hidden">
         <div className="mx-auto flex max-w-xl items-center gap-3">
           <div className="min-w-0 shrink-0"><p className="text-[11px] uppercase tracking-[0.14em] text-muted">{pricingLoading ? "Calculating…" : "Estimated"}</p><p className="text-xl font-semibold tracking-[-0.03em]">₹{price.toLocaleString("en-IN")}</p></div>
           <button type="submit" disabled={submitting || !priceReady} className="flex h-12 min-w-0 flex-1 items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45">{submitting ? "Preparing payment…" : hasReference ? "Continue to payment" : "Add a photo to continue"}</button>
@@ -618,7 +618,7 @@ function CompactSection({
       <div className="mb-2.5 flex items-center justify-between gap-3">
         <p className="flex items-center gap-2 text-sm font-semibold text-foreground sm:text-xs">
           {step !== undefined && (
-            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary lg:hidden">
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary desk:hidden">
               {step}
             </span>
           )}

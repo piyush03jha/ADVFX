@@ -26,7 +26,7 @@ export default function CustomPage() {
     <div className="min-h-screen bg-background text-foreground">
       <Navbar />
 
-      <main className="relative isolate overflow-x-clip pt-20 sm:pt-24">
+      <main id="main-content" className="relative isolate overflow-x-clip pt-20 sm:pt-24">
         <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[700px] bg-[radial-gradient(circle_at_72%_8%,rgb(from var(--primary) r g b / 0.10),transparent_34%),radial-gradient(circle_at_18%_18%,rgb(from var(--foreground) r g b / 0.035),transparent_28%)]" />
 
         {submission ? (

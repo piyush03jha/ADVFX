@@ -5,7 +5,7 @@ export const SITE_NAME = "Voxel3D";
 export const SITE_TAGLINE = "Premium 3D Printed Models & Collectibles";
 
 export const SITE_DESCRIPTION =
-  "Shop premium 3D printed models, collectibles and custom builds from Voxel3D. Made to order and shipped across India.";
+  "Premium 3D printed models, collectibles and custom builds from Voxel3D. Browse the collection or order a made-to-order piece shipped across India.";
 export const SITE_LOGO_PATH = "/logo/full_logo.png";
 
 /** Optional social profile URLs (comma-separated env var) used as Organization `sameAs`. */

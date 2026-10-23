@@ -112,7 +112,7 @@ export default function CustomRequestDetailPage() {
               </div>
             </section>
 
-            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="grid gap-5 desk:grid-cols-[minmax(0,1fr)_360px]">
               <div className="space-y-5">
                 <section className="rounded-3xl border border-border bg-surface p-5 sm:p-6">
                   <div className="flex items-center gap-3">

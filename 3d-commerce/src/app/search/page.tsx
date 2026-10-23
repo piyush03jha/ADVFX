@@ -18,7 +18,7 @@ export default async function SearchPage({
   return (
     <>
       <Navbar />
-      <main className="min-h-screen bg-background">
+      <main id="main-content" className="min-h-screen bg-background">
         <ShopListing searchParams={params} basePath="/search" />
       </main>
     </>

@@ -14,7 +14,7 @@ export default function ProductLoading() {
           <Container>
             <div className="h-3 w-48 animate-pulse rounded-full bg-foreground/10" />
 
-            <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)] lg:gap-10">
+            <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(300px,0.9fr)] lg:gap-10">
               <div>
                 <div className="aspect-[4/3] w-full animate-pulse rounded-[22px] border border-border bg-foreground/[0.06] sm:rounded-[28px]" />
                 <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">

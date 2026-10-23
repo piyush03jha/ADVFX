@@ -85,7 +85,7 @@ export function TrendingNow() {
 
       <div
         id="trending-products"
-        className="-mx-5 flex gap-3 overflow-x-auto overscroll-x-contain pb-4 snap-x snap-mandatory px-5 sm:-mx-8 sm:gap-4 sm:px-8 lg:mx-0 lg:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="-mx-5 flex gap-3 overflow-x-auto overscroll-x-contain pb-4 snap-x snap-mandatory px-5 sm:-mx-8 sm:gap-4 sm:px-8 desk:mx-0 desk:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {products.map((product, index) => (
           <motion.div
@@ -97,7 +97,7 @@ export function TrendingNow() {
               duration: 0.5,
               delay: Math.min(index * 0.035, 0.3),
             }}
-            className="w-[48vw] min-w-[150px] max-w-[185px] shrink-0 snap-start min-[400px]:w-[42vw] sm:w-[38vw] sm:min-w-[180px] sm:max-w-[210px] lg:w-[calc((100%-4rem)/5)] lg:min-w-0 lg:max-w-none"
+            className="w-[48vw] min-w-[150px] max-w-[185px] shrink-0 snap-start min-[400px]:w-[42vw] sm:w-[38vw] sm:min-w-[200px] sm:max-w-[240px] desk:w-[calc((100%-4rem)/5)] desk:min-w-0 desk:max-w-none"
           >
             <TrendingProductCard product={product} />
           </motion.div>

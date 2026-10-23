@@ -31,6 +31,23 @@ export function HomeAbout() {
           </div>
 
           <h3 className="mt-10 text-lg font-semibold tracking-[-0.02em] text-foreground sm:text-xl">
+            Materials, finish and packaging
+          </h3>
+          <div className="mt-3 space-y-4 text-sm leading-7 text-muted sm:text-base">
+            <p>
+              Models are printed in durable, display-grade materials and finished by hand where the design needs it,
+              so edges, textures and fine details such as flames, fabric folds and armor stay crisp. Each piece is
+              wrapped in protective packaging for safe delivery, and our care guide explains how to keep your
+              collectible clean and looking new for years.
+            </p>
+            <p>
+              Whether you collect anime and game characters, want a standout desk piece or need a thoughtful gift,
+              Voxel3D gives you a physical model with the character of a hand-finished studio piece, delivered across
+              India with clear pricing and responsive support.
+            </p>
+          </div>
+
+          <h3 className="mt-10 text-lg font-semibold tracking-[-0.02em] text-foreground sm:text-xl">
             Custom 3D printing from your own reference
           </h3>
           <div className="mt-3 space-y-4 text-sm leading-7 text-muted sm:text-base">

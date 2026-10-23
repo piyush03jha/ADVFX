@@ -287,7 +287,7 @@ function CustomPaymentPageContent() {
               </p>
             </div>
 
-            <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
+            <div className="grid gap-8 desk:grid-cols-[minmax(0,1fr)_380px]">
               <div className="space-y-5">
                 <section className="rounded-3xl border border-border bg-surface p-5 sm:p-7">
                   <div className="flex items-center gap-3">
@@ -323,7 +323,7 @@ function CustomPaymentPageContent() {
                 </section>
               </div>
 
-              <aside className="h-fit rounded-3xl border border-border bg-surface p-5 shadow-[0_24px_70px_rgba(0,0,0,0.22)] lg:sticky lg:top-24">
+              <aside className="h-fit rounded-3xl border border-border bg-surface p-5 shadow-[0_24px_70px_rgba(0,0,0,0.22)] desk:sticky desk:top-24">
                 <p className="text-[11px] uppercase tracking-[0.18em] text-primary">Order summary</p>
                 <h2 className="mt-2 font-serif text-2xl">{request?.title ?? "Custom product"}</h2>
 

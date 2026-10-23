@@ -50,7 +50,7 @@ export function Reviews() {
           </p>
         </div>
 
-        <div className="-mx-4 mt-7 flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:mt-8 sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-4">
+        <div className="-mx-4 mt-7 flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:mt-8 sm:gap-4 sm:px-0 desk:grid desk:grid-cols-4 desk:overflow-visible desk:pb-0">
           {HIGHLIGHTS.map((highlight, index) => (
             <motion.article
               key={highlight.eyebrow}
@@ -58,7 +58,7 @@ export function Reviews() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, amount: 0.2 }}
               transition={{ duration: 0.6, delay: index * 0.08 }}
-              className="group flex h-full min-h-[245px] w-[78vw] max-w-[290px] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-border bg-surface/60 p-4 transition-all duration-500 hover:border-primary/25 hover:bg-surface sm:min-h-[300px] sm:w-auto sm:max-w-none sm:min-w-0 sm:p-6 lg:min-h-[320px] lg:p-7"
+              className="group flex h-full min-h-[245px] w-[78vw] max-w-[290px] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-border bg-surface/60 p-4 transition-all duration-500 hover:border-primary/25 hover:bg-surface sm:min-h-[300px] sm:w-[300px] sm:max-w-none sm:p-6 desk:w-auto desk:min-w-0 lg:min-h-[320px] lg:p-7"
             >
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-primary sm:text-xs">

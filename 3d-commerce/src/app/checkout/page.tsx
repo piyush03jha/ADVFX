@@ -104,7 +104,7 @@ export default function CheckoutPage() {
       <>
         <Navbar />
         <main className="min-h-screen overflow-hidden bg-background">
-          <section className="relative flex min-h-[calc(100svh-76px)] items-center justify-center px-4 pb-16 pt-28 sm:px-6 lg:px-8">
+          <section className="relative flex min-h-[calc(100svh-76px)] items-center justify-center px-4 pb-16 pt-28 sm:px-6 desk:px-8">
             <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-16 h-[460px] w-[460px] -translate-x-1/2 rounded-full bg-primary/[0.07] blur-[140px]" />
             <div className="relative rounded-3xl border border-border bg-[linear-gradient(135deg,rgb(from var(--foreground) r g b / 0.06),rgb(from var(--background) r g b / 0.02)_56%,rgb(from var(--primary) r g b / 0.07))] px-8 py-7 text-center shadow-[0_24px_80px_rgba(0,0,0,0.18)]">
               <div className="mx-auto h-7 w-7 animate-spin rounded-full border border-white/10 border-t-primary" />
@@ -120,12 +120,12 @@ export default function CheckoutPage() {
     <>
       <Navbar />
       <main className="min-h-screen overflow-hidden">
-        <section className="relative min-w-0 overflow-x-clip pb-12 pt-24 sm:pb-24 sm:pt-32 lg:pb-28 lg:pt-36">
+        <section className="relative min-w-0 overflow-x-clip pb-12 pt-24 sm:pb-24 sm:pt-32 desk:pb-28 desk:pt-36">
           <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-10 -z-10 h-[460px] w-[460px] -translate-x-1/2 rounded-full bg-primary/[0.07] blur-[140px]" />
           <Container className="min-w-0">
             <div className="mb-6 flex min-w-0 items-start justify-between gap-3 sm:mb-10 sm:items-end sm:gap-6">
               <div>
-                <h1 className="max-w-full break-words font-serif text-[2.15rem] leading-[1.08] tracking-[-0.05em] text-foreground sm:text-5xl lg:text-6xl">Complete your order</h1>
+                <h1 className="max-w-full break-words font-serif text-[2.15rem] leading-[1.08] tracking-[-0.05em] text-foreground sm:text-5xl desk:text-6xl">Complete your order</h1>
                 <p className="mt-3 max-w-xl text-[13px] leading-5 text-muted sm:text-sm sm:leading-6">Enter your delivery details and review your order before payment.</p>
               </div>
               <div className="hidden items-center gap-2 text-[11px] uppercase tracking-[0.12em] text-muted sm:flex">
@@ -144,14 +144,14 @@ export default function CheckoutPage() {
             ) : checkoutItems.length === 0 ? (
               <EmptyCheckout />
             ) : (
-              <div className="grid w-full min-w-0 grid-cols-1 gap-5 sm:gap-8 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:gap-12">
+              <div className="grid w-full min-w-0 grid-cols-1 gap-5 sm:gap-8 desk:grid-cols-[minmax(0,1fr)_380px] desk:items-start desk:gap-12">
                 <CheckoutForm
                   onCountryChange={setCountry}
                   onQuoteChange={handleQuoteChange}
                   selectedItems={selectedItems}
                   checkoutDisplayItems={checkoutItems}
                 />
-                <div className="hidden min-w-0 lg:block">
+                <div className="hidden min-w-0 desk:block">
                   <CheckoutSummary
                   country={country}
                   quote={quote}

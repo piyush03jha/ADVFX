@@ -18,7 +18,7 @@ export function ShopSearch({ value, onChange }: ShopSearchProps) {
           onChange={(event) => onChange(event.target.value)}
           placeholder="Search models, characters, toys, gaming..."
           aria-label="Search products"
-          className="h-12 w-full min-w-0 appearance-none border-0 bg-transparent px-3 text-sm text-foreground !outline-none !ring-0 placeholder:text-muted/60 focus:border-0 focus:!outline-none focus:!ring-0 focus-visible:border-0 focus-visible:!outline-none focus-visible:!ring-0"
+          className="h-12 w-full min-w-0 appearance-none border-0 bg-transparent px-3 text-sm text-foreground !outline-none !ring-0 placeholder:text-muted focus:border-0 focus:!outline-none focus:!ring-0 focus-visible:border-0 focus-visible:!outline-none focus-visible:!ring-0"
         />
         {value && (
           <button

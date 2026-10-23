@@ -44,7 +44,7 @@ export function ProductInfo({
         p-4
         shadow-[0_20px_80px_rgba(0,0,0,0.22)]
         sm:p-7
-        lg:p-8
+        lg:p-5 desk:p-8
       "
     >
       {/* ==================================================
@@ -78,7 +78,7 @@ export function ProductInfo({
           text-foreground
           sm:mt-5
           sm:text-5xl
-          lg:text-[3.4rem]
+          lg:text-[2.35rem] wide:text-[3.4rem]
         "
       >
         {product.name}

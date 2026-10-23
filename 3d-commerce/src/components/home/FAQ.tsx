@@ -122,7 +122,7 @@ export function FAQ() {
           grid
           gap-8
           lg:grid-cols-[0.72fr_1.28fr]
-          lg:gap-20
+          lg:gap-10 wide:gap-20
         "
       >
         {/* =================================================
@@ -183,7 +183,7 @@ export function FAQ() {
               text-foreground
               sm:mt-4
               sm:text-5xl
-              lg:text-6xl
+              lg:text-4xl wide:text-6xl
             "
           >
             Common

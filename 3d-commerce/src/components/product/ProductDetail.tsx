@@ -26,7 +26,7 @@ export function ProductDetail({
   relatedProducts,
 }: ProductDetailProps) {
   return (
-    <main className="w-full overflow-hidden">
+    <main id="main-content" className="w-full overflow-hidden">
       <ProductViewTracker productId={product.id} />
       {/* =====================================================
           PRODUCT HERO
@@ -86,7 +86,7 @@ export function ProductDetail({
               gap-4
               sm:mt-5
               sm:gap-8
-              lg:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]
+              lg:grid-cols-[minmax(0,1.1fr)_minmax(300px,0.9fr)]
               lg:gap-10
               xl:gap-14
             "

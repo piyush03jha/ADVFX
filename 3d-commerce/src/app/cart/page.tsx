@@ -17,8 +17,8 @@ export default function CartPage() {
     <>
       <Navbar />
 
-      <main className="min-h-screen overflow-hidden">
-        <section className="relative pb-20 pt-24 sm:pb-24 sm:pt-26 lg:pb-28 lg:pt-28">
+      <main id="main-content" className="min-h-screen overflow-hidden">
+        <section className="relative pb-20 pt-24 sm:pb-24 sm:pt-26 desk:pb-28 desk:pt-28">
           <div
             aria-hidden="true"
             className="pointer-events-none absolute left-1/2 top-0 -z-10 h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-primary/[0.05] blur-[130px]"
@@ -27,7 +27,7 @@ export default function CartPage() {
           <Container>
             <div className="mb-8 flex items-end justify-between gap-6 sm:mb-10">
               <div>
-                <h1 className="font-serif text-4xl tracking-[-0.05em] text-foreground sm:text-5xl lg:text-6xl">
+                <h1 className="font-serif text-4xl tracking-[-0.05em] text-foreground sm:text-5xl desk:text-6xl">
                   Shopping Cart
                 </h1>
 
@@ -82,7 +82,7 @@ export default function CartPage() {
             ) : items.length === 0 ? (
               <EmptyCart />
             ) : (
-              <div className="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-12">
+              <div className="grid min-w-0 gap-8 desk:grid-cols-[minmax(0,1fr)_360px] desk:items-start desk:gap-12">
                 <section className="min-w-0 rounded-2xl border border-white/[0.1] bg-[linear-gradient(135deg,hsl(var(--foreground)/0.055),hsl(var(--background)/0.018)_58%,hsl(var(--primary)/0.075))] px-4 shadow-[0_20px_60px_rgba(0,0,0,0.14)] sm:px-6">
                   <div className="flex items-center justify-between border-b border-white/[0.07] py-4">
                     <p className="text-[9px] font-medium uppercase tracking-[0.18em] text-muted">

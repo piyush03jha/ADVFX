@@ -35,13 +35,12 @@ export const NavBody = ({ children, className, visible }: NavBodyProps) => (
     animate={{
       backdropFilter: visible ? "blur(20px)" : "blur(0px)",
       boxShadow: visible ? "0 12px 40px color-mix(in srgb, var(--foreground) 16%, transparent)" : "none",
-      width: visible ? "calc(75% - 48px)" : "calc(80% - 32px)",
       y: 0,
     }}
     transition={{ type: "spring", stiffness: 220, damping: 32, mass: 0.8 }}
     className={cn(
-      "relative z-[60] mx-auto hidden w-full flex-row items-center justify-between rounded-full border border-border/70 bg-background/70 px-3 py-2 lg:flex",
-      visible && "border-border bg-surface/90",
+      "relative z-[60] mx-auto hidden w-[calc(96%-8px)] flex-row items-center justify-between rounded-full border border-border/70 bg-background/70 px-3 py-2 transition-[width] duration-500 wide:w-[calc(88%-24px)] xl:w-[calc(80%-32px)] lg:flex",
+      visible && "w-[calc(98%-8px)] border-border bg-surface/90 wide:w-[calc(82%-32px)] xl:w-[calc(75%-48px)]",
       className,
     )}
   >

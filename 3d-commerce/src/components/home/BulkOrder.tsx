@@ -19,10 +19,10 @@ export function BulkOrder() {
     <section id="bulk-order" className="relative scroll-mt-28 overflow-hidden border-y border-border/70 py-10 sm:py-20 lg:py-28">
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_82%_35%,rgba(139,92,246,0.12),transparent_34%),radial-gradient(circle_at_15%_80%,rgba(59,130,246,0.07),transparent_30%)]" />
       <Container>
-        <div className="grid gap-7 lg:grid-cols-[1fr_1.05fr] lg:items-center lg:gap-20">
+        <div className="grid gap-7 lg:grid-cols-[1fr_1.05fr] lg:items-center lg:gap-10 wide:gap-20">
           <motion.div initial={reduceMotion ? false : { opacity: 0, y: 20 }} whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.2 }} transition={{ duration: 0.65 }}>
             <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-primary sm:text-xs">Bulk orders</p>
-            <h2 className="mt-3 max-w-xl text-4xl font-semibold leading-[0.98] tracking-[-0.055em] text-foreground sm:text-5xl lg:text-6xl">
+            <h2 className="mt-3 max-w-xl text-4xl font-semibold leading-[0.98] tracking-[-0.055em] text-foreground sm:text-5xl lg:text-4xl wide:text-6xl">
               Need a collection, not just one piece?
             </h2>
             <p className="mt-5 max-w-lg text-base leading-7 text-muted sm:text-lg sm:leading-8">

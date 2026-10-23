@@ -87,7 +87,7 @@ async function loadFaqs(): Promise<FaqEntry[]> {
 export default async function FAQPage() {
   const faqs = await loadFaqs();
   return (
-    <main className="min-h-[70vh] bg-background">
+    <main id="main-content" className="min-h-[70vh] bg-background">
       <JsonLd
         data={{
           "@context": "https://schema.org",

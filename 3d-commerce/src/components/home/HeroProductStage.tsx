@@ -1,8 +1,14 @@
 "use client";
 
-import { ProductViewer } from "@/components/3d/ProductViewer";
+import dynamic from "next/dynamic";
 
 import type { HeroProduct } from "@/config/hero-products";
+
+// three.js + react-three-fiber are large; load them only once hero data is ready.
+const ProductViewer = dynamic(
+  () => import("@/components/3d/ProductViewer").then((mod) => mod.ProductViewer),
+  { ssr: false },
+);
 
 interface HeroProductStageProps {
   products: HeroProduct[];

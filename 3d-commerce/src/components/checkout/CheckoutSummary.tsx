@@ -47,7 +47,7 @@ export function CheckoutSummary({
   const countryConfig = getCountry(country);
 
   return (
-    <aside className={`rounded-3xl border border-border ${cardGradient} p-5 shadow-[0_24px_70px_rgba(0,0,0,0.24)] sm:p-6 lg:sticky lg:top-24`}>
+    <aside className={`rounded-3xl border border-border ${cardGradient} p-5 shadow-[0_24px_70px_rgba(0,0,0,0.24)] sm:p-6 desk:sticky desk:top-24`}>
       <div className="flex items-center justify-between gap-4">
         <div>
           <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-primary">Order summary</p>

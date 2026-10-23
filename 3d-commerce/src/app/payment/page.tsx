@@ -365,7 +365,7 @@ export default function PaymentPage() {
       />
       <Navbar />
       <main className="min-h-screen overflow-hidden">
-        <section className="relative pb-12 pt-28 sm:pb-24 sm:pt-32 lg:pb-28 lg:pt-36">
+        <section className="relative pb-12 pt-28 sm:pb-24 sm:pt-32 desk:pb-28 desk:pt-36">
           <div
             aria-hidden="true"
             className="pointer-events-none absolute left-1/2 top-0 -z-10 h-[480px] w-[480px] -translate-x-1/2 rounded-full bg-primary/[0.045] blur-[150px]"
@@ -390,7 +390,7 @@ export default function PaymentPage() {
                     </p>
                   </div>
 
-                  <h1 className="mt-3 font-serif text-3xl leading-tight tracking-[-0.05em] text-foreground sm:mt-4 sm:text-5xl lg:text-6xl">
+                  <h1 className="mt-3 font-serif text-3xl leading-tight tracking-[-0.05em] text-foreground sm:mt-4 sm:text-5xl desk:text-6xl">
                     Secure your order
                   </h1>
 
@@ -406,7 +406,7 @@ export default function PaymentPage() {
               </div>
             </div>
 
-            <div className="grid w-full min-w-0 grid-cols-1 gap-5 sm:gap-8 lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start lg:gap-12">
+            <div className="grid w-full min-w-0 grid-cols-1 gap-5 sm:gap-8 desk:grid-cols-[minmax(0,1fr)_400px] desk:items-start desk:gap-12">
               <div className="min-w-0 space-y-4 sm:space-y-7">
                 <section className="min-w-0 rounded-2xl border border-border bg-surface p-3.5 sm:p-7">
                   <div className="flex items-center justify-between gap-4">
@@ -454,7 +454,7 @@ export default function PaymentPage() {
                 </section>
               </div>
 
-              <aside className="rounded-2xl border border-border bg-surface p-5 shadow-[0_24px_70px_rgba(0,0,0,0.24)] sm:p-6 lg:sticky lg:top-24">
+              <aside className="rounded-2xl border border-border bg-surface p-5 shadow-[0_24px_70px_rgba(0,0,0,0.24)] sm:p-6 desk:sticky desk:top-24">
                 <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-primary">Order summary</p>
 
                 <div className="mt-2 flex items-end justify-between gap-4">

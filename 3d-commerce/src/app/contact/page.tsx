@@ -50,7 +50,7 @@ export default async function ContactPage() {
     <div className="min-h-screen overflow-x-clip bg-background text-foreground">
       <Navbar />
 
-      <main className="relative">
+      <main id="main-content" className="relative">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-x-0 top-0 -z-0 h-[520px] overflow-hidden"

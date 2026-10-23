@@ -14,7 +14,7 @@ export function CartSummary() {
   const { subtotal, error } = useCart();
 
   return (
-    <aside className="relative overflow-hidden rounded-2xl border border-border bg-[linear-gradient(145deg,rgb(from var(--foreground) r g b / 0.07),rgb(from var(--background) r g b / 0.02)_52%,rgb(from var(--primary) r g b / 0.1))] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.22)] sm:p-6 lg:sticky lg:top-24">
+    <aside className="relative overflow-hidden rounded-2xl border border-border bg-[linear-gradient(145deg,rgb(from var(--foreground) r g b / 0.07),rgb(from var(--background) r g b / 0.02)_52%,rgb(from var(--primary) r g b / 0.1))] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.22)] sm:p-6 desk:sticky desk:top-24">
       <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-primary/[0.09] blur-3xl" />
       <div className="relative">
         <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-primary">Order summary</p>
