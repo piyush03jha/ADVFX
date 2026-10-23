@@ -352,6 +352,8 @@ function FAQItem({
           "
         >
           <span
+            role="heading"
+            aria-level={3}
             className={`
               text-xs
               font-medium
@@ -414,57 +416,18 @@ function FAQItem({
 
       {/* ANSWER */}
 
-      <AnimatePresence initial={false}>
-        {isOpen && (
-          <motion.div
-            id={`faq-answer-${item.id}`}
-            initial={{
-              height: 0,
-              opacity: 0,
-            }}
-            animate={{
-              height: "auto",
-              opacity: 1,
-            }}
-            exit={{
-              height: 0,
-              opacity: 0,
-            }}
-            transition={{
-              height: {
-                duration: 0.35,
-                ease: [
-                  0.22,
-                  1,
-                  0.36,
-                  1,
-                ],
-              },
-              opacity: {
-                duration: 0.2,
-              },
-            }}
-            className="overflow-hidden"
-          >
-            <div
-              className="
-                max-w-2xl
-                pb-6
-                pr-10
-                text-xs
-                leading-6
-                text-muted
-                sm:pb-7
-                sm:pr-16
-                sm:text-sm
-                sm:leading-7
-              "
-            >
-              {item.answer}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <motion.div
+        id={`faq-answer-${item.id}`}
+        initial={false}
+        animate={{ height: isOpen ? "auto" : 0, opacity: isOpen ? 1 : 0 }}
+        aria-hidden={!isOpen}
+        className="overflow-hidden"
+        style={{ pointerEvents: isOpen ? "auto" : "none" }}
+      >
+        <div className="max-w-2xl pb-6 pr-10 text-xs leading-6 text-muted sm:pb-7 sm:pr-16 sm:text-sm sm:leading-7">
+          <p>{item.answer}</p>
+        </div>
+      </motion.div>
     </motion.div>
   );
 }
