@@ -158,7 +158,7 @@ export function ShopProductCard({ product, priority = false }: ShopProductCardPr
 
           <div className="flex shrink-0 flex-row items-baseline gap-2 sm:flex-col sm:items-end sm:gap-0">
             {product.price > 0 ? <Price value={product.price} size="sm" /> : <span className="text-[10px] font-medium text-muted">Price on request</span>}
-            {product.oldPrice !== undefined && (
+            {product.price > 0 && product.oldPrice !== undefined && (
               <span className="text-[10px] text-muted line-through">
                 ₹{product.oldPrice.toLocaleString("en-IN")}
               </span>
