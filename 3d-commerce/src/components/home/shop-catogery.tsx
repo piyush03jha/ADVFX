@@ -154,7 +154,7 @@ function CategoryCard({
                 alt={category.name}
                 fill
                 sizes="(max-width: 639px) 45vw, (max-width: 1023px) 30vw, 22vw"
-                unoptimized={imageUrl.startsWith("/api/assets/")}
+                unoptimized={imageUrl.startsWith("/api/assets/") || !imageUrl.startsWith("/")}
                 loading={index < 4 ? "eager" : "lazy"}
                 className="object-contain object-center px-2 py-1 transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-105 sm:px-3 lg:px-0 lg:py-0 lg:object-cover"
               />
