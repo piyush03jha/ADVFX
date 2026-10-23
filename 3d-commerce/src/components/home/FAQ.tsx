@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   AnimatePresence,
   motion,
@@ -17,61 +17,14 @@ import { Button } from "@/components/ui/Button";
 import { Section } from "@/components/ui/Section";
 import { faqItems, type FAQItem } from "@/config/faq";
 
-export function FAQ() {
-  const [items, setItems] = useState(faqItems);
+export function FAQ({ initialItems = faqItems }: { initialItems?: FAQItem[] }) {
+  const [items] = useState<FAQItem[]>(initialItems);
   const [openId, setOpenId] = useState<string | null>(
     items[0]?.id ?? null,
   );
 
   const [showAllMobile, setShowAllMobile] =
     useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadFaq() {
-      try {
-        const response = await fetch("/api/site-content/faq", {
-          cache: "no-store",
-        });
-        if (!response.ok) return;
-
-        const data = await response.json();
-        const value = data?.value;
-        if (
-          !Array.isArray(value) ||
-          !value.length ||
-          value.some(
-            (item: unknown) =>
-              typeof item !== "object" ||
-              item === null ||
-              typeof (item as { id?: unknown }).id !== "string" ||
-              typeof (item as { question?: unknown }).question !== "string" ||
-              typeof (item as { answer?: unknown }).answer !== "string",
-          )
-        ) {
-          return;
-        }
-
-        if (!cancelled) {
-          setItems(value);
-          setOpenId((current) =>
-            value.some((item) => item.id === current)
-              ? current
-              : value[0]?.id ?? null,
-          );
-        }
-      } catch {
-        // Keep the bundled FAQ as a resilient storefront fallback.
-      }
-    }
-
-    void loadFaq();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const shouldReduceMotion =
     useReducedMotion();
