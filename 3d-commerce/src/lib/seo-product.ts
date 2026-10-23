@@ -63,7 +63,7 @@ export function buildProductJsonLd(
     material: product.material || undefined,
     brand: { "@type": "Brand", name: SITE_NAME },
     url: opts.url,
-    ...(price ? {
+    ...(price && price.amountMinor > 0 ? {
       offers: {
         "@type": "Offer",
         url: opts.url,
@@ -72,7 +72,7 @@ export function buildProductJsonLd(
         availability: isAvailable(product) ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
         itemCondition: "https://schema.org/NewCondition",
         ...(price.startsAt ? { validFrom: price.startsAt } : {}),
-        ...(price.endsAt ? { validThrough: price.endsAt } : {}),
+        ...(price.endsAt ? { priceValidUntil: price.endsAt.slice(0, 10) } : {}),
       },
     } : {}),
     ...(opts.reviewCount > 0 && opts.rating > 0 ? {
