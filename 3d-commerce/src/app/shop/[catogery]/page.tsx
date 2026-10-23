@@ -18,7 +18,7 @@ export default async function ShopCategoryPage({
   const query = await searchParams;
   const categories = await fetchShopCategories();
   const category = categories.find((item) => item.slug.toLowerCase() === catogery.toLowerCase());
-  if (!category) notFound();
+  if (!category || category.isActive === false) notFound();
 
   return (
     <>
@@ -39,7 +39,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { catogery } = await params;
   const category = (await fetchShopCategories()).find((item) => item.slug.toLowerCase() === catogery.toLowerCase());
-  if (!category) return { title: "Category Not Found", robots: NO_INDEX };
+  if (!category || category.isActive === false) return { title: "Category Not Found", robots: NO_INDEX };
 
   return shopListingMetadata({
     path: `/shop/${category.slug}`,
