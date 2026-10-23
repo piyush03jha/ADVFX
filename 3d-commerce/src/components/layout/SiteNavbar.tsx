@@ -397,7 +397,6 @@ function NavIconLink({
   return (
     <Link
       href={href}
-      rel={href.includes("?") ? "nofollow" : undefined}
       aria-label={label}
       className="pointer-events-auto relative z-50 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-muted transition-all duration-300 hover:bg-surface-elevated hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:h-9 lg:w-9"
     >
