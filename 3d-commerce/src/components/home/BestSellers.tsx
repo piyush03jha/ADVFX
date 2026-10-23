@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import { ProductCard } from "@/components/home/ProductCard";
 import { mapCatalogProducts, type CatalogProduct, type StorefrontProduct } from "@/lib/catalog-api";
+import Link from "next/link";
 
 export function BestSellers() {
   const shouldReduceMotion = useReducedMotion();
@@ -62,8 +63,13 @@ export function BestSellers() {
             ))}
           </div>
         ) : (
-          <div className="rounded-2xl border border-border bg-surface/40 px-5 py-10 text-center">
-            <p className="text-xs text-muted">Best sellers will appear here as customers shop the collection.</p>
+          <div className="rounded-2xl border border-border bg-surface/40 px-5 py-8 sm:px-8 sm:py-10">
+            <p className="mx-auto max-w-2xl text-center text-sm leading-6 text-muted">
+              Explore the Voxel3D collection of physical 3D printed models and collectibles. Browse the full shop to discover available figures, miniatures and display pieces.
+            </p>
+            <p className="mt-4 text-center text-sm font-medium">
+              <Link href="/shop" className="text-primary underline-offset-4 hover:underline">Browse all 3D printed models</Link>
+            </p>
           </div>
         )}
 
