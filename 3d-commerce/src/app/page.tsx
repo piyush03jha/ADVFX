@@ -84,12 +84,25 @@ export default async function Home() {
       <main id="main-content">
         <JsonLd data={{
           "@context": "https://schema.org",
-          "@type": "FAQPage",
-          mainEntity: faqs.map((faq) => ({
-            "@type": "Question",
-            name: faq.question,
-            acceptedAnswer: { "@type": "Answer", text: faq.answer },
-          })),
+          "@graph": [
+            {
+              "@type": "WebPage",
+              "@id": "https://voxel3d.org/#webpage",
+              url: "https://voxel3d.org/",
+              name: "Voxel3D — Premium 3D Printed Models & Collectibles in India",
+              dateModified: "2026-10-23",
+              inLanguage: "en-IN",
+            },
+            {
+              "@type": "FAQPage",
+              dateModified: "2026-10-23",
+              mainEntity: faqs.map((faq) => ({
+                "@type": "Question",
+                name: faq.question,
+                acceptedAnswer: { "@type": "Answer", text: faq.answer },
+              })),
+            },
+          ],
         }} />
         <Hero />
         <BestSellers initialProducts={products} />
