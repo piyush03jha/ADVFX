@@ -16,7 +16,6 @@ import { IconButton } from "@/components/ui/IconButton";
 import { Button } from "@/components/ui/Button";
 import { Section } from "@/components/ui/Section";
 import { faqItems, type FAQItem } from "@/config/faq";
-import { JsonLd } from "@/components/seo/JsonLd";
 
 export function FAQ() {
   const [items, setItems] = useState(faqItems);
