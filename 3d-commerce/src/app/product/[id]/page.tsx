@@ -83,25 +83,27 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
   }
 
   const path = `/product/${product.slug}`;
-  const description = (product.seoDescription?.trim() || product.description?.trim() || "").slice(0, 160) || undefined;
+  const description = (product.seoDescription?.trim() || product.description?.trim() || "").replace(/\\s+/g, " ").slice(0, 160) || undefined;
   const seoTitle = product.seoTitle?.trim();
   const images = productImageUrls(product).slice(0, 4);
+  const title = seoTitle || `${product.name} — 3D Printed Figure`;
+  const canonical = product.canonicalUrl?.trim() || absoluteUrl(path);
 
   return {
-    title: seoTitle ? { absolute: seoTitle } : product.name,
+    title: { absolute: title },
     description,
     keywords: product.seoKeywords?.split(",").map((keyword) => keyword.trim()).filter(Boolean),
-    alternates: { canonical: path },
+    alternates: { canonical },
     openGraph: {
       type: "website",
-      url: absoluteUrl(path),
-      title: seoTitle || product.name,
+      url: canonical,
+      title,
       description,
       images: images.length ? images : undefined,
     },
     twitter: {
       card: "summary_large_image",
-      title: seoTitle || product.name,
+      title,
       description,
       images: images.length ? images : undefined,
     },
