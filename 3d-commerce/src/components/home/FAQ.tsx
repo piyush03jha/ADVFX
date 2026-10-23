@@ -16,6 +16,7 @@ import { IconButton } from "@/components/ui/IconButton";
 import { Button } from "@/components/ui/Button";
 import { Section } from "@/components/ui/Section";
 import { faqItems, type FAQItem } from "@/config/faq";
+import { JsonLd } from "@/components/seo/JsonLd";
 
 export function FAQ() {
   const [items, setItems] = useState(faqItems);
@@ -82,8 +83,20 @@ export function FAQ() {
     );
   };
 
+  const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: items.map((item) => ({
+      "@type": "Question",
+      name: item.question,
+      acceptedAnswer: { "@type": "Answer", text: item.answer },
+    })),
+  };
+
   return (
-    <Section
+    <>
+      <JsonLd data={faqJsonLd} />
+      <Section
       id="faq"
       glow
       className="
@@ -303,7 +316,8 @@ export function FAQ() {
           </div>
         </div>
       </div>
-    </Section>
+      </Section>
+    </>
   );
 }
 
