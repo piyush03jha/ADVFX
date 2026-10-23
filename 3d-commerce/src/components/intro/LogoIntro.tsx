@@ -6,10 +6,34 @@ import { markIntroDone } from "@/lib/introGate";
 import { createIntroScene } from "./introScene";
 import { createIntroTimeline } from "./introTimeline";
 
-// Play the intro once per browser session; replaying it on every page load
-// delayed the hero and made the site feel slow.
-const PLAY_ONCE_PER_SESSION = true;
-const SESSION_KEY = "voxel-intro-played";
+// Play the intro once, on a visitor's first visit; replaying it on every page
+// load delayed the hero and made the site feel slow. The flag lives in
+// localStorage (survives closing the tab) with sessionStorage as a fallback.
+// Open the site with ?intro=1 to force a replay while testing.
+const PLAYED_KEY = "voxel-intro-played";
+const TEXTURE_TIMEOUT_MS = 6000;
+const FALLBACK_HOLD_MS = 1400;
+
+function hasPlayed(): boolean {
+  for (const getStore of [() => window.localStorage, () => window.sessionStorage]) {
+    try {
+      if (getStore().getItem(PLAYED_KEY) === "1") return true;
+    } catch {
+      // Storage can be unavailable (private mode, blocked cookies).
+    }
+  }
+  return false;
+}
+
+function markPlayed() {
+  for (const getStore of [() => window.localStorage, () => window.sessionStorage]) {
+    try {
+      getStore().setItem(PLAYED_KEY, "1");
+    } catch {
+      // Ignore: worst case the intro replays on the next visit.
+    }
+  }
+}
 
 const TEXTURE_PATHS = {
   icon: "/logo/icon.webp",
@@ -22,18 +46,15 @@ export function LogoIntro() {
   const rootRef = useRef<HTMLDivElement>(null);
   const canvasHostRef = useRef<HTMLDivElement>(null);
   const [show, setShow] = useState(true);
+  // Static logo shown instead of the WebGL animation when the visitor prefers
+  // reduced motion or WebGL / texture loading fails, so first-time visitors
+  // still see the brand once instead of nothing.
+  const [fallback, setFallback] = useState(false);
 
   useEffect(() => {
-    let seen = false;
-    if (PLAY_ONCE_PER_SESSION) {
-      try {
-        seen = window.sessionStorage.getItem(SESSION_KEY) === "1";
-      } catch {
-        seen = false;
-      }
-    }
+    const forced = new URLSearchParams(window.location.search).has("intro");
 
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || seen) {
+    if (!forced && hasPlayed()) {
       setShow(false);
       markIntroDone();
       return;
@@ -44,6 +65,41 @@ export function LogoIntro() {
     if (!root || !host) return;
 
     let cancelled = false;
+    let fallbackTimer = 0;
+    let textureTimer = 0;
+    let finished = false;
+
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      markPlayed();
+      markIntroDone();
+      setShow(false);
+    };
+
+    const playFallback = () => {
+      if (cancelled || finished) return;
+      window.clearTimeout(textureTimer);
+      setFallback(true);
+      setShow(true);
+      fallbackTimer = window.setTimeout(() => {
+        root.style.transition = "opacity 350ms ease";
+        root.style.opacity = "0";
+        fallbackTimer = window.setTimeout(finish, 380);
+      }, FALLBACK_HOLD_MS);
+    };
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      playFallback();
+      return () => {
+        cancelled = true;
+        window.clearTimeout(fallbackTimer);
+      };
+    }
+
+    // If the textures never arrive (slow network, blocked request), do not leave
+    // the visitor on a blank overlay.
+    textureTimer = window.setTimeout(playFallback, TEXTURE_TIMEOUT_MS);
     let frame = 0;
     let renderer: THREE.WebGLRenderer | undefined;
     let intro: ReturnType<typeof createIntroScene> | undefined;
@@ -67,6 +123,7 @@ export function LogoIntro() {
       loadTexture(TEXTURE_PATHS.three),
     ])
       .then(([icon, word, line, three]) => {
+        window.clearTimeout(textureTimer);
         textures = [icon, word, line, three];
         if (cancelled) {
           textures.forEach((texture) => texture.dispose());
@@ -105,17 +162,7 @@ export function LogoIntro() {
         resizeObserver.observe(host);
         resize();
 
-        timeline = createIntroTimeline(intro, root, () => {
-          if (PLAY_ONCE_PER_SESSION) {
-            try {
-              window.sessionStorage.setItem(SESSION_KEY, "1");
-            } catch {
-              // Storage can be unavailable in private browsing.
-            }
-          }
-          markIntroDone();
-          setShow(false);
-        });
+        timeline = createIntroTimeline(intro, root, finish);
 
         const animate = () => {
           if (cancelled || !renderer || !intro) return;
@@ -130,16 +177,22 @@ export function LogoIntro() {
         setShow(true);
         frame = window.requestAnimationFrame(animate);
         timeline.play(0);
+        // Count the intro as played as soon as it starts, so a reload mid-way
+        // does not loop it for the same visitor.
+        markPlayed();
       })
       .catch((error: unknown) => {
         if (cancelled) return;
         console.error("Voxel3D logo intro failed to load:", error);
-        markIntroDone();
-        setShow(false);
+        // Tear down any half-built WebGL state, then show the static logo.
+        renderer?.domElement.remove();
+        playFallback();
       });
 
     return () => {
       cancelled = true;
+      window.clearTimeout(textureTimer);
+      window.clearTimeout(fallbackTimer);
       window.cancelAnimationFrame(frame);
       resizeObserver?.disconnect();
       timeline?.kill();
@@ -164,6 +217,14 @@ export function LogoIntro() {
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(132,108,190,0.22),rgba(17,19,27,0.96)_68%)]" />
       <div ref={canvasHostRef} className="absolute inset-0" />
+      {fallback && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src="/logo/full_logo.png"
+          alt=""
+          className="absolute left-1/2 top-1/2 w-[min(70vw,420px)] -translate-x-1/2 -translate-y-1/2"
+        />
+      )}
     </div>
   );
 }
