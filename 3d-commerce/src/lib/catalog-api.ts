@@ -275,9 +275,18 @@ function primaryModel(product: CatalogProduct): string {
     (item) => item?.type === "MODEL_PREVIEW" && typeof item.url === "string" && item.url.trim(),
   );
 
+  // Normalize legacy relative model paths (for example /products/model.glb)
+  // through the same asset proxy used by images before applying the production
+  // API host. assetUrl alone only rewrites /api/assets/* paths, so older stored
+  // model paths otherwise resolve against the storefront and return 404.
+  const resolveModel = (value?: string | null) => {
+    const normalized = resolveMediaUrl(value);
+    return normalized ? assetUrl(normalized) : "";
+  };
+
   return (
-    assetUrl(models.find((media) => media.isPrimary)?.url ?? "") ||
-    assetUrl(models[0]?.url ?? "") ||
+    resolveModel(models.find((media) => media.isPrimary)?.url) ||
+    resolveModel(models[0]?.url) ||
     ""
   );
 }
