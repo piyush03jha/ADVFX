@@ -157,7 +157,7 @@ export function ShopProductCard({ product, priority = false }: ShopProductCardPr
           </Link>
 
           <div className="flex shrink-0 flex-row items-baseline gap-2 sm:flex-col sm:items-end sm:gap-0">
-            <Price value={product.price} size="sm" />
+            {product.price > 0 ? <Price value={product.price} size="sm" /> : <span className="text-[10px] font-medium text-muted">Price on request</span>}
             {product.oldPrice !== undefined && (
               <span className="text-[10px] text-muted line-through">
                 ₹{product.oldPrice.toLocaleString("en-IN")}
@@ -166,12 +166,14 @@ export function ShopProductCard({ product, priority = false }: ShopProductCardPr
           </div>
         </div>
 
-        <Rating
-          value={product.rating}
-          reviewCount={product.reviewCount}
-          size={12}
-          className="mt-2.5"
-        />
+        {product.reviewCount > 0 && product.rating > 0 ? (
+          <Rating
+            value={product.rating}
+            reviewCount={product.reviewCount}
+            size={12}
+            className="mt-2.5"
+          />
+        ) : null}
 
         {cartError ? (
           <p role="alert" className="mt-3 text-xs text-red-400">
@@ -185,10 +187,11 @@ export function ShopProductCard({ product, priority = false }: ShopProductCardPr
             variant="primary"
             size="lg"
             onClick={handleAddToCart}
-            ariaLabel={added ? "Added to cart" : `Add ${product.name} to cart`}
+            disabled={product.price <= 0}
+            ariaLabel={product.price <= 0 ? `Price on request for ${product.name}` : added ? "Added to cart" : `Add ${product.name} to cart`}
             className="min-h-10 w-full gap-1.5 px-2 text-xs font-semibold sm:min-h-11 sm:px-3 sm:text-sm"
           >
-            {added ? <IconCheck size={16} stroke={2} aria-hidden="true" /> : <IconShoppingBag size={16} stroke={1.8} aria-hidden="true" />}<span>{added ? "Added" : "Add"}</span>
+            {added ? <IconCheck size={16} stroke={2} aria-hidden="true" /> : <IconShoppingBag size={16} stroke={1.8} aria-hidden="true" />}<span>{added ? "Added" : product.price > 0 ? "Add" : "Price on request"}</span>
           </Button>
 
           <Button
@@ -196,8 +199,8 @@ export function ShopProductCard({ product, priority = false }: ShopProductCardPr
             variant="outline"
             size="lg"
             onClick={handleBuyNow}
-            disabled={buying}
-            ariaLabel={`Buy ${product.name} now`}
+            disabled={buying || product.price <= 0}
+            ariaLabel={product.price <= 0 ? `Price on request for ${product.name}` : `Buy ${product.name} now`}
             className="min-h-10 w-full gap-1.5 px-2 text-xs font-semibold sm:min-h-11 sm:px-3 sm:text-sm"
           >
             <IconBolt size={16} stroke={1.8} aria-hidden="true" />
