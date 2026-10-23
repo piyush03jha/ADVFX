@@ -27,6 +27,7 @@ export function BestSellers({ initialProducts = [] }: { initialProducts?: Catalo
           <div>
             <p className="mb-1.5 text-[9px] font-medium uppercase tracking-[0.24em] text-primary sm:mb-2 sm:text-[10px]">Popular right now</p>
             <h2 className="text-2xl font-semibold tracking-[-0.045em] text-foreground sm:text-4xl lg:text-5xl">Best Sellers</h2>
+            <p className="mt-2 max-w-xl text-xs leading-5 text-muted sm:mt-3 sm:text-sm sm:leading-6">Discover physical 3D printed anime figures, miniatures and collectibles, made for display and delivered across India.</p>
           </div>
           <Button href="/shop" variant="ghost" size="sm" className="group hidden sm:inline-flex">
             Explore All Models
