@@ -5,11 +5,24 @@ import { getBackendApiUrl } from "@/lib/backend-api";
 
 export async function GET() {
   try {
-    const response = await fetch(getBackendApiUrl("products"), { cache: "no-store" });
+    // Public storefront catalog responses can be cached briefly to support
+    // homepage/product rendering without making the backend a per-request bottleneck.
+    const response = await fetch(getBackendApiUrl("products"), {
+      next: { revalidate: 60, tags: ["catalog-products"] },
+      headers: { Accept: "application/json" },
+    });
     const data = await response.json().catch(() => null);
-    return NextResponse.json(data ?? { error: "Unable to load products." }, { status: response.status });
+    return NextResponse.json(data ?? { error: "Unable to load products." }, {
+      status: response.status,
+      headers: response.ok
+        ? { "Cache-Control": "public, max-age=30, s-maxage=60, stale-while-revalidate=300" }
+        : undefined,
+    });
   } catch {
-    return NextResponse.json({ error: "Catalog service is unavailable. Please try again." }, { status: 503 });
+    return NextResponse.json(
+      { error: "Catalog service is unavailable. Please try again." },
+      { status: 503 },
+    );
   }
 }
 
