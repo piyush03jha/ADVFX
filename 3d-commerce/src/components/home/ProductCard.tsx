@@ -15,12 +15,28 @@ import { WishlistButton } from "@/components/ui/WishlistButton";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import type { StorefrontProduct } from "@/lib/catalog-api";
+import { resolveMediaUrl } from "@/lib/media-url";
 
 export function ProductCard({ product }: { product: StorefrontProduct }) {
   const router = useRouter();
   const { addItem } = useCart();
   const { isAuthenticated, isLoading } = useAuth();
   const [added, setAdded] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
+  const imageSrc = imageFailed
+    ? "/placeholder-product.webp"
+    : resolveMediaUrl(product.image) ?? "/placeholder-product.webp";
+
+  // Product media served through /api/assets is already a production asset
+  // endpoint. Bypass Next's image optimizer for proxied/API URLs; this mirrors
+  // the working shop-card behavior and avoids optimizer failures on Cloudflare.
+  const optimizable =
+    imageSrc.startsWith("/") &&
+    !imageSrc.includes("?") &&
+    (imageSrc.startsWith("/storage/") ||
+      imageSrc.startsWith("/categories/") ||
+      imageSrc.startsWith("/catogeries/") ||
+      imageSrc === "/placeholder-product.webp");
 
   const goToLogin = () => {
     router.push("/login?returnTo=" + encodeURIComponent("/product/" + product.slug));
@@ -47,12 +63,16 @@ export function ProductCard({ product }: { product: StorefrontProduct }) {
         <Link href={`/product/${product.slug}`} aria-label={`View ${product.name}`} className="block">
           <div className="relative aspect-[1/0.82] overflow-hidden bg-surface-elevated/40 sm:aspect-[4/4.1]">
             <Image
-              src={product.image || "/placeholder-product.webp"}
+              src={imageSrc}
               alt={product.name}
               fill
               sizes="(max-width: 639px) 190px, (max-width: 1023px) 260px, 25vw"
               quality={80}
               loading="lazy"
+              unoptimized={!optimizable}
+              onError={() => {
+                if (!imageFailed) setImageFailed(true);
+              }}
               className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.045]"
             />
             <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
