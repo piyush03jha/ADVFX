@@ -23,6 +23,7 @@ export function Hero() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const [canLoadHeroModel, setCanLoadHeroModel] = useState(false);
   const [activeModelReady, setActiveModelReady] = useState(false);
   const [initialRotationStart] = useState(() => Date.now());
   const isModelHeldRef = useRef(false);
@@ -32,6 +33,30 @@ export function Hero() {
   const readyModelsRef = useRef(new Set<string>());
   const preloadPromisesRef = useRef(new Map<string, Promise<void>>());
   const preloadAbortRef = useRef(new Map<string, AbortController>());
+
+  // Defer the heavy R3F/Three.js viewer and its GLB download until the browser
+  // has had a chance to paint the page. This keeps the hero's text and controls
+  // responsive on low-end phones while preserving the same 3D experience.
+  useEffect(() => {
+    let timeoutId: number | undefined;
+    let idleId: number | undefined;
+    const enableModel = () => {
+      if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+      setCanLoadHeroModel(true);
+    };
+
+    timeoutId = window.setTimeout(enableModel, 2200);
+    if ("requestIdleCallback" in window) {
+      idleId = window.requestIdleCallback(enableModel, { timeout: 2200 });
+    }
+
+    return () => {
+      if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+      if (idleId !== undefined && "cancelIdleCallback" in window) {
+        window.cancelIdleCallback(idleId);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -111,7 +136,7 @@ export function Hero() {
   // This prevents two large GLBs from competing for the same connection and
   // prevents a rotation from ever advancing to a partially downloaded model.
   useEffect(() => {
-    if (!heroProducts.length) return;
+    if (!canLoadHeroModel || !heroProducts.length) return;
 
     let cancelled = false;
     const currentIndex = activeIndex;
@@ -149,7 +174,7 @@ export function Hero() {
     return () => {
       cancelled = true;
     };
-  }, [activeIndex, heroProducts, preloadModel]);
+  }, [activeIndex, canLoadHeroModel, heroProducts, preloadModel]);
 
   useEffect(() => {
     const controllers = preloadAbortRef.current;
@@ -333,11 +358,13 @@ export function Hero() {
 
       <Container className="relative min-h-[580px] py-0 sm:min-h-[720px] lg:min-h-[calc(100svh-5rem)] lg:py-8 xl:py-10">
         <div         className="absolute left-1/2 top-[3.25rem] z-10 h-[340px] w-[calc(100vw-0.5rem)] max-w-[500px] -translate-x-1/2 sm:top-[3.5rem] sm:h-[430px] sm:w-[min(96vw,600px)] lg:right-[-8%] lg:left-auto lg:top-1/2 lg:h-[min(82vw,780px)] lg:w-[min(72vw,820px)] lg:-translate-x-0 lg:-translate-y-1/2 xl:right-[-5%] xl:h-[min(88vh,820px)] xl:w-[min(64vw,900px)]">
-          <HeroProductStage
-            products={heroProducts}
-            activeIndex={activeIndex}
-            onHoldChange={handleModelHoldChange}
-          />
+          {canLoadHeroModel && (
+            <HeroProductStage
+              products={heroProducts}
+              activeIndex={activeIndex}
+              onHoldChange={handleModelHoldChange}
+            />
+          )}
         </div>
 
         <div         className="relative z-30 flex min-h-[520px] items-start pt-[380px] sm:min-h-[720px] sm:pt-[485px] lg:min-h-[calc(100svh-5rem)] lg:w-[52%] lg:items-center lg:pt-0">
