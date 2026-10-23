@@ -5,7 +5,7 @@ import { getBackendApiUrl } from "@/lib/backend-api";
 export async function GET() {
   try {
     const response = await fetch(getBackendApiUrl("products/hero"), {
-      next: { revalidate: 60 },
+      next: { revalidate: 60, tags: ["catalog-products"] },
     });
     const data = await response.json().catch(() => null);
 
