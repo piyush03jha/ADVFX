@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useReducedMotion } from "motion/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { IconArrowUpRight } from "@tabler/icons-react";
 
 import { Button } from "@/components/ui/Button";
@@ -12,9 +12,24 @@ import Link from "next/link";
 
 export function BestSellers({ initialProducts = [] }: { initialProducts?: CatalogProduct[] }) {
   const shouldReduceMotion = useReducedMotion();
-  const [products] = useState<StorefrontProduct[]>(() =>
+  const [products, setProducts] = useState<StorefrontProduct[]>(() =>
     mapCatalogProducts(initialProducts.filter((product) => product.status === "ACTIVE" && product.isBestseller)).slice(0, 4),
   );
+
+  useEffect(() => {
+    if (initialProducts.length > 0) return;
+    let cancelled = false;
+    fetch("/api/products")
+      .then(async (response) => {
+        if (!response.ok) throw new Error("catalog");
+        return (await response.json()) as CatalogProduct[];
+      })
+      .then((data) => {
+        if (!cancelled) setProducts(mapCatalogProducts(data.filter((product) => product.status === "ACTIVE" && product.isBestseller)).slice(0, 4));
+      })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [initialProducts.length]);
 
   const initial = shouldReduceMotion ? false : { opacity: 0, y: 20 };
   const visible = shouldReduceMotion ? undefined : { opacity: 1, y: 0 };
