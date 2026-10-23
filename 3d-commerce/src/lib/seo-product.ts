@@ -23,7 +23,10 @@ export function productImageUrls(product: CatalogProduct): string[] {
     .filter((media) => media.type === "IMAGE")
     .sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary) || a.sortOrder - b.sortOrder)
     .map((media) => resolveMediaUrl(media.url))
-    .filter((url): url is string => Boolean(url) && !url.startsWith("data:") && !url.startsWith("blob:"))
+    .filter((url): url is string => {
+      if (typeof url !== "string" || url.length === 0) return false;
+      return !url.startsWith("data:") && !url.startsWith("blob:");
+    })
     .map((url) => absoluteUrl(url));
 }
 
