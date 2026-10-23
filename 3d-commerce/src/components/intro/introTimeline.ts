@@ -1,19 +1,19 @@
 import gsap from "gsap";
 import type { IntroScene } from "./introScene";
 
-/** Choreography in seconds; aligned to the approved chase / pour / reveal design. */
+/** Shortened choreography: preserve the logo reveal while keeping the intro near 3 seconds. */
 export const TIMING = {
-  iconIn: { at: 0, dur: 1.15 },
-  trackLag: { at: 0.05, dur: 1.15 },
-  camera: { at: 0, dur: 2.65 },
-  lens: { at: 0.2, dur: 2.4 },
-  streak: { at: 0.35, dur: 1.1 },
-  seamPulse: { at: 1.1, dur: 0.6 },
-  pour: { at: 1.15, dur: 1.35 },
-  word: { at: 2.2, dur: 0.7 },
-  three: { at: 2.5, dur: 0.45 },
-  hold: 0.55,
-  fadeOut: 0.35,
+  iconIn: { at: 0, dur: 0.9 },
+  trackLag: { at: 0.05, dur: 0.9 },
+  camera: { at: 0, dur: 2.0 },
+  lens: { at: 0.15, dur: 1.7 },
+  streak: { at: 0.25, dur: 0.8 },
+  seamPulse: { at: 0.8, dur: 0.45 },
+  pour: { at: 0.9, dur: 1.0 },
+  word: { at: 1.65, dur: 0.55 },
+  three: { at: 1.95, dur: 0.35 },
+  hold: 0.25,
+  fadeOut: 0.25,
 } as const;
 
 export const INTRO_DURATION =
@@ -49,21 +49,21 @@ export function createIntroTimeline(
     duration: T.camera.dur, ease: "power3.inOut",
   }, T.camera.at);
   tl.to(s, { fov: 30, duration: T.lens.dur, ease: "power2.inOut" }, T.lens.at);
-  tl.to(s, { roll: 0, duration: 2, ease: "power2.out" }, 0);
+  tl.to(s, { roll: 0, duration: 1.5, ease: "power2.out" }, 0);
 
   // The icon lands first; only then does the liquid pour from its seam.
-  tl.to(s, { seamGlow: 1, iconFlash: 0.45, duration: 0.2, ease: "power2.out" }, T.seamPulse.at);
+  tl.to(s, { seamGlow: 1, iconFlash: 0.45, duration: 0.16, ease: "power2.out" }, T.seamPulse.at);
   tl.to(s, {
     seamGlow: 0, iconFlash: 0,
-    duration: T.seamPulse.dur - 0.2, ease: "power2.in",
-  }, T.seamPulse.at + 0.2);
+    duration: T.seamPulse.dur - 0.16, ease: "power2.in",
+  }, T.seamPulse.at + 0.16);
   tl.to(s, { head: intro.pathLength, duration: T.pour.dur, ease: "power2.inOut" }, T.pour.at);
 
   const arrive = T.pour.at + T.pour.dur;
-  tl.to(s, { endGlow: 1, duration: 0.18, ease: "power2.out" }, arrive - 0.05);
-  tl.to(s, { endGlow: 0, duration: 0.35, ease: "power2.in" }, arrive + 0.13);
-  tl.to(s, { settle: 1, duration: 0.45, ease: "power2.out" }, arrive);
-  tl.to(s, { fade: 1, duration: 0.5, ease: "power1.in" }, arrive + 0.1);
+  tl.to(s, { endGlow: 1, duration: 0.15, ease: "power2.out" }, arrive - 0.04);
+  tl.to(s, { endGlow: 0, duration: 0.25, ease: "power2.in" }, arrive + 0.1);
+  tl.to(s, { settle: 1, duration: 0.35, ease: "power2.out" }, arrive);
+  tl.to(s, { fade: 1, duration: 0.35, ease: "power1.in" }, arrive + 0.08);
 
   // Wordmark and 3D wipe on after the printed line is established.
   tl.to(s, { wordR: 1, wordZ: 0, duration: T.word.dur, ease: "power2.out" }, T.word.at);

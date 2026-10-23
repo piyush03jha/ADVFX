@@ -6,24 +6,37 @@ import { Footer } from "@/components/layout/Footer";
 import { WhatsAppBot } from "@/components/layout/WhatsAppBot";
 import dynamic from "next/dynamic";
 
-// The intro pulls in three.js, so keep it out of the shared bundle: it is only
-// downloaded on the homepage, where it actually plays.
+// Keep Three.js in a separate chunk. SiteChrome only mounts the intro on the
+// homepage for first-time visitors, so returning visitors do not load this chunk.
 const LogoIntro = dynamic(() =>
   import("@/components/intro/LogoIntro").then((m) => m.LogoIntro),
 );
+
+const PLAYED_KEY = "voxel-intro-played";
+
+function hasPlayedIntro() {
+  for (const getStore of [() => window.localStorage, () => window.sessionStorage]) {
+    try {
+      if (getStore().getItem(PLAYED_KEY) === "1") return true;
+    } catch {
+      // Storage can be blocked; LogoIntro handles the same case safely.
+    }
+  }
+  return false;
+}
 
 export function SiteChrome() {
   const pathname = usePathname();
   const [showIntro, setShowIntro] = useState(false);
 
-  // Keep the WebGL intro available for visual reviews, but never put a full-screen
-  // animation in front of the first page render. The overlay delayed LCP for
-  // first-time visitors and loaded Three.js on every homepage visit.
   useEffect(() => {
-    setShowIntro(
-      pathname === "/" &&
-      new URLSearchParams(window.location.search).get("intro") === "1",
-    );
+    if (pathname !== "/") {
+      setShowIntro(false);
+      return;
+    }
+
+    const forceReplay = new URLSearchParams(window.location.search).get("intro") === "1";
+    setShowIntro(forceReplay || !hasPlayedIntro());
   }, [pathname]);
 
   if (pathname === "/admin" || pathname.startsWith("/admin/")) return null;
