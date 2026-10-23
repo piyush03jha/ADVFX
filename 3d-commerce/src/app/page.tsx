@@ -8,10 +8,12 @@ import { CustomBuild } from "@/components/home/CustomBuild";
 import { BulkOrder } from "@/components/home/BulkOrder";
 import { Reviews } from "@/components/home/Reviews";
 import { FAQ } from "@/components/home/FAQ";
+import { HomeAbout } from "@/components/home/HomeAbout";
 
 export const metadata: Metadata = {
-  title: "Premium 3D Printed Models & Collectibles",
-  description: "Shop premium 3D printed models, collectibles and custom builds from Voxel3D. Made to order and shipped across India.",
+  // Brand first so searches for "Voxel3D" match the homepage title directly.
+  title: { absolute: "Voxel3D — Premium 3D Printed Models & Collectibles in India" },
+  description: "Voxel3D is an Indian studio for premium 3D printed models, collectibles and custom builds. Browse the collection or order a made-to-order piece shipped across India.",
   alternates: { canonical: "/" },
 };
 
@@ -27,6 +29,7 @@ export default function Home() {
         <CustomBuild />
         <BulkOrder />
         <Reviews />
+        <HomeAbout />
         <FAQ />
       </main>
     </div>

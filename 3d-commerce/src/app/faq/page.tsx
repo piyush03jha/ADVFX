@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { IconChevronDown } from "@tabler/icons-react";
 
+import { JsonLd } from "@/components/seo/JsonLd";
 import { getBackendApiUrl } from "@/lib/backend-api";
 
 export const metadata: Metadata = {
   title: "FAQ — Voxel3D",
+  alternates: { canonical: "/faq" },
   description: "Frequently asked questions about Voxel3D products, orders, 3D models, custom creations, shipping, and care.",
 };
 
@@ -86,6 +88,17 @@ export default async function FAQPage() {
   const faqs = await loadFaqs();
   return (
     <main className="min-h-[70vh] bg-background">
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: faqs.map((faq) => ({
+            "@type": "Question",
+            name: faq.question,
+            acceptedAnswer: { "@type": "Answer", text: faq.answer },
+          })),
+        }}
+      />
       <section className="mx-auto max-w-[980px] px-5 pb-16 pt-12 sm:px-6 sm:pb-24 sm:pt-20 lg:px-8">
         <div className="max-w-2xl">
           <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-primary">

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 
@@ -9,7 +10,10 @@ import { JsonLd } from "@/components/seo/JsonLd";
 import { buildBreadcrumbJsonLd, buildProductJsonLd, productImageUrls } from "@/lib/seo-product";
 import { absoluteUrl, NO_INDEX } from "@/lib/site";
 
-export const dynamic = "force-dynamic";
+// Product pages are rendered on demand and revalidated in the background instead of
+// being forced dynamic, so repeat visits and prefetched navigations can reuse the
+// cached render. The admin catalog actions call revalidatePath for instant updates.
+export const revalidate = 60;
 export const dynamicParams = true;
 
 interface ProductPageProps {
@@ -19,7 +23,7 @@ interface ProductPageProps {
 async function fetchProductReviewSummary(productId: string) {
   try {
     const response = await fetch(getBackendApiUrl(`products/${encodeURIComponent(productId)}/reviews`), {
-      cache: "no-store",
+      next: { revalidate: 60 },
     });
     if (!response.ok) return { rating: 0, reviewCount: 0 };
     const data = (await response.json()) as { summary?: { rating?: number; reviewCount?: number } };
@@ -32,18 +36,30 @@ async function fetchProductReviewSummary(productId: string) {
   }
 }
 
-async function fetchCatalogProducts(): Promise<CatalogProduct[]> {
+/**
+ * Related products come from the paginated shop endpoint (one image per product,
+ * a single page) instead of downloading the entire catalog with every media file
+ * and variant just to keep four items.
+ */
+async function fetchRelatedProducts(product: CatalogProduct): Promise<CatalogProduct[]> {
+  const params = new URLSearchParams({ limit: "5", sort: "popular" });
+  if (product.category?.slug) params.set("category", product.category.slug);
+
   try {
-    const response = await fetch(getBackendApiUrl("products"), { next: { revalidate: 60 } });
+    const response = await fetch(getBackendApiUrl("products/shop?" + params.toString()), {
+      next: { revalidate: 60 },
+    });
     if (!response.ok) return [];
-    const data = (await response.json()) as CatalogProduct[];
-    return Array.isArray(data) ? data : [];
+    const data = (await response.json()) as { items?: CatalogProduct[] };
+    return (Array.isArray(data.items) ? data.items : [])
+      .filter((item) => item.id !== product.id && item.status === "ACTIVE")
+      .slice(0, 4);
   } catch {
     return [];
   }
 }
 
-async function fetchProduct(idOrSlug: string): Promise<CatalogProduct | null> {
+const fetchProduct = cache(async (idOrSlug: string): Promise<CatalogProduct | null> => {
   const encoded = encodeURIComponent(idOrSlug);
   try {
     const response = await fetch(getBackendApiUrl("products/slug/" + encoded), { next: { revalidate: 60 } });
@@ -57,7 +73,7 @@ async function fetchProduct(idOrSlug: string): Promise<CatalogProduct | null> {
   } catch {
     return null;
   }
-}
+});
 
 export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
   const { id } = await params;
@@ -101,19 +117,17 @@ export default async function ProductPage({ params }: ProductPageProps) {
     permanentRedirect(`/product/${encodeURIComponent(catalogProduct.slug)}`);
   }
 
-  const products = await fetchCatalogProducts();
-  const reviewSummary = await fetchProductReviewSummary(catalogProduct.id);
+  // Reviews and related products are independent, so fetch them in parallel.
+  const [reviewSummary, relatedCatalogProducts] = await Promise.all([
+    fetchProductReviewSummary(catalogProduct.id),
+    fetchRelatedProducts(catalogProduct),
+  ]);
   const product = {
     ...mapCatalogProduct(catalogProduct),
     rating: reviewSummary.rating,
     reviewCount: reviewSummary.reviewCount,
   };
-  const relatedProducts = mapCatalogProducts(
-    products
-      .filter((item) => item.id !== catalogProduct.id && item.status === "ACTIVE")
-      .filter((item) => item.category?.id === catalogProduct.category?.id)
-      .slice(0, 4),
-  );
+  const relatedProducts = mapCatalogProducts(relatedCatalogProducts);
 
   const productPath = `/product/${catalogProduct.slug}`;
   const breadcrumbs = [

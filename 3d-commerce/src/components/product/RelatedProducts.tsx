@@ -154,6 +154,10 @@ export function RelatedProducts({
                   src={product.image}
                   alt={product.name}
                   loading="lazy"
+                  decoding="async"
+                  fetchPriority="low"
+                  width={340}
+                  height={400}
                   className="
                     h-full
                     w-full

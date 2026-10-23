@@ -7,7 +7,16 @@ import { WishlistProvider } from "@/context/WishlistContext";
 import { AddressProvider } from "@/context/AddressContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { SiteChrome } from "@/components/layout/SiteChrome";
-import { SITE_NAME, SITE_TAGLINE, SITE_URL } from "@/lib/site";
+import { JsonLd } from "@/components/seo/JsonLd";
+import {
+  SITE_DESCRIPTION,
+  SITE_LOGO_PATH,
+  SITE_NAME,
+  SITE_SAME_AS,
+  SITE_TAGLINE,
+  SITE_URL,
+  absoluteUrl,
+} from "@/lib/site";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
@@ -29,10 +38,23 @@ export const metadata: Metadata = {
     template: `%s | ${SITE_NAME}`,
   },
 
-  description:
-    "Shop premium 3D printed models, collectibles and custom builds from Voxel3D. Made to order and shipped across India.",
+  description: SITE_DESCRIPTION,
 
   applicationName: SITE_NAME,
+  category: "shopping",
+  keywords: [
+    "Voxel3D",
+    "voxel3d.org",
+    "3D printed models",
+    "3D printed collectibles",
+    "custom 3D printing India",
+    "3D printed figurines",
+  ],
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 },
+  },
 
   openGraph: {
     type: "website",
@@ -42,6 +64,7 @@ export const metadata: Metadata = {
       "Premium physical 3D models, custom 3D creations, and collectibles built with obsessive attention to detail.",
     url: SITE_URL,
     locale: "en_IN",
+    images: [{ url: SITE_LOGO_PATH, alt: `${SITE_NAME} logo` }],
   },
 
   twitter: {
@@ -49,7 +72,39 @@ export const metadata: Metadata = {
     title: `${SITE_NAME} — ${SITE_TAGLINE}`,
     description:
       "Premium physical 3D models, custom 3D creations, and collectibles built with obsessive attention to detail.",
+    images: [SITE_LOGO_PATH],
   },
+};
+
+const organizationJsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": absoluteUrl("/#organization"),
+      name: SITE_NAME,
+      alternateName: ["Voxel 3D", "voxel3d.org"],
+      url: SITE_URL,
+      logo: absoluteUrl(SITE_LOGO_PATH),
+      description: SITE_DESCRIPTION,
+      areaServed: "IN",
+      ...(SITE_SAME_AS.length ? { sameAs: SITE_SAME_AS } : {}),
+    },
+    {
+      "@type": "WebSite",
+      "@id": absoluteUrl("/#website"),
+      url: SITE_URL,
+      name: SITE_NAME,
+      alternateName: "Voxel3D",
+      inLanguage: "en-IN",
+      publisher: { "@id": absoluteUrl("/#organization") },
+      potentialAction: {
+        "@type": "SearchAction",
+        target: { "@type": "EntryPoint", urlTemplate: `${SITE_URL}/shop?search={search_term_string}` },
+        "query-input": "required name=search_term_string",
+      },
+    },
+  ],
 };
 
 export const viewport: Viewport = {
@@ -78,6 +133,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       </head>
 
       <body className="flex min-h-full flex-col">
+        <JsonLd data={organizationJsonLd} />
         <AuthProvider>
           <ThemeProvider>
             <AddressProvider>

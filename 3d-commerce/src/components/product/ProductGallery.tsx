@@ -48,6 +48,19 @@ export function ProductGallery({ product }: ProductGalleryProps) {
     setActiveIndex(0);
   }, [product.id]);
 
+  // Warm the 3D viewer code in the background so switching to the 3D tab is instant.
+  const hasModel = Boolean(product.model.trim());
+  useEffect(() => {
+    if (!hasModel) return;
+    const preload = () => void import("./Product3DStage");
+    if (typeof window.requestIdleCallback === "function") {
+      const handle = window.requestIdleCallback(preload, { timeout: 4000 });
+      return () => window.cancelIdleCallback?.(handle);
+    }
+    const timer = window.setTimeout(preload, 1500);
+    return () => window.clearTimeout(timer);
+  }, [hasModel]);
+
   const imageItems: MediaItem[] = (product.images?.length ? product.images : [product.image])
     .map((src, index) => ({
       type: "image" as const,
