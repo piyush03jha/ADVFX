@@ -1,11 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { SOCIAL_LINKS } from "@/lib/site";
 import {
   IconArrowUpRight,
   IconMail,
   IconMapPin,
+  IconBrandInstagram,
   IconBrandWhatsapp,
+  IconBrandYoutube,
 } from "@tabler/icons-react";
 
 const collections = [
@@ -112,6 +115,26 @@ export function Footer() {
                 <p className="mt-4 text-[9px] uppercase tracking-[0.1em] text-muted-foreground">
                   Mon–Sat · 10am–7pm IST
                 </p>
+                <div className="mt-4 flex items-center gap-2">
+                  <a
+                    href={SOCIAL_LINKS.instagram}
+                    target="_blank"
+                    rel="noopener noreferrer me"
+                    aria-label="Voxel3D on Instagram"
+                    className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted transition-colors duration-300 hover:border-primary hover:text-primary"
+                  >
+                    <IconBrandInstagram size={17} stroke={1.7} />
+                  </a>
+                  <a
+                    href={SOCIAL_LINKS.youtube}
+                    target="_blank"
+                    rel="noopener noreferrer me"
+                    aria-label="Voxel3D on YouTube"
+                    className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted transition-colors duration-300 hover:border-primary hover:text-primary"
+                  >
+                    <IconBrandYoutube size={17} stroke={1.7} />
+                  </a>
+                </div>
               </div>
             </div>
           </div>
