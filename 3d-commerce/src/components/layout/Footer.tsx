@@ -16,6 +16,7 @@ const collections = [
 ];
 
 const helpLinks = [
+  { label: "About Voxel3D", href: "/about" },
   { label: "FAQ", href: "/faq" },
   { label: "Shipping & Returns", href: "/shipping" },
   { label: "Care Guide", href: "/care" },

@@ -2,19 +2,16 @@ import Link from "next/link";
 
 import { Container } from "@/components/ui/Container";
 
-/**
- * Server-rendered, crawlable copy for the homepage. The hero and product rows load
- * client-side, so this gives search engines real text about what Voxel3D is and sells.
- */
-export function HomeAbout() {
+/** Server-rendered About copy for the /about page. */
+export function AboutContent() {
   return (
-    <section aria-labelledby="about-voxel3d" className="border-t border-border py-14 sm:py-20">
+    <section aria-labelledby="about-voxel3d" className="pb-16 pt-28 sm:pb-24 sm:pt-32">
       <Container>
         <div className="mx-auto max-w-3xl">
           <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-primary">About Voxel3D</p>
-          <h2 id="about-voxel3d" className="mt-3 text-2xl font-semibold tracking-[-0.035em] text-foreground sm:text-4xl">
+          <h1 id="about-voxel3d" className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-foreground sm:text-5xl">
             Premium 3D printed models and collectibles, made to order in India
-          </h2>
+          </h1>
 
           <div className="mt-6 space-y-4 text-sm leading-7 text-muted sm:text-base">
             <p>

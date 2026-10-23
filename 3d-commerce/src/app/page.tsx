@@ -5,7 +5,6 @@ import { BestSellers } from "@/components/home/BestSellers";
 import { ShopByCategory } from "@/components/home/shop-catogery";
 import { NewArrivals } from "@/components/home/NewArrivals";
 import dynamic from "next/dynamic";
-import { HomeAbout } from "@/components/home/HomeAbout";
 
 // Below-the-fold sections are still server-rendered for crawlers, but their
 // client JavaScript is split out of the initial bundle to cut blocking time.
@@ -33,7 +32,6 @@ export default function Home() {
         <CustomBuild />
         <BulkOrder />
         <Reviews />
-        <HomeAbout />
         <FAQ />
       </main>
     </div>
