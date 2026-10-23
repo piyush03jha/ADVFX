@@ -10,7 +10,6 @@ import { ProductCard } from "@/components/home/ProductCard";
 import { mapCatalogProducts, type CatalogProduct, type StorefrontProduct } from "@/lib/catalog-api";
 import Link from "next/link";
 
-export function BestSellers() {
 export function BestSellers({ initialProducts = [] }: { initialProducts?: CatalogProduct[] }) {
   const shouldReduceMotion = useReducedMotion();
   const [products] = useState<StorefrontProduct[]>(() =>
