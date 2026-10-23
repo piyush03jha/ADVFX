@@ -11,7 +11,6 @@ import { useState } from "react";
 import { mapCatalogProducts, type CatalogProduct, type StorefrontProduct } from "@/lib/catalog-api";
 import { ProductCard } from "./ProductCard";
 
-export function NewArrivals() {
 export function NewArrivals({ initialProducts = [] }: { initialProducts?: CatalogProduct[] }) {
   const shouldReduceMotion = useReducedMotion();
   const [products] = useState<StorefrontProduct[]>(() =>
