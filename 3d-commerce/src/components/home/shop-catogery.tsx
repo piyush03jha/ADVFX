@@ -81,7 +81,7 @@ export function ShopByCategory() {
         </Button>
       </div>
 
-      {categories.length > 0 && (
+      {categories.length > 0 ? (
         <div className="snap-rail -mx-3 flex flex-nowrap gap-3 px-3 pb-3 sm:-mx-5 sm:px-5 lg:-mx-6 lg:gap-4 lg:px-6">
           {categories.map((category, index) => (
             <motion.div
@@ -98,6 +98,15 @@ export function ShopByCategory() {
               <CategoryCard category={category} index={index} />
             </motion.div>
           ))}
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-border bg-surface/40 px-5 py-8 text-center">
+          <p className="mx-auto max-w-2xl text-sm leading-6 text-muted">
+            Explore physical 3D printed models, character figures and collectibles in the Voxel3D shop. Our catalog is updated as products become available.
+          </p>
+          <Link href="/shop" className="mt-4 inline-flex text-sm font-medium text-primary underline-offset-4 hover:underline">
+            Browse all models
+          </Link>
         </div>
       )}
     </Section>

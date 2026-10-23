@@ -5,13 +5,13 @@ import { absoluteUrl, SITE_NAME } from "@/lib/site";
 function getActiveProductPrice(product: CatalogProduct) {
   const now = Date.now();
   const prices = product.prices ?? [];
-  const current = (price: (typeof prices)[number]) =>
+  const isCurrent = (price: (typeof prices)[number]) =>
     price.isActive &&
     (!price.startsAt || new Date(price.startsAt).getTime() <= now) &&
     (!price.endsAt || new Date(price.endsAt).getTime() > now);
 
   return (
-    prices.find((price) => price.currency === "INR" && current(price)) ??
+    prices.find((price) => price.currency === "INR" && isCurrent(price)) ??
     prices.find((price) => price.currency === "INR" && price.isActive) ??
     prices.find((price) => price.isActive) ??
     prices[0]
@@ -20,21 +20,28 @@ function getActiveProductPrice(product: CatalogProduct) {
 
 export function productImageUrls(product: CatalogProduct): string[] {
   return (product.media ?? [])
-    .filter((m) => m.type === "IMAGE")
+    .filter((media) => media.type === "IMAGE")
     .sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary) || a.sortOrder - b.sortOrder)
-    .map((m) => resolveMediaUrl(m.url))
-    .filter((u): u is string => !!u && !u.startsWith("data:") && !u.startsWith("blob:"))
-    .map((u) => absoluteUrl(u));
+    .map((media) => resolveMediaUrl(media.url))
+    .filter((url): url is string => {
+      if (typeof url !== "string" || url.length === 0) return false;
+      return !url.startsWith("data:") && !url.startsWith("blob:");
+    })
+    .map((url) => absoluteUrl(url));
 }
 
 function isAvailable(product: CatalogProduct): boolean {
-  const variants = (product.variants ?? []).filter((v) => v.isActive);
+  const variants = (product.variants ?? []).filter((variant) => variant.isActive);
   if (variants.length) {
-    return variants.some((v) => !v.trackStock || v.allowBackorder || (v.stock ?? 0) - (v.reserved ?? 0) > 0);
+    return variants.some((variant) =>
+      !variant.trackStock ||
+      variant.allowBackorder ||
+      (variant.stock ?? 0) - (variant.reserved ?? 0) > 0,
+    );
   }
-  const inv = product.inventory;
-  if (!inv) return true;
-  return !inv.trackStock || inv.allowBackorder || inv.stock - inv.reserved > 0;
+  const inventory = product.inventory;
+  if (!inventory) return true;
+  return !inventory.trackStock || inventory.allowBackorder || inventory.stock - inventory.reserved > 0;
 }
 
 export function buildProductJsonLd(
@@ -43,32 +50,38 @@ export function buildProductJsonLd(
 ) {
   const price = getActiveProductPrice(product);
   const images = productImageUrls(product);
+  const description = product.seoDescription?.trim() || product.description?.trim() || undefined;
+
   return {
     "@context": "https://schema.org",
     "@type": "Product",
     name: product.name,
-    description: product.description?.trim() || undefined,
+    description,
     image: images.length ? images : undefined,
-    sku: product.variants?.find((v) => v.sku)?.sku ?? product.slug,
+    sku: product.variants?.find((variant) => variant.sku)?.sku ?? product.slug,
     category: product.category?.name,
     material: product.material || undefined,
     brand: { "@type": "Brand", name: SITE_NAME },
     url: opts.url,
-    offers: price ? {
-      "@type": "Offer",
-      url: opts.url,
-      priceCurrency: price.currency,
-      price: (price.amountMinor / 100).toFixed(2),
-      availability: isAvailable(product) ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
-      itemCondition: "https://schema.org/NewCondition",
-      ...(price.startsAt ? { validFrom: price.startsAt } : {}),
-      ...(price.endsAt ? { validThrough: price.endsAt } : {}),
-    } : undefined,
-    aggregateRating: opts.reviewCount > 0 && opts.rating > 0 ? {
-      "@type": "AggregateRating",
-      ratingValue: Number(opts.rating.toFixed(1)),
-      reviewCount: opts.reviewCount,
-    } : undefined,
+    ...(price ? {
+      offers: {
+        "@type": "Offer",
+        url: opts.url,
+        priceCurrency: price.currency,
+        price: (price.amountMinor / 100).toFixed(2),
+        availability: isAvailable(product) ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+        itemCondition: "https://schema.org/NewCondition",
+        ...(price.startsAt ? { validFrom: price.startsAt } : {}),
+        ...(price.endsAt ? { validThrough: price.endsAt } : {}),
+      },
+    } : {}),
+    ...(opts.reviewCount > 0 && opts.rating > 0 ? {
+      aggregateRating: {
+        "@type": "AggregateRating",
+        ratingValue: Number(opts.rating.toFixed(1)),
+        reviewCount: opts.reviewCount,
+      },
+    } : {}),
   };
 }
 

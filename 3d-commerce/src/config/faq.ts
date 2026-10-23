@@ -4,41 +4,55 @@ export interface FAQItem {
   answer: string;
 }
 
+// Public storefront FAQ. Keep answers aligned with the physical-product and
+// custom manufacturing workflows; prices and timelines must be confirmed per order.
 export const faqItems: FAQItem[] = [
   {
-    id: "custom-miniature-time",
-    question: "How long does a custom 3D model take?",
+    id: "custom-model-process",
+    question: "How do custom 3D printed model orders work?",
     answer:
-      "Most custom models are completed within 3–4 weeks, depending on the complexity of the model, the number of reference images, and the level of detail required. We will provide an estimated timeline before work begins.",
+      "Share clear JPG or PNG reference photos along with your requested dimensions, style and important details. The Voxel3D team reviews your requirements, prepares the model for physical production, confirms the order details with you, and coordinates manufacturing and delivery. Custom uploads are reviewed by our team rather than shown as an instant customer-facing 3D preview.",
+  },
+  {
+    id: "custom-model-timeline",
+    question: "How long does a custom 3D printed model take?",
+    answer:
+      "The timeline depends on model complexity, the quality of the references, dimensions, finishing and production workload. We confirm an estimated timeline for your specific request before production begins.",
   },
   {
     id: "photo-quality",
-    question: "What photo quality do you need for customs?",
+    question: "What photos should I provide for a custom figure?",
     answer:
-      "Clear, well-lit photos from multiple angles work best. We recommend providing front, side, and rear views wherever possible, along with close-up photos of important details. Higher-quality references generally allow us to create a more accurate model.",
+      "Provide clear, well-lit JPG or PNG images from multiple angles wherever possible. Front, side and rear views, plus close-ups of distinctive features, help our team understand the shape and details. Include the target dimensions and any important requirements with your submission.",
   },
   {
-    id: "materials",
-    question: "What materials are used?",
+    id: "physical-products",
+    question: "Are Voxel3D products physical items?",
     answer:
-      "Our digital models are delivered as optimized 3D files, primarily in GLB format for easy viewing and visualization. If you are ordering a physical custom piece, the available material and finishing options will depend on the type of project.",
+      "Yes. Voxel3D sells physical 3D printed models and collectibles. Product pages provide available item details, images and ordering information. We manufacture or arrange production and ship physical orders; we do not sell customer downloads of digital 3D files.",
+  },
+  {
+    id: "materials-and-finish",
+    question: "Which material and finish will my model have?",
+    answer:
+      "Material and finishing options depend on the product and its production requirements. Check the specific product page for listed details. For a custom request, include your preferences so our team can confirm feasible materials and finishing before production.",
+  },
+  {
+    id: "shipping",
+    question: "Do you ship physical models across India?",
+    answer:
+      "Voxel3D's storefront is set up for physical orders shipped across India. Available delivery options and estimated delivery timing depend on the destination and the specific order. Review the shipping information or contact our team if you need clarification before ordering.",
   },
   {
     id: "returns",
-    question: "Do you accept returns or exchanges?",
+    question: "Can I return or exchange a physical model?",
     answer:
-      "Digital 3D models cannot normally be returned once they have been downloaded. For physical products or custom orders, return and exchange eligibility depends on the specific product and its condition. Please review the applicable product terms before ordering.",
+      "Return and exchange eligibility depends on the product, its condition and the applicable policy. Review the current Shipping & Returns and Refund Policy pages before placing an order, and contact the team if your order arrives damaged or incorrect.",
   },
   {
-    id: "international",
-    question: "Is international shipping available?",
+    id: "bulk-orders",
+    question: "Can I request bulk or business orders?",
     answer:
-      "International availability depends on the product and destination. Digital models can be accessed online without physical shipping. For physical custom orders, shipping options and delivery estimates are shown during the ordering process.",
-  },
-  {
-    id: "licensed",
-    question: "Are the collectibles officially licensed?",
-    answer:
-      "Licensing varies by product. Product pages will clearly indicate applicable licensing information where relevant. If you need clarification about a specific model, please contact us before purchasing.",
+      "Yes. For a team, event or business order, contact Voxel3D with the model or reference, required quantity, preferred dimensions and target deadline. The team can discuss production feasibility and provide order-specific details.",
   },
 ];
