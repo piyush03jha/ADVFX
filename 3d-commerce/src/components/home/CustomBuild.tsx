@@ -1,6 +1,7 @@
 "use client";
 
 import { motion, useReducedMotion } from "motion/react";
+import Image from "next/image";
 import { IconArrowUpRight, IconCamera, IconBox, IconSparkles } from "@tabler/icons-react";
 
 import { Container } from "@/components/ui/Container";
@@ -48,11 +49,11 @@ export function CustomBuild() {
                 <p className="mb-5 text-[10px] font-medium uppercase tracking-[0.2em] text-muted sm:text-xs">
                   From reference to finished piece
                 </p>
-                <div className="grid grid-cols-3 gap-2.5 sm:gap-6">
+                <ol className="grid grid-cols-3 gap-2.5 sm:gap-6">
                   {steps.map((step, index) => {
                     const Icon = step.icon;
                     return (
-                      <motion.div
+                      <motion.li
                         key={step.number}
                         initial={reduceMotion ? false : { opacity: 0, y: 10 }}
                         whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
@@ -60,15 +61,15 @@ export function CustomBuild() {
                         transition={{ duration: 0.45, delay: reduceMotion ? 0 : index * 0.07 }}
                       >
                         <div className="flex items-center gap-2 text-muted">
-                          <span className="font-mono text-[10px] tracking-[0.16em]">{step.number}</span>
+                          <span aria-hidden="true" className="font-mono text-[10px] tracking-[0.16em]">{step.number}</span>
                           <Icon size={17} stroke={1.5} className="text-primary" />
                         </div>
                         <h3 className="mt-2 text-base font-semibold text-foreground">{step.title}</h3>
                         <p className="mt-1.5 text-sm leading-6 text-muted">{step.text}</p>
-                      </motion.div>
+                      </motion.li>
                     );
                   })}
-                </div>
+                </ol>
               </div>
             </motion.div>
             <motion.div
@@ -78,7 +79,7 @@ export function CustomBuild() {
               transition={{ duration: 0.8 }}
               className="relative flex min-h-[320px] items-center justify-center overflow-hidden bg-surface sm:min-h-[420px] lg:min-h-full"
             >
-              <img src="/catogeries/couple1.png" alt="Custom 3D printed collectible" loading="eager" decoding="async" className="absolute inset-0 h-full w-full object-contain object-center" />
+              <Image src="/catogeries/couple1.png" alt="Custom 3D printed collectible made to order by Voxel3D" fill sizes="(max-width: 1023px) 100vw, 45vw" className="object-contain object-center" />
             </motion.div>
           </div>
         </div>
