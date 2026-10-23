@@ -27,7 +27,7 @@ export function HeroContent({
         className="relative max-w-[640px]"
       >
         <h1 className="mb-3 max-w-[580px] text-[10px] font-semibold uppercase tracking-[0.22em] text-primary sm:mb-5 sm:text-xs sm:tracking-[0.28em]">
-          Premium 3D Printed Models &amp; Collectibles
+          3D Printed Anime Figures &amp; Collectibles in India
         </h1>
 
         <h2 className="max-w-[600px] text-3xl font-semibold leading-[0.94] tracking-[-0.055em] text-foreground sm:text-5xl lg:text-[clamp(2.75rem,6.4vw,6.5rem)]">

@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 interface ProductListThumbnailProps {
   model: string;
   image?: string;
@@ -13,11 +15,14 @@ export function ProductListThumbnail({
   return (
     <div className="h-[72px] w-[72px] shrink-0 overflow-hidden rounded-xl bg-surface-elevated">
       {image ? (
-        <img
+        <Image
           src={image}
           alt={alt}
+          width={72}
+          height={72}
+          sizes="72px"
           loading="lazy"
-          decoding="async"
+          unoptimized={image.startsWith("/api/assets/") || !image.startsWith("/")}
           className="h-full w-full object-cover"
         />
       ) : (

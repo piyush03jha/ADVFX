@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { IconArrowUpRight } from "@tabler/icons-react";
@@ -148,11 +149,14 @@ function CategoryCard({
         ) : (
           <>
             {imageUrl ? (
-              <img
+              <Image
                 src={imageUrl}
                 alt={category.name}
+                fill
+                sizes="(max-width: 639px) 45vw, (max-width: 1023px) 30vw, 22vw"
+                unoptimized={imageUrl.startsWith("/api/assets/") || !imageUrl.startsWith("/")}
                 loading={index < 4 ? "eager" : "lazy"}
-                className="absolute inset-x-0 top-0 h-[112px] w-full object-contain object-center px-2 py-1 transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-105 sm:h-[132px] sm:px-3 lg:h-full lg:px-0 lg:py-0 lg:object-cover"
+                className="object-contain object-center px-2 py-1 transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-105 sm:px-3 lg:px-0 lg:py-0 lg:object-cover"
               />
             ) : (
               <div className="absolute inset-x-0 top-0 h-[112px] bg-[radial-gradient(circle_at_50%_20%,rgba(139,92,246,0.25),transparent_55%)] sm:h-[132px] lg:h-full" />

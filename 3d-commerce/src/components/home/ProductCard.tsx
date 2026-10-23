@@ -95,10 +95,10 @@ export function ProductCard({ product }: { product: StorefrontProduct }) {
           <Link href={`/product/${product.slug}`} className="min-w-0 flex-1">
             <h3 className="line-clamp-2 text-xs font-medium leading-4 tracking-[-0.01em] text-foreground transition-colors duration-300 hover:text-primary-hover sm:text-sm sm:leading-5">{product.name}</h3>
           </Link>
-          <div className="shrink-0 pt-0.5 text-right"><Price value={product.price} size="sm" /></div>
+          <div className="shrink-0 pt-0.5 text-right">{product.price > 0 ? <Price value={product.price} size="sm" /> : <span className="text-[10px] font-medium text-muted">Price on request</span>}</div>
         </div>
 
-        <Rating value={product.rating} reviewCount={product.reviewCount} size={11} showValue className="mt-2" />
+        {product.reviewCount > 0 && product.rating > 0 ? <Rating value={product.rating} reviewCount={product.reviewCount} size={11} showValue className="mt-2" /> : null}
 
         <Button
           type="button"
@@ -106,11 +106,11 @@ export function ProductCard({ product }: { product: StorefrontProduct }) {
           size="sm"
           ariaLabel={`Add ${product.name} to cart`}
           onClick={handleAddToCart}
-          disabled={isLoading}
+          disabled={isLoading || product.price <= 0}
           className="mt-3 !h-11 !min-h-11 w-full !rounded-xl !px-4 shadow-[0_0_18px_rgba(139,92,246,0.18)] sm:!h-12 sm:!min-h-12"
         >
           {added ? <IconCheck size={15} stroke={2} /> : <IconShoppingCart size={15} stroke={1.8} />}
-          <span>{added ? "Added to Cart" : "Add to Cart"}</span>
+          <span>{added ? "Added to Cart" : product.price > 0 ? "Add to Cart" : "Price on request"}</span>
         </Button>
       </div>
     </Card>

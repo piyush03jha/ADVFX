@@ -245,7 +245,7 @@ export function Navbar() {
           </div>
 
           <NavIconLink
-            href={user ? "/wishlist" : "/login?returnTo=%2Fwishlist"}
+            href="/wishlist"
             label={wishlistCount > 0 ? `Wishlist, ${wishlistCount} saved` : "Wishlist"}
           >
             <IconHeart size={18} stroke={1.7} />
@@ -352,7 +352,7 @@ export function Navbar() {
 
           <div className="mt-5 grid grid-cols-2 gap-2.5">
             <MobileActionLink
-              href={user ? "/wishlist" : "/login?returnTo=%2Fwishlist"}
+              href="/wishlist"
               onClick={closeMobileMenu}
             >
               <IconHeart size={17} stroke={1.7} />

@@ -300,10 +300,10 @@ export function Hero() {
               Voxel3D · Made to order
             </p>
             <h1 className="mt-4 text-3xl font-semibold leading-tight tracking-[-0.045em] text-foreground sm:text-5xl">
-              Premium 3D Printed Models &amp; Collectibles
+              3D Printed Anime Figures &amp; Collectibles in India
             </h1>
             <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-muted sm:text-base sm:leading-7 lg:mx-0">
-              Discover physical 3D printed collectibles, character models and custom builds. Browse the collection or share your reference images and requirements for a made-to-order piece.
+              Shop physical 3D printed anime figures, miniatures and collectibles in India, or request a custom piece made from your reference images and dimensions.
             </p>
             <p role="status" aria-live="polite" className="mt-5 text-[10px] uppercase tracking-[0.18em] text-muted">
               Loading featured models…

@@ -25,7 +25,7 @@ function parseProducts(payload: unknown): SitemapProduct[] {
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const entries: MetadataRoute.Sitemap = [
-    { url: absoluteUrl("/"), changeFrequency: "weekly", priority: 1 },
+    { url: absoluteUrl("/"), lastModified: new Date("2026-10-23T00:00:00Z"), changeFrequency: "weekly", priority: 1 },
     { url: absoluteUrl("/shop"), changeFrequency: "daily", priority: 0.9 },
     { url: absoluteUrl("/custom"), changeFrequency: "monthly", priority: 0.8 },
     { url: absoluteUrl("/contact"), changeFrequency: "monthly", priority: 0.5 },

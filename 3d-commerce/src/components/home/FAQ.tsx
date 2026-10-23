@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
-  AnimatePresence,
   motion,
   useReducedMotion,
 } from "motion/react";
@@ -17,61 +16,14 @@ import { Button } from "@/components/ui/Button";
 import { Section } from "@/components/ui/Section";
 import { faqItems, type FAQItem } from "@/config/faq";
 
-export function FAQ() {
-  const [items, setItems] = useState(faqItems);
+export function FAQ({ initialItems = faqItems }: { initialItems?: FAQItem[] }) {
+  const [items] = useState<FAQItem[]>(initialItems);
   const [openId, setOpenId] = useState<string | null>(
     items[0]?.id ?? null,
   );
 
   const [showAllMobile, setShowAllMobile] =
     useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadFaq() {
-      try {
-        const response = await fetch("/api/site-content/faq", {
-          cache: "no-store",
-        });
-        if (!response.ok) return;
-
-        const data = await response.json();
-        const value = data?.value;
-        if (
-          !Array.isArray(value) ||
-          !value.length ||
-          value.some(
-            (item: unknown) =>
-              typeof item !== "object" ||
-              item === null ||
-              typeof (item as { id?: unknown }).id !== "string" ||
-              typeof (item as { question?: unknown }).question !== "string" ||
-              typeof (item as { answer?: unknown }).answer !== "string",
-          )
-        ) {
-          return;
-        }
-
-        if (!cancelled) {
-          setItems(value);
-          setOpenId((current) =>
-            value.some((item) => item.id === current)
-              ? current
-              : value[0]?.id ?? null,
-          );
-        }
-      } catch {
-        // Keep the bundled FAQ as a resilient storefront fallback.
-      }
-    }
-
-    void loadFaq();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const shouldReduceMotion =
     useReducedMotion();
@@ -399,6 +351,8 @@ function FAQItem({
           "
         >
           <span
+            role="heading"
+            aria-level={3}
             className={`
               text-xs
               font-medium
@@ -461,57 +415,18 @@ function FAQItem({
 
       {/* ANSWER */}
 
-      <AnimatePresence initial={false}>
-        {isOpen && (
-          <motion.div
-            id={`faq-answer-${item.id}`}
-            initial={{
-              height: 0,
-              opacity: 0,
-            }}
-            animate={{
-              height: "auto",
-              opacity: 1,
-            }}
-            exit={{
-              height: 0,
-              opacity: 0,
-            }}
-            transition={{
-              height: {
-                duration: 0.35,
-                ease: [
-                  0.22,
-                  1,
-                  0.36,
-                  1,
-                ],
-              },
-              opacity: {
-                duration: 0.2,
-              },
-            }}
-            className="overflow-hidden"
-          >
-            <div
-              className="
-                max-w-2xl
-                pb-6
-                pr-10
-                text-xs
-                leading-6
-                text-muted
-                sm:pb-7
-                sm:pr-16
-                sm:text-sm
-                sm:leading-7
-              "
-            >
-              {item.answer}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <motion.div
+        id={`faq-answer-${item.id}`}
+        initial={false}
+        animate={{ height: isOpen ? "auto" : 0, opacity: isOpen ? 1 : 0 }}
+        aria-hidden={!isOpen}
+        className="overflow-hidden"
+        style={{ pointerEvents: isOpen ? "auto" : "none" }}
+      >
+        <div className="max-w-2xl pb-6 pr-10 text-xs leading-6 text-muted sm:pb-7 sm:pr-16 sm:text-sm sm:leading-7">
+          <p>{item.answer}</p>
+        </div>
+      </motion.div>
     </motion.div>
   );
 }
