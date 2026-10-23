@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -45,7 +46,15 @@ export function ProductCard({ product }: { product: StorefrontProduct }) {
       <div className="relative overflow-hidden">
         <Link href={`/product/${product.slug}`} aria-label={`View ${product.name}`} className="block">
           <div className="relative aspect-[1/0.82] overflow-hidden bg-surface-elevated/40 sm:aspect-[4/4.1]">
-            <img src={product.image} alt={product.name} loading="lazy" className="h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.045]" />
+            <Image
+              src={product.image || "/placeholder-product.webp"}
+              alt={product.name}
+              fill
+              sizes="(max-width: 639px) 190px, (max-width: 1023px) 260px, 25vw"
+              quality={80}
+              loading="lazy"
+              className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.045]"
+            />
             <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
             <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,rgba(139,92,246,0.18),transparent_58%)] opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
           </div>

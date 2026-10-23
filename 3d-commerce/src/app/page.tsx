@@ -15,7 +15,7 @@ const FAQ = dynamic(() => import("@/components/home/FAQ").then((m) => m.FAQ));
 export const metadata: Metadata = {
   title: { absolute: "Voxel3D — Premium 3D Printed Models & Collectibles in India" },
   description:
-    "Shop premium 3D printed models, character figures and collectibles at Voxel3D. Order physical models online or request a custom 3D printed piece made from your reference images and shipped across India.",
+    "Shop premium 3D printed models, anime figures and collectibles at Voxel3D. Order physical models or request a custom piece made from your reference images.",
   alternates: { canonical: "/" },
 };
 
