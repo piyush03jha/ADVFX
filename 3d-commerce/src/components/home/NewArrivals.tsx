@@ -7,13 +7,13 @@ import { Button } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import { Section } from "@/components/ui/Section";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { mapCatalogProducts, type CatalogProduct, type StorefrontProduct } from "@/lib/catalog-api";
 import { ProductCard } from "./ProductCard";
 
 export function NewArrivals({ initialProducts = [] }: { initialProducts?: CatalogProduct[] }) {
   const shouldReduceMotion = useReducedMotion();
-  const [products] = useState<StorefrontProduct[]>(() =>
+  const [products, setProducts] = useState<StorefrontProduct[]>(() =>
     mapCatalogProducts(initialProducts.filter((product) => product.status === "ACTIVE"))
       .sort((a, b) => {
         const left = a.createdAt ? Date.parse(a.createdAt) : 0;
@@ -22,6 +22,26 @@ export function NewArrivals({ initialProducts = [] }: { initialProducts?: Catalo
       })
       .slice(0, 4),
   );
+
+  useEffect(() => {
+    if (initialProducts.length > 0) return;
+    let cancelled = false;
+    fetch("/api/products")
+      .then(async (response) => {
+        if (!response.ok) throw new Error("catalog");
+        return (await response.json()) as CatalogProduct[];
+      })
+      .then((data) => {
+        if (!cancelled) setProducts(
+          mapCatalogProducts(data.filter((product) => product.status === "ACTIVE"))
+            .sort((a, b) => Date.parse(b.createdAt ?? "") - Date.parse(a.createdAt ?? ""))
+            .slice(0, 4),
+        );
+      })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [initialProducts.length]);
+
   const animationInitial = shouldReduceMotion ? false : { opacity: 0, y: 20 };
   const animationWhileInView = shouldReduceMotion ? undefined : { opacity: 1, y: 0 };
 
