@@ -16,6 +16,8 @@ export function ProductListThumbnail({
         <img
           src={image}
           alt={alt}
+          width={72}
+          height={72}
           loading="lazy"
           decoding="async"
           className="h-full w-full object-cover"
