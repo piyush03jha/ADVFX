@@ -27,54 +27,33 @@ export function ShopNavigation({
 
   return (
     <section aria-label="Product categories">
-      <div className="snap-rail -mx-3 flex gap-2 overflow-x-auto px-3 pb-1 sm:hidden">
+      <div
+        className="-mx-3 flex w-full flex-nowrap items-center gap-2 overflow-x-auto px-3 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        aria-label="Main categories"
+      >
         <Chip active={allActive} onClick={onShowAll}>
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <IconLayoutGrid size={16} stroke={1.8} />
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <IconLayoutGrid size={15} stroke={1.8} />
           </span>
-          All
+          All models
         </Chip>
         {roots.map((category) => {
           const image = resolveMediaUrl(category.imageUrl);
           return (
-            <Chip key={category.id} active={selectedCategories.includes(category.slug)} onClick={() => onCategoryChange(category.slug)}>
-              {image ? <img src={image} alt="" loading="lazy" className="h-8 w-8 rounded-full object-cover" /> : <span className="h-8 w-8 rounded-full bg-surface-elevated" />}
+            <Chip
+              key={category.id}
+              active={selectedCategories.includes(category.slug)}
+              onClick={() => onCategoryChange(category.slug)}
+            >
+              {image ? (
+                <img src={image} alt="" loading="lazy" className="h-7 w-7 rounded-full object-cover" />
+              ) : (
+                <span className="h-7 w-7 shrink-0 rounded-full bg-surface-elevated" aria-hidden="true" />
+              )}
               {category.name}
             </Chip>
           );
         })}
-      </div>
-
-      <div className="relative hidden overflow-hidden rounded-[28px] border border-border bg-surface/40 p-3 sm:block">
-        <div className="flex w-full flex-nowrap gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <CategoryCard active={allActive} onClick={onShowAll}>
-            <div className="relative aspect-[3/4] overflow-hidden rounded-2xl bg-background">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_20%,rgba(139,92,246,0.22),transparent_46%),radial-gradient(circle_at_80%_85%,rgba(139,92,246,0.14),transparent_48%)]" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-surface-elevated text-primary"><span className="text-lg font-semibold">+</span></div>
-              </div>
-              <div className="absolute inset-x-0 bottom-0 p-3">
-                <p className="text-sm font-medium text-foreground">All Models</p>
-                <p className="mt-0.5 text-[10px] uppercase tracking-[0.12em] text-muted">Full collection</p>
-              </div>
-            </div>
-          </CategoryCard>
-          {roots.map((category) => {
-            const image = resolveMediaUrl(category.imageUrl);
-            return (
-              <CategoryCard key={category.id} active={selectedCategories.includes(category.slug)} onClick={() => onCategoryChange(category.slug)}>
-                <div className="relative aspect-[3/4] overflow-hidden rounded-2xl bg-background">
-                  {image ? <img src={image} alt={category.name} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" /> : <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(139,92,246,0.25),transparent_55%)]" />}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/5" />
-                  <div className="absolute inset-x-0 bottom-0 p-3 text-left">
-                    <p className="text-sm font-medium text-white">{category.name}</p>
-                    <p className="mt-1 line-clamp-2 text-[10px] leading-4 text-white/70">{category.description || "Explore this collection."}</p>
-                  </div>
-                </div>
-              </CategoryCard>
-            );
-          })}
-        </div>
       </div>
 
       {activeRoot && (
