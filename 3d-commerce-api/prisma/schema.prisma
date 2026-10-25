@@ -306,6 +306,7 @@ model Product {
 
   reviews ProductReview[]
   metrics ProductMetrics?
+  viewEvents ProductViewEvent[]
 
   customPreviewRequests CustomRequest[] @relation("CustomPreviewProduct")
 
@@ -387,6 +388,19 @@ model ProductMetrics {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model ProductViewEvent {
+  id          String   @id @default(cuid())
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  visitorHash String
+  bucketStart DateTime
+  createdAt   DateTime @default(now())
+
+  // One counted view per product and anonymized visitor per UTC day.
+  @@unique([productId, visitorHash, bucketStart])
+  @@index([bucketStart])
 }
 
 model ProductPrice {
