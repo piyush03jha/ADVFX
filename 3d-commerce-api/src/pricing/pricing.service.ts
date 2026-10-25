@@ -284,7 +284,7 @@ export class PricingService {
         throw new BadRequestException("Coupon usage limit has been reached");
       }
 
-      if (found.usageLimitPerUser !== null) {
+      if (found.usageLimitPerUser != null) {
         const customerUses = await this.prisma.order.count({
           where: {
             userId,
