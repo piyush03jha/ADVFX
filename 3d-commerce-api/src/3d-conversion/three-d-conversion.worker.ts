@@ -504,19 +504,42 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
     }
 
     const cutoff = new Date(Date.now() - this.staleAfterMs);
-    await this.prisma.threeDConversionJob.updateMany({
+    const staleJobs = await this.prisma.threeDConversionJob.findMany({
       where: {
         status: ProcessingJobStatus.PROCESSING,
         stage: { not: "COMPLETING" },
         startedAt: { lt: cutoff },
       },
-      data: {
-        status: ProcessingJobStatus.QUEUED,
-        stage: "QUEUED",
-        errorMessage: "Recovered stale conversion worker job",
-        startedAt: null,
-      },
+      take: 50,
+      orderBy: { startedAt: "asc" },
     });
+
+    for (const stale of staleJobs) {
+      const terminal = stale.attempts >= stale.maxAttempts;
+      const recovered = await this.prisma.threeDConversionJob.updateMany({
+        where: {
+          id: stale.id,
+          status: ProcessingJobStatus.PROCESSING,
+          stage: stale.stage,
+          attempts: stale.attempts,
+          startedAt: { lt: cutoff },
+        },
+        data: {
+          status: terminal ? ProcessingJobStatus.FAILED : ProcessingJobStatus.QUEUED,
+          stage: terminal ? "FAILED" : "QUEUED",
+          errorMessage: terminal
+            ? "Conversion worker stopped unexpectedly after the maximum retry count"
+            : "Recovered stale conversion worker job",
+          completedAt: terminal ? new Date() : null,
+          startedAt: null,
+        },
+      });
+      if (recovered.count === 1) {
+        this.logger.warn(
+          `Recovered stale conversion job ${stale.id} (${terminal ? "failed after max attempts" : "requeued"})`,
+        );
+      }
+    }
   }
 
   /**
