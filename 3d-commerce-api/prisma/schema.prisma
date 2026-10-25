@@ -841,6 +841,8 @@ model PaymentAttempt {
 
   providerOrderId   String @unique
   providerPaymentId String?
+  // Separate from the original capture ID so duplicate captures can be refunded without corrupting the first payment attempt.
+  refundProviderPaymentId String? @unique
   status            PaymentStatus @default(PENDING)
   amountMinor       Int
   currency          String
