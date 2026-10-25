@@ -22,7 +22,7 @@ export const revalidate = 3600;
 export const metadata: Metadata = {
   title: { absolute: "Buy 3D Printed Models & Collectibles in India | Voxel3D" },
   description:
-    "Buy physical 3D printed models, figures, miniatures and collectibles in India from Voxel3D. Explore products with selected 3D previews or request a custom model from JPG or PNG reference images.",
+    "Shop 3D printed figures, miniatures and collectibles in India. Explore physical models or request a custom piece from your photos.",
   alternates: { canonical: "/" },
 };
 
