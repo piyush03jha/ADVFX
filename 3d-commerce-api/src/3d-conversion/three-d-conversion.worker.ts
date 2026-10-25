@@ -486,6 +486,18 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
         });
         this.logger.log(`Recovered multipart completion for conversion job ${job.id}`);
       } catch (error) {
+        // Touch updatedAt to back off retries; otherwise a persistent storage
+        // outage would retry the same job on every worker poll.
+        await this.prisma.threeDConversionJob.updateMany({
+          where: {
+            id: job.id,
+            status: ProcessingJobStatus.PROCESSING,
+            stage: "COMPLETING",
+          },
+          data: {
+            errorMessage: `Completion recovery pending: ${error instanceof Error ? error.message : String(error)}`.slice(0, 1000),
+          },
+        }).catch(() => undefined);
         this.logger.warn(
           `Unable to recover multipart completion for job ${job.id}: ${error instanceof Error ? error.message : String(error)}`,
         );
