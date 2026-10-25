@@ -26,7 +26,7 @@ export async function POST(request: Request) {
 
     const backendResponse = await fetch(getBackendApiUrl("auth/resend-verification"), {
       method: "POST",
-      headers: { ...getTrustedClientIpHeaders(request), "Content-Type": "application/json" },
+      headers: { ...(await getTrustedClientIpHeaders(request)), "Content-Type": "application/json" },
       body: JSON.stringify({ email }),
       cache: "no-store",
     });
