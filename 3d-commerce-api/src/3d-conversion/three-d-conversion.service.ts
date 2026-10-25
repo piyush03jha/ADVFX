@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException, ServiceUnavailableException } from "@nestjs/common";
 import { ProcessingJobStatus } from "@prisma/client";
 import { randomUUID } from "node:crypto";
 import { extname } from "node:path";
@@ -93,8 +93,9 @@ export class ThreeDConversionService {
     jobId: string,
     body: { key: string; uploadId: string; size: number; parts: UploadPart[] },
   ) {
-    const job = await this.prisma.threeDConversionJob.findUnique({ where: { id: jobId } });
+    let job = await this.prisma.threeDConversionJob.findUnique({ where: { id: jobId } });
     if (!job) throw new NotFoundException("Conversion job not found");
+    if (job.status === ProcessingJobStatus.QUEUED) return this.serialize(job);
     if (job.status !== ProcessingJobStatus.PROCESSING) {
       throw new BadRequestException("Conversion upload is not active");
     }
@@ -129,27 +130,74 @@ export class ThreeDConversionService {
       throw new BadRequestException("Invalid multipart ETags");
     }
 
+    // Claim the upload before touching object storage. A conditional update makes
+    // the UPLOADING -> COMPLETING transition atomic across API replicas.
+    if (job.stage === "UPLOADING") {
+      const claimed = await this.prisma.threeDConversionJob.updateMany({
+        where: {
+          id: job.id,
+          status: ProcessingJobStatus.PROCESSING,
+          stage: "UPLOADING",
+          uploadId: body.uploadId,
+        },
+        data: { stage: "COMPLETING" },
+      });
+      job = await this.prisma.threeDConversionJob.findUnique({ where: { id: job.id } });
+      if (!job) throw new NotFoundException("Conversion job not found");
+      if (claimed.count !== 1 && job.status !== ProcessingJobStatus.QUEUED && job.stage !== "COMPLETING") {
+        throw new ConflictException("Conversion upload is already being finalized");
+      }
+    } else if (job.stage !== "COMPLETING") {
+      throw new BadRequestException("Conversion upload is not in a completable state");
+    }
+
+    // A worker/process can crash after the storage provider finishes multipart
+    // completion but before PostgreSQL records QUEUED. On retry, treat an already
+    // completed object with the expected size as success. Do not destroy the
+    // multipart session/object on transient errors; keep COMPLETING recoverable.
+    let uploadedSize: number | null = null;
     try {
       await this.storage.completeMultipartUpload(job.sourceStorageKey, body.uploadId, parts);
-      const uploadedSize = await this.storage.getObjectSize(job.sourceStorageKey);
-      if (uploadedSize !== body.size) throw new BadRequestException("Uploaded size does not match");
+      uploadedSize = await this.storage.getObjectSize(job.sourceStorageKey);
     } catch (error) {
+      try {
+        uploadedSize = await this.storage.getObjectSize(job.sourceStorageKey);
+      } catch {
+        this.logger.warn(
+          `Multipart completion for job ${job.id} is still pending and can be retried: ${error instanceof Error ? error.message : String(error)}`,
+        );
+        throw new ServiceUnavailableException("Upload completion is being reconciled. Please retry shortly.");
+      }
+    }
+
+    if (uploadedSize !== body.size) {
       await this.storage.abortMultipartUpload(job.sourceStorageKey, body.uploadId).catch(() => undefined);
       await this.storage.delete(job.sourceStorageKey).catch(() => undefined);
-      await this.prisma.threeDConversionJob.update({
-        where: { id: job.id },
+      await this.prisma.threeDConversionJob.updateMany({
+        where: {
+          id: job.id,
+          status: ProcessingJobStatus.PROCESSING,
+          stage: "COMPLETING",
+          uploadId: body.uploadId,
+        },
         data: {
           uploadId: null,
           status: ProcessingJobStatus.FAILED,
-          errorMessage: error instanceof Error ? error.message : String(error),
+          stage: "FAILED",
+          errorMessage: "Uploaded size does not match",
           completedAt: new Date(),
         },
-      }).catch(() => undefined);
-      throw error;
+      });
+      throw new BadRequestException("Uploaded size does not match");
     }
 
-    const updated = await this.prisma.threeDConversionJob.update({
-      where: { id: job.id },
+    await this.prisma.threeDConversionJob.updateMany({
+      where: {
+        id: job.id,
+        status: ProcessingJobStatus.PROCESSING,
+        stage: "COMPLETING",
+        uploadId: body.uploadId,
+      },
       data: {
         uploadId: null,
         status: ProcessingJobStatus.QUEUED,
@@ -161,13 +209,18 @@ export class ThreeDConversionService {
       },
     });
 
-    return this.serialize(updated);
+    const completed = await this.prisma.threeDConversionJob.findUnique({ where: { id: job.id } });
+    if (!completed) throw new NotFoundException("Conversion job not found");
+    if (completed.status !== ProcessingJobStatus.QUEUED) {
+      throw new ConflictException("Conversion upload could not be queued; retry completion");
+    }
+    return this.serialize(completed);
   }
 
   async abort(jobId: string, uploadId: string) {
     const job = await this.prisma.threeDConversionJob.findUnique({ where: { id: jobId } });
     if (!job) throw new NotFoundException("Conversion job not found");
-    if (job.status !== ProcessingJobStatus.PROCESSING) {
+    if (job.status !== ProcessingJobStatus.PROCESSING || job.stage !== "UPLOADING") {
       throw new BadRequestException("Conversion upload is not active");
     }
     if (!job.uploadId || uploadId !== job.uploadId) {
