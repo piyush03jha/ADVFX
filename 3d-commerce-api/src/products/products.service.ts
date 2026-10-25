@@ -420,7 +420,9 @@ export class ProductsService {
             media: {
               where: { type: 'IMAGE' },
               orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }],
-              take: 1,
+              // Include a small fallback set so the storefront can recover if
+              // the primary object is stale or temporarily unavailable.
+              take: 4,
             },
             variants: {
               where: { isActive: true },
