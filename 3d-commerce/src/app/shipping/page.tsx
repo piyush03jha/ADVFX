@@ -2,13 +2,13 @@ import type { Metadata } from "next";
 import { PolicyPage } from "@/components/content/PolicyPage";
 
 export const metadata: Metadata = {
-  title: "Shipping & Returns",
+  title: "Shipping and Returns",
   description: "Voxel3D shipping, delivery, and return information.",
   alternates: { canonical: "/shipping" },
 };
 
 export default function ShippingPage() {
-  return <PolicyPage contentKey="shipping" eyebrow="Customer care" title="Shipping & Returns" intro="Voxel3D sells physical products. Shipping availability, charges, and delivery estimates are shown during the order flow where applicable." sections={[
+  return <PolicyPage contentKey="shipping" eyebrow="Customer care" title="Shipping and Returns for Your Order" intro="This page explains how shipping and returns work for physical Voxel3D orders. Available delivery locations, shipping charges, and estimated delivery times are shown during checkout when available." sections={[
     { title: "Shipping", body: "Orders are shipped to supported delivery locations using available fulfillment and carrier services. Shipping charges are calculated from the applicable shipping rules and shown before payment." },
     { title: "Delivery estimates", body: "Estimated delivery windows are not guarantees. Production time, carrier capacity, address accuracy, weather, and other operational conditions can affect delivery." },
     { title: "Address accuracy", body: "Please verify your delivery address, postal code, phone number, and recipient details before completing payment. Contact support promptly if an address needs correction." },
