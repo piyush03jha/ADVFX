@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     const backendResponse = await fetch(getBackendApiUrl("cart/items"), {
       method: "POST",
       headers: {
-        ...getTrustedClientIpHeaders(request),
+        ...(await getTrustedClientIpHeaders(request)),
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
