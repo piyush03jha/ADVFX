@@ -5,7 +5,7 @@ import { JsonLd } from "@/components/seo/JsonLd";
 import { absoluteUrl } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "About Voxel3D",
+  title: { absolute: "About Voxel3D: Our Story and Custom Models" },
   description: "Meet Voxel3D. We make physical 3D printed figures, miniatures and collectibles, and help turn your own ideas into custom pieces.",
   alternates: { canonical: "/about" },
 };
