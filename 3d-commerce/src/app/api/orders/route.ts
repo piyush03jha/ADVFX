@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     const response = await fetch(getBackendApiUrl("orders"), {
       method: "POST",
       headers: {
-        ...getTrustedClientIpHeaders(request),
+        ...(await getTrustedClientIpHeaders(request)),
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
@@ -38,7 +38,7 @@ export async function GET(request: Request) {
 
   try {
     const response = await fetch(getBackendApiUrl("orders"), {
-      headers: { ...getTrustedClientIpHeaders(request), Authorization: `Bearer ${token}` },
+      headers: { ...(await getTrustedClientIpHeaders(request)), Authorization: `Bearer ${token}` },
       cache: "no-store",
     });
     const data = await response.json().catch(() => null);
