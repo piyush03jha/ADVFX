@@ -464,7 +464,6 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
         updatedAt: { lt: completionCutoff },
         uploadId: { not: null },
         completionSize: { not: null },
-        completionParts: { not: null },
       },
       take: 10,
       orderBy: { updatedAt: "asc" },
