@@ -109,6 +109,8 @@ export class RazorpayService {
         status: string;
         amount: number;
         currency: string;
+        amount_refunded?: number;
+        refund_status?: string;
       };
     } catch (error) {
       const message =
