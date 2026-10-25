@@ -32,7 +32,7 @@ export async function GET(request: Request) {
   try {
     const backendResponse = await fetch(getBackendApiUrl("auth/google"), {
       method: "POST",
-      headers: { ...getTrustedClientIpHeaders(request), "Content-Type": "application/json" },
+      headers: { ...(await getTrustedClientIpHeaders(request)), "Content-Type": "application/json" },
       body: JSON.stringify({ code, codeVerifier: saved.verifier }),
       cache: "no-store",
     });
