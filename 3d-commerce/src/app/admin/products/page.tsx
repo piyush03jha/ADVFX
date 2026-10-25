@@ -8,7 +8,7 @@ import { uploadModelDirect } from "@/lib/model-upload";
 import { filterProductsByCategory, getMainCategories, getSubcategories } from "@/lib/category-hierarchy.mjs";
 
 type ProductVariant={id:string;name:string;size?:string|null;sku?:string|null;isActive:boolean;stock?:number;reserved?:number;lowStockAt?:number;trackStock?:boolean;allowBackorder?:boolean;price?:{amountMinor:number;compareAtMinor?:number|null;isActive:boolean}|null};
-type Product={id:string;name:string;slug:string;status:string;isFeatured:boolean;isTrending:boolean;isBestseller:boolean;category?:{id:string;name:string}|null;prices:any[];variants?:ProductVariant[];material?:string|null;scale?:string|null;dimensions?:string|null;height?:string|null;base?:string|null;packaging?:string|null;weight?:string|null;inventory?:{stock:number;reserved:number;lowStockAt:number}|null;media?:Array<{id:string;type:string;url:string;altText?:string|null;isPrimary:boolean;sortOrder:number}>};
+type Product={id:string;name:string;slug:string;description?:string|null;badge?:string|null;status:string;isFeatured:boolean;isTrending:boolean;isBestseller:boolean;category?:{id:string;name:string}|null;prices:any[];variants?:ProductVariant[];material?:string|null;scale?:string|null;dimensions?:string|null;height?:string|null;base?:string|null;packaging?:string|null;weight?:string|null;inventory?:{stock:number;reserved:number;lowStockAt:number}|null;media?:Array<{id:string;type:string;url:string;altText?:string|null;isPrimary:boolean;sortOrder:number}>};
 type ProductFile={id:string;originalName:string;storageUrl:string;format:string;fileType:string;mimeType:string;fileSize:string|number;processingStatus:string};
 type Category={id:string;name:string;slug:string;parentId?:string|null;parent?:{id:string;name:string;slug:string}|null};
 
@@ -127,7 +127,7 @@ export default function AdminProducts(){
   }
 
   function startProductEdit(p:Product){
-    setEditingProduct(p.id);const productCategory=data.categories.find(category=>category.id===p.category?.id);const parentId=productCategory?.parentId||productCategory?.id||"";setEditParentCategoryId(parentId);setEditForm({name:p.name,slug:p.slug,description:"",categoryId:p.category?.id||"",status:p.status,isFeatured:p.isFeatured,isTrending:p.isTrending,isBestseller:p.isBestseller,badge:"",material:p.material||"",scale:p.scale||"",dimensions:p.dimensions||"",height:p.height||"",base:p.base||"",packaging:p.packaging||"",weight:p.weight||""});
+    setEditingProduct(p.id);const productCategory=data.categories.find(category=>category.id===p.category?.id);const parentId=productCategory?.parentId||productCategory?.id||"";setEditParentCategoryId(parentId);setEditForm({name:p.name,slug:p.slug,description:p.description||"",categoryId:p.category?.id||"",status:p.status,isFeatured:p.isFeatured,isTrending:p.isTrending,isBestseller:p.isBestseller,badge:p.badge||"",material:p.material||"",scale:p.scale||"",dimensions:p.dimensions||"",height:p.height||"",base:p.base||"",packaging:p.packaging||"",weight:p.weight||""});
   }
   async function saveProductEdit(id:string){
     setSaving(true);setMessage("");
