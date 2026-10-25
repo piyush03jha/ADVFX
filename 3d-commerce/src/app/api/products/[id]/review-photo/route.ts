@@ -10,26 +10,40 @@ interface RouteContext {
 
 export async function POST(request: Request, { params }: RouteContext) {
   const token = (await cookies()).get(AUTH_COOKIE_NAME)?.value;
+
   if (!token) {
-    return NextResponse.json({ error: "Authentication is required." }, { status: 401 });
+    return NextResponse.json(
+      { error: "Authentication is required." },
+      { status: 401 },
+    );
   }
 
   const { id } = await params;
-  const response = await fetch(
-    getBackendApiUrl(`products/${encodeURIComponent(id)}/review-photo`),
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": request.headers.get("content-type") ?? "",
-      },
-      body: await request.arrayBuffer(),
-      cache: "no-store",
-    },
-  );
 
-  const data = await response.json().catch(() => null);
-  return NextResponse.json(data ?? { error: "Unable to upload review photo." }, {
-    status: response.status,
-  });
+  try {
+    const response = await fetch(
+      getBackendApiUrl(`products/${encodeURIComponent(id)}/review-photo`),
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": request.headers.get("content-type") ?? "",
+        },
+        body: await request.arrayBuffer(),
+        cache: "no-store",
+      },
+    );
+
+    const data = await response.json().catch(() => null);
+
+    return NextResponse.json(
+      data ?? { error: "Unable to upload review photo." },
+      { status: response.status },
+    );
+  } catch {
+    return NextResponse.json(
+      { error: "Review service is unavailable." },
+      { status: 503 },
+    );
+  }
 }

@@ -10,7 +10,7 @@ const customLayout = await readFile(new URL("../src/app/custom/layout.tsx", impo
 
 test("homepage targets physical-product purchase intent without promising digital downloads", () => {
   assert.match(homepage, /Buy 3D Printed Models & Collectibles in India \| Voxel3D/);
-  assert.match(homepage, /Shop 3D printed figures, miniatures and collectibles in India/);
+  assert.match(homepage, /Shop physical 3D printed models, anime figures, miniatures and collectibles in India/);
   assert.match(homepage, /custom piece from your photos/);
   assert.match(homepage, /physical 3D printed models, anime figures, miniatures and collectibles/);
   assert.ok((homepage.match(/description:/g) ?? []).length > 0);

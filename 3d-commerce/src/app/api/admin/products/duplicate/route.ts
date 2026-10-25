@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { ADMIN_COOKIE } from "@/app/api/auth/admin/login/route";
 import { getBackendApiUrl } from "@/lib/backend-api";
+import { revalidateProductCatalog } from "@/lib/revalidate-catalog";
 
 export async function POST(request: NextRequest) {
   const token = (await cookies()).get(ADMIN_COOKIE)?.value;
@@ -25,7 +26,14 @@ export async function POST(request: NextRequest) {
       cache: "no-store",
     });
 
-    return new NextResponse(await response.text(), {
+    const responseText = await response.text();
+
+    // Invalidate cached catalog data only after successful duplication.
+    if (response.ok) {
+      revalidateProductCatalog();
+    }
+
+    return new NextResponse(responseText, {
       status: response.status,
       headers: {
         "Content-Type":

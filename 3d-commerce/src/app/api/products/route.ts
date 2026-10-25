@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { ADMIN_COOKIE } from "@/app/api/auth/admin/login/route";
 import { getBackendApiUrl } from "@/lib/backend-api";
+import { revalidateProductCatalog } from "@/lib/revalidate-catalog";
 
 export async function GET() {
   try {
@@ -37,7 +38,15 @@ export async function POST(request: Request) {
       cache: "no-store",
     });
     const data = await response.json().catch(() => null);
-    return NextResponse.json(data ?? { error: "Unable to create product." }, { status: response.status });
+
+    if (response.ok) {
+      revalidateProductCatalog();
+    }
+
+    return NextResponse.json(
+      data ?? { error: "Unable to create product." },
+      { status: response.status },
+    );
   } catch {
     return NextResponse.json({ error: "Catalog service is unavailable." }, { status: 503 });
   }

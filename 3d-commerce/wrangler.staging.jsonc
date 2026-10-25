@@ -1,0 +1,35 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "main": ".open-next/worker.js",
+  "name": "3d-commerce-staging",
+  "compatibility_date": "2026-10-02",
+  "compatibility_flags": [
+    "nodejs_compat",
+    "global_fetch_strictly_public"
+  ],
+  "vars": {
+    "BACKEND_API_URL": "https://advfx-production.up.railway.app",
+    "NEXTJS_ENV": "production",
+    "NEXT_PUBLIC_SITE_URL": "https://3d-commerce-staging.voxel3d.workers.dev",
+    "NEXT_PUBLIC_ASSET_BASE_URL": "https://api.voxel3d.org"
+  },
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "services": [
+    {
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "3d-commerce-staging"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "NEXT_INC_CACHE_KV",
+      "id": "25ff1af3ff034fc887f2788a6ed600ce"
+    }
+  ],
+  "images": {
+    "binding": "IMAGES"
+  }
+}
