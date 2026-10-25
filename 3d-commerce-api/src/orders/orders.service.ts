@@ -727,6 +727,76 @@ export class OrdersService {
       });
     }
 
+    // Custom orders have no inventory reservations, so they were invisible to
+    // the reservation expiry query above and could remain PENDING_PAYMENT forever.
+    const staleCustomOrders = await this.prisma.order.findMany({
+      where: {
+        checkoutSource: "CUSTOM",
+        status: OrderStatus.PENDING_PAYMENT,
+        createdAt: { lt: new Date(Date.now() - RESERVATION_MINUTES * 60_000) },
+      },
+      include: { payment: true },
+      take: 100,
+      orderBy: { createdAt: "asc" },
+    });
+
+    for (const order of staleCustomOrders) {
+      if (order.payment?.provider === "RAZORPAY" && order.payment.providerOrderId) {
+        let providerPayments;
+        try {
+          providerPayments = await this.razorpay.fetchPayments(order.payment.providerOrderId);
+        } catch {
+          await this.observability.captureMessage(
+            "Unable to reconcile stale custom-order payment",
+            { alert: "payment_reconciliation_pending", orderId: order.id },
+          );
+          continue;
+        }
+
+        const captured = providerPayments.find(
+          (payment) =>
+            payment.status === "captured" &&
+            payment.amount === order.payment!.amountMinor &&
+            payment.currency === order.payment!.currency,
+        );
+        if (captured) {
+          const result = await this.payments.reconcileCapturedPayment({
+            orderId: order.id,
+            providerPaymentId: captured.id,
+            providerOrderId: order.payment.providerOrderId,
+            amount: captured.amount,
+            currency: captured.currency,
+          });
+          if (result.kind === "CAPTURED" || result.kind === "ALREADY_CAPTURED" || (result.kind === "REFUND_REQUIRED" && result.refunded)) {
+            continue;
+          }
+          await this.observability.captureMessage(
+            "Stale custom order has a captured payment requiring reconciliation",
+            { alert: "refund_reconciliation_pending", orderId: order.id },
+          );
+          continue;
+        }
+        if (providerPayments.some((payment) => payment.status === "authorized")) continue;
+      }
+
+      await this.prisma.$transaction(async (tx) => {
+        await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "Order" WHERE "id" = ${order.id} FOR UPDATE`);
+        const current = await tx.order.findUnique({
+          where: { id: order.id },
+          select: { status: true, promotionId: true, payment: { select: { status: true } } },
+        });
+        if (current?.status !== OrderStatus.PENDING_PAYMENT) return;
+        await tx.order.update({ where: { id: order.id }, data: { status: OrderStatus.CANCELLED } });
+        if (current.promotionId) await this.releasePromotionUsage(tx, current.promotionId);
+        if (current.payment?.status !== PaymentStatus.CAPTURED && current.payment?.status !== PaymentStatus.REFUND_PENDING) {
+          await tx.payment.updateMany({
+            where: { orderId: order.id, status: { in: [PaymentStatus.PENDING, PaymentStatus.FAILED, PaymentStatus.AUTHORIZED] } },
+            data: { status: PaymentStatus.FAILED },
+          });
+        }
+      });
+    }
+
     const stuckPending = await this.prisma.order.count({
       where: {
         status: OrderStatus.PENDING_PAYMENT,
