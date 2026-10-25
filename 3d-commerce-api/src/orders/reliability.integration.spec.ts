@@ -93,7 +93,7 @@ integrationDescribe("PostgreSQL reliability invariants", () => {
             AND "trackStock" = true
             AND "allowBackorder" = false
             AND ("stock" - "reserved") >= 1
-        `),
+        `)),
       ));
 
       expect(results.map(Number).reduce((sum, count) => sum + count, 0)).toBe(1);
