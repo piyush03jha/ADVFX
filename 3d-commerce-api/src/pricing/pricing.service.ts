@@ -31,6 +31,10 @@ export class PricingService {
           prices: {
             where: {
               isActive: true,
+              AND: [
+                { OR: [{ startsAt: null }, { startsAt: { lte: new Date() } }] },
+                { OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }] },
+              ],
               OR: [{ countryCode: address.country }, { countryCode: null }],
             },
             orderBy: [
@@ -76,6 +80,10 @@ export class PricingService {
                   prices: {
                     where: {
                       isActive: true,
+                      AND: [
+                        { OR: [{ startsAt: null }, { startsAt: { lte: new Date() } }] },
+                        { OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }] },
+                      ],
                       OR: [{ countryCode: address.country }, { countryCode: null }],
                     },
                     orderBy: [
