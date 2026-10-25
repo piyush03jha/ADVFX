@@ -8,6 +8,7 @@ describe('ProductsService', () => {
     productReview: { findFirst: jest.fn(), findUnique: jest.fn(), create: jest.fn(), findMany: jest.fn(), aggregate: jest.fn() },
     order: { findFirst: jest.fn() },
     productMetrics: { upsert: jest.fn(), findUnique: jest.fn() },
+    productViewEvent: { createMany: jest.fn(), deleteMany: jest.fn() },
   } as any;
   let service: ProductsService;
 
@@ -34,15 +35,38 @@ describe('ProductsService', () => {
     });
   });
 
-  it('records a product view through ProductMetrics', async () => {
+  it('increments product views only once per visitor and UTC day', async () => {
     prisma.product.findFirst.mockResolvedValue({ id: 'p1' });
+    prisma.productViewEvent.createMany.mockResolvedValue({ count: 1 });
     const metrics = { productId: 'p1', viewCount: 1, cartAddCount: 0, purchaseCount: 0, unitsSold: 0 };
     prisma.productMetrics.upsert.mockResolvedValue(metrics);
-    await expect(service.recordView('p1')).resolves.toBe(metrics);
+
+    await expect(service.recordView('p1', '127.0.0.1|test-agent')).resolves.toBe(metrics);
+
+    expect(prisma.productViewEvent.createMany).toHaveBeenCalledWith({
+      data: [expect.objectContaining({
+        productId: 'p1',
+        visitorHash: expect.any(String),
+        bucketStart: expect.any(Date),
+      })],
+      skipDuplicates: true,
+    });
     expect(prisma.productMetrics.upsert).toHaveBeenCalledWith({
       where: { productId: 'p1' },
       create: { productId: 'p1', viewCount: 1 },
       update: { viewCount: { increment: 1 } },
     });
+  });
+
+  it('does not increment metrics for a duplicate product view event', async () => {
+    prisma.product.findFirst.mockResolvedValue({ id: 'p1' });
+    prisma.productViewEvent.createMany.mockResolvedValue({ count: 0 });
+    const metrics = { productId: 'p1', viewCount: 4, cartAddCount: 0, purchaseCount: 0, unitsSold: 0 };
+    prisma.productMetrics.findUnique.mockResolvedValue(metrics);
+
+    await expect(service.recordView('p1', '127.0.0.1|test-agent')).resolves.toBe(metrics);
+
+    expect(prisma.productMetrics.upsert).not.toHaveBeenCalled();
+    expect(prisma.productMetrics.findUnique).toHaveBeenCalledWith({ where: { productId: 'p1' } });
   });
 });
