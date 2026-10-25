@@ -104,7 +104,7 @@ export default async function FAQPage() {
             Frequently asked questions
           </h1>
           <p className="mt-5 max-w-xl text-sm leading-6 text-muted sm:text-base">
-            Everything you need to know about Voxel3D physical 3D printed models, custom creations, ordering and delivery.
+            Frequently asked questions about Voxel3D: find simple answers about our physical 3D printed models, custom requests, payment, production, shipping, returns and product care. If you do not see your question here, contact our team and we will help.
           </p>
         </div>
         <div className="mt-10 divide-y divide-border border-y border-border">
