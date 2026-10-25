@@ -6,7 +6,7 @@ These changes introduce PostgreSQL-backed tables and payment/conversion schema u
 
 1. Deploy this code to staging with the three feature flags below unset or set to `false`.
 2. From `3d-commerce-api`, run `npm run db:migrate:deploy` against the staging database.
-3. Verify the tables `ApiRateLimitBucket`, `AuthCaptchaNonce`, and `ProductViewEvent` exist, and that `ProductPrice.countryCode`, conversion completion fields, `Order.shippingAddressSnapshot`, `Promotion.usageLimitPerUser`, and the `REFUND_PENDING` / `CREATING` payment states are present.
+3. Verify the tables `ApiRateLimitBucket`, `AuthCaptchaNonce`, and `ProductViewEvent` exist, and that `ProductPrice.countryCode`, conversion completion fields, `Order.shippingAddressSnapshot`, `Promotion.usageLimitPerUser`, and the `REFUND_PENDING` / `CREATING` payment states plus `PaymentAttempt.refundProviderPaymentId` are present.
 4. Set the three feature flags to `true` in the staging API environment and restart the API.
 5. Run unit tests, API smoke tests, duplicate-webhook tests, and concurrent checkout tests against staging.
 6. Repeat the migration and flag activation for production only after staging verification.
@@ -50,6 +50,7 @@ A refund attempt is claimed with the `REFUND_PENDING` payment-attempt state befo
 - `20261025204000_order_shipping_snapshot`
 - `20261025205000_promotion_per_user_limit`
 - `20261025206000_payment_creation_claim`
+- `20261025207000_payment_refund_capture_identity`
 
 ## Verification commands
 
@@ -71,4 +72,4 @@ Run concurrency and webhook integration tests against a staging PostgreSQL datab
 - **Custom checkout:** custom orders do not require stock reservations. Unpaid custom orders older than the reservation window are reconciled against Razorpay and cancelled when no payment is captured.
 - **Coupon limits:** `Promotion.usageLimitPerUser` defaults to one use per customer. The checkout transaction locks the promotion before enforcing the per-customer count, preventing concurrent claims from bypassing the limit.
 - **Database pool:** use a bounded Prisma `connection_limit` per API replica (the example uses 5). Calculate the aggregate pool across all API/worker replicas against the actual PostgreSQL connection budget. The synchronous Razorpay call in order creation remains a latency consideration and should be load-tested against the deployed provider and database.
-- **Migration list additions:** `20261025204000_order_shipping_snapshot`, `20261025205000_promotion_per_user_limit`, and `20261025206000_payment_creation_claim` must be applied before deploying code that uses these fields.
+- **Migration list additions:** `20261025204000_order_shipping_snapshot`, `20261025205000_promotion_per_user_limit`, and `20261025206000_payment_creation_claim` and `20261025207000_payment_refund_capture_identity` must be applied before deploying code that uses these fields.
