@@ -58,6 +58,7 @@ describe('ThreeDConversionService.discardConversionIntermediates', () => {
     const queued = { ...completing, status: 'QUEUED', stage: 'QUEUED', uploadId: null, originalSize: BigInt(1024) };
     prisma.threeDConversionJob.findUnique
       .mockResolvedValueOnce(completing)
+      .mockResolvedValueOnce(completing)
       .mockResolvedValueOnce(queued);
     prisma.threeDConversionJob.updateMany.mockResolvedValue({ count: 1 });
     storage.completeMultipartUpload.mockRejectedValue(new Error('NoSuchUpload'));
