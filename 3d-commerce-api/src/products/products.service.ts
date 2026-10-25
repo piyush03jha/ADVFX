@@ -928,6 +928,56 @@ export class ProductsService {
     });
   }
 
+  async setVariantCountryPrice(
+    productId: string,
+    variantId: string,
+    dto: { countryCode: string; currency?: string; amountMinor: number; compareAtMinor?: number | null },
+  ) {
+    const variant = await this.prisma.productVariant.findFirst({
+      where: { id: variantId, productId },
+      select: { id: true },
+    });
+    if (!variant) throw new NotFoundException('Product variant not found');
+
+    const countryCode = dto.countryCode.trim().toUpperCase();
+    const currency = dto.currency?.trim().toUpperCase() || 'INR';
+    if (!/^[A-Z]{2}$/.test(countryCode)) {
+      throw new BadRequestException('Country code must be a two-letter ISO country code');
+    }
+    if (!/^[A-Z]{3}$/.test(currency)) {
+      throw new BadRequestException('Currency must be a three-letter ISO currency code');
+    }
+    if (!Number.isInteger(dto.amountMinor) || dto.amountMinor < 0) {
+      throw new BadRequestException('Price must be a non-negative integer in minor currency units');
+    }
+    if (dto.compareAtMinor != null && dto.compareAtMinor < dto.amountMinor) {
+      throw new ConflictException('compareAtMinor cannot be lower than amountMinor');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw<Array<{ id: string }>>(
+        Prisma.sql`SELECT "id" FROM "ProductVariant" WHERE "id" = ${variantId} FOR UPDATE`,
+      );
+      return tx.productVariantCountryPrice.upsert({
+        where: { variantId_countryCode: { variantId, countryCode } },
+        create: {
+          variantId,
+          countryCode,
+          currency,
+          amountMinor: dto.amountMinor,
+          compareAtMinor: dto.compareAtMinor ?? null,
+          isActive: true,
+        },
+        update: {
+          currency,
+          amountMinor: dto.amountMinor,
+          compareAtMinor: dto.compareAtMinor ?? null,
+          isActive: true,
+        },
+      });
+    });
+  }
+
   async updateInventory(id: string, dto: UpdateInventoryDto) {
     await this.ensureProductExists(id);
 
