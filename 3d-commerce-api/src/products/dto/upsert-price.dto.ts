@@ -1,5 +1,6 @@
 import {
   IsDateString,
+  Matches,
   IsInt,
   IsOptional,
   IsString,
@@ -8,6 +9,11 @@ import {
 } from 'class-validator';
 
 export class UpsertPriceDto {
+  @IsOptional()
+  @IsString()
+  @Matches(/^[A-Z]{2}$/)
+  countryCode?: string | null;
+
   @IsOptional()
   @IsString()
   @MaxLength(10)
