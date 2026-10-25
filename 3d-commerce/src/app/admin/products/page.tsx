@@ -13,7 +13,7 @@ type Category={id:string;name:string;slug:string;parentId?:string|null;parent?:{
 
 export default function AdminProducts(){
   const [data,setData]=useState<{products:Product[];categories:Category[]}>({products:[],categories:[]});
-  const [search,setSearch]=useState(""); const [categoryFilter,setCategoryFilter]=useState("all"); const [loading,setLoading]=useState(true); const [saving,setSaving]=useState(false); const [message,setMessage]=useState("");
+  const [search,setSearch]=useState(""); const [mainCategoryFilter,setMainCategoryFilter]=useState("all"); const [subcategoryFilter,setSubcategoryFilter]=useState("all"); const [loading,setLoading]=useState(true); const [saving,setSaving]=useState(false); const [message,setMessage]=useState("");
   const [form,setForm]=useState({name:"",slug:"",description:"",categoryId:"",parentCategoryId:"",status:"ACTIVE",stock:"0",isFeatured:false,material:"",scale:"",dimensions:"",height:"",base:"",packaging:"",weight:""});
   const [editParentCategoryId,setEditParentCategoryId]=useState("");
   const [productImages,setProductImages]=useState<File[]>([]);
@@ -49,8 +49,16 @@ export default function AdminProducts(){
     return ()=>window.clearInterval(timer);
   },[assetProductId,assetFiles]);
 
-  const rows=useMemo(()=>data.products.filter(p=>[p.name,p.slug,p.category?.name||""].join(" ").toLowerCase().includes(search.trim().toLowerCase()) && (categoryFilter==="all" || p.category?.id===categoryFilter)),[data.products,search,categoryFilter]);
+  const rows=useMemo(()=>data.products.filter(p=>{
+    const matchesSearch=[p.name,p.slug,p.category?.name||""].join(" ").toLowerCase().includes(search.trim().toLowerCase());
+    const selectedSubcategory=subcategoryFilter!=="all";
+    const matchesCategory=selectedSubcategory
+      ? p.category?.id===subcategoryFilter
+      : mainCategoryFilter==="all" || p.category?.id===mainCategoryFilter || data.categories.some(category=>category.id===p.category?.id && category.parentId===mainCategoryFilter);
+    return matchesSearch && matchesCategory;
+  }),[data.products,data.categories,search,mainCategoryFilter,subcategoryFilter]);
   const mainCategories=useMemo(()=>data.categories.filter(category=>!category.parentId),[data.categories]);
+  const filteredSubcategories=useMemo(()=>mainCategoryFilter==="all"?[]:data.categories.filter(category=>category.parentId===mainCategoryFilter),[data.categories,mainCategoryFilter]);
   const subcategoriesFor=(parentId:string)=>data.categories.filter(category=>category.parentId===parentId);
 
   async function updateProduct(id:string,patch:Record<string,unknown>){setSaving(true);try{const r=await fetch("/api/products/"+id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(patch)});if(!r.ok)throw new Error();setMessage("Product updated.");await load()}catch{setMessage("Unable to update product.")}finally{setSaving(false)}}
@@ -271,7 +279,7 @@ export default function AdminProducts(){
         {productGlb&&<p className="mt-2 truncate text-[9px] text-muted">Selected: {productGlb.name}</p>}
       </div>
     </div><Button type="submit" variant="primary" size="sm" disabled={saving} className="mt-4">{saving?"Creating product…":"Create product"}</Button></form>
-    <div className="mt-6 grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(220px,280px)]"><div className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3"><IconSearch size={15} className="text-muted"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search products…" className="h-10 flex-1 bg-transparent text-xs outline-none"/></div><select aria-label="Filter products by category" value={categoryFilter} onChange={e=>setCategoryFilter(e.target.value)} className="h-10 rounded-xl border border-border bg-surface px-3 text-xs"><option value="all">All categories</option>{data.categories.map(category=><option key={category.id} value={category.id}>{category.parent?.name ? category.parent.name+" / " : ""}{category.name}</option>)}</select></div>
+    <div className="mt-6 grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(220px,280px)]"><div className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3"><IconSearch size={15} className="text-muted"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search products…" className="h-10 flex-1 bg-transparent text-xs outline-none"/></div><div className="grid gap-2 sm:grid-cols-2"><select aria-label="Filter products by main category" value={mainCategoryFilter} onChange={e=>{setMainCategoryFilter(e.target.value);setSubcategoryFilter("all")}} className="h-10 min-w-0 rounded-xl border border-border bg-surface px-3 text-xs"><option value="all">All main categories</option>{mainCategories.map(category=><option key={category.id} value={category.id}>{category.name}</option>)}</select><select aria-label="Filter products by subcategory" value={subcategoryFilter} disabled={mainCategoryFilter==="all" || filteredSubcategories.length===0} onChange={e=>setSubcategoryFilter(e.target.value)} className="h-10 min-w-0 rounded-xl border border-border bg-surface px-3 text-xs disabled:cursor-not-allowed disabled:opacity-50"><option value="all">{mainCategoryFilter==="all"?"Choose main category first":filteredSubcategories.length===0?"No subcategories":"All subcategories"}</option>{filteredSubcategories.map(category=><option key={category.id} value={category.id}>{category.name}</option>)}</select></div></div>
     <div className="mt-5 space-y-3">{loading?[1,2,3].map(i=><div key={i} className="h-28 animate-pulse rounded-2xl bg-surface"/>):rows.map(p=><AdminProductCard key={p.id} product={p} categories={data.categories} parentCategoryId={editParentCategoryId} setParentCategoryId={setEditParentCategoryId} saving={saving} editingProduct={editingProduct} assetProductId={assetProductId} assetFiles={assetFiles} assetLoading={assetLoading} assetBusy={assetBusy} assetMessage={assetMessage} uploadProgress={uploadProgress} editForm={editForm} updateProduct={updateProduct} updateVariant={updateVariant} deleteProduct={deleteProduct} startProductEdit={startProductEdit} openAssets={openAssets} uploadImages={uploadImages} uploadGlb={uploadGlb} removeMedia={removeMedia} removeFile={removeFile} setEditingProduct={setEditingProduct} setEditForm={setEditForm} saveProductEdit={saveProductEdit}/>)}{!loading&&!rows.length&&<div className="rounded-2xl border border-dashed border-border p-10 text-sm text-muted">No products found.</div>}</div>
     {message&&<p className="mt-4 text-xs text-muted">{message}</p>}
   </main>
