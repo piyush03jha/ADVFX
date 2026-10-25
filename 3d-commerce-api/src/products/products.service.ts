@@ -753,6 +753,38 @@ export class ProductsService {
       throw new ConflictException('You have already reviewed this product');
     }
 
+    const photoUrl = dto.photoUrl?.trim() || null;
+    if (photoUrl) {
+      let parsed: URL;
+      try {
+        parsed = new URL(photoUrl, 'https://voxel3d.org');
+      } catch {
+        throw new BadRequestException('Review photo URL is invalid');
+      }
+
+      const allowedOrigins = new Set([
+        'https://voxel3d.org',
+        'https://www.voxel3d.org',
+        'https://api.voxel3d.org',
+      ]);
+      const configuredStorageBase = process.env.STORAGE_PUBLIC_BASE_URL?.trim();
+      if (configuredStorageBase) {
+        try {
+          allowedOrigins.add(new URL(configuredStorageBase).origin);
+        } catch {
+          // Invalid storage URL configuration does not expand the allowlist.
+        }
+      }
+      if (
+        !['http:', 'https:'].includes(parsed.protocol) ||
+        !allowedOrigins.has(parsed.origin) ||
+        !parsed.pathname.startsWith('/api/assets/') &&
+          !parsed.pathname.startsWith('/products/')
+      ) {
+        throw new BadRequestException('Review photos must use Voxel3D-managed asset URLs');
+      }
+    }
+
     return this.prisma.productReview.create({
       data: {
         productId,
@@ -760,9 +792,10 @@ export class ProductsService {
         rating: dto.rating,
         title: dto.title?.trim() || null,
         comment: dto.comment.trim(),
-        photoUrl: dto.photoUrl?.trim() || null,
+        photoUrl,
         verifiedPurchase: true,
-        isPublished: true,
+        // Customer-submitted reviews remain hidden until an admin moderates them.
+        isPublished: false,
       },
       select: {
         id: true,
