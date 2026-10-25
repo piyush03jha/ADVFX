@@ -35,6 +35,7 @@ jobs:
       AUTH_EXPOSE_DEV_TOKENS: "false"
       CORS_ORIGINS: http://localhost:3000
       FRONTEND_URL: http://localhost:3000
+      RUN_POSTGRES_INTEGRATION_TESTS: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
