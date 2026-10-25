@@ -104,6 +104,24 @@ export class PricingService {
       }));
     }
 
+    const variantIds = [...new Set(
+      sourceItems
+        .map((item) => item.variantId)
+        .filter((variantId): variantId is string => Boolean(variantId)),
+    )];
+    const countryVariantPrices = variantIds.length
+      ? await this.prisma.productVariantCountryPrice.findMany({
+          where: {
+            variantId: { in: variantIds },
+            countryCode: address.country,
+            isActive: true,
+          },
+        })
+      : [];
+    const countryVariantPriceById = new Map(
+      countryVariantPrices.map((price) => [price.variantId, price]),
+    );
+
     let subtotalMinor = 0;
     let totalWeightGrams = 0;
     let currency: string | null = null;
@@ -112,8 +130,12 @@ export class PricingService {
       const product = item.product;
       const variant = item.variant;
       const basePrice = product.prices[0];
+      const countryVariantPrice = variant?.id
+        ? countryVariantPriceById.get(variant.id) ?? null
+        : null;
       const variantPrice =
-        variant?.isActive && variant.price?.isActive ? variant.price : null;
+        countryVariantPrice ??
+        (variant?.isActive && variant.price?.isActive ? variant.price : null);
       const price = variantPrice ?? basePrice;
 
       if (product.status !== "ACTIVE" || !price) {
