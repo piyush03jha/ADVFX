@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+const isDevelopment = process.env.NODE_ENV === "development";
+
 const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
@@ -24,7 +26,15 @@ const nextConfig: NextConfig = {
               "object-src 'none'",
               "frame-ancestors 'none'",
               "form-action 'self'",
-              "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://checkout.razorpay.com https://challenges.cloudflare.com https://static.cloudflareinsights.com",
+              [
+                "script-src 'self' 'unsafe-inline'",
+                // React's development diagnostics use eval; never enable this in production.
+                ...(isDevelopment ? ["'unsafe-eval'"] : []),
+                "'wasm-unsafe-eval'",
+                "https://checkout.razorpay.com",
+                "https://challenges.cloudflare.com",
+                "https://static.cloudflareinsights.com",
+              ].join(" "),
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https:",
               "font-src 'self' data:",
