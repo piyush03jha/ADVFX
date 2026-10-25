@@ -26,6 +26,8 @@ test("answer-engine response is crawlable text with safe cache headers", async (
   assert.match(body, /https:\/\/voxel3d\.org\/shop/);
   assert.match(body, /### Are the products physical\?/);
   assert.match(body, /not digital downloads/);
+  assert.match(body, /Brand and geographic context/);
+  assert.match(body, /physical 3D printed products for customers in India/);
 });
 
 test("Next.js llms endpoint uses published FAQ content and preserves FAQ structured data", async () => {
@@ -41,4 +43,14 @@ test("Next.js llms endpoint uses published FAQ content and preserves FAQ structu
   assert.match(faqPage, /"@type": "FAQPage"/);
   assert.match(faqPage, /"@type": "Question"/);
   assert.match(faqPage, /"@type": "Answer"/);
+});
+
+test("site organization structured data exposes truthful brand and topic context", async () => {
+  const layout = await readFile(new URL("../../src/app/layout.tsx", import.meta.url), "utf8");
+
+  assert.match(layout, /"@type": "Organization"/);
+  assert.match(layout, /areaServed: \{ "@type": "Country", name: "India" \}/);
+  assert.match(layout, /knowsAbout: \[/);
+  assert.match(layout, /"Custom physical model requests from reference images"/);
+  assert.match(layout, /SITE_SAME_AS/);
 });
