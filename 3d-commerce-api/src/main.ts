@@ -163,7 +163,7 @@ async function bootstrap() {
       const now = Date.now();
 
       // Razorpay webhooks are authenticated with their HMAC signature and
-      // static asset delivery does not consume API rate-limit buckets.
+      // use their own replay/idempotency checks instead of the request limiter.
       if (request.url.startsWith("/payments/razorpay/webhook")) return;
 
       const routePath = request.routeOptions?.url ?? request.url.split("?")[0];
