@@ -94,7 +94,7 @@ export class PricingService {
 
     let subtotalMinor = 0;
     let totalWeightGrams = 0;
-    let currency = "INR";
+    let currency: string | null = null;
 
     const items = sourceItems.map((item) => {
       const product = item.product;
@@ -125,14 +125,7 @@ export class PricingService {
         );
       }
 
-      if (currency !== "INR" && currency !== price.currency) {
-        throw new BadRequestException(
-          "All items in a checkout must use the same currency",
-        );
-      }
-      if (currency === "INR" && subtotalMinor === 0) {
-        currency = price.currency;
-      } else if (currency !== price.currency) {
+      if (currency !== null && currency !== price.currency) {
         throw new BadRequestException(
           "All items in a checkout must use the same currency",
         );
@@ -308,7 +301,7 @@ export class PricingService {
     }
 
     return {
-      currency,
+      currency: currency ?? "INR",
       items,
       shippingRule: shipping,
       promotion,
