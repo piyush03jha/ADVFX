@@ -214,15 +214,17 @@ export class CustomBuildService {
     });
     if (!address) throw new NotFoundException("Shipping address not found");
 
-    const postalCode = address.postalCode.trim().toUpperCase();
-    const deliveryZone = await this.prisma.deliveryZone.findUnique({
-      where: { postalCode },
-      select: { active: true, coverage: true },
-    });
-    if (deliveryZone?.active && deliveryZone.coverage === "NOT_DELIVERED") {
-      throw new BadRequestException(
-        "We currently do not deliver to postal code " + postalCode,
-      );
+    const postalCode = address.postalCode?.trim().toUpperCase();
+    if (postalCode) {
+      const deliveryZone = await this.prisma.deliveryZone.findUnique({
+        where: { postalCode },
+        select: { active: true, coverage: true },
+      });
+      if (deliveryZone?.active && deliveryZone.coverage === "NOT_DELIVERED") {
+        throw new BadRequestException(
+          "We currently do not deliver to postal code " + postalCode,
+        );
+      }
     }
 
     if (request.status === "CANCELLED") {
