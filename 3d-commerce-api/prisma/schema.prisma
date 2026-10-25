@@ -809,6 +809,7 @@ enum PaymentStatus {
   AUTHORIZED
   CAPTURED
   FAILED
+  REFUND_PENDING
   REFUNDED
 }
 
