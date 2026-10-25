@@ -38,6 +38,7 @@ const empty = {
 
 export default function AdminCategories() {
   const [categories, setCategories] = useState<Category[]>([]);
+  const [categorySearch, setCategorySearch] = useState("");
   const [form, setForm] = useState(empty);
   const [editing, setEditing] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -139,6 +140,16 @@ export default function AdminCategories() {
 
 
   const parentCategories = useMemo(() => categories.filter((c) => !c.parentId), [categories]);
+  const visibleCategories = useMemo(() => {
+    const query = categorySearch.trim().toLowerCase();
+    if (!query) return categories;
+    return categories.filter((category) => [
+      category.name,
+      category.slug,
+      category.description ?? "",
+      category.parent?.name ?? "",
+    ].join(" ").toLowerCase().includes(query));
+  }, [categories, categorySearch]);
 
   function normalizeHeader(value: string) {
     return value.replace(/^\uFEFF/, "").trim().toLowerCase().replace(/[\s-]+/g, "_");
@@ -633,12 +644,22 @@ export default function AdminCategories() {
       </form>
 
       <div className="mt-6 space-y-3">
+        <label className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3">
+          <IconPhoto size={15} className="text-muted" />
+          <input
+            aria-label="Filter categories"
+            value={categorySearch}
+            onChange={(event) => setCategorySearch(event.target.value)}
+            placeholder="Filter categories by name, slug or parent…"
+            className="h-10 min-w-0 flex-1 bg-transparent text-xs outline-none"
+          />
+        </label>
         {loading ? (
           [1, 2, 3].map((i) => (
             <div key={i} className="h-32 animate-pulse rounded-2xl bg-surface" />
           ))
         ) : (
-          categories.map((c) => (
+          visibleCategories.map((c) => (
             <article
               key={c.id}
               className="flex flex-wrap items-center justify-between gap-5 rounded-2xl border border-border bg-surface p-4"
