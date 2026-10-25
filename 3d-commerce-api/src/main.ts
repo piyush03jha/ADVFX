@@ -179,6 +179,7 @@ async function bootstrap() {
       // replicas increment the same fixed-window counter without lost updates.
       let count: number;
       if (sharedRateLimitEnabled) {
+        try {
         const rows = await rateLimitPrisma.$queryRaw<Array<{ count: number }>>(
           Prisma.sql`
             INSERT INTO "ApiRateLimitBucket" ("key", "startedAt", "count", "updatedAt")
@@ -199,6 +200,16 @@ async function bootstrap() {
           `,
         );
         count = rows[0]?.count ?? limit + 1;
+        } catch (error) {
+          // Keep the storefront available if PostgreSQL is temporarily slow or down.
+          request.log.error({ error }, "shared rate limiter unavailable; using local fallback");
+          const current = localRateLimitState.get(key);
+          const next = !current || now - current.startedAt >= 60_000
+            ? { startedAt: now, count: 1 }
+            : { startedAt: current.startedAt, count: current.count + 1 };
+          localRateLimitState.set(key, next);
+          count = next.count;
+        }
 
         // Cleanup is best-effort and infrequent; expired buckets cannot affect
         // current enforcement because the upsert resets their 60-second window.
