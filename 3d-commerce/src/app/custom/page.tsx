@@ -14,6 +14,8 @@ import { Navbar } from "@/components/layout/SiteNavbar";
 import { CustomForm, type CustomSubmission } from "@/components/custom/CustomForm";
 import { CustomSuccessState } from "@/components/custom/CustomSuccessState";
 import { Reviews } from "@/components/home/Reviews";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { absoluteUrl } from "@/lib/site";
 
 const whatsappUrl = process.env.NEXT_PUBLIC_WHATSAPP_URL || "/contact";
 
@@ -24,6 +26,37 @@ export default function CustomPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <JsonLd data={{
+        "@context": "https://schema.org",
+        "@type": "HowTo",
+        "@id": absoluteUrl("/custom#how-to"),
+        name: "How to request a custom 3D printed model from Voxel3D",
+        description: "Submit reference photos and requirements so the Voxel3D team can review a custom physical model request.",
+        inLanguage: "en-IN",
+        step: [
+          {
+            "@type": "HowToStep",
+            position: 1,
+            name: "Share reference photos and requirements",
+            text: "Upload clear JPG or PNG photos and provide the requested size, style, and important details.",
+            url: absoluteUrl("/custom#custom-request"),
+          },
+          {
+            "@type": "HowToStep",
+            position: 2,
+            name: "Team reviews and prepares the model",
+            text: "The Voxel3D team reviews the idea, prepares the 3D model, and plans physical production.",
+            url: absoluteUrl("/custom#how-we-work"),
+          },
+          {
+            "@type": "HowToStep",
+            position: 3,
+            name: "Confirm the build and arrange delivery",
+            text: "After the build is confirmed, the physical order is processed and delivery is arranged. Timing and availability depend on the specific request.",
+            url: absoluteUrl("/custom#how-we-work"),
+          },
+        ],
+      }} />
       <Navbar />
 
       <main id="main-content" className="relative isolate overflow-x-clip pt-20 sm:pt-24">
@@ -36,7 +69,7 @@ export default function CustomPage() {
           </>
         ) : (
           <>
-            <section className="mx-auto max-w-[1440px] px-4 pb-8 sm:px-6 lg:px-10">
+            <section id="custom-request" className="mx-auto max-w-[1440px] px-4 pb-8 sm:px-6 lg:px-10">
               <div className="mx-auto max-w-4xl py-6 text-center sm:py-12">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">Custom studio</p>
                 <h1 className="mt-3 font-serif text-[2rem] leading-[1.05] tracking-[-0.055em] sm:text-5xl lg:text-6xl">
@@ -56,7 +89,7 @@ export default function CustomPage() {
               />
             </section>
 
-            <section className="border-y border-border bg-surface/35">
+            <section id="how-we-work" className="border-y border-border bg-surface/35">
               <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-20 lg:px-8">
                 <div className="max-w-2xl">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">How we work</p>
