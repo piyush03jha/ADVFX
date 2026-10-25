@@ -50,6 +50,9 @@ describe('ThreeDConversionService.discardConversionIntermediates', () => {
     const completing = {
       id: 'j1', status: 'PROCESSING', stage: 'COMPLETING',
       sourceStorageKey: 'conversions/j1/source/model.obj', uploadId: 'upload-1',
+      completionSize: BigInt(1024),
+      completionParts: [{ PartNumber: 1, ETag: 'etag-1' }],
+      updatedAt: new Date(Date.now() - 60_000),
       originalSize: null, convertedSize: null, outputSize: null,
     };
     const queued = { ...completing, status: 'QUEUED', stage: 'QUEUED', uploadId: null, originalSize: BigInt(1024) };
