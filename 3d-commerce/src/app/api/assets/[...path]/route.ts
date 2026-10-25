@@ -54,7 +54,7 @@ export async function GET(
   try {
     const namespace = path[0];
     const backendPath = path.slice(1).map(encodeURIComponent).join("/");
-    const backendHeaders = new Headers(getTrustedClientIpHeaders(request));
+    const backendHeaders = new Headers(await getTrustedClientIpHeaders(request));
     if (range) backendHeaders.set("range", range);
 
     const response = await fetch(
