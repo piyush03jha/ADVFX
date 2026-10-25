@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
-import { Environment, Lightformer, OrbitControls, useGLTF } from "@react-three/drei";
+import { AdaptiveDpr, Environment, Lightformer, OrbitControls, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { ModelErrorBoundary } from "@/components/3d/ModelErrorBoundary";
 import { useModelUrl } from "@/lib/useModelUrl";
@@ -253,7 +253,8 @@ export default function Product3DStage({
     >
       <Canvas
         camera={{ position: [0, 0, 4], fov: 34, near: 0.01, far: 100 }}
-        dpr={1}
+        // Keep mobile rendering crisp on high-density screens; AdaptiveDpr can lower it if needed.
+        dpr={[1, 1.5]}
         frameloop="demand"
         gl={{
           antialias: false,
@@ -263,6 +264,7 @@ export default function Product3DStage({
         }}
         performance={{ min: 0.25, max: 1, debounce: 200 }}
       >
+        <AdaptiveDpr pixelated={false} />
         <WebGLContextMonitor
           onLost={() => setContextLost(true)}
           onRestored={() => setContextLost(false)}
