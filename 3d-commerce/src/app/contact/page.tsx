@@ -74,7 +74,7 @@ export default async function ContactPage() {
                 </h1>
 
                 <p className="mt-6 max-w-2xl text-sm leading-6 text-muted sm:mt-7 sm:text-base sm:leading-7">
-                  Let’s make your idea tangible. Whether you have a question about a product, need help with an order, or want a custom 3D printed model, tell us what you have in mind. Our team will help you with the next step.
+                  Let's make your idea tangible. Contact Voxel3D if you have a question about a product, need help with an order, want a custom 3D printed model, or are planning a bulk order. Tell us what you have in mind and share any useful details. Our team will help you understand the next step.
                 </p>
               </div>
 
