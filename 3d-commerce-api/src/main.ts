@@ -1,20 +1,16 @@
 import "dotenv/config";
+import { Prisma } from "@prisma/client";
 import { ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
 import { validateEnvironment } from "./config/env.validation";
+import { PrismaService } from "./prisma/prisma.service";
 import multipart from "@fastify/multipart";
 import {
   FastifyAdapter,
   NestFastifyApplication,
 } from "@nestjs/platform-fastify";
 
-interface RateLimitState {
-  startedAt: number;
-  count: number;
-}
-
-const rateLimitState = new Map<string, RateLimitState>();
 const AUTH_RATE_LIMITS: Record<string, number> = {
   "/auth/login": 10,
   "/auth/admin/login": 5,
@@ -37,6 +33,11 @@ async function bootstrap() {
   );
 
   app.enableShutdownHooks();
+
+  // PostgreSQL is already a required shared dependency, so use it for atomic
+  // rate-limit buckets rather than allowing each API replica its own limits.
+  const rateLimitPrisma = app.get(PrismaService);
+  let lastRateLimitCleanupAt = 0;
 
   const maxUploadSizeMb = Number(process.env.MAX_UPLOAD_SIZE_MB ?? 10);
 
@@ -131,8 +132,8 @@ async function bootstrap() {
 
       const now = Date.now();
 
-      // Razorpay webhooks are already authenticated with their HMAC signature
-      // and must not share the public request bucket.
+      // Razorpay webhooks are authenticated with their HMAC signature and
+      // static asset delivery does not consume API rate-limit buckets.
       if (
         request.url.startsWith("/payments/razorpay/webhook") ||
         request.url.startsWith("/assets/") ||
@@ -144,35 +145,48 @@ async function bootstrap() {
       const limit = routeLimit ?? rateLimitPerMinute;
       const bucketScope = routeLimit ? routePath : "global";
       const key = `${bucketScope}:${request.ip}`;
-      const current = rateLimitState.get(key);
 
-      const next: RateLimitState =
-        !current || now - current.startedAt >= 60_000
-          ? { startedAt: now, count: 1 }
-          : {
-              startedAt: current.startedAt,
-              count: current.count + 1,
-            };
-
-      rateLimitState.set(key, next);
-
-      if (rateLimitState.size > 10_000) {
-        const cutoff = now - 60_000;
-
-        for (const [stateKey, state] of rateLimitState) {
-          if (state.startedAt < cutoff) {
-            rateLimitState.delete(stateKey);
-          }
-        }
-      }
+      // This upsert is atomic in PostgreSQL. Concurrent requests across API
+      // replicas increment the same fixed-window counter without lost updates.
+      const rows = await rateLimitPrisma.$queryRaw<Array<{ count: number }>>(
+        Prisma.sql`
+          INSERT INTO "ApiRateLimitBucket" ("key", "startedAt", "count", "updatedAt")
+          VALUES (${key}, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP)
+          ON CONFLICT ("key") DO UPDATE SET
+            "count" = CASE
+              WHEN "ApiRateLimitBucket"."startedAt" <= CURRENT_TIMESTAMP - INTERVAL '60 seconds'
+                THEN 1
+              ELSE "ApiRateLimitBucket"."count" + 1
+            END,
+            "startedAt" = CASE
+              WHEN "ApiRateLimitBucket"."startedAt" <= CURRENT_TIMESTAMP - INTERVAL '60 seconds'
+                THEN CURRENT_TIMESTAMP
+              ELSE "ApiRateLimitBucket"."startedAt"
+            END,
+            "updatedAt" = CURRENT_TIMESTAMP
+          RETURNING "count"
+        `,
+      );
+      const count = rows[0]?.count ?? limit + 1;
 
       reply.header("X-RateLimit-Limit", limit);
       reply.header(
         "X-RateLimit-Remaining",
-        Math.max(0, limit - next.count),
+        Math.max(0, limit - count),
       );
 
-      if (next.count > limit) {
+      // Cleanup is best-effort and infrequent; expired buckets cannot affect
+      // current enforcement because the upsert resets their 60-second window.
+      if (now - lastRateLimitCleanupAt > 10 * 60 * 1000) {
+        lastRateLimitCleanupAt = now;
+        void rateLimitPrisma.$executeRaw(
+          Prisma.sql`DELETE FROM "ApiRateLimitBucket" WHERE "updatedAt" < CURRENT_TIMESTAMP - INTERVAL '24 hours'`,
+        ).catch((error) => {
+          request.log.warn({ error }, "rate-limit cleanup failed");
+        });
+      }
+
+      if (count > limit) {
         return reply
           .code(429)
           .header("Retry-After", "60")
