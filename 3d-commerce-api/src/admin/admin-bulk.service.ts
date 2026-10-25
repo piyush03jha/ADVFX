@@ -93,7 +93,7 @@ export class AdminBulkService {
         const basePrice = parseMoney(row.price, 'price');
         const variantPrices = variants.map((variant) => ({ ...variant, amountMinor: parseMoney(row[variant.header], variant.name + ' price') ?? basePrice }));
         const imageValue = textValue(row.image || row.imageurl);
-        const imageUrl = imageValue && (/^https:\/\/\//i.test(imageValue) || imageValue.startsWith('/api/assets/')) ? imageValue : undefined;
+        const imageUrl = imageValue && (imageValue.toLowerCase().startsWith('https://') || imageValue.startsWith('/api/assets/')) ? imageValue : undefined;
 
         await this.prisma.$transaction(async (tx) => {
           let productId: string;
