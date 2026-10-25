@@ -657,6 +657,7 @@ export class PaymentsService {
       ) {
         return {
           kind: "REFUND_REQUIRED" as const,
+          duplicatePayment: true as const,
           orderStatus: order.status,
           providerPaymentId,
         };
@@ -700,6 +701,7 @@ export class PaymentsService {
       if (order.status !== OrderStatus.PENDING_PAYMENT) {
         return {
           kind: "REFUND_REQUIRED" as const,
+          duplicatePayment: false as const,
           orderStatus: order.status,
           providerPaymentId,
         };
@@ -715,6 +717,7 @@ export class PaymentsService {
       if (!reservation && order.checkoutSource !== "CUSTOM") {
         return {
           kind: "REFUND_REQUIRED" as const,
+          duplicatePayment: false as const,
           orderStatus: order.status,
           providerPaymentId,
         };
