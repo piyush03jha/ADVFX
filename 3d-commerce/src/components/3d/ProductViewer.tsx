@@ -10,7 +10,7 @@ import {
 } from "react";
 
 import { Canvas, useFrame } from "@react-three/fiber";
-import { Environment, Html, Lightformer, useGLTF } from "@react-three/drei";
+import { AdaptiveDpr, Environment, Html, Lightformer, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 
 import { HERO_MODEL_ROTATION_MS } from "@/config/hero-motion";
@@ -429,7 +429,7 @@ export function ProductViewer({
         className="relative z-10"
         frameloop={isOnScreen && isTabVisible ? "always" : "never"}
         camera={{ position: [0, 0.05, 9.8], fov: 34 }}
-        dpr={[1, 1.1]}
+        dpr={[1, 1.5]}
         gl={{
           alpha: true,
           antialias: false,
@@ -441,6 +441,7 @@ export function ProductViewer({
           gl.toneMappingExposure = 1.05;
         }}
       >
+        <AdaptiveDpr pixelated={false} />
         <ambientLight intensity={1.75} />
         <directionalLight position={[5, 7, 5]} intensity={2.1} />
         <directionalLight position={[-3, 2, -2]} intensity={0.55} />
