@@ -140,7 +140,11 @@ export class ThreeDConversionService {
           stage: "UPLOADING",
           uploadId: body.uploadId,
         },
-        data: { stage: "COMPLETING" },
+        data: {
+          stage: "COMPLETING",
+          completionSize: BigInt(body.size),
+          completionParts: parts,
+        },
       });
       job = await this.prisma.threeDConversionJob.findUnique({ where: { id: job.id } });
       if (!job) throw new NotFoundException("Conversion job not found");
@@ -200,6 +204,8 @@ export class ThreeDConversionService {
       },
       data: {
         uploadId: null,
+        completionSize: null,
+        completionParts: Prisma.JsonNull,
         status: ProcessingJobStatus.QUEUED,
         stage: "QUEUED",
         originalSize: BigInt(body.size),
