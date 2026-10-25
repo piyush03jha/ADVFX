@@ -14,12 +14,14 @@ describe('AuthCaptchaService', () => {
     prisma.authCaptchaNonce.deleteMany.mockResolvedValue({ count: 0 });
     service = new AuthCaptchaService(prisma);
     process.env.AUTH_CAPTCHA_SECRET = 'test-captcha-secret';
+    process.env.DISTRIBUTED_CAPTCHA_REPLAY_ENABLED = 'true';
   });
 
   afterEach(() => {
     jest.restoreAllMocks();
     global.fetch = originalFetch;
     delete process.env.AUTH_CAPTCHA_PROVIDER;
+    delete process.env.DISTRIBUTED_CAPTCHA_REPLAY_ENABLED;
     delete process.env.TURNSTILE_SECRET;
     delete process.env.TURNSTILE_SECRET_KEY;
     delete process.env.TURNSTILE_SITE_KEY;
