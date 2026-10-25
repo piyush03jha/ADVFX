@@ -84,6 +84,9 @@ export class AuthCaptchaService {
   }
 
   private provider(): 'math' | 'turnstile' {
+    // The math challenge is visible in the API response and is not a production
+    // bot barrier. Production must fail closed unless Turnstile is configured.
+    if (process.env.NODE_ENV === 'production') return 'turnstile';
     return process.env.AUTH_CAPTCHA_PROVIDER?.trim().toLowerCase() === 'turnstile'
       ? 'turnstile'
       : 'math';
