@@ -600,7 +600,7 @@ export class PaymentsService {
           await this.prisma.payment.updateMany({
             where: {
               id: attempt.paymentId,
-              providerPaymentId: attempt.providerPaymentId,
+              providerPaymentId: attempt.refundProviderPaymentId,
               status: { in: [PaymentStatus.CAPTURED, PaymentStatus.REFUND_PENDING] },
             },
             data: { status: PaymentStatus.REFUNDED },
