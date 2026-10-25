@@ -24,6 +24,10 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
       }} />
       <Navbar />
       <main id="main-content" className="min-h-svh overflow-x-clip bg-background">
+        <header className="mx-auto w-full max-w-7xl px-5 pb-3 pt-28 sm:px-8 sm:pt-32 lg:px-12">
+          <h1 className="font-serif text-3xl tracking-[-0.04em] text-foreground sm:text-5xl">Shop 3D Printed Models</h1>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-muted sm:text-base">Browse physical figures, miniatures, display models and collectibles. Check product details, explore 3D previews on selected items, and order online in India.</p>
+        </header>
         <ShopListing searchParams={params} basePath="/shop" />
       </main>
     </>
@@ -33,8 +37,8 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
 export async function generateMetadata({ searchParams }: ShopPageProps): Promise<Metadata> {
   return shopListingMetadata({
     path: "/shop",
-    title: "Shop 3D Printed Figures, Miniatures & Collectibles",
-    description: "Shop physical 3D printed figures, miniatures, display models and collectibles from Voxel3D. Compare product details, explore selected interactive 3D previews and order online in India.",
+    title: "Shop 3D Printed Models",
+    description: "Shop physical 3D printed models, figures, miniatures and collectibles from Voxel3D. View product details and selected 3D previews, then order online in India.",
     searchParams: await searchParams,
   });
 }
