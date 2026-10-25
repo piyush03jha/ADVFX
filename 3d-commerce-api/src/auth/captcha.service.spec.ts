@@ -107,7 +107,14 @@ describe('AuthCaptchaService', () => {
     const answer = challenge.operator === '+' ? challenge.first + challenge.second : challenge.first - challenge.second;
     service.verify(challenge.token, String(answer), 'login');
     const usedNonces = (service as any).usedNonces as Map<string, number>;
-    expect(usedNonces.has(JSON.parse(Buffer.from(challenge.token, 'base64url').toString('utf8')).nonce)).toBe(true);
+    const expiresAt = Date.now() + 60_000;
+    for (let index = 0; index < 10_001; index += 1) {
+      usedNonces.set('seed-' + index, expiresAt);
+    }
+    const nonce = JSON.parse(Buffer.from(challenge.token, 'base64url').toString('utf8')).nonce;
+    service.verify(challenge.token, String(answer), 'login');
+    expect(usedNonces.has(nonce)).toBe(true);
+    expect(usedNonces.size).toBe(10_002);
   });
 
 });
