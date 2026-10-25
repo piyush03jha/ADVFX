@@ -292,7 +292,11 @@ export class OrdersService {
         include: { items: true, shippingAddress: true },
       });
 
-      for (const item of quote.items) {
+      for (const item of [...quote.items].sort((a, b) => {
+        const keyA = a.variantId ? "variant:" + a.variantId : "inventory:" + a.productId;
+        const keyB = b.variantId ? "variant:" + b.variantId : "inventory:" + b.productId;
+        return keyA.localeCompare(keyB);
+      })) {
         const inventory = item.variantId
           ? await tx.productVariant.findFirst({
               where: { id: item.variantId, productId: item.productId, isActive: true },
