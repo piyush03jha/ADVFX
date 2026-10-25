@@ -16,6 +16,7 @@ import { UpsertPriceDto } from './dto/upsert-price.dto';
 import { CreateProductReviewDto } from './dto/create-product-review.dto';
 import { StorageService } from '../storage/storage.service';
 import sharp from 'sharp';
+import { createHmac } from 'node:crypto';
 
 export interface ShopListQuery {
   page: number;
@@ -528,13 +529,50 @@ export class ProductsService {
     }
   }
 
-  async recordView(id: string) {
+  private lastViewCleanupAt = 0;
+
+  async recordView(id: string, visitorIdentity: string) {
     await this.ensureActiveProduct(id);
-    return this.prisma.productMetrics.upsert({
-      where: { productId: id },
-      create: { productId: id, viewCount: 1 },
-      update: { viewCount: { increment: 1 } },
+
+    // Keep raw IP/user-agent data out of storage. A keyed digest makes the
+    // daily dedupe key stable across replicas without persisting identifiers.
+    const secret = process.env.AUTH_CAPTCHA_SECRET ?? 'development-only-product-view-secret';
+    const visitorHash = createHmac('sha256', secret)
+      .update(visitorIdentity.slice(0, 2048))
+      .digest('hex');
+    const bucketStart = new Date();
+    bucketStart.setUTCHours(0, 0, 0, 0);
+
+    const inserted = await this.prisma.productViewEvent.createMany({
+      data: [{ productId: id, visitorHash, bucketStart }],
+      skipDuplicates: true,
     });
+
+    // Only count the first view from this visitor for this product per UTC day.
+    const metrics = inserted.count === 1
+      ? await this.prisma.productMetrics.upsert({
+          where: { productId: id },
+          create: { productId: id, viewCount: 1 },
+          update: { viewCount: { increment: 1 } },
+        })
+      : await this.prisma.productMetrics.findUnique({ where: { productId: id } }) ?? {
+          productId: id,
+          viewCount: 0,
+          cartAddCount: 0,
+          purchaseCount: 0,
+          unitsSold: 0,
+        };
+
+    // Bound dedupe-table growth; cleanup is best-effort and never blocks a view.
+    const now = Date.now();
+    if (now - this.lastViewCleanupAt > 6 * 60 * 60 * 1000) {
+      this.lastViewCleanupAt = now;
+      void this.prisma.productViewEvent.deleteMany({
+        where: { bucketStart: { lt: new Date(now - 7 * 24 * 60 * 60 * 1000) } },
+      }).catch(() => undefined);
+    }
+
+    return metrics;
   }
 
   async getMetrics(id: string) {
