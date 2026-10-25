@@ -204,7 +204,10 @@ describe('CustomBuildService', () => {
       });
       expect(prisma.order.update).toHaveBeenCalledWith(expect.objectContaining({
         where: { id: 'o1' },
-        data: { shippingAddressId: 'a2' },
+        data: expect.objectContaining({
+          shippingAddressId: 'a2',
+          shippingAddressSnapshot: expect.objectContaining({ postalCode: undefined }),
+        }),
       }));
       expect(prisma.order.create).not.toHaveBeenCalled();
     });
