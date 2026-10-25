@@ -902,15 +902,18 @@ export class ProductsService {
     }
 
     return this.prisma.$transaction(async (tx) => {
+      const countryCode = dto.countryCode?.trim().toUpperCase() || null;
+      const currency = dto.currency?.trim().toUpperCase() || 'INR';
       await tx.productPrice.updateMany({
-        where: { productId: id, isActive: true },
+        where: { productId: id, currency, countryCode, isActive: true },
         data: { isActive: false },
       });
 
       return tx.productPrice.create({
         data: {
           productId: id,
-          currency: dto.currency ?? 'INR',
+          countryCode,
+          currency,
           amountMinor,
           compareAtMinor,
           startsAt: dto.startsAt ? new Date(dto.startsAt) : null,
