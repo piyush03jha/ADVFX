@@ -459,10 +459,27 @@ export class PaymentsService {
           result.providerPaymentId,
           input.amount,
         );
-        await this.prisma.payment.update({
-          where: { orderId: input.orderId },
-          data: { status: PaymentStatus.REFUNDED },
-        });
+        if (result.duplicatePayment) {
+          await this.prisma.paymentAttempt.updateMany({
+            where: { providerOrderId: input.providerOrderId },
+            data: {
+              providerPaymentId: input.providerPaymentId,
+              status: PaymentStatus.REFUNDED,
+            },
+          });
+        } else {
+          await this.prisma.payment.update({
+            where: { orderId: input.orderId },
+            data: { status: PaymentStatus.REFUNDED },
+          });
+          await this.prisma.paymentAttempt.updateMany({
+            where: { providerOrderId: input.providerOrderId },
+            data: {
+              providerPaymentId: input.providerPaymentId,
+              status: PaymentStatus.REFUNDED,
+            },
+          });
+        }
         return { ...result, refunded: true };
       } catch (error) {
         console.error("Razorpay refund failed during reconciliation", {
@@ -771,6 +788,9 @@ export class PaymentsService {
         : null;
 
     if (!attempt) return;
+    // A previously refunded provider attempt must not trigger another refund
+    // when Razorpay redelivers the same captured event.
+    if (attempt.status === PaymentStatus.REFUNDED) return;
 
     const resolvedAmount =
       typeof amount === "number" ? amount : attempt.amountMinor;
@@ -797,10 +817,27 @@ export class PaymentsService {
           result.providerPaymentId,
           resolvedAmount,
         );
-        await this.prisma.payment.update({
-          where: { orderId: attempt.payment.orderId },
-          data: { status: PaymentStatus.REFUNDED },
-        });
+        if (result.duplicatePayment) {
+          await this.prisma.paymentAttempt.updateMany({
+            where: { providerOrderId: attempt.providerOrderId },
+            data: {
+              providerPaymentId: result.providerPaymentId,
+              status: PaymentStatus.REFUNDED,
+            },
+          });
+        } else {
+          await this.prisma.payment.update({
+            where: { orderId: attempt.payment.orderId },
+            data: { status: PaymentStatus.REFUNDED },
+          });
+          await this.prisma.paymentAttempt.updateMany({
+            where: { providerOrderId: attempt.providerOrderId },
+            data: {
+              providerPaymentId: result.providerPaymentId,
+              status: PaymentStatus.REFUNDED,
+            },
+          });
+        }
       } catch (error) {
         await this.notifications.create(
           (await this.prisma.order.findUnique({ where: { id: attempt.payment.orderId }, select: { userId: true } }))?.userId ?? "",
@@ -812,10 +849,9 @@ export class PaymentsService {
             entityId: attempt.payment.orderId,
           },
         ).catch(() => undefined);
-        await this.prisma.payment.updateMany({
-          where: { orderId: attempt.payment.orderId },
-          data: { status: PaymentStatus.CAPTURED },
-        });
+        // Keep the primary payment state unchanged on a failed refund attempt.
+        // In particular, do not overwrite a valid captured payment because a
+        // second provider payment was captured for the same checkout.
       }
     }
   }
