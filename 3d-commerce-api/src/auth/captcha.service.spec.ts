@@ -28,7 +28,7 @@ describe('AuthCaptchaService', () => {
     delete process.env.CORS_ORIGINS;
   });
 
-  it('accepts a correct math answer and matching purpose', () => {
+  it('accepts a correct math answer and matching purpose', async () => {
     const challenge = service.issue('login');
     if (challenge.provider !== 'math') throw new Error('Expected math CAPTCHA');
     const answer = challenge.operator === '+' ? challenge.first + challenge.second : challenge.first - challenge.second;
