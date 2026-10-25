@@ -830,6 +830,7 @@ enum PaymentStatus {
   FAILED
   REFUNDED
   REFUND_PENDING
+  CREATING
 }
 
 model PaymentAttempt {
