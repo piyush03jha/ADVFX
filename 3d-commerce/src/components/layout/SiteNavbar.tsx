@@ -401,6 +401,7 @@ function NavIconLink({
       className="pointer-events-auto relative z-50 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-muted transition-all duration-300 hover:bg-surface-elevated hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:h-9 lg:w-9"
     >
       {children}
+      <span className="sr-only">{label}</span>
     </Link>
   );
 }
@@ -458,6 +459,7 @@ function CartLink({
       className="pointer-events-auto relative z-50 flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted transition-all duration-300 hover:bg-surface-elevated hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:h-9 lg:w-9"
     >
       <IconShoppingCart size={18} stroke={1.7} />
+      <span className="sr-only">Shopping cart</span>
 
       <span
         className={`pointer-events-none absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-semibold text-white shadow-[0_0_12px_var(--glow-primary)] transition-all duration-200 ${

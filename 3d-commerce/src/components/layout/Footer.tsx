@@ -59,7 +59,7 @@ export function Footer() {
               </Link>
 
               <p className="mt-4 max-w-xs text-xs leading-5 text-muted sm:mt-5 sm:text-sm sm:leading-6">
-                Premium physical 3D models, collectibles, and custom creations built with obsessive attention to detail.
+                Voxel3D sells real 3D printed models, collectibles and custom figures, made with close attention to detail.
               </p>
 
               <Link
@@ -124,6 +124,7 @@ export function Footer() {
                     className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted transition-colors duration-300 hover:border-primary hover:text-primary"
                   >
                     <IconBrandInstagram size={17} stroke={1.7} />
+                    <span className="sr-only">Voxel3D on Instagram</span>
                   </a>
                   <a
                     href={SOCIAL_LINKS.youtube}
@@ -133,6 +134,7 @@ export function Footer() {
                     className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted transition-colors duration-300 hover:border-primary hover:text-primary"
                   >
                     <IconBrandYoutube size={17} stroke={1.7} />
+                    <span className="sr-only">Voxel3D on YouTube</span>
                   </a>
                 </div>
               </div>

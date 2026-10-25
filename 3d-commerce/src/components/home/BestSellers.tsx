@@ -45,7 +45,7 @@ export function BestSellers({ initialProducts = [] }: { initialProducts?: Catalo
             <p className="mt-2 max-w-xl text-xs leading-5 text-muted sm:mt-3 sm:text-sm sm:leading-6">Discover physical 3D printed anime figures, miniatures and collectibles, made for display and delivered across India.</p>
           </div>
           <Button href="/shop" variant="ghost" size="sm" className="group hidden sm:inline-flex">
-            Explore All Models
+            See all best sellers
             <IconArrowUpRight size={16} stroke={1.8} className="transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
           </Button>
         </motion.div>
@@ -70,7 +70,7 @@ export function BestSellers({ initialProducts = [] }: { initialProducts?: Catalo
         )}
 
         <div className="mt-6 flex justify-center sm:hidden">
-          <Button href="/shop" variant="outline" size="sm">Explore All Models</Button>
+          <Button href="/shop" variant="outline" size="sm">Shop all 3D printed models</Button>
         </div>
       </Container>
     </section>

@@ -9,6 +9,7 @@ import {
 } from "react";
 
 import { Container } from "@/components/ui/Container";
+import { HOME_H1 } from "@/lib/site";
 import { assetUrl } from "@/lib/catalog-api";
 import { loadModelBuffer } from "@/lib/model-loader";
 import { HERO_MODEL_ROTATION_MS } from "@/config/hero-motion";
@@ -300,10 +301,10 @@ export function Hero() {
               Voxel3D · Made to order
             </p>
             <h1 className="mt-4 text-3xl font-semibold leading-tight tracking-[-0.045em] text-foreground sm:text-5xl">
-              3D Printed Anime Figures &amp; Collectibles in India
+              {HOME_H1}
             </h1>
             <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-muted sm:text-base sm:leading-7 lg:mx-0">
-              Shop physical 3D printed anime figures, miniatures and collectibles in India, or request a custom piece made from your reference images and dimensions.
+              Buy real 3D printed models, anime figures, miniatures and collectibles in India, or ask for a custom piece made from your photos and size.
             </p>
             <p role="status" aria-live="polite" className="mt-5 text-[10px] uppercase tracking-[0.18em] text-muted">
               Loading featured models…

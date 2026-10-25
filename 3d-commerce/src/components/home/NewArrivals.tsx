@@ -55,7 +55,7 @@ export function NewArrivals({ initialProducts = [] }: { initialProducts?: Catalo
           </div>
 
           <Button href="/shop" variant="ghost" size="sm" className="group hidden sm:inline-flex">
-            Explore All Models
+            See all new arrivals
             <IconArrowUpRight size={16} stroke={1.8} className="transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
           </Button>
         </motion.div>
@@ -79,7 +79,7 @@ export function NewArrivals({ initialProducts = [] }: { initialProducts?: Catalo
 
         <div className="mt-6 flex justify-center sm:hidden">
           <Button href="/shop" variant="outline" size="sm" className="group">
-            Explore All Models
+            Browse all new models
             <IconArrowUpRight size={15} stroke={1.8} className="transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
           </Button>
         </div>

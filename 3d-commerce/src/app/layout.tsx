@@ -9,8 +9,11 @@ import { ThemeProvider } from "@/context/ThemeContext";
 import { SiteChrome } from "@/components/layout/SiteChrome";
 import { JsonLd } from "@/components/seo/JsonLd";
 import {
+  HOME_DESCRIPTION,
+  HOME_TITLE,
   SITE_DESCRIPTION,
   SITE_LOGO_PATH,
+  SITE_PUBLISHED_ISO,
   SITE_NAME,
   SITE_SAME_AS,
   SITE_TAGLINE,
@@ -34,12 +37,19 @@ export const metadata: Metadata = {
   },
 
   title: {
-    default: `Buy 3D Printed Models & Collectibles in India | ${SITE_NAME}`,
+    default: HOME_TITLE,
     template: `%s | ${SITE_NAME}`,
   },
 
-  description: SITE_DESCRIPTION,
-  alternates: { canonical: "/" },
+  description: HOME_DESCRIPTION,
+  alternates: {
+    canonical: "/",
+    types: { "text/plain": [{ url: "/llms.txt", title: "llms.txt" }] },
+  },
+  other: {
+    "article:published_time": SITE_PUBLISHED_ISO,
+    "article:modified_time": new Date().toISOString(),
+  },
 
   applicationName: SITE_NAME,
   category: "shopping",
@@ -90,6 +100,7 @@ const organizationJsonLd = {
       url: SITE_URL,
       logo: absoluteUrl(SITE_LOGO_PATH),
       description: SITE_DESCRIPTION,
+      foundingDate: SITE_PUBLISHED_ISO.slice(0, 10),
       areaServed: { "@type": "Country", name: "India" },
       knowsAbout: [
         "Physical 3D printed models",

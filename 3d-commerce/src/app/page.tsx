@@ -9,7 +9,13 @@ import { getBackendApiUrl } from "@/lib/backend-api";
 import { faqItems, type FAQItem } from "@/config/faq";
 import type { CatalogProduct } from "@/lib/catalog-api";
 import { JsonLd } from "@/components/seo/JsonLd";
-import { absoluteUrl } from "@/lib/site";
+import { HomeAbout } from "@/components/home/HomeAbout";
+import {
+  HOME_DESCRIPTION,
+  HOME_TITLE,
+  SITE_PUBLISHED_ISO,
+  absoluteUrl,
+} from "@/lib/site";
 
 // Keep heavier interactive sections out of the initial bundle.
 const CustomBuild = dynamic(() =>
@@ -30,10 +36,9 @@ export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: {
-    absolute: "Buy 3D Printed Models & Collectibles in India | Voxel3D",
+    absolute: HOME_TITLE,
   },
-  description:
-    "Shop physical 3D printed models, anime figures, miniatures and collectibles in India",
+  description: HOME_DESCRIPTION,
   alternates: {
     canonical: "/",
   },
@@ -126,6 +131,12 @@ export default async function Home() {
     loadFaq(),
   ]);
 
+  const featured = products.slice(0, 8);
+  const latestChange = products
+    .map((product) => Date.parse(product.updatedAt ?? product.createdAt ?? ""))
+    .filter((time) => !Number.isNaN(time))
+    .reduce((max, time) => Math.max(max, time), Date.parse(SITE_PUBLISHED_ISO));
+
   return (
     <div className="min-h-screen overflow-x-clip bg-background text-foreground">
       <Navbar />
@@ -139,9 +150,29 @@ export default async function Home() {
                 "@type": "WebPage",
                 "@id": absoluteUrl("/#webpage"),
                 url: absoluteUrl("/"),
-                name: "Buy 3D Printed Models & Collectibles in India | Voxel3D",
+                name: HOME_TITLE,
+                description: HOME_DESCRIPTION,
                 inLanguage: "en-IN",
+                datePublished: SITE_PUBLISHED_ISO,
+                dateModified: new Date(latestChange).toISOString(),
+                isPartOf: { "@id": absoluteUrl("/#website") },
+                about: { "@id": absoluteUrl("/#organization") },
               },
+              ...(featured.length
+                ? [
+                    {
+                      "@type": "ItemList",
+                      "@id": absoluteUrl("/#products"),
+                      name: "Featured 3D printed models",
+                      itemListElement: featured.map((product, index) => ({
+                        "@type": "ListItem",
+                        position: index + 1,
+                        url: absoluteUrl(`/product/${encodeURIComponent(product.slug)}`),
+                        name: product.name,
+                      })),
+                    },
+                  ]
+                : []),
               {
                 "@type": "FAQPage",
                 mainEntity: faqs.map((faq) => ({
@@ -170,6 +201,8 @@ export default async function Home() {
         <BulkOrder />
 
         <Reviews />
+
+        <HomeAbout />
 
         <FAQ initialItems={faqs} />
       </main>

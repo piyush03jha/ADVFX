@@ -8,25 +8,25 @@ import { Container } from "@/components/ui/Container";
 const HIGHLIGHTS = [
   {
     eyebrow: "Craft & finish",
-    title: "Made to be looked at twice.",
+    title: "Sharp detail on every 3D printed model",
     description: "Thoughtful shapes, crisp details, and a finish designed to make each model feel at home on your shelf.",
     product: "DETAIL IN FOCUS",
   },
   {
     eyebrow: "Display-ready",
-    title: "A standout from every angle.",
+    title: "Display pieces that look good from every side",
     description: "Sculptural silhouettes bring character to a desk, display cabinet, or carefully built collection.",
     product: "DESIGNED TO DISPLAY",
   },
   {
     eyebrow: "For collectors",
-    title: "Small details. Lasting character.",
+    title: "Collectibles with their own character",
     description: "Explore distinctive forms and expressive designs for people who like their collections to feel personal.",
     product: "COLLECT YOUR STYLE",
   },
   {
     eyebrow: "Made with care",
-    title: "A thoughtful gift, without the guesswork.",
+    title: "Easy gift ideas for anime and model fans",
     description: "Find a memorable piece for a fellow enthusiast—or choose a new favourite for your own collection.",
     product: "GIFT-WORTHY FINDS",
   },

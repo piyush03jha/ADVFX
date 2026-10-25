@@ -3,16 +3,18 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const homepage = await readFile(new URL("../src/app/page.tsx", import.meta.url), "utf8");
+const site = await readFile(new URL("../src/lib/site.ts", import.meta.url), "utf8");
 const layout = await readFile(new URL("../src/app/layout.tsx", import.meta.url), "utf8");
 const shop = await readFile(new URL("../src/app/shop/page.tsx", import.meta.url), "utf8");
 const custom = await readFile(new URL("../src/app/custom/page.tsx", import.meta.url), "utf8");
 const customLayout = await readFile(new URL("../src/app/custom/layout.tsx", import.meta.url), "utf8");
 
 test("homepage targets physical-product purchase intent without promising digital downloads", () => {
-  assert.match(homepage, /Buy 3D Printed Models & Collectibles in India \| Voxel3D/);
-  assert.match(homepage, /Shop physical 3D printed models, anime figures, miniatures and collectibles in India/);
-  assert.match(homepage, /custom piece from your photos/);
-  assert.match(homepage, /physical 3D printed models, anime figures, miniatures and collectibles/);
+  assert.match(site, /Buy 3D Printed Models & Collectibles in India \| Voxel3D/);
+  assert.match(site, /Buy physical 3D printed models, anime figures, miniatures and collectibles in India/);
+  assert.match(site, /custom figure made from your photos/);
+  assert.match(homepage, /HOME_TITLE/);
+  assert.match(homepage, /HOME_DESCRIPTION/);
   assert.ok((homepage.match(/description:/g) ?? []).length > 0);
   assert.doesNotMatch(homepage, /downloadable 3D files|digital product delivery/i);
 });

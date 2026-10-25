@@ -57,6 +57,7 @@ export interface CatalogProduct {
   name: string;
   slug: string;
   createdAt?: string;
+  updatedAt?: string;
   description?: string | null;
   seoTitle?: string | null;
   seoDescription?: string | null;

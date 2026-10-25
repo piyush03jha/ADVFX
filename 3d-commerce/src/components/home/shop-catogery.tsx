@@ -79,7 +79,7 @@ export function ShopByCategory() {
         </motion.div>
 
         <Button href="/shop" variant="ghost" size="sm" className="hidden sm:inline-flex">
-          View All
+          View all categories
           <IconArrowUpRight size={16} stroke={1.7} />
         </Button>
       </div>
@@ -108,7 +108,7 @@ export function ShopByCategory() {
             Explore physical 3D printed models, character figures and collectibles in the Voxel3D shop. Our catalog is updated as products become available.
           </p>
           <Link href="/shop" className="mt-4 inline-flex text-sm font-medium text-primary underline-offset-4 hover:underline">
-            Browse all models
+            Browse every model in the shop
           </Link>
         </div>
       )}
