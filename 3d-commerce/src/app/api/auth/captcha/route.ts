@@ -9,7 +9,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const response = await fetch(getBackendApiUrl(`auth/captcha?purpose=${purpose}`), { headers: getTrustedClientIpHeaders(request), cache: "no-store" });
+    const response = await fetch(getBackendApiUrl(`auth/captcha?purpose=${purpose}`), { headers: await getTrustedClientIpHeaders(request), cache: "no-store" });
     const data = await response.json();
     if (!response.ok) {
       return NextResponse.json({ error: data.message ?? "Unable to prepare CAPTCHA." }, { status: response.status });
