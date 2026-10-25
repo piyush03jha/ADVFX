@@ -1,4 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { OrdersService } from './orders.service';
 
 describe('OrdersService', () => {
@@ -16,6 +17,34 @@ describe('OrdersService', () => {
   beforeEach(() => {
     jest.resetAllMocks();
     service = new OrdersService(prisma, notifications, pricing, razorpay, payments, observability);
+  });
+
+  it('returns the existing order when concurrent requests collide on an idempotency key', async () => {
+    const existing = {
+      id: 'order-1',
+      userId: 'user-1',
+      orderNumber: 'ADV-2026-ORDER1',
+      status: 'PENDING_PAYMENT',
+    };
+    prisma.order.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(existing);
+    pricing.calculate.mockResolvedValue({});
+    prisma.$transaction.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+        code: 'P2002',
+        clientVersion: 'test',
+      }),
+    );
+
+    await expect(service.createFromCart('user-1', 'address-1', undefined, 'idem-1'))
+      .resolves.toBe(existing);
+
+    expect(prisma.order.findFirst).toHaveBeenCalledTimes(2);
+    expect(notifications.create).toHaveBeenCalledWith('user-1', expect.objectContaining({
+      type: 'ORDER_CREATED',
+      entityId: 'order-1',
+    }));
   });
 
   it('rejects invalid order status transitions', async () => {
