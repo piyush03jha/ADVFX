@@ -168,7 +168,7 @@ export class PaymentsService {
           captured.currency,
         );
 
-        if (result.kind === "CAPTURED" && result.orderStatus === OrderStatus.CONFIRMED) {
+        if ((result.kind === "CAPTURED" || result.kind === "ALREADY_CAPTURED") && result.orderStatus === OrderStatus.CONFIRMED) {
           return {
             orderId: order.id,
             status: OrderStatus.CONFIRMED,
