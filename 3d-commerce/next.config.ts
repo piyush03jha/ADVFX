@@ -16,6 +16,23 @@ const nextConfig: NextConfig = {
           // possible subdomain is HTTPS-ready.
           { key: "Strict-Transport-Security", value: "max-age=31536000" },
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+          {
+            key: "Content-Security-Policy",
+            value: [
+              "default-src 'self'",
+              "base-uri 'self'",
+              "object-src 'none'",
+              "frame-ancestors 'none'",
+              "form-action 'self'",
+              "script-src 'self' 'unsafe-inline' https://checkout.razorpay.com https://challenges.cloudflare.com",
+              "style-src 'self' 'unsafe-inline'",
+              "img-src 'self' data: blob: https:",
+              "font-src 'self' data:",
+              "connect-src 'self' https://api.voxel3d.org https://challenges.cloudflare.com https://checkout.razorpay.com",
+              "frame-src https://checkout.razorpay.com https://challenges.cloudflare.com",
+              "upgrade-insecure-requests",
+            ].join("; "),
+          },
         ],
       },
     ];
