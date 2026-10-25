@@ -36,7 +36,7 @@ A price with a matching country code takes precedence during checkout; a price w
 
 ## Refund reconciliation
 
-A refund attempt is claimed with the `REFUND_PENDING` payment-attempt state before calling Razorpay. This prevents concurrent webhook deliveries from issuing duplicate refunds. If the provider call times out or fails ambiguously, the attempt intentionally remains `REFUND_PENDING` instead of being retried automatically; verify the refund in Razorpay and reconcile the attempt before retrying. This avoids double-refunding when the provider accepted a refund but the API did not receive its response.
+A refund attempt is claimed with the `REFUND_PENDING` payment-attempt state before calling Razorpay. This prevents concurrent webhook deliveries from issuing duplicate refunds. If the provider call times out or fails ambiguously, the attempt intentionally remains `REFUND_PENDING`. The minute scheduler checks provider refund totals and marks completed refunds; it does not blindly submit another refund while the provider outcome is ambiguous. Anything still pending without a confirmed provider refund requires operator reconciliation in Razorpay.
 
 ## Relevant migrations
 
@@ -47,6 +47,8 @@ A refund attempt is claimed with the `REFUND_PENDING` payment-attempt state befo
 - `20261025202000_conversion_completion_recovery`
 - `20261025202500_payment_refund_pending`
 - `20261025203000_variant_country_pricing`
+- `20261025204000_order_shipping_snapshot`
+- `20261025205000_promotion_per_user_limit`
 
 ## Verification commands
 
@@ -58,3 +60,14 @@ npm run build
 ```
 
 Run concurrency and webhook integration tests against a staging PostgreSQL database. Do not use production for load or concurrency testing.
+
+## Follow-up audit hardening
+
+- **Trusted client IP:** set the same random secret of at least 32 characters as `INTERNAL_PROXY_SECRET` in both the Next.js frontend and NestJS API environments. The Next.js proxy signs the Cloudflare client IP; the API validates the signature and never trusts arbitrary `X-Forwarded-For`. The API listener intentionally keeps Fastify `trustProxy` disabled. If the secret is missing, client-specific limits fall back to the API connection IP.
+- **Rate limiting:** apply migrations first, then set `SHARED_RATE_LIMIT_ENABLED=true`. Counters are separated by route so product/media traffic does not consume a single site-wide bucket. A database outage falls back to a local counter and emits an error log; local fallback is not shared across replicas.
+- **CAPTCHA:** production forces Cloudflare Turnstile. Set `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`, and the allowed `TURNSTILE_HOSTNAMES` before production rollout. If Turnstile is not configured, auth CAPTCHA issuance fails closed.
+- **Shipping history:** `Order.shippingAddressSnapshot` preserves the destination at order time. API order responses fall back to the snapshot if a customer deletes the saved address.
+- **Custom checkout:** custom orders do not require stock reservations. Unpaid custom orders older than the reservation window are reconciled against Razorpay and cancelled when no payment is captured.
+- **Coupon limits:** `Promotion.usageLimitPerUser` defaults to one use per customer. The checkout transaction locks the promotion before enforcing the per-customer count, preventing concurrent claims from bypassing the limit.
+- **Database pool:** use a bounded Prisma `connection_limit` per API replica (the example uses 5). Calculate the aggregate pool across all API/worker replicas against the actual PostgreSQL connection budget. The synchronous Razorpay call in order creation remains a latency consideration and should be load-tested against the deployed provider and database.
+- **Migration list additions:** `20261025204000_order_shipping_snapshot` and `20261025205000_promotion_per_user_limit` must be applied before deploying code that uses these fields.
