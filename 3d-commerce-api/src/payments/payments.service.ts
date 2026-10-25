@@ -270,7 +270,7 @@ export class PaymentsService {
             providerOrderId: order.payment.providerOrderId,
             status: { in: [PaymentStatus.PENDING, PaymentStatus.AUTHORIZED, PaymentStatus.CAPTURED, PaymentStatus.FAILED] },
           },
-          data: { providerPaymentId: captured.id, status: PaymentStatus.REFUND_PENDING },
+          data: { refundProviderPaymentId: captured.id, status: PaymentStatus.REFUND_PENDING },
         });
         if (claimed.count !== 1) {
           return { orderId: order.id, status: order.status, refunded: false, released: false, reconciliationPending: true };
@@ -524,7 +524,7 @@ export class PaymentsService {
           providerOrderId: input.razorpayOrderId,
           status: { in: [PaymentStatus.PENDING, PaymentStatus.AUTHORIZED, PaymentStatus.CAPTURED, PaymentStatus.FAILED] },
         },
-        data: { providerPaymentId: result.providerPaymentId, status: PaymentStatus.REFUND_PENDING },
+        data: { refundProviderPaymentId: result.providerPaymentId, status: PaymentStatus.REFUND_PENDING },
       });
       if (claimed.count === 1) {
         try {
@@ -577,7 +577,7 @@ export class PaymentsService {
    */
   async recoverPendingRefunds() {
     const attempts = await this.prisma.paymentAttempt.findMany({
-      where: { status: PaymentStatus.REFUND_PENDING, providerPaymentId: { not: null } },
+      where: { status: PaymentStatus.REFUND_PENDING, refundProviderPaymentId: { not: null } },
       include: { payment: true },
       take: 100,
       orderBy: { updatedAt: "asc" },
@@ -585,9 +585,9 @@ export class PaymentsService {
     let reconciled = 0;
 
     for (const attempt of attempts) {
-      if (!attempt.providerPaymentId) continue;
+      if (!attempt.refundProviderPaymentId) continue;
       try {
-        const providerPayment = await this.razorpay.fetchPayment(attempt.providerPaymentId);
+        const providerPayment = await this.razorpay.fetchPayment(attempt.refundProviderPaymentId);
         if ((providerPayment.amount_refunded ?? 0) < attempt.amountMinor) continue;
 
         const updated = await this.prisma.paymentAttempt.updateMany({
@@ -596,7 +596,7 @@ export class PaymentsService {
         });
         if (updated.count !== 1) continue;
 
-        if (attempt.payment.providerPaymentId === attempt.providerPaymentId) {
+        if (attempt.payment.providerPaymentId === attempt.refundProviderPaymentId) {
           await this.prisma.payment.updateMany({
             where: {
               id: attempt.paymentId,
@@ -610,7 +610,7 @@ export class PaymentsService {
       } catch (error) {
         console.error("Pending Razorpay refund reconciliation failed", {
           attemptId: attempt.id,
-          providerPaymentId: attempt.providerPaymentId,
+          providerPaymentId: attempt.refundProviderPaymentId,
           error,
         });
       }
@@ -641,7 +641,7 @@ export class PaymentsService {
           status: { in: [PaymentStatus.PENDING, PaymentStatus.AUTHORIZED, PaymentStatus.CAPTURED, PaymentStatus.FAILED] },
         },
         data: {
-          providerPaymentId: input.providerPaymentId,
+          refundProviderPaymentId: input.providerPaymentId,
           status: PaymentStatus.REFUND_PENDING,
         },
       });
@@ -653,7 +653,7 @@ export class PaymentsService {
         await this.razorpay.refundPayment(result.providerPaymentId, input.amount);
         await this.prisma.paymentAttempt.updateMany({
           where: { providerOrderId: input.providerOrderId, status: PaymentStatus.REFUND_PENDING },
-          data: { providerPaymentId: input.providerPaymentId, status: PaymentStatus.REFUNDED },
+          data: { refundProviderPaymentId: input.providerPaymentId, status: PaymentStatus.REFUNDED },
         });
         if (!result.duplicatePayment) {
           await this.prisma.payment.update({
@@ -1007,7 +1007,7 @@ export class PaymentsService {
           status: { in: [PaymentStatus.PENDING, PaymentStatus.AUTHORIZED, PaymentStatus.CAPTURED, PaymentStatus.FAILED] },
         },
         data: {
-          providerPaymentId: result.providerPaymentId,
+          refundProviderPaymentId: result.providerPaymentId,
           status: PaymentStatus.REFUND_PENDING,
         },
       });
@@ -1017,7 +1017,7 @@ export class PaymentsService {
         await this.razorpay.refundPayment(result.providerPaymentId, resolvedAmount);
         await this.prisma.paymentAttempt.updateMany({
           where: { providerOrderId: attempt.providerOrderId, status: PaymentStatus.REFUND_PENDING },
-          data: { providerPaymentId: result.providerPaymentId, status: PaymentStatus.REFUNDED },
+          data: { refundProviderPaymentId: result.providerPaymentId, status: PaymentStatus.REFUNDED },
         });
         if (!result.duplicatePayment) {
           await this.prisma.payment.update({
