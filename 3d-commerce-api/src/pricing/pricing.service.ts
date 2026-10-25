@@ -29,8 +29,14 @@ export class PricingService {
         include: {
           inventory: true,
           prices: {
-            where: { isActive: true },
-            orderBy: { createdAt: "desc" },
+            where: {
+              isActive: true,
+              OR: [{ countryCode: address.country }, { countryCode: null }],
+            },
+            orderBy: [
+              { countryCode: { sort: "desc", nulls: "last" } },
+              { createdAt: "desc" },
+            ],
             take: 1,
           },
           variants: { include: { price: true } },
@@ -68,8 +74,14 @@ export class PricingService {
                 include: {
                   inventory: true,
                   prices: {
-                    where: { isActive: true },
-                    orderBy: { createdAt: "desc" },
+                    where: {
+                      isActive: true,
+                      OR: [{ countryCode: address.country }, { countryCode: null }],
+                    },
+                    orderBy: [
+                      { countryCode: { sort: "desc", nulls: "last" } },
+                      { createdAt: "desc" },
+                    ],
                     take: 1,
                   },
                 },
