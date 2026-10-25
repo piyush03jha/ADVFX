@@ -9,7 +9,6 @@ import { getBackendApiUrl } from "@/lib/backend-api";
 import { faqItems, type FAQItem } from "@/config/faq";
 import type { CatalogProduct } from "@/lib/catalog-api";
 import { JsonLd } from "@/components/seo/JsonLd";
-import { HomeAbout } from "@/components/home/HomeAbout";
 import {
   HOME_DESCRIPTION,
   HOME_TITLE,
@@ -201,8 +200,6 @@ export default async function Home() {
         <BulkOrder />
 
         <Reviews />
-
-        <HomeAbout />
 
         <FAQ initialItems={faqs} />
       </main>
