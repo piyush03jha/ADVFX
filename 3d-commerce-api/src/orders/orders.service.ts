@@ -593,7 +593,7 @@ export class OrdersService {
         },
         include: { items: true, shippingAddress: true, payment: true, shipment: true, inventoryReservations: true, user: true, promotion: true, shippingRule: true },
       });
-    });
+    }, { timeout: 15_000, maxWait: 5_000 });
 
     if (updated.userId) {
       const typeByStatus: Partial<Record<OrderStatus, NotificationType>> = {
