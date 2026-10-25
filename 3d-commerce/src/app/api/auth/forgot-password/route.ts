@@ -28,7 +28,7 @@ export async function POST(request: Request) {
 
     const backendResponse = await fetch(getBackendApiUrl("auth/forgot-password"), {
       method: "POST",
-      headers: { ...getTrustedClientIpHeaders(request), "Content-Type": "application/json" },
+      headers: { ...(await getTrustedClientIpHeaders(request)), "Content-Type": "application/json" },
       body: JSON.stringify({ email, captchaToken, captchaAnswer }),
       cache: "no-store",
     });
