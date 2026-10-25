@@ -16,7 +16,7 @@ export async function GET(request: Request) {
 
   try {
     const response = await fetch(getBackendApiUrl("custom-requests"), {
-      headers: { ...getTrustedClientIpHeaders(request), Authorization: `Bearer ${token}` },
+      headers: { ...(await getTrustedClientIpHeaders(request)), Authorization: `Bearer ${token}` },
       cache: "no-store",
     });
 
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     const response = await fetch(getBackendApiUrl("custom-requests"), {
       method: "POST",
       headers: {
-        ...getTrustedClientIpHeaders(request),
+        ...(await getTrustedClientIpHeaders(request)),
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
