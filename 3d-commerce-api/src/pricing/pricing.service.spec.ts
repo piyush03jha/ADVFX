@@ -185,6 +185,10 @@ describe('PricingService', () => {
         prices: {
           where: {
             isActive: true,
+            AND: [
+              { OR: [{ startsAt: null }, { startsAt: { lte: expect.any(Date) } }] },
+              { OR: [{ endsAt: null }, { endsAt: { gt: expect.any(Date) } }] },
+            ],
             OR: [{ countryCode: 'IN' }, { countryCode: null }],
           },
           orderBy: [
