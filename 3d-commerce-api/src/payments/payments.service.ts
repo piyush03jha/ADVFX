@@ -63,13 +63,15 @@ export class PaymentsService {
         throw new ConflictException('Razorpay payment is not configured');
       }
 
-      const activeReservation = await tx.inventoryReservation.findFirst({
-        where: {
-          orderId: order.id,
-          status: 'ACTIVE',
-          expiresAt: { gt: new Date() },
-        },
-      });
+      const activeReservation = order.checkoutSource === "CUSTOM"
+        ? true
+        : await tx.inventoryReservation.findFirst({
+            where: {
+              orderId: order.id,
+              status: 'ACTIVE',
+              expiresAt: { gt: new Date() },
+            },
+          });
       if (!activeReservation) {
         throw new ConflictException(
           'This payment session has expired. Please create a new order from your cart.',
@@ -1053,13 +1055,15 @@ export class PaymentsService {
       throw new ConflictException('Razorpay payment is not configured');
     }
 
-    const activeReservation = await this.prisma.inventoryReservation.findFirst({
-      where: {
-        orderId: order.id,
-        status: 'ACTIVE',
-        expiresAt: { gt: new Date() },
-      },
-    });
+    const activeReservation = order.checkoutSource === "CUSTOM"
+      ? true
+      : await this.prisma.inventoryReservation.findFirst({
+          where: {
+            orderId: order.id,
+            status: 'ACTIVE',
+            expiresAt: { gt: new Date() },
+          },
+        });
 
     if (!activeReservation) {
       throw new ConflictException(
