@@ -1,5 +1,4 @@
 import { createHmac } from "node:crypto";
-import { isIP } from "node:net";
 
 const DEFAULT_BACKEND_API_URL = "http://localhost:4000";
 
@@ -31,7 +30,7 @@ export function getTrustedClientIpHeaders(request: Request): Record<string, stri
       ? request.headers.get("x-real-ip")
       : null);
   const ip = forwardedIp?.trim() ?? "";
-  if (!ip || !isIP(ip)) return {};
+  if (!ip || ip.length > 45 || !/^[0-9a-fA-F:.]+$/.test(ip) || (!ip.includes(".") && !ip.includes(":"))) return {};
 
   const timestamp = String(Math.floor(Date.now() / 1000));
   const signature = createHmac("sha256", secret)
