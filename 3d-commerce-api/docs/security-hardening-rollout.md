@@ -19,6 +19,21 @@ These changes introduce three PostgreSQL-backed tables. Deploy migrations before
 
 Do not enable a flag until its migration is present in the target database. The feature flags make rolling deployments safe while the database migration is being applied.
 
+## Country-specific product prices
+
+The admin product-price endpoint `POST /products/:id/pricing` accepts an optional ISO 3166-1 alpha-2 `countryCode` and a currency. For example:
+
+```json
+{
+  "countryCode": "IN",
+  "currency": "INR",
+  "amountMinor": 149900,
+  "compareAtMinor": 169900
+}
+```
+
+A price with a matching country code takes precedence during checkout; a price with `countryCode: null` is the global fallback. Prices are stored in minor currency units (for INR, paise). Set the country price for each product from the admin API; existing admin forms that do not send `countryCode` continue to create/update the global fallback price.
+
 ## Relevant migrations
 
 - `20261025200000_product_view_dedupe`
