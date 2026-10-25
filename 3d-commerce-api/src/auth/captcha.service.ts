@@ -35,7 +35,8 @@ type TurnstileVerifyResponse = {
 @Injectable()
 export class AuthCaptchaService {
   private readonly logger = new Logger(AuthCaptchaService.name);
-  private readonly usedNonces = new Set<string>();
+  private readonly usedNonces = new Map<string, number>();
+  private verificationCount = 0;
 
   issue(purpose: string) {
     if (!PURPOSES.has(purpose)) {
@@ -130,9 +131,11 @@ export class AuthCaptchaService {
       throw new BadRequestException('CAPTCHA has expired. Please try again.');
     }
 
-    if (this.usedNonces.has(payload.nonce)) {
+    const usedUntil = this.usedNonces.get(payload.nonce);
+    if (usedUntil !== undefined && usedUntil > Date.now()) {
       throw new BadRequestException('CAPTCHA has already been used. Please try again.');
     }
+    if (usedUntil !== undefined) this.usedNonces.delete(payload.nonce);
 
     if (!/^\d{1,2}$/.test(answer)) {
       throw new BadRequestException('Incorrect CAPTCHA answer.');
@@ -148,11 +151,15 @@ export class AuthCaptchaService {
       throw new BadRequestException('Incorrect CAPTCHA answer.');
     }
 
-    this.usedNonces.add(payload.nonce);
-    if (this.usedNonces.size > 10_000) {
-      for (const nonce of this.usedNonces) {
-        if (this.usedNonces.size <= 5_000) break;
-        this.usedNonces.delete(nonce);
+    this.usedNonces.set(payload.nonce, payload.expiresAt);
+    // Keep every unexpired nonce: evicting valid entries under load would
+    // make a previously accepted CAPTCHA replayable. Prune expired entries
+    // periodically to keep memory bounded by the active CAPTCHA window.
+    this.verificationCount += 1;
+    if (this.verificationCount % 128 === 0) {
+      const now = Date.now();
+      for (const [nonce, expiresAt] of this.usedNonces) {
+        if (expiresAt <= now) this.usedNonces.delete(nonce);
       }
     }
   }
