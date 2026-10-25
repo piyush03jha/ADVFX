@@ -905,8 +905,11 @@ export class ProductsService {
     return this.prisma.$transaction(async (tx) => {
       const countryCode = dto.countryCode?.trim().toUpperCase() || null;
       const currency = dto.currency?.trim().toUpperCase() || 'INR';
+      await tx.$queryRaw<Array<{ id: string }>>(
+        Prisma.sql`SELECT "id" FROM "Product" WHERE "id" = ${id} FOR UPDATE`,
+      );
       await tx.productPrice.updateMany({
-        where: { productId: id, currency, countryCode, isActive: true },
+        where: { productId: id, countryCode, isActive: true },
         data: { isActive: false },
       });
 
