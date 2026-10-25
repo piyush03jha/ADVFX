@@ -4,6 +4,7 @@ describe('PricingService', () => {
   const prisma = {
     cart: { findUnique: jest.fn() },
     product: { findMany: jest.fn() },
+    productVariantCountryPrice: { findMany: jest.fn() },
     address: { findFirst: jest.fn() },
     shippingRule: { findFirst: jest.fn() },
     promotion: { findFirst: jest.fn() },
@@ -196,6 +197,44 @@ describe('PricingService', () => {
     }));
     expect(result.summary.subtotalMinor).toBe(15000);
     expect(result.currency).toBe('INR');
+  });
+
+  it('uses the matching country-specific variant price ahead of its global price', async () => {
+    prisma.product.findMany.mockResolvedValue([
+      {
+        id: 'p1',
+        name: 'Variant-priced model',
+        status: 'ACTIVE',
+        weight: null,
+        inventory: { stock: 5, reserved: 0, trackStock: true, allowBackorder: false },
+        prices: [{ amountMinor: 10000, currency: 'INR', countryCode: null, isActive: true }],
+        variants: [{
+          id: 'v1',
+          productId: 'p1',
+          name: 'Large',
+          isActive: true,
+          stock: 5,
+          reserved: 0,
+          trackStock: true,
+          allowBackorder: false,
+          price: { amountMinor: 12000, currency: 'INR', isActive: true },
+        }],
+      },
+    ]);
+    prisma.productVariantCountryPrice.findMany.mockResolvedValue([
+      { variantId: 'v1', countryCode: 'IN', currency: 'INR', amountMinor: 15000, isActive: true },
+    ]);
+
+    const result = await service.calculate('user-1', {
+      shippingAddressId: 'addr-1',
+      items: [{ productId: 'p1', variantId: 'v1', quantity: 1 }],
+    });
+
+    expect(prisma.productVariantCountryPrice.findMany).toHaveBeenCalledWith({
+      where: { variantId: { in: ['v1'] }, countryCode: 'IN', isActive: true },
+    });
+    expect(result.items[0].unitPriceMinor).toBe(15000);
+    expect(result.summary.subtotalMinor).toBe(15000);
   });
 
   it('rejects a cart containing prices in different currencies', async () => {
