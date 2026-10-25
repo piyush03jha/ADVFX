@@ -46,6 +46,28 @@ describe('ThreeDConversionService.discardConversionIntermediates', () => {
     expect(result).toMatchObject({ id: 'j1', status: 'QUEUED', stage: 'QUEUED' });
   });
 
+  it('rejects a second concurrent completion while the first completion lease is fresh', async () => {
+    const completing = {
+      id: 'j1', status: 'PROCESSING', stage: 'COMPLETING',
+      sourceStorageKey: 'conversions/j1/source/model.obj', uploadId: 'upload-1',
+      completionSize: BigInt(1024),
+      completionParts: [{ PartNumber: 1, ETag: 'etag-1' }],
+      updatedAt: new Date(),
+      originalSize: null, convertedSize: null, outputSize: null,
+    };
+    prisma.threeDConversionJob.findUnique.mockResolvedValue(completing);
+    prisma.threeDConversionJob.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(service.complete('j1', {
+      key: completing.sourceStorageKey,
+      uploadId: 'upload-1',
+      size: 1024,
+      parts: [{ PartNumber: 1, ETag: 'etag-1' }],
+    })).rejects.toThrow('Conversion upload is already being finalized');
+
+    expect(storage.completeMultipartUpload).not.toHaveBeenCalled();
+  });
+
   it('recovers when storage completed but the database was not advanced to QUEUED', async () => {
     const completing = {
       id: 'j1', status: 'PROCESSING', stage: 'COMPLETING',
