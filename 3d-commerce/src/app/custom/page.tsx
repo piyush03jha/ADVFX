@@ -76,7 +76,7 @@ export default function CustomPage() {
                   Made for you, not from a template.
                 </h1>
                 <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-muted sm:text-base">
-                  Send us your photos and requirements. We review the idea, prepare the 3D model, produce the physical piece, and help you get it delivered.
+                  Made for you, not from a template: send us your photos and requirements and we’ll review the idea, prepare the 3D model, make the physical piece, and help arrange delivery.
                 </p>
               </div>
 
