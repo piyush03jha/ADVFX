@@ -248,6 +248,16 @@ export class OrdersService {
             : undefined,
           appliedCouponCode: quote.promotion?.code ?? null,
           shippingAddress: { connect: { id: address.id } },
+          shippingAddressSnapshot: {
+            fullName: address.fullName,
+            phone: address.phone,
+            line1: address.line1,
+            line2: address.line2,
+            city: address.city,
+            state: address.state,
+            postalCode: address.postalCode,
+            country: address.country,
+          },
           items: { create: orderItems },
           payment: {
             create: {
