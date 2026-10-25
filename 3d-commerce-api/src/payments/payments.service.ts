@@ -551,6 +551,18 @@ export class PaymentsService {
     };
   }
 
+  async recoverStaleOrderCreations() {
+    const staleBefore = new Date(Date.now() - 2 * 60_000);
+    const result = await this.prisma.payment.updateMany({
+      where: {
+        status: PaymentStatus.CREATING,
+        updatedAt: { lt: staleBefore },
+      },
+      data: { status: PaymentStatus.FAILED },
+    });
+    return { releasedClaims: result.count };
+  }
+
   /**
    * Reconcile ambiguous refund outcomes against Razorpay before an operator
    * considers retrying them. A timeout may happen after the provider accepted
