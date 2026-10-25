@@ -34,7 +34,7 @@ export class AdminBulkService {
   async importCsv(actorId: string | undefined, csv: string) {
     const lines = this.parseCsv(csv);
     if (lines.length < 2) throw new BadRequestException('CSV must contain a header and at least one row');
-    const headers = lines[0].map((h) => h.trim().replace(/^\\uFEFF/, '').toLowerCase());
+    const headers = lines[0].map((h) => h.trim().replace(/^\uFEFF/, '').toLowerCase());
     for (const required of ['name', 'slug']) {
       if (!headers.includes(required)) throw new BadRequestException(`CSV header missing: ${required}`);
     }
@@ -76,7 +76,7 @@ export class AdminBulkService {
         const textValue = (value?: string) => value?.trim() ? value.trim() : undefined;
         const parseMoney = (value: string | undefined, label: string): number | undefined => {
           if (value === undefined || value.trim() === '') return undefined;
-          const amount = Number(value.replace(/[₹,$\\s]/g, ''));
+          const amount = Number(value.replace(/[₹,$\s]/g, ''));
           if (!Number.isFinite(amount) || amount < 0 || amount > 21474836) throw new Error(`${label} must be a valid non-negative price`);
           return Math.round(amount * 100);
         };
@@ -93,7 +93,7 @@ export class AdminBulkService {
         const basePrice = parseMoney(row.price, 'price');
         const variantPrices = variants.map((variant) => ({ ...variant, amountMinor: parseMoney(row[variant.header], variant.name + ' price') ?? basePrice }));
         const imageValue = textValue(row.image || row.imageurl);
-        const imageUrl = imageValue && (/^https:\\/\\//i.test(imageValue) || imageValue.startsWith('/api/assets/')) ? imageValue : undefined;
+        const imageUrl = imageValue && (/^https:\/\/\//i.test(imageValue) || imageValue.startsWith('/api/assets/')) ? imageValue : undefined;
 
         await this.prisma.$transaction(async (tx) => {
           let productId: string;
@@ -174,7 +174,7 @@ export class AdminBulkService {
   }
 
   private parseCsv(csv: string): string[][] {
-    const input = csv.replace(/^\\uFEFF/, '');
+    const input = csv.replace(/^\uFEFF/, '');
     const rows: string[][] = [];
     let row: string[] = [];
     let cell = '';
@@ -184,8 +184,8 @@ export class AdminBulkService {
       if (char === '"' && input[i + 1] === '"' && quoted) { cell += '"'; i++; continue; }
       if (char === '"') { quoted = !quoted; continue; }
       if (char === ',' && !quoted) { row.push(cell); cell = ''; continue; }
-      if ((char === '\\n' || char === '\\r') && !quoted) {
-        if (char === '\\r' && input[i + 1] === '\\n') i++;
+      if ((char === '\n' || char === '\r') && !quoted) {
+        if (char === '\r' && input[i + 1] === '\n') i++;
         row.push(cell);
         if (row.some((value) => value.trim() !== '')) rows.push(row);
         row = []; cell = ''; continue;
