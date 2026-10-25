@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 };
 
 export default function RefundPage() {
-  return <PolicyPage contentKey="refund" eyebrow="Legal" title="Refund Policy" intro="This policy describes how cancellations, payment failures, refunds, and eligible returns are handled for physical orders." sections={[
+  return <PolicyPage contentKey="refund" eyebrow="Legal" title="Refunds, Cancellations and Returns" intro="This page explains how Voxel3D handles payment issues, order cancellations, refunds, and requests about damaged or incorrect physical products. The outcome depends on the order status and the details of the issue, so contact us with your order number if you need help." sections={[
     { title: "Payment failures", body: "A failed or abandoned payment does not by itself confirm an order. Temporary inventory reservations may be released when the payment window expires." },
     { title: "Duplicate or late payments", body: "If a payment is captured after the related order can no longer be fulfilled, the payment is reconciled and refunded where required. Refund timing depends on the payment provider and banking system." },
     { title: "Order cancellations", body: "Cancellation eligibility depends on the order's production and fulfillment status. Orders already in production or shipment may have different cancellation or return handling." },
