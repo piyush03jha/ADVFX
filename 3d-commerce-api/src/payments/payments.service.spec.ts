@@ -59,6 +59,7 @@ describe('PaymentsService', () => {
     };
     prisma.$transaction.mockImplementation(async (callback: any) => callback(tx));
     razorpay.createOrder = jest.fn();
+    razorpay.getPublicKeyId = jest.fn().mockReturnValue('rzp_test_key');
 
     const service = new PaymentsService(prisma, razorpay, notifications);
     await expect(service.createRazorpayOrder('user1', 'order1')).resolves.toMatchObject({
