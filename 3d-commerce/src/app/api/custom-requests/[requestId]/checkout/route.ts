@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { AUTH_COOKIE_NAME } from "@/lib/auth";
-import { getBackendApiUrl } from "@/lib/backend-api";
+import { getBackendApiUrl, getTrustedClientIpHeaders } from "@/lib/backend-api";
 
 export async function POST(
   request: Request,
