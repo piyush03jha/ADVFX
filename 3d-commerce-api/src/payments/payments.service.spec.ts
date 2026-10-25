@@ -5,8 +5,12 @@ describe('PaymentsService', () => {
   const prisma = { payment: { findFirst: jest.fn() }, $transaction: jest.fn() } as any;
   const razorpay = { verifyWebhookSignature: jest.fn() } as any;
   const notifications = { create: jest.fn() } as any;
+  let service: PaymentsService;
 
-  beforeEach(() => jest.resetAllMocks());
+  beforeEach(() => {
+    jest.resetAllMocks();
+    service = new PaymentsService(prisma, razorpay, notifications);
+  });
 
   it('marks a payment failure without confirming or cancelling the order', async () => {
     razorpay.verifyWebhookSignature.mockReturnValue(true);
