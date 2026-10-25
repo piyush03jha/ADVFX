@@ -2,7 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 
 describe('PaymentsService', () => {
-  const prisma = { payment: { findFirst: jest.fn() }, $transaction: jest.fn() } as any;
+  const prisma = { payment: { findFirst: jest.fn(), update: jest.fn() }, $transaction: jest.fn() } as any;
   const razorpay = { verifyWebhookSignature: jest.fn() } as any;
   const notifications = { create: jest.fn() } as any;
   let service: PaymentsService;
@@ -175,7 +175,7 @@ describe('PaymentsService', () => {
     }), 'sig')).resolves.toEqual({ received: true });
 
     expect(tx.payment.update).not.toHaveBeenCalled();
-    expect(tx.order.findUnique).not.toHaveBeenCalled();
+    expect(tx.order.findUnique).toHaveBeenCalledTimes(1);
     expect(notifications.create).not.toHaveBeenCalled();
   });
 
