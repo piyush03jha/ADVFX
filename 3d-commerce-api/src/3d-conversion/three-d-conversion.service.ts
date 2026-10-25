@@ -151,7 +151,27 @@ export class ThreeDConversionService {
       if (claimed.count !== 1 && job.status !== ProcessingJobStatus.QUEUED && job.stage !== "COMPLETING") {
         throw new ConflictException("Conversion upload is already being finalized");
       }
-    } else if (job.stage !== "COMPLETING") {
+    } else if (job.stage === "COMPLETING") {
+      // A COMPLETING row is a short lease. Only take it over after the previous
+      // caller has gone stale, preventing two simultaneous retries from asking
+      // object storage to finalize the same multipart upload.
+      const staleBefore = new Date(Date.now() - 30_000);
+      const takeover = await this.prisma.threeDConversionJob.updateMany({
+        where: {
+          id: job.id,
+          status: ProcessingJobStatus.PROCESSING,
+          stage: "COMPLETING",
+          uploadId: body.uploadId,
+          updatedAt: { lt: staleBefore },
+        },
+        data: { updatedAt: new Date() },
+      });
+      if (takeover.count !== 1) {
+        throw new ConflictException("Conversion upload is already being finalized");
+      }
+      job = await this.prisma.threeDConversionJob.findUnique({ where: { id: job.id } });
+      if (!job) throw new NotFoundException("Conversion job not found");
+    } else {
       throw new BadRequestException("Conversion upload is not in a completable state");
     }
 
