@@ -14,7 +14,7 @@ import { Navbar } from "@/components/layout/SiteNavbar";
 import { Button } from "@/components/ui/Button";
 
 export const metadata: Metadata = {
-  title: "Contact",
+  title: { absolute: "Contact Voxel3D Support and Orders" },
   description: "Questions about an order, a custom 3D print or a bulk request? Reach the Voxel3D team by WhatsApp or email.",
   alternates: { canonical: "/contact" },
 };
@@ -191,6 +191,18 @@ export default async function ContactPage() {
               </div>
             </section>
 
+            <section className="mt-10 grid gap-6 rounded-3xl border border-border bg-surface/50 p-6 sm:grid-cols-2 sm:p-8">
+              <div>
+                <h2 className="text-lg font-semibold">What should I include in my message?</h2>
+                <p className="mt-3 text-sm leading-7 text-muted">For a product question, include the product name or link and tell us what you would like to know. If you need help with an existing order, include your order number and the email or phone number used at checkout. Please do not send payment passwords or one-time codes.</p>
+                <p className="mt-3 text-sm leading-7 text-muted">For a custom model, describe the idea, preferred dimensions, quantity and any important details. Use the custom request form to send JPG or PNG reference photos. Clear photos and measurements help us understand what you are looking for.</p>
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold">Custom and bulk orders</h2>
+                <p className="mt-3 text-sm leading-7 text-muted">If you want several pieces for a team, event, business or gift, tell us the quantity, size, target date and whether the items should all be the same. We will review the request and discuss what can be made. Price and timing depend on the design, quantity and production needs, so we confirm these details for each request.</p>
+                <p className="mt-3 text-sm leading-7 text-muted">Not sure which route to use? Start with the custom request page or send us a message. We can help point you in the right direction before you place an order.</p>
+              </div>
+            </section>
             <div className="mt-10 text-center">
               <p className="text-xs text-muted">
                 Not sure where to start?
