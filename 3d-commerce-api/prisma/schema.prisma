@@ -1004,6 +1004,7 @@ model Promotion {
   endsAt   DateTime?
 
   usageLimit Int?
+  usageLimitPerUser Int? @default(1)
   usageCount Int  @default(0)
 
   isActive Boolean @default(true)
