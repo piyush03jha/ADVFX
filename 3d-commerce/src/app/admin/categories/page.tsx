@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { resolveMediaUrl } from "@/lib/media-url";
+import { filterCategoriesByHierarchy, getMainCategories, getSubcategories } from "@/lib/category-hierarchy.mjs";
 import {
   IconEdit,
   IconPhoto,
@@ -141,28 +142,15 @@ export default function AdminCategories() {
   }
 
 
-  const parentCategories = useMemo(() => categories.filter((c) => !c.parentId), [categories]);
+  const parentCategories = useMemo(() => getMainCategories(categories), [categories]);
   const filteredSubcategories = useMemo(
-    () => mainCategoryFilter === "all" ? [] : categories.filter((category) => category.parentId === mainCategoryFilter),
+    () => getSubcategories(categories, mainCategoryFilter),
     [categories, mainCategoryFilter],
   );
-  const visibleCategories = useMemo(() => {
-    const query = categorySearch.trim().toLowerCase();
-    return categories.filter((category) => {
-      const matchesSearch = !query || [
-        category.name,
-        category.slug,
-        category.description ?? "",
-        category.parent?.name ?? parentCategories.find((parent) => parent.id === category.parentId)?.name ?? "",
-      ].join(" ").toLowerCase().includes(query);
-      const matchesHierarchy = subcategoryFilter !== "all"
-        ? category.id === subcategoryFilter
-        : mainCategoryFilter === "all"
-          || category.id === mainCategoryFilter
-          || category.parentId === mainCategoryFilter;
-      return matchesSearch && matchesHierarchy;
-    });
-  }, [categories, categorySearch, mainCategoryFilter, subcategoryFilter, parentCategories]);
+  const visibleCategories = useMemo(
+    () => filterCategoriesByHierarchy(categories, mainCategoryFilter, subcategoryFilter, categorySearch),
+    [categories, categorySearch, mainCategoryFilter, subcategoryFilter],
+  );
 
   function normalizeHeader(value: string) {
     return value.replace(/^\uFEFF/, "").trim().toLowerCase().replace(/[\s-]+/g, "_");
