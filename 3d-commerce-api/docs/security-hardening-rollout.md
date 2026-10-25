@@ -32,7 +32,7 @@ The admin product-price endpoint `POST /products/:id/pricing` accepts an optiona
 }
 ```
 
-A price with a matching country code takes precedence during checkout; a price with `countryCode: null` is the global fallback. Prices are stored in minor currency units (for INR, paise). Set the country price for each product from the admin API; existing admin forms that do not send `countryCode` continue to create/update the global fallback price.
+A price with a matching country code takes precedence during checkout; a price with `countryCode: null` is the global fallback. Prices are stored in minor currency units (for INR, paise). The admin catalog now exposes product-level country pricing and a separate country-specific price form for each size variant. Variant prices can be set through `POST /products/:id/variants/:variantId/country-pricing`. Existing variant prices remain the fallback when no country-specific variant price exists.
 
 ## Refund reconciliation
 
@@ -46,6 +46,7 @@ A refund attempt is claimed with the `REFUND_PENDING` payment-attempt state befo
 - `20261025201500_country_product_pricing`
 - `20261025202000_conversion_completion_recovery`
 - `20261025202500_payment_refund_pending`
+- `20261025203000_variant_country_pricing`
 
 ## Verification commands
 
