@@ -35,21 +35,16 @@ export class PaymentsService {
   ) {}
 
   async createRazorpayOrder(userId: string, orderId: string) {
-    // Serialize creation for this payment row. Without the row lock, parallel
-    // requests can both create provider-side orders before either persists one.
-    // Keep the provider call inside the transaction so a second request sees
-    // the persisted active attempt before it can create another.
-    return this.prisma.$transaction(async (tx) => {
+    // Claim the payment row in a short transaction. The external Razorpay call
+    // happens only after this transaction commits, so provider latency does not
+    // hold a PostgreSQL connection or row lock.
+    const prepared = await this.prisma.$transaction(async (tx) => {
       const owned = await tx.order.findFirst({
         where: { id: orderId, userId },
         select: { id: true, payment: { select: { id: true } } },
       });
       if (!owned) throw new NotFoundException('Order not found');
       if (!owned.payment) throw new ConflictException('Razorpay payment is not configured');
-
-      await tx.$queryRaw(
-        Prisma.sql`SELECT "id" FROM "Payment" WHERE "id" = ${owned.payment.id} FOR UPDATE`,
-      );
 
       const order = await tx.order.findFirst({
         where: { id: orderId, userId },
@@ -63,7 +58,7 @@ export class PaymentsService {
         throw new ConflictException('Razorpay payment is not configured');
       }
 
-      const activeReservation = order.checkoutSource === "CUSTOM"
+      const activeReservation = order.checkoutSource === 'CUSTOM'
         ? true
         : await tx.inventoryReservation.findFirst({
             where: {
@@ -80,53 +75,139 @@ export class PaymentsService {
 
       if (
         order.payment.providerOrderId &&
-        order.payment.status !== PaymentStatus.FAILED
+        order.payment.status !== PaymentStatus.FAILED &&
+        order.payment.status !== PaymentStatus.CREATING
       ) {
-        return this.formatRazorpayOrder({ ...order, payment: order.payment! });
+        return {
+          kind: 'EXISTING' as const,
+          response: this.formatRazorpayOrder({ ...order, payment: order.payment }),
+        };
       }
 
-      const providerOrder = await this.razorpay.createOrder({
-        amountMinor: order.payment.amountMinor,
-        currency: order.payment.currency,
-        receipt: order.orderNumber,
-      });
-
-      if (
-        providerOrder.amount !== order.totalMinor ||
-        providerOrder.currency !== order.currency
-      ) {
-        throw new ConflictException('Razorpay order total mismatch');
+      if (order.payment.status === PaymentStatus.CREATING) {
+        throw new ConflictException('Payment order creation is already in progress. Please retry shortly.');
       }
 
-      await tx.paymentAttempt.create({
-        data: {
-          paymentId: order.payment.id,
-          providerOrderId: providerOrder.id,
-          amountMinor: providerOrder.amount,
-          currency: providerOrder.currency,
-          status: PaymentStatus.PENDING,
+      const claimed = await tx.payment.updateMany({
+        where: {
+          id: order.payment.id,
+          status: { in: [PaymentStatus.PENDING, PaymentStatus.FAILED] },
         },
-      });
-
-      await tx.payment.update({
-        where: { id: order.payment.id },
         data: {
-          providerOrderId: providerOrder.id,
-          status: PaymentStatus.PENDING,
+          status: PaymentStatus.CREATING,
+          providerOrderId: null,
           providerPaymentId: null,
           paidAt: null,
         },
       });
+      if (claimed.count !== 1) {
+        throw new ConflictException('Payment state changed. Please refresh and try again.');
+      }
 
       return {
-        keyId: this.razorpay.getPublicKeyId(),
-        razorpayOrderId: providerOrder.id,
-        amount: providerOrder.amount,
-        currency: providerOrder.currency,
+        kind: 'CREATE' as const,
+        paymentId: order.payment.id,
         orderId: order.id,
         orderNumber: order.orderNumber,
+        totalMinor: order.totalMinor,
+        currency: order.currency,
+        amountMinor: order.payment.amountMinor,
+        paymentCurrency: order.payment.currency,
       };
-    }, { timeout: 15_000, maxWait: 5_000 });
+    }, { timeout: 5_000, maxWait: 5_000 });
+
+    if (prepared.kind === 'EXISTING') return prepared.response;
+
+    let providerOrder: Awaited<ReturnType<RazorpayService['createOrder']>>;
+    try {
+      providerOrder = await this.razorpay.createOrder({
+        amountMinor: prepared.amountMinor,
+        currency: prepared.paymentCurrency,
+        receipt: prepared.orderNumber,
+      });
+    } catch (error) {
+      await this.prisma.payment.updateMany({
+        where: { id: prepared.paymentId, status: PaymentStatus.CREATING },
+        data: { status: PaymentStatus.PENDING },
+      }).catch(() => undefined);
+      throw error;
+    }
+
+    if (
+      providerOrder.amount !== prepared.totalMinor ||
+      providerOrder.currency !== prepared.currency
+    ) {
+      await this.prisma.payment.updateMany({
+        where: { id: prepared.paymentId, status: PaymentStatus.CREATING },
+        data: { status: PaymentStatus.FAILED },
+      });
+      throw new ConflictException('Razorpay order total mismatch');
+    }
+
+    try {
+      const saved = await this.prisma.$transaction(async (tx) => {
+        const order = await tx.order.findFirst({
+          where: { id: prepared.orderId, userId },
+          include: { payment: true },
+        });
+        if (
+          !order ||
+          order.status !== OrderStatus.PENDING_PAYMENT ||
+          !order.payment ||
+          order.payment.id !== prepared.paymentId ||
+          order.payment.status !== PaymentStatus.CREATING
+        ) {
+          return null;
+        }
+
+        await tx.paymentAttempt.create({
+          data: {
+            paymentId: prepared.paymentId,
+            providerOrderId: providerOrder.id,
+            amountMinor: providerOrder.amount,
+            currency: providerOrder.currency,
+            status: PaymentStatus.PENDING,
+          },
+        });
+
+        const updated = await tx.payment.updateMany({
+          where: { id: prepared.paymentId, status: PaymentStatus.CREATING },
+          data: {
+            providerOrderId: providerOrder.id,
+            status: PaymentStatus.PENDING,
+            providerPaymentId: null,
+            paidAt: null,
+          },
+        });
+        if (updated.count !== 1) {
+          throw new ConflictException('Payment state changed while preparing Razorpay order');
+        }
+
+        return {
+          keyId: this.razorpay.getPublicKeyId(),
+          razorpayOrderId: providerOrder.id,
+          amount: providerOrder.amount,
+          currency: providerOrder.currency,
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+        };
+      }, { timeout: 5_000, maxWait: 5_000 });
+
+      if (!saved) {
+        await this.prisma.payment.updateMany({
+          where: { id: prepared.paymentId, status: PaymentStatus.CREATING },
+          data: { status: PaymentStatus.FAILED },
+        });
+        throw new ConflictException('Order changed while preparing payment. Please retry checkout.');
+      }
+      return saved;
+    } catch (error) {
+      await this.prisma.payment.updateMany({
+        where: { id: prepared.paymentId, status: PaymentStatus.CREATING },
+        data: { status: PaymentStatus.FAILED },
+      }).catch(() => undefined);
+      throw error;
+    }
   }
 
   async cancelRazorpayPayment(userId: string, orderId: string) {
