@@ -21,6 +21,14 @@ export function ShopNavigation({
   const allActive = selectedCategories.length === 0;
   const roots = categories.filter((category) => !category.parentId);
   const children = categories.filter((category) => Boolean(category.parentId));
+  const selectedSlug = selectedCategories[0] ?? "";
+  const selectedCategory = categories.find((category) => category.slug === selectedSlug);
+  const activeRoot = selectedCategory?.parentId
+    ? roots.find((root) => root.id === selectedCategory.parentId)
+    : selectedCategory;
+  const visibleSubcategories = activeRoot
+    ? children.filter((category) => category.parentId === activeRoot.id)
+    : [];
   const parentName = (category: ShopCategory) =>
     category.parent?.name ?? roots.find((root) => root.id === category.parentId)?.name ?? "Category";
 
@@ -45,7 +53,7 @@ export function ShopNavigation({
       </div>
 
       <div className="relative hidden overflow-hidden rounded-[28px] border border-border bg-surface/40 p-3 sm:block">
-        <div className="flex gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden xl:grid xl:grid-cols-8 xl:overflow-visible">
+        <div className="flex w-full flex-nowrap gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <CategoryCard active={allActive} onClick={onShowAll}>
             <div className="relative aspect-[3/4] overflow-hidden rounded-2xl bg-background">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_20%,rgba(139,92,246,0.22),transparent_46%),radial-gradient(circle_at_80%_85%,rgba(139,92,246,0.14),transparent_48%)]" />
@@ -76,11 +84,14 @@ export function ShopNavigation({
         </div>
       </div>
 
-      {children.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-2" aria-label="Subcategories">
-          {children.map((category) => (
+      {activeRoot && (
+        <div className="mt-3 flex flex-wrap items-center gap-2" aria-label={`${activeRoot.name} subcategories`}>
+          <span className="mr-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">{activeRoot.name}</span>
+          <Chip active={selectedSlug === activeRoot.slug} onClick={() => onCategoryChange(activeRoot.slug)}>
+            All {activeRoot.name}
+          </Chip>
+          {visibleSubcategories.map((category) => (
             <Chip key={category.id} active={selectedCategories.includes(category.slug)} onClick={() => onCategoryChange(category.slug)}>
-              <span className="text-[10px] text-muted">{parentName(category)} /</span>
               {category.name}
             </Chip>
           ))}
