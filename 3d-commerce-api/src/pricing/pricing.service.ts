@@ -125,6 +125,19 @@ export class PricingService {
         );
       }
 
+      if (currency !== "INR" && currency !== price.currency) {
+        throw new BadRequestException(
+          "All items in a checkout must use the same currency",
+        );
+      }
+      if (currency === "INR" && subtotalMinor === 0) {
+        currency = price.currency;
+      } else if (currency !== price.currency) {
+        throw new BadRequestException(
+          "All items in a checkout must use the same currency",
+        );
+      }
+
       const lineTotalMinor = price.amountMinor * item.quantity;
       subtotalMinor += lineTotalMinor;
       currency = price.currency;
