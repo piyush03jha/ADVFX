@@ -337,6 +337,10 @@ export class ProductsService {
           some: {
             isActive: true,
             countryCode: null,
+            AND: [
+              { OR: [{ startsAt: null }, { startsAt: { lte: new Date() } }] },
+              { OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }] },
+            ],
             amountMinor: {
               ...(hasMin ? { gte: Math.round(query.minPrice! * 100) } : {}),
               ...(hasMax ? { lte: Math.round(query.maxPrice! * 100) } : {}),
@@ -366,7 +370,17 @@ export class ProductsService {
           select: {
             id: true,
             createdAt: true,
-            prices: { where: { isActive: true, countryCode: null }, select: { amountMinor: true, currency: true } },
+            prices: {
+              where: {
+                isActive: true,
+                countryCode: null,
+                AND: [
+                  { OR: [{ startsAt: null }, { startsAt: { lte: new Date() } }] },
+                  { OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }] },
+                ],
+              },
+              select: { amountMinor: true, currency: true },
+            },
           },
         }),
         this.reviewAggregates(),
@@ -418,7 +432,16 @@ export class ProductsService {
           where: { id: { in: pageIds } },
           include: {
             category: true,
-            prices: { where: { isActive: true }, orderBy: { createdAt: 'desc' } },
+            prices: {
+              where: {
+                isActive: true,
+                AND: [
+                  { OR: [{ startsAt: null }, { startsAt: { lte: new Date() } }] },
+                  { OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }] },
+                ],
+              },
+              orderBy: { createdAt: 'desc' },
+            },
             media: {
               where: { type: 'IMAGE' },
               orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }],
@@ -1267,7 +1290,14 @@ export class ProductsService {
       prices: {
         // Public catalog/admin summary defaults to the global fallback price;
         // checkout selects the matching country-specific price separately.
-        where: { isActive: true, countryCode: null },
+        where: {
+          isActive: true,
+          countryCode: null,
+          AND: [
+            { OR: [{ startsAt: null }, { startsAt: { lte: new Date() } }] },
+            { OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }] },
+          ],
+        },
         orderBy: { createdAt: 'desc' },
       },
       media: {
@@ -1354,7 +1384,13 @@ export class ProductsService {
     return {
       category: true,
       prices: {
-        where: { isActive: true },
+        where: {
+          isActive: true,
+          AND: [
+            { OR: [{ startsAt: null }, { startsAt: { lte: new Date() } }] },
+            { OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }] },
+          ],
+        },
         orderBy: { createdAt: 'desc' },
       },
       media: { orderBy: { sortOrder: 'asc' } },
