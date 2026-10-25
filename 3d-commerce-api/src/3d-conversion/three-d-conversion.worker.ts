@@ -453,10 +453,50 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
       this.logger.warn(`Marked ${staleUploads.count} abandoned conversion upload(s) as failed`);
     }
 
+    // Completion metadata is persisted before the storage call, so a worker
+    // can finish the upload even if the API process died after object storage
+    // completed but before PostgreSQL was moved to QUEUED.
+    const completionCutoff = new Date(Date.now() - Math.max(this.pollIntervalMs * 2, 30_000));
+    const completingJobs = await this.prisma.threeDConversionJob.findMany({
+      where: {
+        status: ProcessingJobStatus.PROCESSING,
+        stage: "COMPLETING",
+        updatedAt: { lt: completionCutoff },
+        uploadId: { not: null },
+        completionSize: { not: null },
+        completionParts: { not: null },
+      },
+      take: 10,
+      orderBy: { updatedAt: "asc" },
+    });
+
+    for (const job of completingJobs) {
+      try {
+        const parts = Array.isArray(job.completionParts)
+          ? job.completionParts as Array<{ PartNumber: number; ETag: string }>
+          : null;
+        if (!parts || !job.uploadId || job.completionSize === null) {
+          continue;
+        }
+        await this.conversionService.complete(job.id, {
+          key: job.sourceStorageKey,
+          uploadId: job.uploadId,
+          size: Number(job.completionSize),
+          parts,
+        });
+        this.logger.log(`Recovered multipart completion for conversion job ${job.id}`);
+      } catch (error) {
+        this.logger.warn(
+          `Unable to recover multipart completion for job ${job.id}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
+
     const cutoff = new Date(Date.now() - this.staleAfterMs);
     await this.prisma.threeDConversionJob.updateMany({
       where: {
         status: ProcessingJobStatus.PROCESSING,
+        stage: { not: "COMPLETING" },
         startedAt: { lt: cutoff },
       },
       data: {
