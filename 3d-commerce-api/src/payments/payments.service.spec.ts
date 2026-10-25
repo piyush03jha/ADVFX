@@ -168,6 +168,52 @@ describe('PaymentsService', () => {
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
+  it('refunds a second captured provider payment once without refunding the primary payment record', async () => {
+    razorpay.verifyWebhookSignature.mockReturnValue(true);
+    razorpay.refundPayment = jest.fn().mockResolvedValue({ id: 'rfnd_extra', status: 'processed' });
+    prisma.paymentAttempt = {
+      findUnique: jest.fn()
+        .mockResolvedValueOnce({
+          id: 'attempt2', paymentId: 'pay1', providerOrderId: 'order_2',
+          providerPaymentId: null, amountMinor: 2500, currency: 'INR',
+          status: 'PENDING', payment: { orderId: 'ord1' },
+        })
+        .mockResolvedValueOnce({
+          id: 'attempt2', paymentId: 'pay1', providerOrderId: 'order_2',
+          providerPaymentId: 'pay_extra', amountMinor: 2500, currency: 'INR',
+          status: 'REFUNDED', payment: { orderId: 'ord1' },
+        }),
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+    };
+    const tx = {
+      $queryRaw: jest.fn().mockResolvedValue([{ id: 'pay1' }]),
+      payment: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'pay1', orderId: 'ord1', status: 'CAPTURED',
+          providerPaymentId: 'pay_primary', providerOrderId: 'order_primary',
+          amountMinor: 2500, currency: 'INR',
+        }),
+        update: jest.fn(),
+      },
+      order: { findUnique: jest.fn().mockResolvedValue({ id: 'ord1', status: 'CONFIRMED', items: [] }) },
+    };
+    prisma.$transaction.mockImplementation(async (callback: any) => callback(tx));
+
+    const event = JSON.stringify({
+      event: 'payment.captured',
+      payload: { payment: { entity: {
+        id: 'pay_extra', order_id: 'order_2', amount: 2500, currency: 'INR',
+      } } },
+    });
+    await expect(service.handleWebhook(event, 'sig')).resolves.toEqual({ received: true });
+    await expect(service.handleWebhook(event, 'sig')).resolves.toEqual({ received: true });
+
+    expect(razorpay.refundPayment).toHaveBeenCalledTimes(1);
+    expect(prisma.paymentAttempt.updateMany).toHaveBeenCalledTimes(2);
+    expect(prisma.payment.update).not.toHaveBeenCalled();
+    expect(tx.payment.update).not.toHaveBeenCalled();
+  });
+
   it('locks the payment row and reuses an existing active Razorpay order', async () => {
     const payment = {
       id: 'pay1',
