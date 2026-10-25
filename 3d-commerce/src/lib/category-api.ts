@@ -15,6 +15,60 @@ export interface ShopCategory {
   _count?: { products: number };
 }
 
+/**
+ * Accept both flat category APIs and APIs that return roots with nested children.
+ * Some deployments return a { data: [...] } envelope rather than a bare array.
+ */
+export function normalizeShopCategories(data: unknown): ShopCategory[] {
+  const candidate = Array.isArray(data)
+    ? data
+    : typeof data === "object" && data !== null
+      ? ((data as { categories?: unknown; data?: unknown }).categories ??
+        (data as { data?: unknown }).data)
+      : null;
+
+  if (!Array.isArray(candidate)) return [];
+
+  const flattened: ShopCategory[] = [];
+  const seen = new Set<string>();
+
+  const visit = (items: unknown[], parent?: ShopCategory) => {
+    for (const item of items) {
+      if (typeof item !== "object" || item === null) continue;
+      const value = item as Record<string, unknown>;
+      if (
+        typeof value.id !== "string" ||
+        typeof value.name !== "string" ||
+        typeof value.slug !== "string" ||
+        seen.has(value.id)
+      ) continue;
+
+      const category = {
+        ...value,
+        parentId: typeof value.parentId === "string"
+          ? value.parentId
+          : parent?.id ?? null,
+        parent: value.parent && typeof value.parent === "object"
+          ? value.parent as ShopCategory["parent"]
+          : parent
+            ? { id: parent.id, name: parent.name, slug: parent.slug }
+            : null,
+        imageUrl: resolveMediaUrl(
+          typeof value.imageUrl === "string" ? value.imageUrl : null,
+        ),
+      } as ShopCategory;
+
+      seen.add(category.id);
+      flattened.push(category);
+
+      if (Array.isArray(value.children)) visit(value.children, category);
+    }
+  };
+
+  visit(candidate);
+  return flattened;
+}
+
 export async function fetchShopCategories(): Promise<ShopCategory[]> {
   try {
     const response = await fetch(
@@ -24,25 +78,7 @@ export async function fetchShopCategories(): Promise<ShopCategory[]> {
 
     if (!response.ok) return [];
 
-    const data: unknown = await response.json();
-
-    if (!Array.isArray(data)) return [];
-
-    const categories = data
-      .filter(
-        (category): category is ShopCategory =>
-          typeof category === "object" &&
-          category !== null &&
-          typeof (category as { id?: unknown }).id === "string" &&
-          typeof (category as { name?: unknown }).name === "string" &&
-          typeof (category as { slug?: unknown }).slug === "string",
-      )
-      .map((category) => ({
-        ...category,
-        imageUrl: resolveMediaUrl(category.imageUrl),
-      }));
-
-    return categories;
+    return normalizeShopCategories(await response.json());
   } catch {
     return [];
   }
