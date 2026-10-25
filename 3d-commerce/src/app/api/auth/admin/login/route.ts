@@ -12,7 +12,7 @@ export async function POST(request: Request) {
 
     const response = await fetch(getBackendApiUrl("auth/admin/login"), {
       method: "POST",
-      headers: { ...getTrustedClientIpHeaders(request), "Content-Type": "application/json" },
+      headers: { ...(await getTrustedClientIpHeaders(request)), "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
       cache: "no-store",
     });
