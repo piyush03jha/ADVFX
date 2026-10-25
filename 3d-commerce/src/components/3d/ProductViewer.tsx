@@ -10,7 +10,7 @@ import {
 } from "react";
 
 import { Canvas, useFrame } from "@react-three/fiber";
-import { Environment, Html, useGLTF } from "@react-three/drei";
+import { Environment, Html, Lightformer, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 
 import { HERO_MODEL_ROTATION_MS } from "@/config/hero-motion";
@@ -451,7 +451,28 @@ export function ProductViewer({
           color="#8b5cf6"
         />
 
-        <Environment preset="studio" environmentIntensity={0.45} />
+        {/* Build the reflection environment locally; preset="studio" fetches an external HDR
+            that production CSP intentionally blocks. Keep resolution modest for mobile. */}
+        <Environment resolution={64} environmentIntensity={0.45}>
+          <Lightformer
+            form="rect"
+            intensity={2}
+            position={[0, 4, -4]}
+            scale={[8, 4, 1]}
+          />
+          <Lightformer
+            form="rect"
+            intensity={1.5}
+            position={[-4, 1, 2]}
+            scale={[4, 5, 1]}
+          />
+          <Lightformer
+            form="rect"
+            intensity={1.5}
+            position={[4, 1, 2]}
+            scale={[4, 5, 1]}
+          />
+        </Environment>
 
         {previousProduct && (
           <Suspense fallback={null}>
