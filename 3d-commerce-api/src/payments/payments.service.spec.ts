@@ -12,6 +12,46 @@ describe('PaymentsService', () => {
     service = new PaymentsService(prisma, razorpay, notifications);
   });
 
+  it('does not refund a payment when cancellation races with a confirmed capture', async () => {
+    prisma.order = {
+      findFirst: jest.fn().mockResolvedValue({
+        id: 'ord-race',
+        status: 'PENDING_PAYMENT',
+        payment: {
+          id: 'pay-race',
+          provider: 'RAZORPAY',
+          providerOrderId: 'order-race',
+          amountMinor: 2500,
+          currency: 'INR',
+        },
+      }),
+    };
+    razorpay.fetchPayments = jest.fn().mockResolvedValue([{
+      id: 'pay-captured',
+      status: 'captured',
+      amount: 2500,
+      currency: 'INR',
+    }]);
+    razorpay.refundPayment = jest.fn();
+    service = new PaymentsService(prisma, razorpay, notifications);
+    jest.spyOn(service as any, 'applyCapturedPayment').mockResolvedValue({
+      kind: 'ALREADY_CAPTURED',
+      orderStatus: 'CONFIRMED',
+      providerPaymentId: 'pay-captured',
+    });
+
+    const result = await service.cancelRazorpayPayment('user-1', 'ord-race');
+
+    expect(result).toEqual({
+      orderId: 'ord-race',
+      status: 'CONFIRMED',
+      refunded: false,
+      released: false,
+    });
+    expect(razorpay.refundPayment).not.toHaveBeenCalled();
+    expect(prisma.payment.update).not.toHaveBeenCalled();
+  });
+
   it('marks a payment failure without confirming or cancelling the order', async () => {
     razorpay.verifyWebhookSignature.mockReturnValue(true);
     prisma.payment.findFirst.mockResolvedValue({ id: 'pay1', orderId: 'ord1', providerPaymentId: null, status: 'PENDING' });
