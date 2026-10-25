@@ -1,6 +1,6 @@
 "use client";
 
-import { IconLayoutGrid } from "@tabler/icons-react";
+import { IconLayoutGrid, IconPlus } from "@tabler/icons-react";
 import type { ShopCategory } from "@/lib/category-api";
 import { resolveMediaUrl } from "@/lib/media-url";
 import { getActiveMainCategory, getMainCategories, getSubcategories } from "@/lib/category-hierarchy.mjs";
@@ -28,44 +28,66 @@ export function ShopNavigation({
   return (
     <section aria-label="Product categories">
       <div
-        className="-mx-3 flex w-full flex-nowrap items-center gap-2 overflow-x-auto px-3 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="-mx-3 flex w-full flex-nowrap items-stretch gap-3 overflow-x-auto px-3 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         aria-label="Main categories"
       >
-        <Chip active={allActive} onClick={onShowAll}>
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <IconLayoutGrid size={15} stroke={1.8} />
-          </span>
-          All models
-        </Chip>
+        <CategoryCard active={allActive} onClick={onShowAll} label="All Models">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/15 via-surface to-surface-elevated" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background/70 text-primary shadow-sm">
+              <IconPlus size={19} stroke={1.8} />
+            </span>
+          </div>
+          <div className="absolute inset-x-0 bottom-0 p-3">
+            <p className="text-sm font-semibold text-foreground">All Models</p>
+            <p className="mt-1 text-[10px] uppercase tracking-[0.12em] text-muted">Full collection</p>
+          </div>
+        </CategoryCard>
+
         {roots.map((category) => {
           const image = resolveMediaUrl(category.imageUrl);
+          const active = selectedCategories.includes(category.slug);
           return (
-            <Chip
+            <CategoryCard
               key={category.id}
-              active={selectedCategories.includes(category.slug)}
+              active={active}
               onClick={() => onCategoryChange(category.slug)}
+              label={category.name}
             >
               {image ? (
-                <img src={image} alt="" loading="lazy" className="h-7 w-7 rounded-full object-cover" />
+                <img
+                  src={image}
+                  alt=""
+                  loading="lazy"
+                  className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                />
               ) : (
-                <span className="h-7 w-7 shrink-0 rounded-full bg-surface-elevated" aria-hidden="true" />
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/15 via-surface to-surface-elevated" />
               )}
-              {category.name}
-            </Chip>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-black/0" />
+              <div className="absolute inset-x-0 bottom-0 p-3">
+                <p className="line-clamp-2 text-left text-sm font-semibold leading-5 text-white">{category.name}</p>
+                {category.description ? (
+                  <p className="mt-1 line-clamp-2 text-left text-[10px] leading-4 text-white/75">{category.description}</p>
+                ) : null}
+              </div>
+            </CategoryCard>
           );
         })}
       </div>
 
       {activeRoot && (
         <div className="mt-3 flex flex-wrap items-center gap-2" aria-label={`${activeRoot.name} subcategories`}>
-          <span className="mr-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">{activeRoot.name}</span>
-          <Chip active={selectedSlug === activeRoot.slug} onClick={() => onCategoryChange(activeRoot.slug)}>
-            All {activeRoot.name}
-          </Chip>
           {visibleSubcategories.map((category) => (
-            <Chip key={category.id} active={selectedCategories.includes(category.slug)} onClick={() => onCategoryChange(category.slug)}>
+            <button
+              key={category.id}
+              type="button"
+              aria-pressed={selectedCategories.includes(category.slug)}
+              onClick={() => onCategoryChange(category.slug)}
+              className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${selectedCategories.includes(category.slug) ? "border-primary bg-primary/10 text-primary" : "border-border bg-surface text-foreground hover:border-primary/40"}`}
+            >
               {category.name}
-            </Chip>
+            </button>
           ))}
         </div>
       )}
@@ -73,17 +95,25 @@ export function ShopNavigation({
   );
 }
 
-function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+function CategoryCard({
+  active,
+  onClick,
+  label,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
-    <button type="button" onClick={onClick} aria-pressed={active} className={`flex h-11 items-center gap-2 whitespace-nowrap rounded-full border pl-1.5 pr-4 text-sm font-medium transition-colors ${active ? "border-primary bg-primary/10 text-primary" : "border-border bg-surface text-foreground"}`}>
-      {children}
-    </button>
-  );
-}
-
-function CategoryCard({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button type="button" onClick={onClick} aria-pressed={active} className={`group relative w-[132px] shrink-0 overflow-hidden rounded-2xl border text-left transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 xl:w-auto ${active ? "border-primary/60 bg-primary/[0.06] shadow-[0_0_0_1px_rgba(139,92,246,0.18)]" : "border-border/70 bg-background/30 hover:border-primary/35 hover:bg-surface-elevated"}`}>
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      aria-pressed={active}
+      className={`group relative h-[190px] w-[148px] shrink-0 overflow-hidden rounded-2xl border text-left transition-all duration-300 sm:h-[212px] sm:w-[164px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 ${active ? "border-primary shadow-[0_0_0_1px_rgba(139,92,246,0.3)]" : "border-border/70 hover:border-primary/45"}`}
+    >
       {children}
     </button>
   );
