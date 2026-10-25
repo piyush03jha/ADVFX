@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 };
 
 export default function TermsPage() {
-  return <PolicyPage contentKey="terms" eyebrow="Legal" title="Terms of Service" intro="These terms govern purchases of Voxel3D physical products and requests for custom-made physical products." sections={[
+  return <PolicyPage contentKey="terms" eyebrow="Legal" title="Terms for Ordering from Voxel3D" intro="These terms explain what to expect when you buy a physical product from Voxel3D or ask us to make a custom piece. Please read them before placing an order." sections={[
     { title: "Products and orders", body: "Product descriptions, dimensions, materials, images, availability, and prices are provided for customer reference and may change before an order is accepted. An order is subject to successful payment authorization and our ability to fulfill it." },
     { title: "Custom products", body: "Custom requests are reviewed by our team. Requirements, dimensions, references, pricing, production constraints, and delivery expectations may be confirmed before a custom order is placed." },
     { title: "Payment", body: "Payments are processed through the payment provider shown at checkout. Orders are confirmed only after successful payment reconciliation." },
