@@ -15,6 +15,22 @@ const FIRST_REQUEST_BYTES = 12 * 1024 * 1024;
 const CHUNK_SIZE = 8 * 1024 * 1024;
 const MAX_RETRIES = 5;
 const MAX_GLB_BYTES = 300 * 1024 * 1024;
+
+function maxGlbBytesForDevice(): number {
+  if (typeof navigator === "undefined") return MAX_GLB_BYTES;
+  const deviceMemory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
+  const connection = (navigator as Navigator & {
+    connection?: { effectiveType?: string; saveData?: boolean };
+  }).connection;
+
+  // Avoid allocating a very large contiguous ArrayBuffer on low-memory phones.
+  if (connection?.saveData || ["slow-2g", "2g", "3g"].includes(connection?.effectiveType ?? "")) {
+    return 100 * 1024 * 1024;
+  }
+  if (deviceMemory !== undefined && deviceMemory <= 4) return 100 * 1024 * 1024;
+  if (deviceMemory !== undefined && deviceMemory <= 8) return 180 * 1024 * 1024;
+  return MAX_GLB_BYTES;
+}
 const CACHE_NAME = "voxel3d-glb-v3";
 
 const RETRYABLE_STATUS = new Set([408, 425, 429, 500, 502, 503, 504]);
@@ -105,7 +121,7 @@ function validateGlbHeader(buffer: ArrayBuffer): number {
   if (magic !== "glTF" || version !== 2) {
     throw new Error("The downloaded file is not a GLB 2.0 model");
   }
-  if (length < 12 || length > MAX_GLB_BYTES) {
+  if (length < 12 || length > maxGlbBytesForDevice()) {
     throw new Error("GLB declares an invalid file size");
   }
   return length;
@@ -241,13 +257,15 @@ async function downloadModel(url: string, emit: (percent: number) => void, signa
     const connection = (navigator as Navigator & {
       connection?: { effectiveType?: string; saveData?: boolean };
     }).connection;
+    const deviceMemory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
     const constrained = Boolean(
       connection?.saveData ||
         connection?.effectiveType === "slow-2g" ||
         connection?.effectiveType === "2g" ||
-        connection?.effectiveType === "3g",
+        connection?.effectiveType === "3g" ||
+        (deviceMemory !== undefined && deviceMemory <= 4),
     );
-    const workers = Math.min(constrained ? 2 : 5, ranges.length);
+    const workers = Math.min(constrained ? 1 : 4, ranges.length);
 
     const inner = new AbortController();
     const onOuterAbort = () => inner.abort();
