@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InventoryReservationStatus, OrderStatus, Prisma, NotificationType, PaymentStatus } from '@prisma/client';
 import { randomBytes } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -524,6 +524,24 @@ export class OrdersService {
     }
 
     const updated = await this.prisma.$transaction(async (tx) => {
+      // Serialize admin state transitions. The initial read is intentionally
+      // outside the transaction for fast validation, so re-check after locking
+      // before mutating inventory or shipment state.
+      await tx.$queryRaw<Array<{ id: string }>>(
+        Prisma.sql`SELECT "id" FROM "Order" WHERE "id" = ${id} FOR UPDATE`,
+      );
+      const current = await tx.order.findUnique({
+        where: { id },
+        select: { status: true },
+      });
+      if (!current) throw new NotFoundException('Order not found');
+      if (current.status !== order.status) {
+        throw new ConflictException('Order status changed concurrently. Refresh and try again.');
+      }
+      if (!ORDER_TRANSITIONS[current.status].includes(status)) {
+        throw new BadRequestException(`Cannot change order from ${current.status} to ${status}`);
+      }
+
       if (status === 'CANCELLED') {
         if (order.status === OrderStatus.PENDING_PAYMENT) {
           await this.releaseReservations(tx, id, InventoryReservationStatus.RELEASED);
