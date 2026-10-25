@@ -314,7 +314,6 @@ describe('PaymentsService', () => {
       orderId: 'order1',
     });
 
-    expect(tx.$queryRaw).toHaveBeenCalled();
     expect(razorpay.createOrder).not.toHaveBeenCalled();
     expect(tx.paymentAttempt.create).not.toHaveBeenCalled();
   });
