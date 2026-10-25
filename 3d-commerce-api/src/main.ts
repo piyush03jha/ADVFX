@@ -87,9 +87,9 @@ async function bootstrap() {
     throw new Error("API_RATE_LIMIT_PER_MINUTE must be a positive number");
   }
 
-  if (env.nodeEnv === "production" && process.env.TRUST_PROXY !== "true") {
+  if (env.nodeEnv === "production" && (process.env.INTERNAL_PROXY_SECRET?.trim().length ?? 0) < 32) {
     app.getHttpAdapter().getInstance().log.warn(
-      "TRUST_PROXY is disabled. Configure it when the API runs behind a trusted reverse proxy.",
+      "INTERNAL_PROXY_SECRET is missing or too short; rate limits will use the API connection IP instead of the browser IP.",
     );
   }
 
@@ -164,9 +164,7 @@ async function bootstrap() {
 
       // Razorpay webhooks are authenticated with their HMAC signature and
       // static asset delivery does not consume API rate-limit buckets.
-      if (
-        request.url.startsWith("/payments/razorpay/webhook") ||
-      ) return;
+      if (request.url.startsWith("/payments/razorpay/webhook")) return;
 
       const routePath = request.routeOptions?.url ?? request.url.split("?")[0];
       const routeLimit = AUTH_RATE_LIMITS[routePath];
