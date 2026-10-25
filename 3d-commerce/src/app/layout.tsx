@@ -74,7 +74,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: `${SITE_NAME} — ${SITE_TAGLINE}`,
     description:
-      "Premium physical 3D models, custom 3D creations, and collectibles built with obsessive attention to detail.",
+      "Buy physical 3D printed models, figures, miniatures and collectibles in India from Voxel3D. Explore selected 3D previews or request a custom physical model from reference images.",
     images: [SITE_LOGO_PATH],
   },
 };
@@ -90,7 +90,14 @@ const organizationJsonLd = {
       url: SITE_URL,
       logo: absoluteUrl(SITE_LOGO_PATH),
       description: SITE_DESCRIPTION,
-      areaServed: "IN",
+      areaServed: { "@type": "Country", name: "India" },
+      knowsAbout: [
+        "Physical 3D printed models",
+        "3D printed figures and collectibles",
+        "Miniatures and display models",
+        "Custom physical model requests from reference images",
+        "Interactive 3D product previews",
+      ],
       ...(SITE_SAME_AS.length ? { sameAs: SITE_SAME_AS } : {}),
     },
     {
