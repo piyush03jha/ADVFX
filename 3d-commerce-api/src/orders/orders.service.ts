@@ -507,26 +507,20 @@ export class OrdersService {
         throw new BadRequestException('Only captured Razorpay payments can be refunded.');
       }
 
-      try {
-        await this.razorpay.refundPayment(
-          order.payment.providerPaymentId,
-          order.payment.amountMinor,
-        );
-      } catch (error) {
-        await this.observability.captureException(error, {
-          alert: "refund_failure",
-          orderId: id,
-          providerPaymentId: order.payment.providerPaymentId,
-          amountMinor: order.payment.amountMinor,
-        });
-        throw error;
-      }
+
     }
 
     const updated = await this.prisma.$transaction(async (tx) => {
       // Serialize admin state transitions. The initial read is intentionally
       // outside the transaction for fast validation, so re-check after locking
       // before mutating inventory or shipment state.
+      // Capture reconciliation locks Payment before Order. Refund transitions
+      // follow the same lock order so they cannot deadlock with a capture webhook.
+      if (status === 'REFUNDED') {
+        await tx.$queryRaw<Array<{ id: string }>>(
+          Prisma.sql`SELECT "id" FROM "Payment" WHERE "orderId" = ${id} FOR UPDATE`,
+        );
+      }
       await tx.$queryRaw<Array<{ id: string }>>(
         Prisma.sql`SELECT "id" FROM "Order" WHERE "id" = ${id} FOR UPDATE`,
       );
@@ -542,6 +536,31 @@ export class OrdersService {
         throw new BadRequestException(`Cannot change order from ${current.status} to ${status}`);
       }
 
+      if (status === 'REFUNDED') {
+        const currentPayment = await tx.payment.findUnique({ where: { orderId: id } });
+        if (
+          !currentPayment ||
+          currentPayment.status !== PaymentStatus.CAPTURED ||
+          !currentPayment.providerPaymentId
+        ) {
+          throw new BadRequestException('Only captured Razorpay payments can be refunded.');
+        }
+        try {
+          await this.razorpay.refundPayment(
+            currentPayment.providerPaymentId,
+            currentPayment.amountMinor,
+          );
+        } catch (error) {
+          await this.observability.captureException(error, {
+            alert: "refund_failure",
+            orderId: id,
+            providerPaymentId: currentPayment.providerPaymentId,
+            amountMinor: currentPayment.amountMinor,
+          });
+          throw error;
+        }
+      }
+
       if (status === 'CANCELLED') {
         if (order.status === OrderStatus.PENDING_PAYMENT) {
           await this.releaseReservations(tx, id, InventoryReservationStatus.RELEASED);
@@ -554,14 +573,6 @@ export class OrdersService {
       }
 
       if (status === 'REFUNDED') {
-        if (
-          !order.payment ||
-          order.payment.status !== 'CAPTURED' ||
-          !order.payment.providerPaymentId
-        ) {
-          throw new BadRequestException('Only captured payments can be refunded.');
-        }
-
         await tx.payment.update({
           where: { orderId: id },
           data: { status: 'REFUNDED' },
