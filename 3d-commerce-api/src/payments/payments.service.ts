@@ -380,6 +380,13 @@ export class PaymentsService {
         where: { id: order.payment.id },
       });
 
+      if (payment.status === PaymentStatus.CREATING) {
+        throw new ConflictException('A payment order is already being prepared. Please retry shortly.');
+      }
+      if (![PaymentStatus.PENDING, PaymentStatus.FAILED].includes(payment.status)) {
+        throw new ConflictException('This payment cannot be retried in its current state.');
+      }
+
       if (payment.status === PaymentStatus.PENDING && payment.providerOrderId) {
         throw new ConflictException(
           'A payment attempt is already active. Complete it or wait for its webhook before retrying.',
