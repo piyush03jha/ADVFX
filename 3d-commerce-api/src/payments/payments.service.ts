@@ -35,29 +35,67 @@ export class PaymentsService {
   ) {}
 
   async createRazorpayOrder(userId: string, orderId: string) {
-    const order = await this.getPayableOrder(userId, orderId);
+    // Serialize creation for this payment row. Without the row lock, parallel
+    // requests can both create provider-side orders before either persists one.
+    // Keep the provider call inside the transaction so a second request sees
+    // the persisted active attempt before it can create another.
+    return this.prisma.$transaction(async (tx) => {
+      const owned = await tx.order.findFirst({
+        where: { id: orderId, userId },
+        select: { id: true, payment: { select: { id: true } } },
+      });
+      if (!owned) throw new NotFoundException('Order not found');
+      if (!owned.payment) throw new ConflictException('Razorpay payment is not configured');
 
-    if (
-      order.payment.providerOrderId &&
-      order.payment.status !== PaymentStatus.FAILED
-    ) {
-      return this.formatRazorpayOrder(order);
-    }
+      await tx.$queryRaw(
+        Prisma.sql`SELECT "id" FROM "Payment" WHERE "id" = ${owned.payment.id} FOR UPDATE`,
+      );
 
-    const providerOrder = await this.razorpay.createOrder({
-      amountMinor: order.payment.amountMinor,
-      currency: order.payment.currency,
-      receipt: order.orderNumber,
-    });
+      const order = await tx.order.findFirst({
+        where: { id: orderId, userId },
+        include: { payment: true },
+      });
+      if (!order) throw new NotFoundException('Order not found');
+      if (order.status !== OrderStatus.PENDING_PAYMENT) {
+        throw new ConflictException('Order is no longer awaiting payment');
+      }
+      if (!order.payment || order.payment.provider !== 'RAZORPAY') {
+        throw new ConflictException('Razorpay payment is not configured');
+      }
 
-    if (
-      providerOrder.amount !== order.totalMinor ||
-      providerOrder.currency !== order.currency
-    ) {
-      throw new ConflictException('Razorpay order total mismatch');
-    }
+      const activeReservation = await tx.inventoryReservation.findFirst({
+        where: {
+          orderId: order.id,
+          status: 'ACTIVE',
+          expiresAt: { gt: new Date() },
+        },
+      });
+      if (!activeReservation) {
+        throw new ConflictException(
+          'This payment session has expired. Please create a new order from your cart.',
+        );
+      }
 
-    await this.prisma.$transaction(async (tx) => {
+      if (
+        order.payment.providerOrderId &&
+        order.payment.status !== PaymentStatus.FAILED
+      ) {
+        return this.formatRazorpayOrder(order);
+      }
+
+      const providerOrder = await this.razorpay.createOrder({
+        amountMinor: order.payment.amountMinor,
+        currency: order.payment.currency,
+        receipt: order.orderNumber,
+      });
+
+      if (
+        providerOrder.amount !== order.totalMinor ||
+        providerOrder.currency !== order.currency
+      ) {
+        throw new ConflictException('Razorpay order total mismatch');
+      }
+
       await tx.paymentAttempt.create({
         data: {
           paymentId: order.payment.id,
@@ -77,16 +115,16 @@ export class PaymentsService {
           paidAt: null,
         },
       });
-    });
 
-    return {
-      keyId: this.razorpay.getPublicKeyId(),
-      razorpayOrderId: providerOrder.id,
-      amount: providerOrder.amount,
-      currency: providerOrder.currency,
-      orderId: order.id,
-      orderNumber: order.orderNumber,
-    };
+      return {
+        keyId: this.razorpay.getPublicKeyId(),
+        razorpayOrderId: providerOrder.id,
+        amount: providerOrder.amount,
+        currency: providerOrder.currency,
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+      };
+    }, { timeout: 15_000, maxWait: 5_000 });
   }
 
   async cancelRazorpayPayment(userId: string, orderId: string) {
