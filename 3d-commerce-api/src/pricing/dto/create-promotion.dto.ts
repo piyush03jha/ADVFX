@@ -12,5 +12,6 @@ export class CreatePromotionDto {
   @IsOptional() @IsISO8601() startsAt?: string;
   @IsOptional() @IsISO8601() endsAt?: string;
   @IsOptional() @IsInt() @Min(1) usageLimit?: number;
+  @IsOptional() @IsInt() @Min(1) usageLimitPerUser?: number;
   @IsOptional() @IsBoolean() isActive?: boolean;
 }
