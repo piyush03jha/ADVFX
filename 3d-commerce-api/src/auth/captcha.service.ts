@@ -134,7 +134,7 @@ export class AuthCaptchaService {
       throw new BadRequestException('CAPTCHA has expired. Please try again.');
     }
 
-    if (!/^\\d{1,2}$/.test(answer)) {
+    if (!/^\d{1,2}$/.test(answer)) {
       throw new BadRequestException('Incorrect CAPTCHA answer.');
     }
 
