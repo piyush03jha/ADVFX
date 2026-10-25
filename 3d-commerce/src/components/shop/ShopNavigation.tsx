@@ -3,6 +3,7 @@
 import { IconLayoutGrid } from "@tabler/icons-react";
 import type { ShopCategory } from "@/lib/category-api";
 import { resolveMediaUrl } from "@/lib/media-url";
+import { getActiveMainCategory, getMainCategories, getSubcategories } from "@/lib/category-hierarchy.mjs";
 
 interface ShopNavigationProps {
   categories: ShopCategory[];
@@ -19,16 +20,10 @@ export function ShopNavigation({
   onShowAll,
 }: ShopNavigationProps) {
   const allActive = selectedCategories.length === 0;
-  const roots = categories.filter((category) => !category.parentId);
-  const children = categories.filter((category) => Boolean(category.parentId));
+  const roots = getMainCategories(categories);
   const selectedSlug = selectedCategories[0] ?? "";
-  const selectedCategory = categories.find((category) => category.slug === selectedSlug);
-  const activeRoot = selectedCategory?.parentId
-    ? roots.find((root) => root.id === selectedCategory.parentId)
-    : selectedCategory;
-  const visibleSubcategories = activeRoot
-    ? children.filter((category) => category.parentId === activeRoot.id)
-    : [];
+  const activeRoot = getActiveMainCategory(categories, selectedSlug);
+  const visibleSubcategories = activeRoot ? getSubcategories(categories, activeRoot.id) : [];
   const parentName = (category: ShopCategory) =>
     category.parent?.name ?? roots.find((root) => root.id === category.parentId)?.name ?? "Category";
 
