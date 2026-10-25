@@ -21,6 +21,11 @@ export function resolveMediaUrl(value?: string | null): string | null {
       const parsed = new URL(raw);
 
       if (parsed.pathname.startsWith("/storage/")) {
+        const storageKey = parsed.pathname.slice("/storage/".length);
+        const namespace = storageKey.split("/")[0];
+        if (["products", "categories", "custom-build-categories", "custom-build-options"].includes(namespace)) {
+          return "/api/assets/" + storageKey + parsed.search + parsed.hash;
+        }
         return parsed.pathname + parsed.search + parsed.hash;
       }
 
@@ -57,8 +62,15 @@ export function resolveMediaUrl(value?: string | null): string | null {
     return raw;
   }
 
-  if (raw.startsWith("/storage/")) return raw;
-  if (raw.startsWith("storage/")) return "/" + raw;
+  if (raw.startsWith("/storage/") || raw.startsWith("storage/")) {
+    const path = raw.startsWith("/") ? raw.slice(1) : raw;
+    const storageKey = path.slice("storage/".length);
+    const namespace = storageKey.split("/")[0];
+    if (["products", "categories", "custom-build-categories", "custom-build-options"].includes(namespace)) {
+      return "/api/assets/" + storageKey;
+    }
+    return "/" + path;
+  }
 
   // Normalize legacy relative asset paths saved before the API asset proxy
   // became canonical. Without this, a product detail page can request
