@@ -321,6 +321,30 @@ export class OrdersService {
       // Cart contents remain available until payment is actually captured.
       // Successful payment clears only the purchased cart lines.
       return this.findOneForTransaction(tx, order.id);
+    }).catch(async (error: unknown) => {
+      // The unique constraint is the final arbiter when two replicas race on
+      // the same idempotency key. Return the committed order instead of
+      // surfacing a duplicate-order error to the client.
+      if (
+        idempotencyKey &&
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        const raced = await this.prisma.order.findFirst({
+          where: { userId, idempotencyKey },
+          include: {
+            items: true,
+            shippingAddress: true,
+            payment: true,
+            shipment: true,
+            inventoryReservations: true,
+            promotion: true,
+            shippingRule: true,
+          },
+        });
+        if (raced) return raced;
+      }
+      throw error;
     });
 
     if (result.userId) {
