@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getBackendApiUrl } from "@/lib/backend-api";
+import { getBackendApiUrl, getTrustedClientIpHeaders } from "@/lib/backend-api";
 
 function isSafeRequestOrigin(request: Request) {
   const origin = request.headers.get("origin");
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
 
     const backendResponse = await fetch(getBackendApiUrl("auth/resend-verification"), {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { ...getTrustedClientIpHeaders(request), "Content-Type": "application/json" },
       body: JSON.stringify({ email }),
       cache: "no-store",
     });
