@@ -390,6 +390,14 @@ model ProductMetrics {
   updatedAt DateTime @updatedAt
 }
 
+model AuthCaptchaNonce {
+  nonce     String   @id
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
+}
+
 model ProductViewEvent {
   id          String   @id @default(cuid())
   productId   String
