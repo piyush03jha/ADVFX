@@ -9,6 +9,7 @@ import { getBackendApiUrl } from "@/lib/backend-api";
 import { faqItems, type FAQItem } from "@/config/faq";
 import type { CatalogProduct } from "@/lib/catalog-api";
 import { JsonLd } from "@/components/seo/JsonLd";
+import { absoluteUrl } from "@/lib/site";
 
 // Keep the heavier interactive sections split out of the initial bundle.
 const CustomBuild = dynamic(() => import("@/components/home/CustomBuild").then((m) => m.CustomBuild));
@@ -19,9 +20,9 @@ const FAQ = dynamic(() => import("@/components/home/FAQ").then((m) => m.FAQ));
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
-  title: { absolute: "Voxel3D — Premium 3D Printed Models & Collectibles in India" },
+  title: { absolute: "Buy 3D Printed Models & Collectibles in India | Voxel3D" },
   description:
-    "Shop premium 3D printed anime figures, miniatures and collectibles at Voxel3D India. Order physical models or request a custom piece made from your reference images.",
+    "Buy physical 3D printed models, figures, miniatures and collectibles in India from Voxel3D. Explore products with selected 3D previews or request a custom model from JPG or PNG reference images.",
   alternates: { canonical: "/" },
 };
 
@@ -87,15 +88,13 @@ export default async function Home() {
           "@graph": [
             {
               "@type": "WebPage",
-              "@id": "https://voxel3d.org/#webpage",
-              url: "https://voxel3d.org/",
-              name: "Voxel3D — Premium 3D Printed Models & Collectibles in India",
-              dateModified: "2026-10-23",
+              "@id": absoluteUrl("/#webpage"),
+              url: absoluteUrl("/"),
+              name: "Buy 3D Printed Models & Collectibles in India | Voxel3D",
               inLanguage: "en-IN",
             },
             {
               "@type": "FAQPage",
-              dateModified: "2026-10-23",
               mainEntity: faqs.map((faq) => ({
                 "@type": "Question",
                 name: faq.question,
