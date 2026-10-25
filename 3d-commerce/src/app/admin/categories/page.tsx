@@ -39,6 +39,8 @@ const empty = {
 export default function AdminCategories() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [categorySearch, setCategorySearch] = useState("");
+  const [mainCategoryFilter, setMainCategoryFilter] = useState("all");
+  const [subcategoryFilter, setSubcategoryFilter] = useState("all");
   const [form, setForm] = useState(empty);
   const [editing, setEditing] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -140,16 +142,27 @@ export default function AdminCategories() {
 
 
   const parentCategories = useMemo(() => categories.filter((c) => !c.parentId), [categories]);
+  const filteredSubcategories = useMemo(
+    () => mainCategoryFilter === "all" ? [] : categories.filter((category) => category.parentId === mainCategoryFilter),
+    [categories, mainCategoryFilter],
+  );
   const visibleCategories = useMemo(() => {
     const query = categorySearch.trim().toLowerCase();
-    if (!query) return categories;
-    return categories.filter((category) => [
-      category.name,
-      category.slug,
-      category.description ?? "",
-      category.parent?.name ?? "",
-    ].join(" ").toLowerCase().includes(query));
-  }, [categories, categorySearch]);
+    return categories.filter((category) => {
+      const matchesSearch = !query || [
+        category.name,
+        category.slug,
+        category.description ?? "",
+        category.parent?.name ?? parentCategories.find((parent) => parent.id === category.parentId)?.name ?? "",
+      ].join(" ").toLowerCase().includes(query);
+      const matchesHierarchy = subcategoryFilter !== "all"
+        ? category.id === subcategoryFilter
+        : mainCategoryFilter === "all"
+          || category.id === mainCategoryFilter
+          || category.parentId === mainCategoryFilter;
+      return matchesSearch && matchesHierarchy;
+    });
+  }, [categories, categorySearch, mainCategoryFilter, subcategoryFilter, parentCategories]);
 
   function normalizeHeader(value: string) {
     return value.replace(/^\uFEFF/, "").trim().toLowerCase().replace(/[\s-]+/g, "_");
@@ -644,6 +657,16 @@ export default function AdminCategories() {
       </form>
 
       <div className="mt-6 space-y-3">
+        <div className="grid gap-2 sm:grid-cols-2">
+          <select aria-label="Filter by main category" value={mainCategoryFilter} onChange={(event) => { setMainCategoryFilter(event.target.value); setSubcategoryFilter("all"); }} className="h-10 min-w-0 rounded-xl border border-border bg-surface px-3 text-xs">
+            <option value="all">All main categories</option>
+            {parentCategories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+          </select>
+          <select aria-label="Filter by subcategory" value={subcategoryFilter} disabled={mainCategoryFilter === "all" || filteredSubcategories.length === 0} onChange={(event) => setSubcategoryFilter(event.target.value)} className="h-10 min-w-0 rounded-xl border border-border bg-surface px-3 text-xs disabled:cursor-not-allowed disabled:opacity-50">
+            <option value="all">{mainCategoryFilter === "all" ? "Choose main category first" : filteredSubcategories.length === 0 ? "No subcategories" : "All subcategories"}</option>
+            {filteredSubcategories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+          </select>
+        </div>
         <label className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3">
           <IconPhoto size={15} className="text-muted" />
           <input
