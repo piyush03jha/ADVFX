@@ -42,7 +42,7 @@ export async function POST(request: Request) {
 
     const backendResponse = await fetch(getBackendApiUrl("auth/register"), {
       method: "POST",
-      headers: { ...getTrustedClientIpHeaders(request), "Content-Type": "application/json" },
+      headers: { ...(await getTrustedClientIpHeaders(request)), "Content-Type": "application/json" },
       body: JSON.stringify({ name, email, password, captchaToken, captchaAnswer }),
       cache: "no-store",
     });
