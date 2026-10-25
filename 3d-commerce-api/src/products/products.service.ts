@@ -420,7 +420,9 @@ export class ProductsService {
             media: {
               where: { type: 'IMAGE' },
               orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }],
-              take: 1,
+              // Keep a few candidates so the storefront can recover if an
+              // uploaded primary image is missing or temporarily unavailable.
+              take: 4,
             },
             variants: {
               where: { isActive: true },
