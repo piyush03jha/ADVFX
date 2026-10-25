@@ -15,6 +15,7 @@ describe('ProductsService', () => {
   beforeEach(() => {
     jest.resetAllMocks();
     prisma.productViewEvent.deleteMany.mockResolvedValue({ count: 0 });
+    process.env.PRODUCT_VIEW_DEDUPE_ENABLED = 'true';
     service = new ProductsService(prisma, storage);
   });
 
