@@ -199,6 +199,26 @@ export class OrdersService {
       }
 
       if (quote.promotion?.id) {
+        // Serialize all claims for this promotion, then count this customer's
+        // non-cancelled orders in a fresh statement before consuming a use.
+        await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "Promotion" WHERE "id" = ${quote.promotion.id} FOR UPDATE`);
+        const customerLimitRows = await tx.$queryRaw<Array<{ usageLimitPerUser: number | null }>>(
+          Prisma.sql`SELECT "usageLimitPerUser" FROM "Promotion" WHERE "id" = ${quote.promotion.id}`,
+        );
+        const customerLimit = customerLimitRows[0]?.usageLimitPerUser;
+        if (customerLimit !== null && customerLimit !== undefined) {
+          const customerUses = await tx.order.count({
+            where: {
+              userId,
+              promotionId: quote.promotion.id,
+              status: { notIn: [OrderStatus.CANCELLED, OrderStatus.REFUNDED] },
+            },
+          });
+          if (customerUses >= customerLimit) {
+            throw new BadRequestException("You have reached the usage limit for this coupon");
+          }
+        }
+
         const claimedPromotion = await tx.$executeRaw(
           Prisma.sql`
             UPDATE "Promotion"
