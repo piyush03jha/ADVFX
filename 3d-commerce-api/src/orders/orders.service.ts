@@ -31,7 +31,7 @@ const STOCK_CONSUMED_STATUSES: OrderStatus[] = [
   OrderStatus.DELIVERED,
 ];
 
-const RESERVATION_MINUTES = 30;
+const RESERVATION_MINUTES = 10;
 // findAllAdmin was previously fully unbounded (no take/skip at all), which
 // fetches every order with deep includes on every admin page load - a
 // growing perf/DoS risk. This caps it instead of paginating so the
@@ -731,14 +731,17 @@ export class OrdersService {
           data: { status: OrderStatus.CANCELLED },
         });
 
+        // Coupon usage is a reservation too: always release it when the unpaid
+        // order expires, regardless of the payment's last non-captured state.
+        if (current.promotionId) {
+          await this.releasePromotionUsage(tx, current.promotionId);
+        }
+
         if (
           current.payment?.status === PaymentStatus.PENDING ||
-          current.payment?.status === PaymentStatus.FAILED
+          current.payment?.status === PaymentStatus.FAILED ||
+          current.payment?.status === PaymentStatus.AUTHORIZED
         ) {
-          if (current.promotionId) {
-            await this.releasePromotionUsage(tx, current.promotionId);
-          }
-
           await tx.payment.update({
             where: { orderId: reservation.orderId },
             data: { status: PaymentStatus.FAILED },
