@@ -53,6 +53,27 @@ describe('OrdersService', () => {
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
+  it('rejects a stale order transition after another request changes the status', async () => {
+    prisma.order.findUnique.mockResolvedValue({
+      id: 'order-1',
+      status: 'PENDING_PAYMENT',
+      userId: 'user-1',
+      payment: { status: 'PENDING' },
+    });
+    const tx = {
+      $queryRaw: jest.fn().mockResolvedValue([{ id: 'order-1' }]),
+      order: { findUnique: jest.fn().mockResolvedValue({ status: 'CONFIRMED' }) },
+    } as any;
+    prisma.$transaction.mockImplementation((callback: any) => callback(tx));
+
+    await expect(service.updateStatus('order-1', 'CANCELLED' as any))
+      .rejects.toThrow('Order status changed concurrently');
+    expect(tx.order.findUnique).toHaveBeenCalledWith({
+      where: { id: 'order-1' },
+      select: { status: true },
+    });
+  });
+
   it('allows confirmation only from pending payment', async () => {
     prisma.order.findUnique.mockResolvedValue({ id: 'order-1', status: 'PENDING_PAYMENT', userId: 'user-1' });
     const tx = {
