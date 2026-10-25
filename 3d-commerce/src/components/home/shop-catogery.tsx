@@ -39,7 +39,7 @@ export function ShopByCategory() {
         if (!cancelled) {
           setCategories(
             (Array.isArray(data) ? data : []).filter(
-              (category: Category) => category.isActive,
+              (category: Category) => category.isActive && !category.parentId,
             ),
           );
         }
@@ -83,7 +83,7 @@ export function ShopByCategory() {
       </div>
 
       {categories.length > 0 ? (
-        <div className="snap-rail -mx-3 flex flex-nowrap gap-3 px-3 pb-3 sm:-mx-5 sm:px-5 lg:-mx-6 lg:gap-4 lg:px-6">
+        <div className="snap-rail !flex !w-full !flex-nowrap !overflow-x-auto -mx-3 gap-3 px-3 pb-3 sm:-mx-5 sm:px-5 lg:-mx-6 lg:gap-4 lg:px-6">
           {categories.map((category, index) => (
             <motion.div
               key={category.id}
