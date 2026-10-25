@@ -1,5 +1,7 @@
 import "dotenv/config";
 import { Prisma } from "@prisma/client";
+import { createHmac, timingSafeEqual } from "node:crypto";
+import { isIP } from "node:net";
 import { ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
@@ -18,6 +20,24 @@ interface LocalRateLimitState {
 
 const localRateLimitState = new Map<string, LocalRateLimitState>();
 
+function trustedForwardedClientIp(request: { headers: Record<string, string | string[] | undefined> }): string | null {
+  const secret = process.env.INTERNAL_PROXY_SECRET?.trim();
+  const ipValue = request.headers["x-voxel-client-ip"];
+  const timestampValue = request.headers["x-voxel-client-ip-ts"];
+  const signatureValue = request.headers["x-voxel-client-ip-signature"];
+  const ip = Array.isArray(ipValue) ? ipValue[0] : ipValue;
+  const timestamp = Array.isArray(timestampValue) ? timestampValue[0] : timestampValue;
+  const signature = Array.isArray(signatureValue) ? signatureValue[0] : signatureValue;
+
+  if (!secret || secret.length < 32 || !ip || !timestamp || !signature || !isIP(ip)) return null;
+  if (!/^\\d{10}$/.test(timestamp) || Math.abs(Math.floor(Date.now() / 1000) - Number(timestamp)) > 60) return null;
+
+  const expected = createHmac("sha256", secret).update(`${ip}.${timestamp}`).digest();
+  const received = Buffer.from(signature, "hex");
+  if (received.length !== expected.length || !timingSafeEqual(expected, received)) return null;
+  return ip;
+}
+
 const AUTH_RATE_LIMITS: Record<string, number> = {
   "/auth/login": 10,
   "/auth/admin/login": 5,
@@ -34,7 +54,9 @@ async function bootstrap() {
     AppModule,
     new FastifyAdapter({
       logger: env.nodeEnv !== "test",
-      trustProxy: process.env.TRUST_PROXY === "true",
+      // Never trust arbitrary X-Forwarded-For from the public API listener. Client IPs
+      // are accepted only through the signed Next.js proxy assertion below.
+      trustProxy: false,
     }),
     { rawBody: true },
   );
@@ -144,15 +166,16 @@ async function bootstrap() {
       // static asset delivery does not consume API rate-limit buckets.
       if (
         request.url.startsWith("/payments/razorpay/webhook") ||
-        request.url.startsWith("/assets/") ||
-        request.url.startsWith("/api/assets/")
       ) return;
 
       const routePath = request.routeOptions?.url ?? request.url.split("?")[0];
       const routeLimit = AUTH_RATE_LIMITS[routePath];
       const limit = routeLimit ?? rateLimitPerMinute;
-      const bucketScope = routeLimit ? routePath : "global";
-      const key = `${bucketScope}:${request.ip}`;
+      // Separate counters by route; a burst of product/media requests must not
+      // consume the same bucket as checkout or account actions.
+      const bucketScope = routePath;
+      const clientIp = trustedForwardedClientIp(request) ?? request.ip;
+      const key = `${bucketScope}:${clientIp}`;
 
       // This upsert is atomic in PostgreSQL. Concurrent requests across API
       // replicas increment the same fixed-window counter without lost updates.
