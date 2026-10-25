@@ -470,6 +470,55 @@ export class PaymentsService {
     };
   }
 
+  /**
+   * Reconcile ambiguous refund outcomes against Razorpay before an operator
+   * considers retrying them. A timeout may happen after the provider accepted
+   * the original request, so this routine never blindly issues a second refund.
+   */
+  async recoverPendingRefunds() {
+    const attempts = await this.prisma.paymentAttempt.findMany({
+      where: { status: PaymentStatus.REFUND_PENDING, providerPaymentId: { not: null } },
+      include: { payment: true },
+      take: 100,
+      orderBy: { updatedAt: "asc" },
+    });
+    let reconciled = 0;
+
+    for (const attempt of attempts) {
+      if (!attempt.providerPaymentId) continue;
+      try {
+        const providerPayment = await this.razorpay.fetchPayment(attempt.providerPaymentId);
+        if ((providerPayment.amount_refunded ?? 0) < attempt.amountMinor) continue;
+
+        const updated = await this.prisma.paymentAttempt.updateMany({
+          where: { id: attempt.id, status: PaymentStatus.REFUND_PENDING },
+          data: { status: PaymentStatus.REFUNDED },
+        });
+        if (updated.count !== 1) continue;
+
+        if (attempt.payment.providerPaymentId === attempt.providerPaymentId) {
+          await this.prisma.payment.updateMany({
+            where: {
+              id: attempt.paymentId,
+              providerPaymentId: attempt.providerPaymentId,
+              status: { in: [PaymentStatus.CAPTURED, PaymentStatus.REFUND_PENDING] },
+            },
+            data: { status: PaymentStatus.REFUNDED },
+          });
+        }
+        reconciled += 1;
+      } catch (error) {
+        console.error("Pending Razorpay refund reconciliation failed", {
+          attemptId: attempt.id,
+          providerPaymentId: attempt.providerPaymentId,
+          error,
+        });
+      }
+    }
+
+    return { checked: attempts.length, reconciled };
+  }
+
   async reconcileCapturedPayment(input: {
     orderId: string;
     providerPaymentId: string;
