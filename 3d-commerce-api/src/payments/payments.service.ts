@@ -815,30 +815,31 @@ export class PaymentsService {
     );
 
     if (result.kind === "REFUND_REQUIRED") {
+      // Claim the attempt before calling Razorpay. Only one webhook/browser
+      // reconciliation may move it into REFUND_PENDING; duplicate deliveries
+      // must not create multiple provider refunds.
+      const claimed = await this.prisma.paymentAttempt.updateMany({
+        where: {
+          providerOrderId: attempt.providerOrderId,
+          status: { in: [PaymentStatus.PENDING, PaymentStatus.AUTHORIZED, PaymentStatus.CAPTURED, PaymentStatus.FAILED] },
+        },
+        data: {
+          providerPaymentId: result.providerPaymentId,
+          status: PaymentStatus.REFUND_PENDING,
+        },
+      });
+      if (claimed.count !== 1) return;
+
       try {
-        await this.razorpay.refundPayment(
-          result.providerPaymentId,
-          resolvedAmount,
-        );
-        if (result.duplicatePayment) {
-          await this.prisma.paymentAttempt.updateMany({
-            where: { providerOrderId: attempt.providerOrderId },
-            data: {
-              providerPaymentId: result.providerPaymentId,
-              status: PaymentStatus.REFUNDED,
-            },
-          });
-        } else {
+        await this.razorpay.refundPayment(result.providerPaymentId, resolvedAmount);
+        await this.prisma.paymentAttempt.updateMany({
+          where: { providerOrderId: attempt.providerOrderId, status: PaymentStatus.REFUND_PENDING },
+          data: { providerPaymentId: result.providerPaymentId, status: PaymentStatus.REFUNDED },
+        });
+        if (!result.duplicatePayment) {
           await this.prisma.payment.update({
             where: { orderId: attempt.payment.orderId },
             data: { status: PaymentStatus.REFUNDED },
-          });
-          await this.prisma.paymentAttempt.updateMany({
-            where: { providerOrderId: attempt.providerOrderId },
-            data: {
-              providerPaymentId: result.providerPaymentId,
-              status: PaymentStatus.REFUNDED,
-            },
           });
         }
       } catch (error) {
@@ -847,14 +848,14 @@ export class PaymentsService {
           {
             type: NotificationType.PAYMENT_FAILED,
             title: "Payment reconciliation requires attention",
-            message: `Payment ${result.providerPaymentId} could not be refunded automatically.`,
+            message: `Payment ${result.providerPaymentId} refund needs manual reconciliation.`,
             entityType: "ORDER",
             entityId: attempt.payment.orderId,
           },
         ).catch(() => undefined);
-        // Keep the primary payment state unchanged on a failed refund attempt.
-        // In particular, do not overwrite a valid captured payment because a
-        // second provider payment was captured for the same checkout.
+        // Leave REFUND_PENDING: an API timeout can happen after Razorpay has
+        // accepted the refund. Do not automatically issue a potentially
+        // duplicate refund; reconcile this state against the provider dashboard.
       }
     }
   }
