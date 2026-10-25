@@ -79,7 +79,6 @@ describe('OrdersService', () => {
         update: jest.fn(),
       },
       productInventory: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
-      order: { update: jest.fn().mockResolvedValue({ id: 'order-1', status: 'CANCELLED', userId: 'user-1' }) },
     } as any;
     prisma.$transaction.mockImplementation((callback: any) => callback(tx));
     await service.updateStatus('order-1', 'CANCELLED' as any);
