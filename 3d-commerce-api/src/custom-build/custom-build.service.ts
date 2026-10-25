@@ -247,7 +247,19 @@ export class CustomBuildService {
         if (linkedOrder.shippingAddressId !== address.id) {
           const updated = await this.prisma.order.update({
             where: { id: linkedOrder.id },
-            data: { shippingAddressId: address.id },
+            data: {
+              shippingAddressId: address.id,
+              shippingAddressSnapshot: {
+                fullName: address.fullName,
+                phone: address.phone,
+                line1: address.line1,
+                line2: address.line2,
+                city: address.city,
+                state: address.state,
+                postalCode: address.postalCode,
+                country: address.country,
+              },
+            },
             include: {
               payment: true,
               shipment: true,
