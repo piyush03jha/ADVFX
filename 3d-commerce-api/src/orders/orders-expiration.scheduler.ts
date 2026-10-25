@@ -13,6 +13,7 @@ export class OrdersExpirationScheduler {
   @Cron(CronExpression.EVERY_MINUTE)
   async expireReservations() {
     await this.ordersService.expireReservations();
+    await this.paymentsService.recoverStaleOrderCreations();
     await this.paymentsService.recoverPendingRefunds();
   }
 }
