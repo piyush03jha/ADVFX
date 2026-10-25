@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { IconBolt, IconCheck, IconShoppingBag } from "@tabler/icons-react";
 
 import { Badge } from "@/components/ui/Badge";
@@ -26,7 +26,20 @@ interface ShopProductCardProps {
 }
 
 export function ShopProductCard({ product, priority = false }: ShopProductCardProps) {
-  const imageSrc = resolveMediaUrl(product.image) ?? "/placeholder-product.webp";
+  const imageCandidates = useMemo(() => {
+    const candidates = [product.image, ...(product.images ?? [])]
+      .map((value) => resolveMediaUrl(value))
+      .filter((value): value is string => Boolean(value));
+    return [...new Set(candidates.filter((value) => value !== "/placeholder-product.webp"))];
+  }, [product.image, product.images]);
+  const [imageIndex, setImageIndex] = useState(0);
+
+  useEffect(() => {
+    setImageIndex(0);
+  }, [product.id, imageCandidates]);
+
+  const imageSrc = imageCandidates[imageIndex] ?? "/placeholder-product.webp";
+  const hasMoreImages = imageIndex < imageCandidates.length - 1;
   // API assets are delivered by the same-origin asset proxy and must bypass
   // Next Image optimization; safe local static paths can use the optimizer.
   const optimizable =
@@ -112,6 +125,12 @@ export function ShopProductCard({ product, priority = false }: ShopProductCardPr
             priority={priority}
             loading={priority ? undefined : "lazy"}
             unoptimized={!optimizable}
+            onError={() => {
+              // A product can have a stale/broken primary media URL while another
+              // uploaded image is still valid. Try each uploaded image before the
+              // placeholder rather than giving up after the first failed request.
+              if (hasMoreImages) setImageIndex((index) => index + 1);
+            }}
             className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-105"
           />
         </Link>
