@@ -56,6 +56,8 @@ describe('OrdersService', () => {
   it('allows confirmation only from pending payment', async () => {
     prisma.order.findUnique.mockResolvedValue({ id: 'order-1', status: 'PENDING_PAYMENT', userId: 'user-1' });
     const tx = {
+      $queryRaw: jest.fn().mockResolvedValue([{ id: 'order-1' }]),
+      order: { findUnique: jest.fn().mockResolvedValue({ status: 'PENDING_PAYMENT' }) },
       inventoryReservation: { findMany: jest.fn().mockResolvedValue([]) },
       productInventory: { findUnique: jest.fn(), updateMany: jest.fn() },
       order: { update: jest.fn().mockResolvedValue({ id: 'order-1', status: 'CONFIRMED' }) },
@@ -67,6 +69,11 @@ describe('OrdersService', () => {
   it('releases active reservations when an order is cancelled', async () => {
     prisma.order.findUnique.mockResolvedValue({ id: 'order-1', status: 'PENDING_PAYMENT', userId: 'user-1' });
     const tx = {
+      $queryRaw: jest.fn().mockResolvedValue([{ id: 'order-1' }]),
+      order: {
+        findUnique: jest.fn().mockResolvedValue({ status: 'PENDING_PAYMENT' }),
+        update: jest.fn().mockResolvedValue({ id: 'order-1', status: 'CANCELLED', userId: 'user-1' }),
+      },
       inventoryReservation: {
         findMany: jest.fn().mockResolvedValue([{ id: 'r1', productId: 'p1', productInventoryId: 'inventory-1', quantity: 2, status: 'ACTIVE' }]),
         update: jest.fn(),
@@ -87,6 +94,11 @@ describe('OrdersService', () => {
     });
     razorpay.refundPayment.mockResolvedValue({ id: 'rfnd_1', status: 'processed' });
     const tx = {
+      $queryRaw: jest.fn().mockResolvedValue([{ id: 'order-1' }]),
+      order: {
+        findUnique: jest.fn().mockResolvedValue({ status: 'DELIVERED' }),
+        update: jest.fn().mockResolvedValue({ id: 'order-1', status: 'REFUNDED', userId: 'user-1' }),
+      },
       inventoryReservation: { findMany: jest.fn().mockResolvedValue([]) },
       payment: { update: jest.fn() },
       order: { update: jest.fn().mockResolvedValue({ id: 'order-1', status: 'REFUNDED', userId: 'user-1' }) },
