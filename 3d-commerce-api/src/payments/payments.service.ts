@@ -542,20 +542,14 @@ export class PaymentsService {
           );
 
           const current = await tx.payment.findUnique({ where: { id: payment.id } });
-          if (!current || current.status === PaymentStatus.CAPTURED) return;
-
-          await tx.payment.update({
-            where: { id: current.id },
-            data: {
-              providerPaymentId: paymentId ?? current.providerPaymentId,
-              status: PaymentStatus.FAILED,
-            },
-          });
+          if (!current) return;
 
           const attempt = razorpayOrderId
             ? await tx.paymentAttempt.findUnique({ where: { providerOrderId: razorpayOrderId } })
             : null;
 
+          // Always reconcile the specific failed attempt, but never let a delayed
+          // failure from an older Razorpay order mark a newer attempt as failed.
           if (attempt && attempt.status === PaymentStatus.PENDING) {
             await tx.paymentAttempt.update({
               where: { id: attempt.id },
@@ -565,6 +559,19 @@ export class PaymentsService {
               },
             });
           }
+
+          if (
+            current.status === PaymentStatus.CAPTURED ||
+            (razorpayOrderId && current.providerOrderId !== razorpayOrderId)
+          ) return;
+
+          await tx.payment.update({
+            where: { id: current.id },
+            data: {
+              providerPaymentId: paymentId ?? current.providerPaymentId,
+              status: PaymentStatus.FAILED,
+            },
+          });
         });
 
         // A failed attempt is not an order cancellation. The customer may
@@ -641,6 +648,17 @@ export class PaymentsService {
       const attempt = await tx.paymentAttempt.findUnique({
         where: { providerOrderId },
       });
+
+      // A capture must be tied to a persisted attempt belonging to this payment.
+      // Never trust an event merely because its amount and currency happen to match.
+      if (
+        !attempt ||
+        attempt.paymentId !== payment.id ||
+        attempt.amountMinor !== amount ||
+        attempt.currency !== currency
+      ) {
+        return { kind: "NONE" as const };
+      }
 
       await tx.payment.update({
         where: { id: payment.id },
@@ -877,19 +895,38 @@ export class PaymentsService {
     });
 
     for (const reservation of reservations) {
-      if (!reservation.productInventoryId) continue;
+      let updated: { count: number };
 
-      const updated = await tx.productInventory.updateMany({
-        where: {
-          id: reservation.productInventoryId,
-          stock: { gte: reservation.quantity },
-          reserved: { gte: reservation.quantity },
-        },
-        data: {
-          stock: { decrement: reservation.quantity },
-          reserved: { decrement: reservation.quantity },
-        },
-      });
+      if (reservation.productVariantId) {
+        updated = await tx.productVariant.updateMany({
+          where: {
+            id: reservation.productVariantId,
+            stock: { gte: reservation.quantity },
+            reserved: { gte: reservation.quantity },
+          },
+          data: {
+            stock: { decrement: reservation.quantity },
+            reserved: { decrement: reservation.quantity },
+          },
+        });
+      } else if (reservation.productInventoryId) {
+        updated = await tx.productInventory.updateMany({
+          where: {
+            id: reservation.productInventoryId,
+            stock: { gte: reservation.quantity },
+            reserved: { gte: reservation.quantity },
+          },
+          data: {
+            stock: { decrement: reservation.quantity },
+            reserved: { decrement: reservation.quantity },
+          },
+        });
+      } else {
+        throw new BadRequestException(
+          "Inventory reservation has no inventory target for product " +
+            reservation.productId,
+        );
+      }
 
       if (updated.count !== 1) {
         throw new BadRequestException(
@@ -918,15 +955,30 @@ export class PaymentsService {
     });
 
     for (const reservation of reservations) {
-      if (!reservation.productInventoryId) continue;
+      let updated: { count: number };
 
-      const updated = await tx.productInventory.updateMany({
-        where: {
-          id: reservation.productInventoryId,
-          reserved: { gte: reservation.quantity },
-        },
-        data: { reserved: { decrement: reservation.quantity } },
-      });
+      if (reservation.productVariantId) {
+        updated = await tx.productVariant.updateMany({
+          where: {
+            id: reservation.productVariantId,
+            reserved: { gte: reservation.quantity },
+          },
+          data: { reserved: { decrement: reservation.quantity } },
+        });
+      } else if (reservation.productInventoryId) {
+        updated = await tx.productInventory.updateMany({
+          where: {
+            id: reservation.productInventoryId,
+            reserved: { gte: reservation.quantity },
+          },
+          data: { reserved: { decrement: reservation.quantity } },
+        });
+      } else {
+        throw new BadRequestException(
+          "Inventory reservation has no inventory target for product " +
+            reservation.productId,
+        );
+      }
 
       if (updated.count !== 1) {
         throw new BadRequestException(
