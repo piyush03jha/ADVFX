@@ -275,6 +275,17 @@ describe('PaymentsService', () => {
 
     expect(razorpay.refundPayment).toHaveBeenCalledTimes(1);
     expect(prisma.paymentAttempt.updateMany).toHaveBeenCalledTimes(2);
+    expect(prisma.paymentAttempt.updateMany).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        data: { refundProviderPaymentId: 'pay_extra', status: 'REFUND_PENDING' },
+      }),
+    );
+    expect(prisma.paymentAttempt.updateMany).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ providerPaymentId: 'pay_extra' }),
+      }),
+    );
     expect(prisma.payment.update).not.toHaveBeenCalled();
     expect(tx.payment.update).not.toHaveBeenCalled();
   });
