@@ -1,3 +1,5 @@
+DROP INDEX IF EXISTS "ProductPrice_productId_isActive_idx";
+
 ALTER TABLE "ProductPrice"
   ADD COLUMN "countryCode" TEXT;
 
