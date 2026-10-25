@@ -5,7 +5,7 @@ export const SITE_NAME = "Voxel3D";
 export const SITE_TAGLINE = "Premium 3D Printed Models & Collectibles";
 
 export const SITE_DESCRIPTION =
-  "Shop physical 3D printed models, character figures and collectibles from Voxel3D. Browse our collection or request a custom model made from your reference images, with delivery across India.";
+  "Shop 3D printed figures, miniatures and collectibles in India. Explore physical models or request a custom piece from your photos.";
 export const SITE_LOGO_PATH = "/logo/full_logo.png";
 
 export const SOCIAL_LINKS = {
