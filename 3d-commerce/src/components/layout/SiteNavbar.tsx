@@ -31,6 +31,7 @@ const navItems = [
   { name: "Home", link: "/" },
   { name: "Shop", link: "/shop" },
   { name: "Custom", link: "/custom" },
+  { name: "About", link: "/about" },
   { name: "Category", link: "/#categories" },
   { name: "Contact Us", link: "/contact" },
 ];
