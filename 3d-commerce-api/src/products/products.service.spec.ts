@@ -5,6 +5,8 @@ describe('ProductsService', () => {
   const storage = { saveProductFile: jest.fn(), delete: jest.fn(), getAbsolutePath: jest.fn() } as any;
   const prisma = {
     product: { findFirst: jest.fn() },
+    productVariant: { findFirst: jest.fn() },
+    $transaction: jest.fn(),
     productReview: { findFirst: jest.fn(), findUnique: jest.fn(), create: jest.fn(), findMany: jest.fn(), aggregate: jest.fn() },
     order: { findFirst: jest.fn() },
     productMetrics: { upsert: jest.fn(), findUnique: jest.fn() },
@@ -17,6 +19,38 @@ describe('ProductsService', () => {
     prisma.productViewEvent.deleteMany.mockResolvedValue({ count: 0 });
     process.env.PRODUCT_VIEW_DEDUPE_ENABLED = 'true';
     service = new ProductsService(prisma, storage);
+  });
+
+  it('upserts country-specific variant pricing without overwriting its global price', async () => {
+    prisma.productVariant.findFirst.mockResolvedValue({ id: 'v1' });
+    const price = {
+      id: 'price-in-v1', variantId: 'v1', countryCode: 'IN',
+      currency: 'INR', amountMinor: 15000, compareAtMinor: 17000, isActive: true,
+    };
+    const tx = {
+      $queryRaw: jest.fn().mockResolvedValue([{ id: 'v1' }]),
+      productVariantCountryPrice: { upsert: jest.fn().mockResolvedValue(price) },
+    };
+    prisma.$transaction.mockImplementation((callback: any) => callback(tx));
+
+    await expect(service.setVariantCountryPrice('p1', 'v1', {
+      countryCode: 'in',
+      currency: 'inr',
+      amountMinor: 15000,
+      compareAtMinor: 17000,
+    })).resolves.toBe(price);
+
+    expect(tx.productVariantCountryPrice.upsert).toHaveBeenCalledWith({
+      where: { variantId_countryCode: { variantId: 'v1', countryCode: 'IN' } },
+      create: {
+        variantId: 'v1', countryCode: 'IN', currency: 'INR',
+        amountMinor: 15000, compareAtMinor: 17000, isActive: true,
+      },
+      update: {
+        currency: 'INR', amountMinor: 15000,
+        compareAtMinor: 17000, isActive: true,
+      },
+    });
   });
 
   it('accepts a review only after a captured purchase', async () => {
