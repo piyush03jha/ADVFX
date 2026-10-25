@@ -62,3 +62,17 @@ export function buildLlmsTxt({ siteUrl = DEFAULT_SITE_URL, description, tagline,
 
   return lines.join("\n");
 }
+
+/**
+ * Create the public text response used by the Next.js route and integration tests.
+ */
+export function createLlmsResponse(options = {}) {
+  return new Response(buildLlmsTxt(options), {
+    status: 200,
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      "Cache-Control": "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400",
+      "X-Content-Type-Options": "nosniff",
+    },
+  });
+}
