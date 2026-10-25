@@ -4,9 +4,15 @@ import { AuthCaptchaService } from './captcha.service';
 describe('AuthCaptchaService', () => {
   const originalFetch = global.fetch;
   let service: AuthCaptchaService;
+  const prisma = {
+    authCaptchaNonce: { createMany: jest.fn(), deleteMany: jest.fn() },
+  } as any;
 
   beforeEach(() => {
-    service = new AuthCaptchaService();
+    jest.resetAllMocks();
+    prisma.authCaptchaNonce.createMany.mockResolvedValue({ count: 1 });
+    prisma.authCaptchaNonce.deleteMany.mockResolvedValue({ count: 0 });
+    service = new AuthCaptchaService(prisma);
     process.env.AUTH_CAPTCHA_SECRET = 'test-captcha-secret';
   });
 
@@ -26,17 +32,18 @@ describe('AuthCaptchaService', () => {
     const challenge = service.issue('login');
     if (challenge.provider !== 'math') throw new Error('Expected math CAPTCHA');
     const answer = challenge.operator === '+' ? challenge.first + challenge.second : challenge.first - challenge.second;
-    expect(() => service.verify(challenge.token, String(answer), 'login')).not.toThrow();
+    await expect(service.verify(challenge.token, String(answer), 'login')).resolves.toBeUndefined();
   });
 
-  it('rejects incorrect answers, purpose changes, and replay', () => {
+  it('rejects incorrect answers, purpose changes, and replay', async () => {
     const challenge = service.issue('register');
     if (challenge.provider !== 'math') throw new Error('Expected math CAPTCHA');
     const answer = challenge.operator === '+' ? challenge.first + challenge.second : challenge.first - challenge.second;
-    expect(() => service.verify(challenge.token, '99', 'register')).toThrow(BadRequestException);
-    expect(() => service.verify(challenge.token, String(answer), 'login')).toThrow(BadRequestException);
-    expect(() => service.verify(challenge.token, String(answer), 'register')).not.toThrow();
-    expect(() => service.verify(challenge.token, String(answer), 'register')).toThrow(BadRequestException);
+    await expect(service.verify(challenge.token, '99', 'register')).rejects.toThrow(BadRequestException);
+    await expect(service.verify(challenge.token, String(answer), 'login')).rejects.toThrow(BadRequestException);
+    prisma.authCaptchaNonce.createMany.mockResolvedValueOnce({ count: 1 }).mockResolvedValueOnce({ count: 0 });
+    await expect(service.verify(challenge.token, String(answer), 'register')).resolves.toBeUndefined();
+    await expect(service.verify(challenge.token, String(answer), 'register')).rejects.toThrow(BadRequestException);
   });
 
   it('issues a Turnstile challenge when configured', () => {
@@ -101,20 +108,31 @@ describe('AuthCaptchaService', () => {
     await expect(service.verifyForAuth('token', undefined, 'login')).rejects.toThrow(ServiceUnavailableException);
   });
 
-  it('does not evict still-valid replay markers when the nonce store grows', () => {
+  it('uses a shared database insert to reject CAPTCHA replays across replicas', async () => {
     const challenge = service.issue('login');
     if (challenge.provider !== 'math') throw new Error('Expected math CAPTCHA');
     const answer = challenge.operator === '+' ? challenge.first + challenge.second : challenge.first - challenge.second;
-    service.verify(challenge.token, String(answer), 'login');
-    const usedNonces = (service as any).usedNonces as Map<string, number>;
-    const expiresAt = Date.now() + 60_000;
-    for (let index = 0; index < 10_001; index += 1) {
-      usedNonces.set('seed-' + index, expiresAt);
-    }
-    const nonce = JSON.parse(Buffer.from(challenge.token, 'base64url').toString('utf8')).nonce;
-    service.verify(challenge.token, String(answer), 'login');
-    expect(usedNonces.has(nonce)).toBe(true);
-    expect(usedNonces.size).toBe(10_002);
+
+    prisma.authCaptchaNonce.createMany.mockResolvedValueOnce({ count: 1 }).mockResolvedValueOnce({ count: 0 });
+    await expect(service.verify(challenge.token, String(answer), 'login')).resolves.toBeUndefined();
+    await expect(service.verify(challenge.token, String(answer), 'login')).rejects.toThrow(BadRequestException);
+
+    expect(prisma.authCaptchaNonce.createMany).toHaveBeenCalledWith({
+      data: [expect.objectContaining({
+        nonce: expect.any(String),
+        expiresAt: expect.any(Date),
+      })],
+      skipDuplicates: true,
+    });
+  });
+
+  it('fails closed when the shared replay store is unavailable', async () => {
+    const challenge = service.issue('login');
+    if (challenge.provider !== 'math') throw new Error('Expected math CAPTCHA');
+    const answer = challenge.operator === '+' ? challenge.first + challenge.second : challenge.first - challenge.second;
+    prisma.authCaptchaNonce.createMany.mockRejectedValue(new Error('database unavailable'));
+
+    await expect(service.verify(challenge.token, String(answer), 'login')).rejects.toThrow(ServiceUnavailableException);
   });
 
 });
