@@ -34,6 +34,10 @@ The admin product-price endpoint `POST /products/:id/pricing` accepts an optiona
 
 A price with a matching country code takes precedence during checkout; a price with `countryCode: null` is the global fallback. Prices are stored in minor currency units (for INR, paise). Set the country price for each product from the admin API; existing admin forms that do not send `countryCode` continue to create/update the global fallback price.
 
+## Refund reconciliation
+
+A refund attempt is claimed with the `REFUND_PENDING` payment-attempt state before calling Razorpay. This prevents concurrent webhook deliveries from issuing duplicate refunds. If the provider call times out or fails ambiguously, the attempt intentionally remains `REFUND_PENDING` instead of being retried automatically; verify the refund in Razorpay and reconcile the attempt before retrying. This avoids double-refunding when the provider accepted a refund but the API did not receive its response.
+
 ## Relevant migrations
 
 - `20261025200000_product_view_dedupe`
