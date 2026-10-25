@@ -38,7 +38,7 @@ async function bootstrap() {
 
   app.enableShutdownHooks();
 
-  const maxUploadSizeMb = Number(process.env.MAX_UPLOAD_SIZE_MB ?? 100);
+  const maxUploadSizeMb = Number(process.env.MAX_UPLOAD_SIZE_MB ?? 10);
 
   if (
     !Number.isFinite(maxUploadSizeMb) ||
@@ -62,10 +62,17 @@ async function bootstrap() {
     );
   }
 
+  // Browser multipart endpoints currently accept images, not 3D source files.
+  // Large model uploads use the signed multipart conversion flow instead.
+  // Keep a hard cap here so a permissive environment variable cannot turn
+  // toBuffer() handlers into multi-hundred-megabyte allocations.
+  const multipartImageLimitMb = Math.min(maxUploadSizeMb, 25);
   await app.register(multipart, {
     limits: {
-      fileSize: maxUploadSizeMb * 1024 * 1024,
-      files: 100,
+      fileSize: multipartImageLimitMb * 1024 * 1024,
+      files: 1,
+      fields: 20,
+      parts: 21,
     },
   });
 
@@ -166,7 +173,7 @@ async function bootstrap() {
       );
 
       if (next.count > limit) {
-        reply
+        return reply
           .code(429)
           .header("Retry-After", "60")
           .send({ message: "Too many requests" });
