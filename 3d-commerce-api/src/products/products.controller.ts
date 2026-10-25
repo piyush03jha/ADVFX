@@ -23,6 +23,7 @@ import { UpdateInventoryDto } from './dto/update-inventory.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { UpsertPriceDto } from './dto/upsert-price.dto';
 import { UpsertVariantDto } from './dto/upsert-variant.dto';
+import { UpsertVariantCountryPriceDto } from './dto/upsert-variant-country-price.dto';
 import { ProductsService } from './products.service';
 import { StorageService } from '../storage/storage.service';
 import type { FastifyReply, FastifyRequest } from 'fastify';
@@ -188,6 +189,16 @@ export class ProductsController {
     @Body() dto: UpsertVariantDto,
   ) {
     return this.productsService.updateVariant(id, variantId, dto);
+  }
+
+  @UseGuards(AuthGuard, AdminGuard)
+  @Post(':id/variants/:variantId/country-pricing')
+  setVariantCountryPrice(
+    @Param('id') id: string,
+    @Param('variantId') variantId: string,
+    @Body() dto: UpsertVariantCountryPriceDto,
+  ) {
+    return this.productsService.setVariantCountryPrice(id, variantId, dto);
   }
 
   @UseGuards(AuthGuard, AdminGuard)
