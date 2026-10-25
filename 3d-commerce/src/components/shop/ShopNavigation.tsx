@@ -24,8 +24,6 @@ export function ShopNavigation({
   const selectedSlug = selectedCategories[0] ?? "";
   const activeRoot = getActiveMainCategory(categories, selectedSlug);
   const visibleSubcategories = activeRoot ? getSubcategories(categories, activeRoot.id) : [];
-  const parentName = (category: ShopCategory) =>
-    category.parent?.name ?? roots.find((root) => root.id === category.parentId)?.name ?? "Category";
 
   return (
     <section aria-label="Product categories">
