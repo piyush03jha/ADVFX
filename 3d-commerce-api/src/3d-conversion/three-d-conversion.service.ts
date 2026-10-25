@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException, ServiceUnavailableException } from "@nestjs/common";
-import { ProcessingJobStatus } from "@prisma/client";
+import { Prisma, ProcessingJobStatus } from "@prisma/client";
 import { randomUUID } from "node:crypto";
 import { extname } from "node:path";
 import { PrismaService } from "../prisma/prisma.service";
@@ -205,7 +205,7 @@ export class ThreeDConversionService {
       data: {
         uploadId: null,
         completionSize: null,
-        completionParts: Prisma.JsonNull,
+        completionParts: Prisma.DbNull,
         status: ProcessingJobStatus.QUEUED,
         stage: "QUEUED",
         originalSize: BigInt(body.size),
