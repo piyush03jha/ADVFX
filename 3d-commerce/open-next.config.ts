@@ -4,4 +4,5 @@ import kvIncrementalCache from
 
 export default defineCloudflareConfig({
   incrementalCache: kvIncrementalCache,
+  enableCacheInterception: true,
 });
