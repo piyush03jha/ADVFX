@@ -81,6 +81,12 @@ export class AuthService {
       `;
 
       return created;
+    }).catch((error: unknown) => {
+      // The unique email index is the concurrency arbiter. Simultaneous registrations return 409.
+      if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002') {
+        throw new ConflictException('An account with this email already exists.');
+      }
+      throw error;
     });
 
     const verificationToken = await this.createEmailVerificationToken(user.id);
