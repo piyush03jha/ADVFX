@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 
 describe('PaymentsService', () => {
@@ -87,6 +88,26 @@ describe('PaymentsService', () => {
       where: { id: 'rv1' },
       data: expect.objectContaining({ status: 'CONSUMED' }),
     }));
+    expect(tx.productInventory.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('does not consume a reservation if the atomic stock guard fails', async () => {
+    const tx = {
+      inventoryReservation: {
+        findMany: jest.fn().mockResolvedValue([
+          { id: 'rv1', productId: 'p1', productVariantId: 'v1', productInventoryId: null, quantity: 2 },
+        ]),
+        update: jest.fn(),
+      },
+      productVariant: { updateMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      productInventory: { updateMany: jest.fn() },
+    };
+    const service = new PaymentsService(prisma, razorpay, notifications);
+
+    await expect((service as any).consumeReservationsInTransaction(tx, 'ord1'))
+      .rejects.toThrow(BadRequestException);
+
+    expect(tx.inventoryReservation.update).not.toHaveBeenCalled();
     expect(tx.productInventory.updateMany).not.toHaveBeenCalled();
   });
 
