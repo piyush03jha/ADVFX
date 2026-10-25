@@ -116,6 +116,58 @@ describe('PaymentsService', () => {
     expect(tx.productInventory.updateMany).not.toHaveBeenCalled();
   });
 
+  it('treats a duplicate captured webhook as idempotent', async () => {
+    razorpay.verifyWebhookSignature.mockReturnValue(true);
+    prisma.paymentAttempt = {
+      findUnique: jest.fn().mockResolvedValue({
+        id: 'attempt1',
+        paymentId: 'pay1',
+        providerOrderId: 'order_1',
+        providerPaymentId: 'pay_1',
+        amountMinor: 2500,
+        currency: 'INR',
+        payment: { orderId: 'ord1' },
+      }),
+    };
+    const tx = {
+      $queryRaw: jest.fn().mockResolvedValue([{ id: 'pay1' }]),
+      payment: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'pay1', orderId: 'ord1', status: 'CAPTURED',
+          providerPaymentId: 'pay_1', amountMinor: 2500, currency: 'INR',
+        }),
+        update: jest.fn(),
+      },
+      order: { findUnique: jest.fn() },
+    };
+    prisma.$transaction.mockImplementation(async (callback: any) => callback(tx));
+
+    await expect(service.handleWebhook(JSON.stringify({
+      event: 'payment.captured',
+      payload: { payment: { entity: {
+        id: 'pay_1', order_id: 'order_1', amount: 2500, currency: 'INR',
+      } } },
+    }), 'sig')).resolves.toEqual({ received: true });
+
+    expect(tx.payment.update).not.toHaveBeenCalled();
+    expect(tx.order.findUnique).not.toHaveBeenCalled();
+    expect(notifications.create).not.toHaveBeenCalled();
+  });
+
+  it('ignores a late payment.failed webhook after the payment is captured', async () => {
+    razorpay.verifyWebhookSignature.mockReturnValue(true);
+    prisma.payment.findFirst.mockResolvedValue({
+      id: 'pay1', orderId: 'ord1', providerOrderId: 'order_1', status: 'CAPTURED',
+    });
+
+    await expect(service.handleWebhook(JSON.stringify({
+      event: 'payment.failed',
+      payload: { payment: { entity: { id: 'pay_1', order_id: 'order_1' } } },
+    }), 'sig')).resolves.toEqual({ received: true });
+
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
   it('locks the payment row and reuses an existing active Razorpay order', async () => {
     const payment = {
       id: 'pay1',
