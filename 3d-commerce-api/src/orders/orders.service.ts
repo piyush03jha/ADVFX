@@ -418,6 +418,7 @@ export class OrdersService {
 
     return orders.map((order) => ({
       ...order,
+      shippingAddress: order.shippingAddress ?? order.shippingAddressSnapshot,
       items: order.items.map((item) => ({
         ...item,
         imageUrl: imageByProduct.get(item.productId) ?? null,
@@ -450,6 +451,7 @@ export class OrdersService {
 
     return {
       ...order,
+      shippingAddress: order.shippingAddress ?? order.shippingAddressSnapshot,
       items: order.items.map((item) => ({
         ...item,
         imageUrl: imageByProduct.get(item.productId) ?? null,
@@ -508,7 +510,10 @@ export class OrdersService {
   async findOneAdmin(id: string) {
     const order = await this.prisma.order.findUnique({ where: { id }, include: { items: true, shippingAddress: true, payment: true, shipment: true, inventoryReservations: true, user: true, promotion: true, shippingRule: true } });
     if (!order) throw new NotFoundException('Order not found');
-    return order;
+    return {
+      ...order,
+      shippingAddress: order.shippingAddress ?? order.shippingAddressSnapshot,
+    };
   }
 
   async updateStatus(id: string, status: OrderStatus) {
