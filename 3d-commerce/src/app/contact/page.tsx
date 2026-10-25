@@ -14,7 +14,7 @@ import { Navbar } from "@/components/layout/SiteNavbar";
 import { Button } from "@/components/ui/Button";
 
 export const metadata: Metadata = {
-  title: "Contact Voxel3D",
+  title: "Contact",
   description: "Questions about an order, a custom 3D print or a bulk request? Reach the Voxel3D team by WhatsApp or email.",
   alternates: { canonical: "/contact" },
 };
@@ -74,8 +74,7 @@ export default async function ContactPage() {
                 </h1>
 
                 <p className="mt-6 max-w-2xl text-sm leading-6 text-muted sm:mt-7 sm:text-base sm:leading-7">
-                  Have a custom 3D product in mind, need help with an order, or want to discuss a project?
-                  Tell us what you&apos;re building and we&apos;ll help you find the right next step.
+                  Let’s make your idea tangible. Whether you have a question about a product, need help with an order, or want a custom 3D printed model, tell us what you have in mind. Our team will help you with the next step.
                 </p>
               </div>
 
