@@ -383,7 +383,7 @@ export class PaymentsService {
       if (payment.status === PaymentStatus.CREATING) {
         throw new ConflictException('A payment order is already being prepared. Please retry shortly.');
       }
-      if (![PaymentStatus.PENDING, PaymentStatus.FAILED].includes(payment.status)) {
+      if (payment.status !== PaymentStatus.PENDING && payment.status !== PaymentStatus.FAILED) {
         throw new ConflictException('This payment cannot be retried in its current state.');
       }
 
