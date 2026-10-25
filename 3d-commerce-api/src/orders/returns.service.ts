@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -34,14 +35,22 @@ export class ReturnsService {
       );
     }
 
-    return this.prisma.returnRequest.create({
-      data: {
-        orderId,
-        userId,
-        reason: dto.reason.trim(),
-        note: dto.note?.trim() || null,
-      },
-    });
+    try {
+      return await this.prisma.returnRequest.create({
+        data: {
+          orderId,
+          userId,
+          reason: dto.reason.trim(),
+          note: dto.note?.trim() || null,
+        },
+      });
+    } catch (error) {
+      // orderId is unique; concurrent return submissions should return 409.
+      if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002') {
+        throw new ConflictException('A return request already exists for this order.');
+      }
+      throw error;
+    }
   }
 
   async mine(userId: string) {
