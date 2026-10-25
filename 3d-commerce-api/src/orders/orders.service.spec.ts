@@ -57,7 +57,10 @@ describe('OrdersService', () => {
     prisma.order.findUnique.mockResolvedValue({ id: 'order-1', status: 'PENDING_PAYMENT', userId: 'user-1' });
     const tx = {
       $queryRaw: jest.fn().mockResolvedValue([{ id: 'order-1' }]),
-      order: { findUnique: jest.fn().mockResolvedValue({ status: 'PENDING_PAYMENT' }) },
+      order: {
+        findUnique: jest.fn().mockResolvedValue({ status: 'PENDING_PAYMENT' }),
+        update: jest.fn().mockResolvedValue({ id: 'order-1', status: 'CONFIRMED' }),
+      },
       inventoryReservation: { findMany: jest.fn().mockResolvedValue([]) },
       productInventory: { findUnique: jest.fn(), updateMany: jest.fn() },
     } as any;
