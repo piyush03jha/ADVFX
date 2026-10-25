@@ -4,6 +4,7 @@ import {
   Logger,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
 import {
   createHmac,
   randomBytes,
@@ -35,8 +36,9 @@ type TurnstileVerifyResponse = {
 @Injectable()
 export class AuthCaptchaService {
   private readonly logger = new Logger(AuthCaptchaService.name);
-  private readonly usedNonces = new Map<string, number>();
   private verificationCount = 0;
+
+  constructor(private readonly prisma: PrismaService) {}
 
   issue(purpose: string) {
     if (!PURPOSES.has(purpose)) {
@@ -77,7 +79,7 @@ export class AuthCaptchaService {
       await this.verifyTurnstile(token, purpose);
       return;
     }
-    this.verify(token, answer ?? '', purpose);
+    await this.verify(token, answer ?? '', purpose);
   }
 
   private provider(): 'math' | 'turnstile' {
@@ -125,19 +127,13 @@ export class AuthCaptchaService {
     }
   }
 
-  verify(token: string, answer: string, purpose: CaptchaPurpose) {
+  async verify(token: string, answer: string, purpose: CaptchaPurpose): Promise<void> {
     const payload = this.decode(token);
     if (!payload || payload.purpose !== purpose || payload.expiresAt <= Date.now()) {
       throw new BadRequestException('CAPTCHA has expired. Please try again.');
     }
 
-    const usedUntil = this.usedNonces.get(payload.nonce);
-    if (usedUntil !== undefined && usedUntil > Date.now()) {
-      throw new BadRequestException('CAPTCHA has already been used. Please try again.');
-    }
-    if (usedUntil !== undefined) this.usedNonces.delete(payload.nonce);
-
-    if (!/^\d{1,2}$/.test(answer)) {
+    if (!/^\\d{1,2}$/.test(answer)) {
       throw new BadRequestException('Incorrect CAPTCHA answer.');
     }
 
@@ -151,16 +147,32 @@ export class AuthCaptchaService {
       throw new BadRequestException('Incorrect CAPTCHA answer.');
     }
 
-    this.usedNonces.set(payload.nonce, payload.expiresAt);
-    // Keep every unexpired nonce: evicting valid entries under load would
-    // make a previously accepted CAPTCHA replayable. Prune expired entries
-    // periodically to keep memory bounded by the active CAPTCHA window.
+    // PostgreSQL's primary key makes replay detection atomic across all API
+    // replicas. Fail closed if the shared replay store cannot be reached.
+    let inserted: { count: number };
+    try {
+      inserted = await this.prisma.authCaptchaNonce.createMany({
+        data: [{ nonce: payload.nonce, expiresAt: new Date(payload.expiresAt) }],
+        skipDuplicates: true,
+      });
+    } catch (error) {
+      this.logger.error(`CAPTCHA replay store unavailable: ${String(error)}`);
+      throw new ServiceUnavailableException('Security check is unavailable. Please try again.');
+    }
+
+    if (inserted.count !== 1) {
+      throw new BadRequestException('CAPTCHA has already been used. Please try again.');
+    }
+
+    // Expired markers no longer contribute to replay protection; periodically
+    // prune them without making successful verification depend on cleanup.
     this.verificationCount += 1;
     if (this.verificationCount % 128 === 0) {
-      const now = Date.now();
-      for (const [nonce, expiresAt] of this.usedNonces) {
-        if (expiresAt <= now) this.usedNonces.delete(nonce);
-      }
+      void this.prisma.authCaptchaNonce.deleteMany({
+        where: { expiresAt: { lte: new Date() } },
+      }).catch((error) => {
+        this.logger.warn(`Unable to prune expired CAPTCHA markers: ${String(error)}`);
+      });
     }
   }
 
