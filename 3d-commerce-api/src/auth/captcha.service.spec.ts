@@ -100,4 +100,14 @@ describe('AuthCaptchaService', () => {
     delete process.env.TURNSTILE_SECRET_KEY;
     await expect(service.verifyForAuth('token', undefined, 'login')).rejects.toThrow(ServiceUnavailableException);
   });
+
+  it('does not evict still-valid replay markers when the nonce store grows', () => {
+    const challenge = service.issue('login');
+    if (challenge.provider !== 'math') throw new Error('Expected math CAPTCHA');
+    const answer = challenge.operator === '+' ? challenge.first + challenge.second : challenge.first - challenge.second;
+    service.verify(challenge.token, String(answer), 'login');
+    const usedNonces = (service as any).usedNonces as Map<string, number>;
+    expect(usedNonces.has(JSON.parse(Buffer.from(challenge.token, 'base64url').toString('utf8')).nonce)).toBe(true);
+  });
+
 });
