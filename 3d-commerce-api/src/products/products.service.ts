@@ -365,7 +365,7 @@ export class ProductsService {
           select: {
             id: true,
             createdAt: true,
-            prices: { where: { isActive: true }, select: { amountMinor: true, currency: true } },
+            prices: { where: { isActive: true, countryCode: null }, select: { amountMinor: true, currency: true } },
           },
         }),
         this.reviewAggregates(),
@@ -1178,7 +1178,9 @@ export class ProductsService {
     return {
       category: true,
       prices: {
-        where: { isActive: true },
+        // Public catalog/admin summary defaults to the global fallback price;
+        // checkout selects the matching country-specific price separately.
+        where: { isActive: true, countryCode: null },
         orderBy: { createdAt: 'desc' },
       },
       media: {
