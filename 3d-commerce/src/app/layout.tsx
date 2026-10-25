@@ -34,7 +34,7 @@ export const metadata: Metadata = {
   },
 
   title: {
-    default: `${SITE_NAME} — ${SITE_TAGLINE}`,
+    default: `Buy 3D Printed Models & Collectibles in India | ${SITE_NAME}`,
     template: `%s | ${SITE_NAME}`,
   },
 
@@ -46,10 +46,12 @@ export const metadata: Metadata = {
   keywords: [
     "Voxel3D",
     "voxel3d.org",
+    "buy 3D printed models in India",
     "3D printed models",
+    "3D printed figures",
     "3D printed collectibles",
-    "custom 3D printing India",
-    "3D printed figurines",
+    "buy 3D printed figurines online",
+    "custom 3D printed models from photos",
   ],
   robots: {
     index: true,
@@ -62,7 +64,7 @@ export const metadata: Metadata = {
     siteName: SITE_NAME,
     title: `${SITE_NAME} — ${SITE_TAGLINE}`,
     description:
-      "Premium physical 3D models, custom 3D creations, and collectibles built with obsessive attention to detail.",
+      "Buy physical 3D printed models, figures and collectibles in India. Explore selected 3D previews or request a custom physical model from reference images.",
     url: SITE_URL,
     locale: "en_IN",
     images: [{ url: SITE_LOGO_PATH, alt: `${SITE_NAME} logo` }],
