@@ -78,6 +78,11 @@ export default function AdminProductCard({product:p,...props}:Props){const {cate
               {categories.filter((category)=>category.parentId===parentCategoryId).map((category)=><option key={category.id} value={category.id}>{category.name}</option>)}
             </select>
           </div>
+          <div className="mt-3">
+            <label className="mb-1 block text-[10px] font-medium text-muted" htmlFor={"product-description-"+p.id}>Product description</label>
+            <textarea id={"product-description-"+p.id} value={String(editForm.description||"")} onChange={(e)=>setEditForm({...editForm,description:e.target.value})} placeholder="Write or update the customer-facing product description…" rows={5} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs leading-5"/>
+            <p className="mt-1 text-[9px] text-muted">You can edit this description any time. Changes are saved when you click Save product.</p>
+          </div>
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <input value={String(editForm.material||"")} onChange={e=>setEditForm({...editForm,material:e.target.value})} placeholder="Material" className="h-9 rounded-lg border border-border bg-background px-2 text-xs"/>
             <input value={String(editForm.scale||"")} onChange={e=>setEditForm({...editForm,scale:e.target.value})} placeholder="Scale" className="h-9 rounded-lg border border-border bg-background px-2 text-xs"/>
