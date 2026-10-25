@@ -390,6 +390,15 @@ model ProductMetrics {
   updatedAt DateTime @updatedAt
 }
 
+model ApiRateLimitBucket {
+  key       String   @id
+  startedAt DateTime
+  count     Int
+  updatedAt DateTime @updatedAt
+
+  @@index([updatedAt])
+}
+
 model AuthCaptchaNonce {
   nonce     String   @id
   expiresAt DateTime
