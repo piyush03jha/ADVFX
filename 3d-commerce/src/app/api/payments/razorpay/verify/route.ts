@@ -19,7 +19,7 @@ export async function POST(request: Request) {
       {
         method: "POST",
         headers: {
-          ...getTrustedClientIpHeaders(request),
+          ...(await getTrustedClientIpHeaders(request)),
           Authorization: "Bearer " + token,
           "Content-Type": "application/json",
         },
