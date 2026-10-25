@@ -170,35 +170,60 @@ export class PaymentsService {
           captured.currency,
         );
 
-        if ((result.kind === "CAPTURED" || result.kind === "ALREADY_CAPTURED") && result.orderStatus === OrderStatus.CONFIRMED) {
-          return {
-            orderId: order.id,
-            status: OrderStatus.CONFIRMED,
-            refunded: false,
-            released: false,
-          };
+        if (
+          (result.kind === "CAPTURED" || result.kind === "ALREADY_CAPTURED") &&
+          result.orderStatus === OrderStatus.CONFIRMED
+        ) {
+          return { orderId: order.id, status: OrderStatus.CONFIRMED, refunded: false, released: false };
+        }
+
+        // Never refund a payment just because reconciliation returned a non-CAPTURED
+        // result. Refund only an explicitly classified late/duplicate capture, and
+        // atomically claim the attempt so webhook/cancel/verify cannot double-refund.
+        if (result.kind !== "REFUND_REQUIRED") {
+          return { orderId: order.id, status: order.status, refunded: false, released: false, reconciliationPending: true };
+        }
+
+        const claimed = await this.prisma.paymentAttempt.updateMany({
+          where: {
+            providerOrderId: order.payment.providerOrderId,
+            status: { in: [PaymentStatus.PENDING, PaymentStatus.AUTHORIZED, PaymentStatus.CAPTURED, PaymentStatus.FAILED] },
+          },
+          data: { providerPaymentId: captured.id, status: PaymentStatus.REFUND_PENDING },
+        });
+        if (claimed.count !== 1) {
+          return { orderId: order.id, status: order.status, refunded: false, released: false, reconciliationPending: true };
         }
 
         try {
           await this.razorpay.refundPayment(captured.id, order.payment.amountMinor);
-          await this.prisma.payment.update({
-            where: { orderId: order.id },
+          await this.prisma.paymentAttempt.updateMany({
+            where: { providerOrderId: order.payment.providerOrderId, status: PaymentStatus.REFUND_PENDING },
             data: { status: PaymentStatus.REFUNDED },
           });
+          if (!result.duplicatePayment) {
+            await this.prisma.payment.update({ where: { orderId: order.id }, data: { status: PaymentStatus.REFUNDED } });
+          }
         } catch (error) {
-          console.error("Razorpay refund failed during cancellation", {
-            orderId: order.id,
-            providerPaymentId: captured.id,
-            error,
-          });
-          throw error;
+          console.error("Razorpay refund failed during cancellation; attempt remains REFUND_PENDING", { orderId: order.id, providerPaymentId: captured.id, error });
+          return { orderId: order.id, status: order.status, refunded: false, released: false, reconciliationPending: true };
         }
-        return {
-          orderId: order.id,
-          status: OrderStatus.REFUNDED,
-          refunded: true,
-          released: false,
-        };
+
+        let finalStatus: OrderStatus = result.orderStatus;
+        if (!result.duplicatePayment) {
+          const finalOrder = await this.prisma.$transaction(async (tx) => {
+            await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "Order" WHERE "id" = ${order.id} FOR UPDATE`);
+            const current = await tx.order.findUnique({ where: { id: order.id }, select: { status: true, promotionId: true } });
+            if (current?.status !== OrderStatus.PENDING_PAYMENT) return current;
+            await this.releaseReservationsInTransaction(tx, order.id);
+            if (current.promotionId) {
+              await tx.$executeRaw(Prisma.sql`UPDATE "Promotion" SET "usageCount" = GREATEST("usageCount" - 1, 0), "updatedAt" = CURRENT_TIMESTAMP WHERE "id" = ${current.promotionId} AND "usageCount" > 0`);
+            }
+            return tx.order.update({ where: { id: order.id }, data: { status: OrderStatus.CANCELLED }, select: { status: true, promotionId: true } });
+          });
+          finalStatus = finalOrder?.status ?? finalStatus;
+        }
+        return { orderId: order.id, status: finalStatus, refunded: true, released: false };
       }
 
       const hasAuthorized = providerPayments.some(
@@ -406,25 +431,30 @@ export class PaymentsService {
     );
 
     if (result.kind === "REFUND_REQUIRED") {
-      try {
-        await this.razorpay.refundPayment(
-          result.providerPaymentId,
-          attempt.amountMinor,
-        );
-        await this.prisma.payment.update({
-          where: { orderId: order.id },
-          data: { status: PaymentStatus.REFUNDED },
-        });
-      } catch (error) {
-        console.error("Razorpay refund failed after payment verification", {
-          orderId: order.id,
-          providerPaymentId: result.providerPaymentId,
-          error,
-        });
-        throw error;
+      const claimed = await this.prisma.paymentAttempt.updateMany({
+        where: {
+          providerOrderId: input.razorpayOrderId,
+          status: { in: [PaymentStatus.PENDING, PaymentStatus.AUTHORIZED, PaymentStatus.CAPTURED, PaymentStatus.FAILED] },
+        },
+        data: { providerPaymentId: result.providerPaymentId, status: PaymentStatus.REFUND_PENDING },
+      });
+      if (claimed.count === 1) {
+        try {
+          await this.razorpay.refundPayment(result.providerPaymentId, attempt.amountMinor);
+          await this.prisma.paymentAttempt.updateMany({
+            where: { providerOrderId: input.razorpayOrderId, status: PaymentStatus.REFUND_PENDING },
+            data: { status: PaymentStatus.REFUNDED },
+          });
+          if (!result.duplicatePayment) {
+            await this.prisma.payment.update({ where: { orderId: order.id }, data: { status: PaymentStatus.REFUNDED } });
+          }
+        } catch (error) {
+          // Leave the attempt claimed as REFUND_PENDING after ambiguous provider errors.
+          console.error("Razorpay refund failed after payment verification; reconciliation required", { orderId: order.id, providerPaymentId: result.providerPaymentId, error });
+          throw new ConflictException("Payment was received but refund reconciliation is pending. Please contact support.");
+        }
       }
     }
-
     if (result.kind === "NONE") {
       throw new ConflictException("Unable to reconcile this payment");
     }
