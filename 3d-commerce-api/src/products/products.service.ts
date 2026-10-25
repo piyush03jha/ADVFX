@@ -336,6 +336,7 @@ export class ProductsService {
         prices: {
           some: {
             isActive: true,
+            countryCode: null,
             amountMinor: {
               ...(hasMin ? { gte: Math.round(query.minPrice! * 100) } : {}),
               ...(hasMax ? { lte: Math.round(query.maxPrice! * 100) } : {}),
