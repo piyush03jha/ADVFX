@@ -438,8 +438,9 @@ model ProductPrice {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([productId, isActive])
+  @@index([productId, isActive, countryCode])
   @@index([currency])
+  @@index([countryCode, currency, isActive])
 }
 
 /**
