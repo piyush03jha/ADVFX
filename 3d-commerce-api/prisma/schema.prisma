@@ -425,6 +425,8 @@ model ProductPrice {
   productId String
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
+  // Null means a global fallback price; country-specific prices take precedence.
+  countryCode    String?
   currency       String @default("INR")
   amountMinor    Int
   compareAtMinor Int?
