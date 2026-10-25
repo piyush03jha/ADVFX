@@ -80,7 +80,7 @@ export class PaymentsService {
         order.payment.providerOrderId &&
         order.payment.status !== PaymentStatus.FAILED
       ) {
-        return this.formatRazorpayOrder(order);
+        return this.formatRazorpayOrder({ ...order, payment: order.payment! });
       }
 
       const providerOrder = await this.razorpay.createOrder({
