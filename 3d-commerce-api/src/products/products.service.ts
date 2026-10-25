@@ -534,6 +534,14 @@ export class ProductsService {
   async recordView(id: string, visitorIdentity: string) {
     await this.ensureActiveProduct(id);
 
+    if (process.env.PRODUCT_VIEW_DEDUPE_ENABLED !== 'true') {
+      return this.prisma.productMetrics.upsert({
+        where: { productId: id },
+        create: { productId: id, viewCount: 1 },
+        update: { viewCount: { increment: 1 } },
+      });
+    }
+
     // Keep raw IP/user-agent data out of storage. A keyed digest makes the
     // daily dedupe key stable across replicas without persisting identifiers.
     const secret = process.env.AUTH_CAPTCHA_SECRET ?? 'development-only-product-view-secret';
