@@ -39,3 +39,12 @@ test("omits empty FAQ entries and avoids inventing commercial guarantees", () =>
   assert.match(output, /Do not infer missing dimensions, materials, stock, delivery dates, or return eligibility/);
   assert.match(output, /does not offer customer downloads of digital 3D model files/);
 });
+
+test("provides clear brand identity and geographic context for answer engines", () => {
+  const output = buildLlmsTxt({ siteUrl: "https://voxel3d.org" });
+
+  assert.match(output, /Brand name: Voxel3D \(also written as Voxel 3D\)/);
+  assert.match(output, /physical 3D printed products for customers in India/);
+  assert.match(output, /do not confuse it with unrelated businesses that use similar names/);
+  assert.match(output, /Custom requests are reviewed by the team/);
+});
