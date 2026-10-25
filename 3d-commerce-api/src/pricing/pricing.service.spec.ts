@@ -158,4 +158,38 @@ describe('PricingService', () => {
       }),
     ).rejects.toThrow();
   });
+
+  it('rejects a cart containing prices in different currencies', async () => {
+    prisma.cart.findUnique.mockResolvedValue({
+      items: [
+        {
+          quantity: 1,
+          product: {
+            id: 'p1',
+            name: 'INR Model',
+            status: 'ACTIVE',
+            weight: null,
+            inventory: { stock: 5, reserved: 0, trackStock: true, allowBackorder: false },
+            prices: [{ amountMinor: 10000, currency: 'INR' }],
+          },
+        },
+        {
+          quantity: 1,
+          product: {
+            id: 'p2',
+            name: 'USD Model',
+            status: 'ACTIVE',
+            weight: null,
+            inventory: { stock: 5, reserved: 0, trackStock: true, allowBackorder: false },
+            prices: [{ amountMinor: 1000, currency: 'USD' }],
+          },
+        },
+      ],
+    });
+
+    await expect(
+      service.calculate('user-1', { shippingAddressId: 'addr-1' }),
+    ).rejects.toThrow('All items in a checkout must use the same currency');
+  });
+
 });
