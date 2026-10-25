@@ -61,6 +61,17 @@ export default function AdminProducts(){
   const subcategoriesFor=(parentId:string)=>data.categories.filter(category=>category.parentId===parentId);
 
   async function updateProduct(id:string,patch:Record<string,unknown>){setSaving(true);try{const r=await fetch("/api/products/"+id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(patch)});if(!r.ok)throw new Error();setMessage("Product updated.");await load()}catch{setMessage("Unable to update product.")}finally{setSaving(false)}}
+  async function updateProductPrice(productId:string,payload:{countryCode:string|null;currency:string;amountMinor:number;compareAtMinor:number|null}){
+    setSaving(true);setMessage("");
+    try{
+      const r=await fetch("/api/products/"+productId+"/pricing",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+      const d=await r.json().catch(()=>null);
+      if(!r.ok)throw new Error(d?.message||"Unable to save product price.");
+      setMessage(payload.countryCode?("Price saved for "+payload.countryCode+"."):"Global fallback price saved.");
+      await load();
+    }catch(e){setMessage(e instanceof Error?e.message:"Unable to save product price.")}finally{setSaving(false)}
+  }
+
   async function updateVariant(productId:string,variantId:string,payload:Record<string,unknown>){
     setSaving(true);setMessage("");
     try{
