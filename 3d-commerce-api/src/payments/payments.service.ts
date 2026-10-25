@@ -454,40 +454,42 @@ export class PaymentsService {
     );
 
     if (result.kind === "REFUND_REQUIRED") {
+      const claimed = await this.prisma.paymentAttempt.updateMany({
+        where: {
+          providerOrderId: input.providerOrderId,
+          status: { in: [PaymentStatus.PENDING, PaymentStatus.AUTHORIZED, PaymentStatus.CAPTURED, PaymentStatus.FAILED] },
+        },
+        data: {
+          providerPaymentId: input.providerPaymentId,
+          status: PaymentStatus.REFUND_PENDING,
+        },
+      });
+      if (claimed.count !== 1) {
+        return { ...result, refunded: false, refundPending: true };
+      }
+
       try {
-        await this.razorpay.refundPayment(
-          result.providerPaymentId,
-          input.amount,
-        );
-        if (result.duplicatePayment) {
-          await this.prisma.paymentAttempt.updateMany({
-            where: { providerOrderId: input.providerOrderId },
-            data: {
-              providerPaymentId: input.providerPaymentId,
-              status: PaymentStatus.REFUNDED,
-            },
-          });
-        } else {
+        await this.razorpay.refundPayment(result.providerPaymentId, input.amount);
+        await this.prisma.paymentAttempt.updateMany({
+          where: { providerOrderId: input.providerOrderId, status: PaymentStatus.REFUND_PENDING },
+          data: { providerPaymentId: input.providerPaymentId, status: PaymentStatus.REFUNDED },
+        });
+        if (!result.duplicatePayment) {
           await this.prisma.payment.update({
             where: { orderId: input.orderId },
             data: { status: PaymentStatus.REFUNDED },
           });
-          await this.prisma.paymentAttempt.updateMany({
-            where: { providerOrderId: input.providerOrderId },
-            data: {
-              providerPaymentId: input.providerPaymentId,
-              status: PaymentStatus.REFUNDED,
-            },
-          });
         }
         return { ...result, refunded: true };
       } catch (error) {
-        console.error("Razorpay refund failed during reconciliation", {
+        console.error("Razorpay refund needs manual reconciliation", {
           orderId: input.orderId,
           providerPaymentId: result.providerPaymentId,
           error,
         });
-        return { ...result, refunded: false };
+        // Keep REFUND_PENDING to avoid an automatic duplicate refund after an
+        // ambiguous network timeout. Operations must reconcile this attempt.
+        return { ...result, refunded: false, refundPending: true };
       }
     }
 
