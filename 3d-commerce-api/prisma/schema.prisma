@@ -634,8 +634,9 @@ model ProductVariant {
   sku      String?              @unique
   name     String
   size     String?
-  price    ProductVariantPrice?
-  isActive Boolean              @default(true)
+  price         ProductVariantPrice?
+  countryPrices ProductVariantCountryPrice[]
+  isActive      Boolean              @default(true)
 
   stock          Int     @default(0)
   reserved       Int     @default(0)
@@ -658,6 +659,22 @@ model ProductVariant {
  * PRODUCT VARIANT PRICE
  * ============================================================
  */
+model ProductVariantCountryPrice {
+  id          String         @id @default(cuid())
+  variantId   String
+  variant     ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  countryCode String
+  currency    String         @default("INR")
+  amountMinor Int
+  compareAtMinor Int?
+  isActive    Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@unique([variantId, countryCode])
+  @@index([countryCode, isActive])
+}
+
 model ProductVariantPrice {
   id String @id @default(cuid())
 
