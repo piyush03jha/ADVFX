@@ -5,6 +5,7 @@ import { IconPlus, IconRefresh, IconSearch, IconUpload, IconBox } from "@tabler/
 import AdminProductCard from "@/components/admin/AdminProductCard";
 import { Button } from "@/components/ui/Button";
 import { uploadModelDirect } from "@/lib/model-upload";
+import { filterProductsByCategory, getMainCategories, getSubcategories } from "@/lib/category-hierarchy.mjs";
 
 type ProductVariant={id:string;name:string;size?:string|null;sku?:string|null;isActive:boolean;stock?:number;reserved?:number;lowStockAt?:number;trackStock?:boolean;allowBackorder?:boolean;price?:{amountMinor:number;compareAtMinor?:number|null;isActive:boolean}|null};
 type Product={id:string;name:string;slug:string;status:string;isFeatured:boolean;isTrending:boolean;isBestseller:boolean;category?:{id:string;name:string}|null;prices:any[];variants?:ProductVariant[];material?:string|null;scale?:string|null;dimensions?:string|null;height?:string|null;base?:string|null;packaging?:string|null;weight?:string|null;inventory?:{stock:number;reserved:number;lowStockAt:number}|null;media?:Array<{id:string;type:string;url:string;altText?:string|null;isPrimary:boolean;sortOrder:number}>};
@@ -49,16 +50,14 @@ export default function AdminProducts(){
     return ()=>window.clearInterval(timer);
   },[assetProductId,assetFiles]);
 
-  const rows=useMemo(()=>data.products.filter(p=>{
-    const matchesSearch=[p.name,p.slug,p.category?.name||""].join(" ").toLowerCase().includes(search.trim().toLowerCase());
-    const selectedSubcategory=subcategoryFilter!=="all";
-    const matchesCategory=selectedSubcategory
-      ? p.category?.id===subcategoryFilter
-      : mainCategoryFilter==="all" || p.category?.id===mainCategoryFilter || data.categories.some(category=>category.id===p.category?.id && category.parentId===mainCategoryFilter);
-    return matchesSearch && matchesCategory;
-  }),[data.products,data.categories,search,mainCategoryFilter,subcategoryFilter]);
-  const mainCategories=useMemo(()=>data.categories.filter(category=>!category.parentId),[data.categories]);
-  const filteredSubcategories=useMemo(()=>mainCategoryFilter==="all"?[]:data.categories.filter(category=>category.parentId===mainCategoryFilter),[data.categories,mainCategoryFilter]);
+  const rows=useMemo(()=>filterProductsByCategory(
+    data.products,
+    data.categories,
+    mainCategoryFilter,
+    subcategoryFilter,
+  ).filter(p=>[p.name,p.slug,p.category?.name||""].join(" ").toLowerCase().includes(search.trim().toLowerCase())),[data.products,data.categories,search,mainCategoryFilter,subcategoryFilter]);
+  const mainCategories=useMemo(()=>getMainCategories(data.categories),[data.categories]);
+  const filteredSubcategories=useMemo(()=>getSubcategories(data.categories,mainCategoryFilter),[data.categories,mainCategoryFilter]);
   const subcategoriesFor=(parentId:string)=>data.categories.filter(category=>category.parentId===parentId);
 
   async function updateProduct(id:string,patch:Record<string,unknown>){setSaving(true);try{const r=await fetch("/api/products/"+id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(patch)});if(!r.ok)throw new Error();setMessage("Product updated.");await load()}catch{setMessage("Unable to update product.")}finally{setSaving(false)}}
