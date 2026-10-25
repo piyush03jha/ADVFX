@@ -3,6 +3,7 @@ import { PricingService } from './pricing.service';
 describe('PricingService', () => {
   const prisma = {
     cart: { findUnique: jest.fn() },
+    product: { findMany: jest.fn() },
     address: { findFirst: jest.fn() },
     shippingRule: { findFirst: jest.fn() },
     promotion: { findFirst: jest.fn() },
@@ -157,6 +158,44 @@ describe('PricingService', () => {
         couponCode: 'EXPIRED',
       }),
     ).rejects.toThrow();
+  });
+
+  it('queries country-specific prices first with a global fallback for direct checkout items', async () => {
+    prisma.product.findMany.mockResolvedValue([
+      {
+        id: 'p1',
+        name: 'Country-priced model',
+        status: 'ACTIVE',
+        weight: null,
+        inventory: { stock: 5, reserved: 0, trackStock: true, allowBackorder: false },
+        prices: [{ amountMinor: 15000, currency: 'INR', countryCode: 'IN', isActive: true }],
+        variants: [],
+      },
+    ]);
+
+    const result = await service.calculate('user-1', {
+      shippingAddressId: 'addr-1',
+      items: [{ productId: 'p1', quantity: 1 }],
+    });
+
+    expect(prisma.product.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: { in: ['p1'] } },
+      include: expect.objectContaining({
+        prices: {
+          where: {
+            isActive: true,
+            OR: [{ countryCode: 'IN' }, { countryCode: null }],
+          },
+          orderBy: [
+            { countryCode: { sort: 'desc', nulls: 'last' } },
+            { createdAt: 'desc' },
+          ],
+          take: 1,
+        },
+      }),
+    }));
+    expect(result.summary.subtotalMinor).toBe(15000);
+    expect(result.currency).toBe('INR');
   });
 
   it('rejects a cart containing prices in different currencies', async () => {
