@@ -11,6 +11,13 @@ import {
   NestFastifyApplication,
 } from "@nestjs/platform-fastify";
 
+interface LocalRateLimitState {
+  startedAt: number;
+  count: number;
+}
+
+const localRateLimitState = new Map<string, LocalRateLimitState>();
+
 const AUTH_RATE_LIMITS: Record<string, number> = {
   "/auth/login": 10,
   "/auth/admin/login": 5,
@@ -37,6 +44,7 @@ async function bootstrap() {
   // PostgreSQL is already a required shared dependency, so use it for atomic
   // rate-limit buckets rather than allowing each API replica its own limits.
   const rateLimitPrisma = app.get(PrismaService);
+  const sharedRateLimitEnabled = process.env.SHARED_RATE_LIMIT_ENABLED === "true";
   let lastRateLimitCleanupAt = 0;
 
   const maxUploadSizeMb = Number(process.env.MAX_UPLOAD_SIZE_MB ?? 10);
@@ -148,26 +156,54 @@ async function bootstrap() {
 
       // This upsert is atomic in PostgreSQL. Concurrent requests across API
       // replicas increment the same fixed-window counter without lost updates.
-      const rows = await rateLimitPrisma.$queryRaw<Array<{ count: number }>>(
-        Prisma.sql`
-          INSERT INTO "ApiRateLimitBucket" ("key", "startedAt", "count", "updatedAt")
-          VALUES (${key}, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP)
-          ON CONFLICT ("key") DO UPDATE SET
-            "count" = CASE
-              WHEN "ApiRateLimitBucket"."startedAt" <= CURRENT_TIMESTAMP - INTERVAL '60 seconds'
-                THEN 1
-              ELSE "ApiRateLimitBucket"."count" + 1
-            END,
-            "startedAt" = CASE
-              WHEN "ApiRateLimitBucket"."startedAt" <= CURRENT_TIMESTAMP - INTERVAL '60 seconds'
-                THEN CURRENT_TIMESTAMP
-              ELSE "ApiRateLimitBucket"."startedAt"
-            END,
-            "updatedAt" = CURRENT_TIMESTAMP
-          RETURNING "count"
-        `,
-      );
-      const count = rows[0]?.count ?? limit + 1;
+      let count: number;
+      if (sharedRateLimitEnabled) {
+        const rows = await rateLimitPrisma.$queryRaw<Array<{ count: number }>>(
+          Prisma.sql`
+            INSERT INTO "ApiRateLimitBucket" ("key", "startedAt", "count", "updatedAt")
+            VALUES (${key}, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP)
+            ON CONFLICT ("key") DO UPDATE SET
+              "count" = CASE
+                WHEN "ApiRateLimitBucket"."startedAt" <= CURRENT_TIMESTAMP - INTERVAL '60 seconds'
+                  THEN 1
+                ELSE "ApiRateLimitBucket"."count" + 1
+              END,
+              "startedAt" = CASE
+                WHEN "ApiRateLimitBucket"."startedAt" <= CURRENT_TIMESTAMP - INTERVAL '60 seconds'
+                  THEN CURRENT_TIMESTAMP
+                ELSE "ApiRateLimitBucket"."startedAt"
+              END,
+              "updatedAt" = CURRENT_TIMESTAMP
+            RETURNING "count"
+          `,
+        );
+        count = rows[0]?.count ?? limit + 1;
+
+        // Cleanup is best-effort and infrequent; expired buckets cannot affect
+        // current enforcement because the upsert resets their 60-second window.
+        if (now - lastRateLimitCleanupAt > 10 * 60 * 1000) {
+          lastRateLimitCleanupAt = now;
+          void rateLimitPrisma.$executeRaw(
+            Prisma.sql`DELETE FROM "ApiRateLimitBucket" WHERE "updatedAt" < CURRENT_TIMESTAMP - INTERVAL '24 hours'`,
+          ).catch((error) => {
+            request.log.warn({ error }, "rate-limit cleanup failed");
+          });
+        }
+      } else {
+        // Keep existing deployments online until the shared-store migration has
+        // been applied. Set SHARED_RATE_LIMIT_ENABLED=true after migration.
+        const current = localRateLimitState.get(key);
+        const next = !current || now - current.startedAt >= 60_000
+          ? { startedAt: now, count: 1 }
+          : { startedAt: current.startedAt, count: current.count + 1 };
+        localRateLimitState.set(key, next);
+        count = next.count;
+        if (localRateLimitState.size > 10_000) {
+          for (const [fallbackKey, state] of localRateLimitState) {
+            if (now - state.startedAt >= 60_000) localRateLimitState.delete(fallbackKey);
+          }
+        }
+      }
 
       reply.header("X-RateLimit-Limit", limit);
       reply.header(
