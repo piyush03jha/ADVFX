@@ -33,8 +33,8 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
 export async function generateMetadata({ searchParams }: ShopPageProps): Promise<Metadata> {
   return shopListingMetadata({
     path: "/shop",
-    title: "Shop 3D Printed Models & Collectibles",
-    description: "Explore physical 3D printed collectibles, character figures, miniatures and display models from Voxel3D. Browse product details and order online, with shipping across India.",
+    title: "Shop 3D Printed Figures, Miniatures & Collectibles",
+    description: "Shop physical 3D printed figures, miniatures, display models and collectibles from Voxel3D. Compare product details, explore selected interactive 3D previews and order online in India.",
     searchParams: await searchParams,
   });
 }
