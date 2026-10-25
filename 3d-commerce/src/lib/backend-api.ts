@@ -1,4 +1,3 @@
-import { createHmac } from "node:crypto";
 
 const DEFAULT_BACKEND_API_URL = "http://localhost:4000";
 
@@ -20,7 +19,7 @@ export function getBackendApiUrl(path: string) {
  * ordinary X-Forwarded-For / CF-Connecting-IP headers and verifies this HMAC,
  * so a direct request to Railway cannot choose its own rate-limit identity.
  */
-export function getTrustedClientIpHeaders(request: Request): Record<string, string> {
+export async function getTrustedClientIpHeaders(request: Request): Promise<Record<string, string>> {
   const secret = process.env.INTERNAL_PROXY_SECRET?.trim();
   if (!secret || secret.length < 32) return {};
 
@@ -33,9 +32,22 @@ export function getTrustedClientIpHeaders(request: Request): Record<string, stri
   if (!ip || ip.length > 45 || !/^[0-9a-fA-F:.]+$/.test(ip) || (!ip.includes(".") && !ip.includes(":"))) return {};
 
   const timestamp = String(Math.floor(Date.now() / 1000));
-  const signature = createHmac("sha256", secret)
-    .update(`${ip}.${timestamp}`)
-    .digest("hex");
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signatureBuffer = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    encoder.encode(`${ip}.${timestamp}`),
+  );
+  const signature = Array.from(new Uint8Array(signatureBuffer))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
 
   return {
     "x-voxel-client-ip": ip,
