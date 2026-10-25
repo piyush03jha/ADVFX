@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { getBackendApiUrl } from "@/lib/backend-api";
+import { getBackendApiUrl, getTrustedClientIpHeaders } from "@/lib/backend-api";
 
 function copyAssetHeaders(response: Response) {
   const headers = new Headers();
@@ -54,7 +54,7 @@ export async function GET(
   try {
     const namespace = path[0];
     const backendPath = path.slice(1).map(encodeURIComponent).join("/");
-    const backendHeaders = new Headers();
+    const backendHeaders = new Headers(getTrustedClientIpHeaders(request));
     if (range) backendHeaders.set("range", range);
 
     const response = await fetch(
