@@ -38,13 +38,18 @@ export async function GET(
 
   const cache = (globalThis as { caches?: { default?: Cache } }).caches?.default;
   const cacheKey = new Request(request.url);
-  const hit = await cache?.match(cacheKey);
-  if (hit) return hit;
+  const range = request.headers.get("range");
+
+  // Range responses are representation-specific (206 + Content-Range). Never
+  // satisfy them from, or store them in, the full-object Cache API entry.
+  if (!range) {
+    const hit = await cache?.match(cacheKey);
+    if (hit) return hit;
+  }
 
   try {
     const namespace = path[0];
     const backendPath = path.slice(1).map(encodeURIComponent).join("/");
-    const range = request.headers.get("range");
     const backendHeaders = new Headers();
     if (range) backendHeaders.set("range", range);
 
@@ -79,7 +84,7 @@ export async function GET(
 
     // Cloudflare Cache API does not use partial 206 responses as reusable
     // full-object entries. Only cache complete responses.
-    if (cache && response.status === 200) {
+    if (cache && !range && response.status === 200) {
       getCloudflareContext().ctx.waitUntil(cache.put(cacheKey, out.clone()));
     }
 
