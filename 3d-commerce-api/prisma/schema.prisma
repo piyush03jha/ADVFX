@@ -726,6 +726,8 @@ model Order {
 
   shippingAddressId String?
   shippingAddress   Address? @relation(fields: [shippingAddressId], references: [id], onDelete: SetNull)
+  // Immutable destination snapshot: deleting/editing a saved address must not rewrite history.
+  shippingAddressSnapshot Json?
 
   items                 OrderItem[]
   payment               Payment?
