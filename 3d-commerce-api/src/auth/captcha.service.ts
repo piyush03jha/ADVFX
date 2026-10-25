@@ -36,6 +36,7 @@ type TurnstileVerifyResponse = {
 @Injectable()
 export class AuthCaptchaService {
   private readonly logger = new Logger(AuthCaptchaService.name);
+  private readonly usedNonces = new Map<string, number>();
   private verificationCount = 0;
 
   constructor(private readonly prisma: PrismaService) {}
@@ -147,32 +148,49 @@ export class AuthCaptchaService {
       throw new BadRequestException('Incorrect CAPTCHA answer.');
     }
 
-    // PostgreSQL's primary key makes replay detection atomic across all API
-    // replicas. Fail closed if the shared replay store cannot be reached.
-    let inserted: { count: number };
-    try {
-      inserted = await this.prisma.authCaptchaNonce.createMany({
-        data: [{ nonce: payload.nonce, expiresAt: new Date(payload.expiresAt) }],
-        skipDuplicates: true,
-      });
-    } catch (error) {
-      this.logger.error(`CAPTCHA replay store unavailable: ${String(error)}`);
-      throw new ServiceUnavailableException('Security check is unavailable. Please try again.');
-    }
+    if (process.env.DISTRIBUTED_CAPTCHA_REPLAY_ENABLED === 'true') {
+      // PostgreSQL's primary key makes replay detection atomic across all API
+      // replicas. Fail closed if the configured shared store cannot be reached.
+      let inserted: { count: number };
+      try {
+        inserted = await this.prisma.authCaptchaNonce.createMany({
+          data: [{ nonce: payload.nonce, expiresAt: new Date(payload.expiresAt) }],
+          skipDuplicates: true,
+        });
+      } catch (error) {
+        this.logger.error(`CAPTCHA replay store unavailable: ${String(error)}`);
+        throw new ServiceUnavailableException('Security check is unavailable. Please try again.');
+      }
 
-    if (inserted.count !== 1) {
-      throw new BadRequestException('CAPTCHA has already been used. Please try again.');
-    }
+      if (inserted.count !== 1) {
+        throw new BadRequestException('CAPTCHA has already been used. Please try again.');
+      }
 
-    // Expired markers no longer contribute to replay protection; periodically
-    // prune them without making successful verification depend on cleanup.
-    this.verificationCount += 1;
-    if (this.verificationCount % 128 === 0) {
-      void this.prisma.authCaptchaNonce.deleteMany({
-        where: { expiresAt: { lte: new Date() } },
-      }).catch((error) => {
-        this.logger.warn(`Unable to prune expired CAPTCHA markers: ${String(error)}`);
-      });
+      // Expired markers no longer contribute to replay protection; periodically
+      // prune them without making successful verification depend on cleanup.
+      this.verificationCount += 1;
+      if (this.verificationCount % 128 === 0) {
+        void this.prisma.authCaptchaNonce.deleteMany({
+          where: { expiresAt: { lte: new Date() } },
+        }).catch((error) => {
+          this.logger.warn(`Unable to prune expired CAPTCHA markers: ${String(error)}`);
+        });
+      }
+    } else {
+      // Compatibility mode during migration rollout. Enable distributed replay
+      // protection only after AuthCaptchaNonce has been created in PostgreSQL.
+      const usedUntil = this.usedNonces.get(payload.nonce);
+      if (usedUntil !== undefined && usedUntil > Date.now()) {
+        throw new BadRequestException('CAPTCHA has already been used. Please try again.');
+      }
+      this.usedNonces.set(payload.nonce, payload.expiresAt);
+      this.verificationCount += 1;
+      if (this.verificationCount % 128 === 0) {
+        const now = Date.now();
+        for (const [nonce, expiresAt] of this.usedNonces) {
+          if (expiresAt <= now) this.usedNonces.delete(nonce);
+        }
+      }
     }
   }
 
