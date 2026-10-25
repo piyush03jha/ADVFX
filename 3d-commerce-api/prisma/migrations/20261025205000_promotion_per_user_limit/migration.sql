@@ -1,0 +1,1 @@
+ALTER TABLE "Promotion" ADD COLUMN "usageLimitPerUser" INTEGER DEFAULT 1;
