@@ -296,6 +296,16 @@ export class CustomBuildService {
         taxMinor: 0,
         totalMinor: amountMinor,
         shippingAddressId: address.id,
+        shippingAddressSnapshot: {
+          fullName: address.fullName,
+          phone: address.phone,
+          line1: address.line1,
+          line2: address.line2,
+          city: address.city,
+          state: address.state,
+          postalCode: address.postalCode,
+          country: address.country,
+        },
         customRequest: { connect: { id: request.id } },
         payment: {
           create: {
