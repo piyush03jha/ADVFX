@@ -213,7 +213,7 @@ export class AssetController {
 
     if (!cachedUntil || cachedUntil <= now) {
       const product = await this.prisma.product.findFirst({
-        where: { id: productId, status: { in: ["ACTIVE", "DRAFT"] } },
+        where: { id: productId, status: "ACTIVE" },
         select: { id: true },
       });
 
