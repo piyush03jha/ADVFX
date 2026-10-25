@@ -37,7 +37,11 @@ export async function GET(
   }
 
   const cache = (globalThis as { caches?: { default?: Cache } }).caches?.default;
-  const cacheKey = new Request(request.url);
+  const cacheUrl = new URL(request.url);
+  // Asset routes do not use query parameters to select representations. Avoid
+  // cache fragmentation/bypass from arbitrary cache-busting query strings.
+  cacheUrl.search = "";
+  const cacheKey = new Request(cacheUrl.toString());
   const range = request.headers.get("range");
 
   // Range responses are representation-specific (206 + Content-Range). Never
