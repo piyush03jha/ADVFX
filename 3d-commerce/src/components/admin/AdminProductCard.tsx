@@ -51,6 +51,13 @@ export default function AdminProductCard({product:p,...props}:Props){const {cate
             </div>
           </form>)}
         </div>}
+        {(p.variants||[]).length>0&&<form onSubmit={e=>{e.preventDefault();const fd=new FormData(e.currentTarget);const variantId=String(fd.get("variantId")||"");const countryCode=String(fd.get("countryCode")||"").trim().toUpperCase();const currency=String(fd.get("currency")||"INR").trim().toUpperCase();const amount=Number(fd.get("amount"));const compareRaw=String(fd.get("compareAt")||"").trim();const compare=compareRaw===""?null:Number(compareRaw);if(!variantId||!/^[A-Z]{2}$/.test(countryCode)||!/^[A-Z]{3}$/.test(currency)||!Number.isFinite(amount)||amount<0||!Number.isFinite(compare===null?0:compare))return;void updateVariantCountryPrice(p.id,variantId,{countryCode,currency,amountMinor:Math.round(amount*100),compareAtMinor:compare===null?null:Math.round(compare*100)})}} className="mt-3 grid gap-2 rounded-xl border border-border bg-background/50 p-3 sm:grid-cols-2 lg:grid-cols-5">
+          <select name="variantId" required defaultValue={p.variants?.[0]?.id||""} className="h-9 rounded-lg border border-border bg-background px-2 text-[10px]">{(p.variants||[]).map(v=><option key={v.id} value={v.id}>{v.name}{v.size?" · "+v.size:""}</option>)}</select>
+          <input name="countryCode" required defaultValue="IN" maxLength={2} pattern="[A-Za-z]{2}" placeholder="Country code" className="h-9 rounded-lg border border-border bg-background px-2 text-[10px]"/>
+          <input name="currency" required defaultValue="INR" maxLength={3} pattern="[A-Za-z]{3}" placeholder="Currency" className="h-9 rounded-lg border border-border bg-background px-2 text-[10px]"/>
+          <input name="amount" required type="number" min="0" step="0.01" placeholder="Selling price" className="h-9 rounded-lg border border-border bg-background px-2 text-[10px]"/>
+          <div className="flex gap-2"><input name="compareAt" type="number" min="0" step="0.01" placeholder="MRP" className="h-9 min-w-0 flex-1 rounded-lg border border-border bg-background px-2 text-[10px]"/><button disabled={saving} className="rounded-lg bg-foreground px-3 text-[10px] font-semibold text-background">{saving?"Saving…":"Save country price"}</button></div>
+        </form>}
       </div>
       <div className="mt-4 border-t border-border pt-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
