@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getBackendApiUrl } from "@/lib/backend-api";
+import { getBackendApiUrl, getTrustedClientIpHeaders } from "@/lib/backend-api";
 
 export const ADMIN_COOKIE = "forma_admin_session";
 
@@ -12,7 +12,7 @@ export async function POST(request: Request) {
 
     const response = await fetch(getBackendApiUrl("auth/admin/login"), {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { ...getTrustedClientIpHeaders(request), "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
       cache: "no-store",
     });
