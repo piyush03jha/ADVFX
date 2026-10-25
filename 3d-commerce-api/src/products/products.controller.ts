@@ -72,8 +72,10 @@ export class ProductsController {
   }
 
   @Post(':id/view')
-  recordView(@Param('id') id: string) {
-    return this.productsService.recordView(id);
+  recordView(@Param('id') id: string, @Req() req: FastifyRequest) {
+    const userAgent = req.headers['user-agent'];
+    const identity = `${req.ip}| ${Array.isArray(userAgent) ? userAgent.join(',') : userAgent ?? ''}`;
+    return this.productsService.recordView(id, identity);
   }
 
   @UseGuards(AuthGuard, AdminGuard)
