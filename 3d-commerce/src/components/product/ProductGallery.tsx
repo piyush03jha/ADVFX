@@ -42,10 +42,12 @@ export function ProductGallery({ product }: ProductGalleryProps) {
   const isDark = theme === "dark";
 
   const [activeIndex, setActiveIndex] = useState(0);
+  const [failedImages, setFailedImages] = useState<Set<string>>(() => new Set());
   const fallbackImage = "/placeholder-product.webp";
 
   useEffect(() => {
     setActiveIndex(0);
+    setFailedImages(new Set());
   }, [product.id]);
 
   // Warm the 3D viewer code in the background so switching to the 3D tab is instant.
@@ -152,14 +154,19 @@ export function ProductGallery({ product }: ProductGalleryProps) {
         {active.type === "image" && (
           <div className="absolute inset-0">
             <Image
-              src={active.src}
+              src={failedImages.has(active.src) ? fallbackImage : active.src}
               alt={product.name + " — " + active.label}
               fill
               priority={activeIndex === 0}
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 100vw, 60vw"
               className="object-contain p-5 sm:p-10 lg:p-16"
               unoptimized={active.src.startsWith("/api/assets/")}
-              onError={() => undefined}
+              onError={() => {
+                setFailedImages((previous) => new Set(previous).add(active.src));
+                if (active.src !== fallbackImage && activeIndex < media.length - 1) {
+                  setActiveIndex(activeIndex + 1);
+                }
+              }}
             />
           </div>
         )}
@@ -200,13 +207,15 @@ export function ProductGallery({ product }: ProductGalleryProps) {
             >
               {item.type === "image" ? (
                 <Image
-                  src={item.src}
+                  src={failedImages.has(item.src) ? fallbackImage : item.src}
                   alt=""
                   fill
                   sizes="(max-width: 640px) 50vw, 15vw"
                   className="object-cover opacity-80 transition duration-300 group-hover:scale-105 group-hover:opacity-100"
                   unoptimized={item.src.startsWith("/api/assets/")}
-                  onError={() => undefined}
+                  onError={() => {
+                    setFailedImages((previous) => new Set(previous).add(item.src));
+                  }}
                 />
               ) : (
                 <div
