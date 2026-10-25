@@ -1302,6 +1302,8 @@ model ThreeDConversionJob {
   originalName String
   sourceStorageKey String
   uploadId String?
+  completionSize BigInt?
+  completionParts Json?
   convertedStorageKey String?
   outputStorageKey String?
 
