@@ -36,18 +36,21 @@ export class CartService {
     }
 
     const inventory = variant ?? product.inventory;
+    const cart = await this.getOrCreate(userId);
+    const existing = await this.prisma.cartItem.findUnique({
+      where: { cartId_productId_variantKey: { cartId: cart.id, productId, variantKey: variantId ?? '__base__' } },
+    });
+    const nextQuantity = (existing?.quantity ?? 0) + quantity;
+    if (nextQuantity > 99) {
+      throw new BadRequestException('A cart line cannot exceed 99 units');
+    }
+
     if (inventory?.trackStock && !inventory.allowBackorder) {
-      const existing = await this.prisma.cartItem.findUnique({
-        where: { cartId_productId_variantKey: { cartId: (await this.getOrCreate(userId)).id, productId, variantKey: variantId ?? '__base__' } },
-      });
       const available = Math.max(0, inventory.stock - inventory.reserved);
-      const nextQuantity = (existing?.quantity ?? 0) + quantity;
       if (nextQuantity > available) {
         throw new BadRequestException('Requested quantity exceeds available stock');
       }
     }
-
-    const cart = await this.getOrCreate(userId);
     await this.prisma.cartItem.upsert({
       where: { cartId_productId_variantKey: { cartId: cart.id, productId, variantKey: variantId ?? '__base__' } },
       create: { cartId: cart.id, productId, variantId: variantId ?? null, variantKey: variantId ?? '__base__', quantity },
