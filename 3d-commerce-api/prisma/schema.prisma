@@ -809,8 +809,8 @@ enum PaymentStatus {
   AUTHORIZED
   CAPTURED
   FAILED
-  REFUND_PENDING
   REFUNDED
+  REFUND_PENDING
 }
 
 model PaymentAttempt {
