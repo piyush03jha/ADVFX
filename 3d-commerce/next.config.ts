@@ -38,7 +38,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https:",
               "font-src 'self' data:",
-              "connect-src 'self' blob: https://api.voxel3d.org https://challenges.cloudflare.com https://checkout.razorpay.com https://cloudflareinsights.com https://static.cloudflareinsights.com",
+              "connect-src 'self' blob: https://*.backblazeb2.com https://api.voxel3d.org https://challenges.cloudflare.com https://checkout.razorpay.com https://cloudflareinsights.com https://static.cloudflareinsights.com",
               "frame-src https://checkout.razorpay.com https://challenges.cloudflare.com",
               "upgrade-insecure-requests",
             ].join("; "),
