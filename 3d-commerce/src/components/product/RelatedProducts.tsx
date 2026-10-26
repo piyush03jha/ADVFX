@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
+import { resolveMediaUrl } from "@/lib/media-url";
 
 import { IconArrowUpRight } from "@tabler/icons-react";
 
@@ -149,22 +151,14 @@ export function RelatedProducts({
                   bg-[linear-gradient(145deg,rgb(from var(--foreground) r g b / 0.055),rgb(from var(--background) r g b / 0.018)_58%,rgb(from var(--primary) r g b / 0.065))]
                 "
               >
-                <img
-                  src={product.image}
+                <Image
+                  src={resolveMediaUrl(product.image) ?? "/placeholder-product.webp"}
                   alt={product.name}
+                  fill
+                  sizes="(max-width: 640px) 190px, (max-width: 1024px) 240px, 25vw"
                   loading="lazy"
-                  decoding="async"
-                  fetchPriority="low"
-                  width={340}
-                  height={400}
-                  className="
-                    h-full
-                    w-full
-                    object-cover
-                    transition-transform
-                    duration-700
-                    group-hover:scale-105
-                  "
+                  unoptimized={product.image.startsWith("/api/assets/") || !product.image.startsWith("/")}
+                  className="object-cover transition-transform duration-700 group-hover:scale-105"
                 />
 
                 <div
