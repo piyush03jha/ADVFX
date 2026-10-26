@@ -159,7 +159,7 @@ export function ProductGallery({ product }: ProductGalleryProps) {
               fill
               priority={activeIndex === 0}
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 100vw, 60vw"
-              className="object-contain p-5 sm:p-10 lg:p-16"
+              className="object-cover"
               unoptimized={active.src.startsWith("/api/assets/") || !active.src.startsWith("/")}
               onError={() => {
                 setFailedImages((previous) => new Set(previous).add(active.src));
