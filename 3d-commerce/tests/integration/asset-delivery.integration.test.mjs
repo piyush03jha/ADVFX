@@ -30,12 +30,13 @@ test("backend product asset endpoint advertises byte-range support", async () =>
   assert.match(source, /Content-Range/);
 });
 
-test("legacy storage URLs and gallery recovery paths are present end to end", async () => {
+test("product assets use the direct API endpoint and gallery recovery paths are present end to end", async () => {
   const [media, gallery] = await Promise.all([
     readFile(mediaUrlPath, "utf8"),
     readFile(galleryPath, "utf8"),
   ]);
-  assert.match(media, /"\/api\/assets\/" \+ storageKey/);
+  assert.match(media, /function directProductAssetUrl/);
+  assert.match(media, /https:\/\/api\.voxel3d\.org/);
   assert.match(gallery, /setFailedImages/);
   assert.match(gallery, /fallbackImage/);
 });

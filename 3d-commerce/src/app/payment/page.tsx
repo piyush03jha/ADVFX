@@ -472,7 +472,10 @@ export default function PaymentPage() {
                           src={resolveMediaUrl(item.product.image) ?? "/placeholder-product.webp"}
                           alt={item.product.name}
                           fill
-                          unoptimized={resolveMediaUrl(item.product.image)?.startsWith("/api/assets/")}
+                          unoptimized={
+                            resolveMediaUrl(item.product.image)?.startsWith("/api/assets/") ||
+                            !resolveMediaUrl(item.product.image)?.startsWith("/")
+                          }
                           sizes="64px"
                           className="object-cover"
                         />

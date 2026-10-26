@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
 import { AdaptiveDpr, Environment, Lightformer, OrbitControls, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
@@ -83,9 +83,11 @@ function prepareModelMaterials(model: THREE.Object3D): ModelTone {
 function LoadedProductModel({
   blobUrl,
   onTone,
+  onReady,
 }: {
   blobUrl: string;
   onTone: (tone: ModelTone) => void;
+  onReady: () => void;
 }) {
   const { scene } = useGLTF(blobUrl, true, true);
 
@@ -116,19 +118,18 @@ function LoadedProductModel({
 
   useEffect(() => {
     onTone(tone);
-  }, [tone, onTone]);
+    onReady();
+  }, [tone, onReady, onTone]);
 
   return <primitive object={normalizedScene} dispose={null} />;
 }
 
-function ProductModel({ model, onTone }: { model: string; onTone: (tone: ModelTone) => void }) {
-  const { blobUrl } = useModelUrl(model);
-
-  // Keep the URL-loading state in its own component. Once the URL is ready,
+function ProductModel({ blobUrl, onTone, onReady }: { blobUrl: string | null; onTone: (tone: ModelTone) => void; onReady: () => void }) {
+  // Keep the URL-loading state in the stage. Once the URL is ready,
   // LoadedProductModel mounts and runs its GLTF and memo hooks consistently.
   if (!blobUrl) return null;
 
-  return <LoadedProductModel blobUrl={blobUrl} onTone={onTone} />;
+  return <LoadedProductModel blobUrl={blobUrl} onTone={onTone} onReady={onReady} />;
 }
 
 function ModelLoadingFallback() {
@@ -241,7 +242,14 @@ export default function Product3DStage({
   const isDark = theme === "dark";
   const [contextLost, setContextLost] = useState(false);
   const [tone, setTone] = useState<ModelTone>("mid");
+  const [modelReady, setModelReady] = useState(false);
+  const { blobUrl, progress, error, retry } = useModelUrl(model);
   const background = stageBackground(isDark, tone);
+  const handleModelReady = useCallback(() => setModelReady(true), []);
+
+  useEffect(() => {
+    setModelReady(false);
+  }, [model]);
 
   return (
     <div
@@ -285,7 +293,7 @@ export default function Product3DStage({
           }
         >
           <Suspense fallback={<ModelLoadingFallback />}>
-            <ProductModel model={model} onTone={setTone} />
+            <ProductModel blobUrl={blobUrl} onTone={setTone} onReady={handleModelReady} />
           </Suspense>
         </ModelErrorBoundary>
 
@@ -308,6 +316,27 @@ export default function Product3DStage({
           reverseOrbit
         />
       </Canvas>
+
+      {!modelReady && !contextLost && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/70 px-8 text-center backdrop-blur-sm">
+          <div className="w-full max-w-xs">
+            {error ? (
+              <>
+                <p className="text-xs font-medium">Unable to load the 3D preview.</p>
+                <button type="button" onClick={retry} className="mt-3 rounded-full border border-primary/40 px-4 py-2 text-[10px] font-medium uppercase tracking-[0.14em] text-primary">Retry 3D preview</button>
+              </>
+            ) : (
+              <>
+                <p className="text-[10px] font-medium uppercase tracking-[0.16em]">Loading 3D preview</p>
+                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-black/15 dark:bg-white/15">
+                  <div className="h-full rounded-full bg-primary transition-[width] duration-200" style={{ width: `${Math.max(4, Math.min(progress, 100))}%` }} />
+                </div>
+                <p className="mt-2 text-[10px] text-muted">{Math.max(0, Math.min(progress, 100))}%</p>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {contextLost && (
         <div className="absolute inset-0 z-30 flex items-center justify-center bg-inherit/90 px-6 text-center backdrop-blur-sm">

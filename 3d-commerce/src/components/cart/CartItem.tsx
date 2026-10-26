@@ -101,7 +101,7 @@ export function CartItem({ item }: CartItemProps) {
           src={imageSrc}
           alt={item.product.name}
           fill
-          unoptimized={imageSrc.startsWith("/api/assets/")}
+          unoptimized={imageSrc.startsWith("/api/assets/") || !imageSrc.startsWith("/")}
           sizes="116px"
           className="object-cover transition-transform duration-500 group-hover:scale-105"
         />

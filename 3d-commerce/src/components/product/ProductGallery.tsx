@@ -160,7 +160,7 @@ export function ProductGallery({ product }: ProductGalleryProps) {
               priority={activeIndex === 0}
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 100vw, 60vw"
               className="object-contain p-5 sm:p-10 lg:p-16"
-              unoptimized={active.src.startsWith("/api/assets/")}
+              unoptimized={active.src.startsWith("/api/assets/") || !active.src.startsWith("/")}
               onError={() => {
                 setFailedImages((previous) => new Set(previous).add(active.src));
                 if (active.src !== fallbackImage && activeIndex < media.length - 1) {
@@ -212,7 +212,7 @@ export function ProductGallery({ product }: ProductGalleryProps) {
                   fill
                   sizes="(max-width: 640px) 50vw, 15vw"
                   className="object-cover opacity-80 transition duration-300 group-hover:scale-105 group-hover:opacity-100"
-                  unoptimized={item.src.startsWith("/api/assets/")}
+                  unoptimized={item.src.startsWith("/api/assets/") || !item.src.startsWith("/")}
                   onError={() => {
                     setFailedImages((previous) => new Set(previous).add(item.src));
                   }}
