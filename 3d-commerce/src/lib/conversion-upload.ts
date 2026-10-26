@@ -56,6 +56,10 @@ export async function uploadConversionDirect(
   const etags: UploadedPart[] = [];
   let doneBytes = 0;
   const sessionController = new AbortController();
+  // Preserve the first real part-upload failure. Aborting sibling uploads can
+  // otherwise make Promise.all report their AbortError ("Upload cancelled")
+  // instead of the storage/network error that caused the cancellation.
+  let firstUploadFailure: unknown = null;
   const onSessionAbort = () => sessionController.abort();
   signal?.addEventListener("abort", onSessionAbort, { once: true });
 
@@ -142,6 +146,7 @@ export async function uploadConversionDirect(
         }
 
         if (status === 400 || status === 403 || attempt >= 6) {
+          firstUploadFailure ??= error;
           sessionController.abort();
           throw error;
         }
@@ -180,7 +185,7 @@ export async function uploadConversionDirect(
       { uploadId: session.uploadId },
       undefined,
     ).catch(() => undefined);
-    throw error;
+    throw firstUploadFailure ?? error;
   } finally {
     signal?.removeEventListener("abort", onSessionAbort);
   }
