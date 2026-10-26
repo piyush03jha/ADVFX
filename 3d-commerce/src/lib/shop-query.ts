@@ -1,6 +1,6 @@
 export type ShopSortValue="featured"|"newest"|"price-low"|"price-high"|"rating"|"popular";
 export interface ShopQueryState{page:number;sort:ShopSortValue;q:string;categories:string[];minPrice:number;maxPrice:number;minRating:number}
-export const SHOP_PAGE_SIZE=12;
+export const SHOP_PAGE_SIZE=20;
 const SORTS:ShopSortValue[]=["featured","newest","price-low","price-high","rating","popular"];
 export const DEFAULT_SHOP_QUERY:ShopQueryState={page:1,sort:"featured",q:"",categories:[],minPrice:0,maxPrice:Infinity,minRating:0};
 type RawParams=Record<string,string|string[]|undefined>;
