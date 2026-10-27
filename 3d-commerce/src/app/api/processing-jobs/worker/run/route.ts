@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
 import { ADMIN_COOKIE } from "@/app/api/auth/admin/login/route";
-import { getBackendApiUrl } from "@/lib/backend-api";
+import { getBackendApiUrl, backendFetch } from "@/lib/backend-api";
 
 export async function POST(request: NextRequest) {
   const token = (await cookies()).get(ADMIN_COOKIE)?.value;
@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const response = await fetch(getBackendApiUrl("processing-jobs/worker/run"), {
+    const response = await backendFetch(getBackendApiUrl("processing-jobs/worker/run"), {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",

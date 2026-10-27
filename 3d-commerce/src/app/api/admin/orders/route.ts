@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { ADMIN_COOKIE } from "@/app/api/auth/admin/login/route";
-import { getBackendApiUrl } from "@/lib/backend-api";
+import { getBackendApiUrl, backendFetch } from "@/lib/backend-api";
 
 export async function GET(request: Request) {
   const token = (await cookies()).get(ADMIN_COOKIE)?.value;
@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     const search = new URLSearchParams({ page, pageSize });
     if (status) search.set("status", status);
     const suffix = "?" + search.toString();
-    const response = await fetch(getBackendApiUrl("orders/admin/list" + suffix), {
+    const response = await backendFetch(getBackendApiUrl("orders/admin/list" + suffix), {
       headers: { Authorization: "Bearer " + token },
       cache: "no-store",
     });

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getBackendApiUrl, getTrustedClientIpHeaders } from "@/lib/backend-api";
+import { getBackendApiUrl, getTrustedClientIpHeaders, backendFetch } from "@/lib/backend-api";
 
 export const ADMIN_COOKIE = "forma_admin_session";
 
@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     const password = body.password ?? "";
     if (!email || !password) return NextResponse.json({ error: "Email and admin password are required." }, { status: 400 });
 
-    const response = await fetch(getBackendApiUrl("auth/admin/login"), {
+    const response = await backendFetch(getBackendApiUrl("auth/admin/login"), {
       method: "POST",
       headers: { ...(await getTrustedClientIpHeaders(request)), "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),

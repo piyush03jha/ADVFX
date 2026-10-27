@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { AUTH_COOKIE_NAME } from "@/lib/auth";
-import { getBackendApiUrl } from "@/lib/backend-api";
+import { getBackendApiUrl, backendFetch } from "@/lib/backend-api";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -12,7 +12,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
   const { id } = await params;
 
   try {
-    const response = await fetch(getBackendApiUrl(`products/${encodeURIComponent(id)}/reviews`), {
+    const response = await backendFetch(getBackendApiUrl(`products/${encodeURIComponent(id)}/reviews`), {
       cache: "no-store",
     });
     const data = await response.json().catch(() => null);
@@ -35,7 +35,7 @@ export async function POST(request: Request, { params }: RouteContext) {
   const { id } = await params;
 
   try {
-    const response = await fetch(getBackendApiUrl(`products/${encodeURIComponent(id)}/reviews`), {
+    const response = await backendFetch(getBackendApiUrl(`products/${encodeURIComponent(id)}/reviews`), {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,

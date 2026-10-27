@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { AUTH_COOKIE_NAME } from "@/lib/auth";
-import { getBackendApiUrl, getTrustedClientIpHeaders } from "@/lib/backend-api";
+import { getBackendApiUrl, getTrustedClientIpHeaders, backendFetch } from "@/lib/backend-api";
 
 export async function POST(request: Request) {
   const token = (await cookies()).get(AUTH_COOKIE_NAME)?.value;
@@ -14,7 +14,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
 
-    const backendResponse = await fetch(getBackendApiUrl("cart/items"), {
+    const backendResponse = await backendFetch(getBackendApiUrl("cart/items"), {
       method: "POST",
       headers: {
         ...(await getTrustedClientIpHeaders(request)),

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -50,28 +50,70 @@ const nav = [
   { href: "/admin/notifications", label: "Notifications", icon: IconMessageCircle },
 ];
 
+type SessionOutcome =
+  | { result: "authenticated"; user: AdminUser }
+  | { result: "unauthenticated" }
+  | { result: "unavailable" };
+
+// Re-verify the session at most this often while navigating inside the admin.
+const SESSION_RECHECK_MS = 5 * 60 * 1000;
+
+// Only an explicit "not signed in" answer may send the admin to the login page.
+// Network blips, 5xx and rate-limit responses are retried and, if they persist,
+// reported as "unavailable" instead of looking like a logout.
+async function checkAdminSession(): Promise<SessionOutcome> {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const response = await fetch("/api/auth/admin/session", { cache: "no-store" });
+      if (response.ok) {
+        const data = (await response.json().catch(() => null)) as {
+          user?: AdminUser | null;
+        } | null;
+        return data?.user
+          ? { result: "authenticated", user: data.user }
+          : { result: "unauthenticated" };
+      }
+      if (response.status === 401 || response.status === 403) {
+        return { result: "unauthenticated" };
+      }
+    } catch {
+      // Network blip: retry below.
+    }
+    await new Promise((resolve) => window.setTimeout(resolve, 400 * (attempt + 1)));
+  }
+  return { result: "unavailable" };
+}
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState<"checking" | "unavailable">("checking");
   const [user, setUser] = useState<AdminUser | null>(null);
   const [open, setOpen] = useState(false);
+  const lastVerifiedAt = useRef(0);
+  const isLogin = pathname === "/admin/login";
+
+  const verify = useCallback(async () => {
+    setStatus("checking");
+    const outcome = await checkAdminSession();
+    if (outcome.result === "authenticated") {
+      lastVerifiedAt.current = Date.now();
+      setUser(outcome.user);
+    } else if (outcome.result === "unauthenticated") {
+      lastVerifiedAt.current = 0;
+      setUser(null);
+      router.replace("/admin/login");
+    } else {
+      // Keep an already-loaded workspace usable; only block when nothing is loaded yet.
+      setStatus("unavailable");
+    }
+  }, [router]);
 
   useEffect(() => {
-    if (pathname === "/admin/login") {
-      setLoading(false);
-      return;
-    }
-
-    fetch("/api/auth/admin/session", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : { user: null }))
-      .then((d) => {
-        if (d.user) setUser(d.user);
-        else router.replace("/admin/login");
-      })
-      .catch(() => router.replace("/admin/login"))
-      .finally(() => setLoading(false));
-  }, [pathname, router]);
+    if (isLogin) return;
+    if (user && Date.now() - lastVerifiedAt.current < SESSION_RECHECK_MS) return;
+    void verify();
+  }, [isLogin, pathname, user, verify]);
 
   const activeLabel =
     nav.find((item) =>
@@ -80,22 +122,36 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const logout = async () => {
     await fetch("/api/auth/admin/logout", { method: "POST" });
+    lastVerifiedAt.current = 0;
+    setUser(null);
     router.replace("/admin/login");
   };
 
-  if (pathname === "/admin/login") {
+  if (isLogin) {
     return <main className="min-h-screen bg-background text-foreground">{children}</main>;
   }
 
-  if (loading) {
+  if (!user && status === "unavailable") {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-6 text-center text-foreground">
+        <p className="text-sm font-medium">The admin service is not responding.</p>
+        <p className="max-w-sm text-xs text-muted">
+          You are still signed in. This is usually a temporary connection problem.
+        </p>
+        <Button type="button" size="sm" onClick={() => void verify()}>
+          Try again
+        </Button>
+      </main>
+    );
+  }
+
+  if (!user) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-background text-xs text-muted">
         Loading admin workspace…
       </main>
     );
   }
-
-  if (!user) return null;
 
   return (
     <div className="min-h-screen bg-background text-foreground">

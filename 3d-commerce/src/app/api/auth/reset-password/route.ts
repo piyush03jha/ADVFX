@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getBackendApiUrl } from "@/lib/backend-api";
+import { getBackendApiUrl, backendFetch } from "@/lib/backend-api";
 
 function isSafeRequestOrigin(request: Request) {
   const origin = request.headers.get("origin");
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const backendResponse = await fetch(getBackendApiUrl("auth/reset-password"), {
+    const backendResponse = await backendFetch(getBackendApiUrl("auth/reset-password"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token, password }),

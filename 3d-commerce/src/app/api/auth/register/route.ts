@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getBackendApiUrl, getTrustedClientIpHeaders } from "@/lib/backend-api";
+import { getBackendApiUrl, getTrustedClientIpHeaders, backendFetch } from "@/lib/backend-api";
 function isSafeRequestOrigin(request: Request) {
   const origin = request.headers.get("origin");
   if (!origin) return true;
@@ -40,7 +40,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const backendResponse = await fetch(getBackendApiUrl("auth/register"), {
+    const backendResponse = await backendFetch(getBackendApiUrl("auth/register"), {
       method: "POST",
       headers: { ...(await getTrustedClientIpHeaders(request)), "Content-Type": "application/json" },
       body: JSON.stringify({ name, email, password, captchaToken, captchaAnswer }),

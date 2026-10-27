@@ -1,13 +1,13 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { ADMIN_COOKIE } from "@/app/api/auth/admin/login/route";
-import { getBackendApiUrl } from "@/lib/backend-api";
+import { getBackendApiUrl, backendFetch } from "@/lib/backend-api";
 
 export async function GET() {
   const token = (await cookies()).get(ADMIN_COOKIE)?.value;
   if (!token) return NextResponse.json({ error: "Authentication is required." }, { status: 401 });
   try {
-    const response = await fetch(getBackendApiUrl("products/admin/reviews"), {
+    const response = await backendFetch(getBackendApiUrl("products/admin/reviews"), {
       headers: { Authorization: "Bearer " + token },
       cache: "no-store",
     });

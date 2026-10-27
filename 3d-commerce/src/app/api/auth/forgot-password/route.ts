@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getBackendApiUrl, getTrustedClientIpHeaders } from "@/lib/backend-api";
+import { getBackendApiUrl, getTrustedClientIpHeaders, backendFetch } from "@/lib/backend-api";
 function isSafeRequestOrigin(request: Request) {
   const origin = request.headers.get("origin");
   if (!origin) return true;
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Email address and security verification are required." }, { status: 400 });
     }
 
-    const backendResponse = await fetch(getBackendApiUrl("auth/forgot-password"), {
+    const backendResponse = await backendFetch(getBackendApiUrl("auth/forgot-password"), {
       method: "POST",
       headers: { ...(await getTrustedClientIpHeaders(request)), "Content-Type": "application/json" },
       body: JSON.stringify({ email, captchaToken, captchaAnswer }),

@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 
-import { getBackendApiUrl } from "@/lib/backend-api";
+import { getBackendApiUrl, backendFetch } from "@/lib/backend-api";
 
 export async function GET() {
   try {
-    const response = await fetch(getBackendApiUrl("products/hero"), {
+    const response = await backendFetch(getBackendApiUrl("products/hero"), {
       next: { revalidate: 60, tags: ["catalog-products"] },
     });
     const data = await response.json().catch(() => null);

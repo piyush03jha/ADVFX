@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { AUTH_COOKIE_NAME } from "@/lib/auth";
-import { getBackendApiUrl, getTrustedClientIpHeaders } from "@/lib/backend-api";
+import { getBackendApiUrl, getTrustedClientIpHeaders, backendFetch } from "@/lib/backend-api";
 
 async function getToken() {
   return (await cookies()).get(AUTH_COOKIE_NAME)?.value;
@@ -15,7 +15,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const response = await fetch(getBackendApiUrl("custom-requests"), {
+    const response = await backendFetch(getBackendApiUrl("custom-requests"), {
       headers: { ...(await getTrustedClientIpHeaders(request)), Authorization: `Bearer ${token}` },
       cache: "no-store",
     });
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const response = await fetch(getBackendApiUrl("custom-requests"), {
+    const response = await backendFetch(getBackendApiUrl("custom-requests"), {
       method: "POST",
       headers: {
         ...(await getTrustedClientIpHeaders(request)),

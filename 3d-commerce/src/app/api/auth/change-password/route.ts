@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { AUTH_COOKIE_NAME } from "@/lib/auth";
-import { getBackendApiUrl } from "@/lib/backend-api";
+import { getBackendApiUrl, backendFetch } from "@/lib/backend-api";
 
 function isSafeRequestOrigin(request: Request) {
   const origin = request.headers.get("origin");
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const response = await fetch(getBackendApiUrl("auth/change-password"), {
+    const response = await backendFetch(getBackendApiUrl("auth/change-password"), {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,

@@ -1,14 +1,14 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { ADMIN_COOKIE } from "@/app/api/auth/admin/login/route";
-import { getBackendApiUrl } from "@/lib/backend-api";
+import { getBackendApiUrl, backendFetch } from "@/lib/backend-api";
 import { revalidateProductCatalog } from "@/lib/revalidate-catalog";
 
 export async function GET() {
   try {
     // Public storefront catalog responses can be cached briefly to support
     // homepage/product rendering without making the backend a per-request bottleneck.
-    const response = await fetch(getBackendApiUrl("products"), {
+    const response = await backendFetch(getBackendApiUrl("products"), {
       next: { revalidate: 60, tags: ["catalog-products"] },
       headers: { Accept: "application/json" },
     });
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
   const token = (await cookies()).get(ADMIN_COOKIE)?.value;
   if (!token) return NextResponse.json({ error: "Authentication is required." }, { status: 401 });
   try {
-    const response = await fetch(getBackendApiUrl("products"), {
+    const response = await backendFetch(getBackendApiUrl("products"), {
       method: "POST",
       headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
       body: await request.text(),

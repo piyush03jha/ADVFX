@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { ADMIN_COOKIE } from "@/app/api/auth/admin/login/route";
-import { getBackendApiUrl } from "@/lib/backend-api";
+import { getBackendApiUrl, backendFetch } from "@/lib/backend-api";
 
 export async function POST(request: Request) {
   const token = (await cookies()).get(ADMIN_COOKIE)?.value;
@@ -10,7 +10,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const response = await fetch(getBackendApiUrl("categories/import"), {
+    const response = await backendFetch(getBackendApiUrl("categories/import"), {
       method: "POST",
       headers: {
         Authorization: "Bearer " + token,

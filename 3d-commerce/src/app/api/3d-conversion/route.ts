@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE } from "@/app/api/auth/admin/login/route";
-import { getBackendApiUrl } from "@/lib/backend-api";
+import { getBackendApiUrl, backendFetch } from "@/lib/backend-api";
 
 async function forward(request: NextRequest, path: string) {
   const token = (await cookies()).get(ADMIN_COOKIE)?.value;
@@ -11,7 +11,7 @@ async function forward(request: NextRequest, path: string) {
     const hasBodyMethod = request.method !== "GET" && request.method !== "HEAD";
     const bodyText = hasBodyMethod ? await request.text() : "";
 
-    const response = await fetch(getBackendApiUrl(path), {
+    const response = await backendFetch(getBackendApiUrl(path), {
       method: request.method,
       headers: {
         Authorization: "Bearer " + token,
@@ -19,6 +19,9 @@ async function forward(request: NextRequest, path: string) {
       },
       body: bodyText || undefined,
       cache: "no-store",
+      // Starting an upload only creates a session; a duplicate is harmless, so
+      // a dropped connection on a stale socket may be retried.
+      retryUnsafe: true,
     });
     return new NextResponse(await response.text(), {
       status: response.status,

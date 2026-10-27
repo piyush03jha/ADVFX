@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { ADMIN_COOKIE } from "@/app/api/auth/admin/login/route";
-import { getBackendApiUrl } from "@/lib/backend-api";
+import { getBackendApiUrl, backendFetch } from "@/lib/backend-api";
 import { revalidateProductCatalog } from "@/lib/revalidate-catalog";
 
 async function proxy(request: Request, params: Promise<{ id: string }>, method: "PATCH" | "DELETE") {
@@ -9,7 +9,7 @@ async function proxy(request: Request, params: Promise<{ id: string }>, method: 
   if (!token) return NextResponse.json({ error: "Authentication is required." }, { status: 401 });
   const { id } = await params;
   try {
-    const response = await fetch(getBackendApiUrl("products/" + encodeURIComponent(id)), {
+    const response = await backendFetch(getBackendApiUrl("products/" + encodeURIComponent(id)), {
       method,
       headers: { Authorization: "Bearer " + token, ...(method === "PATCH" ? { "Content-Type": "application/json" } : {}) },
       body: method === "PATCH" ? await request.text() : undefined,

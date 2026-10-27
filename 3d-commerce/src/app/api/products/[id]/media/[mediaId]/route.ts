@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { ADMIN_COOKIE } from "@/app/api/auth/admin/login/route";
-import { getBackendApiUrl } from "@/lib/backend-api";
+import { getBackendApiUrl, backendFetch } from "@/lib/backend-api";
 import { revalidateProductCatalog } from "@/lib/revalidate-catalog";
 
 export async function DELETE(request: Request, context: { params: Promise<{ id: string; mediaId: string }> }) {
@@ -10,7 +10,7 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
   const { id, mediaId } = await context.params;
 
   try {
-    const response = await fetch(getBackendApiUrl("products/" + encodeURIComponent(id) + "/media/" + encodeURIComponent(mediaId)), {
+    const response = await backendFetch(getBackendApiUrl("products/" + encodeURIComponent(id) + "/media/" + encodeURIComponent(mediaId)), {
       method: "DELETE",
       headers: { Authorization: "Bearer " + token },
       cache: "no-store",

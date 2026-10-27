@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { AUTH_COOKIE_NAME } from "@/lib/auth";
-import { getBackendApiUrl } from "@/lib/backend-api";
+import { getBackendApiUrl, backendFetch } from "@/lib/backend-api";
 
 async function getToken() {
   return (await cookies()).get(AUTH_COOKIE_NAME)?.value;
@@ -16,7 +16,7 @@ export async function GET() {
   }
 
   try {
-    const backendResponse = await fetch(getBackendApiUrl("cart"), {
+    const backendResponse = await backendFetch(getBackendApiUrl("cart"), {
       method: "GET",
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
@@ -42,7 +42,7 @@ export async function DELETE() {
   }
 
   try {
-    const backendResponse = await fetch(getBackendApiUrl("cart"), {
+    const backendResponse = await backendFetch(getBackendApiUrl("cart"), {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",

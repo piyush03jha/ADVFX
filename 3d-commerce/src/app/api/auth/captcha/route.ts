@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getBackendApiUrl, getTrustedClientIpHeaders } from "@/lib/backend-api";
+import { getBackendApiUrl, getTrustedClientIpHeaders, backendFetch } from "@/lib/backend-api";
 
 export async function GET(request: Request) {
   const purpose = new URL(request.url).searchParams.get("purpose");
@@ -9,7 +9,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const response = await fetch(getBackendApiUrl(`auth/captcha?purpose=${purpose}`), { headers: await getTrustedClientIpHeaders(request), cache: "no-store" });
+    const response = await backendFetch(getBackendApiUrl(`auth/captcha?purpose=${purpose}`), { headers: await getTrustedClientIpHeaders(request), cache: "no-store" });
     const data = await response.json();
     if (!response.ok) {
       return NextResponse.json({ error: data.message ?? "Unable to prepare CAPTCHA." }, { status: response.status });

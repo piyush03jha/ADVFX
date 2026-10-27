@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
 import { ADMIN_COOKIE } from "@/app/api/auth/admin/login/route";
-import { getBackendApiUrl } from "@/lib/backend-api";
+import { getBackendApiUrl, backendFetch } from "@/lib/backend-api";
 import { revalidateProductCatalog } from "@/lib/revalidate-catalog";
 
 export async function POST(request: NextRequest) {
@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const response = await fetch(getBackendApiUrl("admin/products/duplicate"), {
+    const response = await backendFetch(getBackendApiUrl("admin/products/duplicate"), {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,

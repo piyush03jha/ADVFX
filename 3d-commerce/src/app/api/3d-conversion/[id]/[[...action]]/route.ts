@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE } from "@/app/api/auth/admin/login/route";
-import { getBackendApiUrl } from "@/lib/backend-api";
+import { getBackendApiUrl, backendFetch } from "@/lib/backend-api";
 import { revalidateProductCatalog } from "@/lib/revalidate-catalog";
 
 async function getToken() {
@@ -16,7 +16,7 @@ async function proxy(request: NextRequest, path: string) {
     const hasBodyMethod = request.method !== "GET" && request.method !== "HEAD";
     const bodyText = hasBodyMethod ? await request.text() : "";
 
-    const response = await fetch(getBackendApiUrl(path), {
+    const response = await backendFetch(getBackendApiUrl(path), {
       method: request.method,
       headers: {
         Authorization: "Bearer " + token,

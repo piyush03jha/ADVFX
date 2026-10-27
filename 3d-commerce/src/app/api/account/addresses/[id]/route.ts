@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { AUTH_COOKIE_NAME } from "@/lib/auth";
-import { getBackendApiUrl } from "@/lib/backend-api";
+import { getBackendApiUrl, backendFetch } from "@/lib/backend-api";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -23,7 +23,7 @@ async function forward(request: Request, context: RouteContext, method: "PATCH" 
     };
     if (method === "PATCH") init.body = JSON.stringify(await request.json());
 
-    const response = await fetch(getBackendApiUrl(`addresses/${encodeURIComponent(id)}`), init);
+    const response = await backendFetch(getBackendApiUrl(`addresses/${encodeURIComponent(id)}`), init);
     const data = await response.json().catch(() => null);
     return NextResponse.json(data ?? { error: "Unable to update address." }, { status: response.status });
   } catch {

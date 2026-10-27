@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getBackendApiUrl, getTrustedClientIpHeaders } from "@/lib/backend-api";
+import { getBackendApiUrl, getTrustedClientIpHeaders, backendFetch } from "@/lib/backend-api";
 
 function isSafeRequestOrigin(request: Request) {
   const origin = request.headers.get("origin");
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Email address is required." }, { status: 400 });
     }
 
-    const backendResponse = await fetch(getBackendApiUrl("auth/resend-verification"), {
+    const backendResponse = await backendFetch(getBackendApiUrl("auth/resend-verification"), {
       method: "POST",
       headers: { ...(await getTrustedClientIpHeaders(request)), "Content-Type": "application/json" },
       body: JSON.stringify({ email }),

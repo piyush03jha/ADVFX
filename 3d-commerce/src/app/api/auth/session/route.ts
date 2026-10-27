@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { AUTH_COOKIE_NAME } from "@/lib/auth";
-import { getBackendApiUrl } from "@/lib/backend-api";
+import { getBackendApiUrl, backendFetch } from "@/lib/backend-api";
 
 type BackendUser = {
   id: string;
@@ -19,7 +19,7 @@ export async function GET() {
       return NextResponse.json({ user: null });
     }
 
-    const backendResponse = await fetch(getBackendApiUrl("auth/session"), {
+    const backendResponse = await backendFetch(getBackendApiUrl("auth/session"), {
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
     });

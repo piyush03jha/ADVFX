@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { AUTH_COOKIE_NAME } from "@/lib/auth";
-import { getBackendApiUrl, getTrustedClientIpHeaders } from "@/lib/backend-api";
+import { getBackendApiUrl, getTrustedClientIpHeaders, backendFetch } from "@/lib/backend-api";
 import {
   GOOGLE_OAUTH_COOKIE,
   GOOGLE_OAUTH_COOKIE_PATH,
@@ -30,7 +30,7 @@ export async function GET(request: Request) {
   if (!code || !state || !saved || saved.state !== state) return fail("google_failed");
 
   try {
-    const backendResponse = await fetch(getBackendApiUrl("auth/google"), {
+    const backendResponse = await backendFetch(getBackendApiUrl("auth/google"), {
       method: "POST",
       headers: { ...(await getTrustedClientIpHeaders(request)), "Content-Type": "application/json" },
       body: JSON.stringify({ code, codeVerifier: saved.verifier }),

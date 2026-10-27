@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { ADMIN_COOKIE } from "@/app/api/auth/admin/login/route";
-import { getBackendApiUrl } from "@/lib/backend-api";
+import { getBackendApiUrl, backendFetch } from "@/lib/backend-api";
 import { revalidateProductCatalog } from "@/lib/revalidate-catalog";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
@@ -10,7 +10,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   const { id } = await context.params;
 
   try {
-    const response = await fetch(getBackendApiUrl("products/" + encodeURIComponent(id) + "/media"), {
+    const response = await backendFetch(getBackendApiUrl("products/" + encodeURIComponent(id) + "/media"), {
       method: "POST",
       headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
       body: await request.text(),

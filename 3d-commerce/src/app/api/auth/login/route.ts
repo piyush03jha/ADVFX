@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { AUTH_COOKIE_NAME } from "@/lib/auth";
-import { getBackendApiUrl, getTrustedClientIpHeaders } from "@/lib/backend-api";
+import { getBackendApiUrl, getTrustedClientIpHeaders, backendFetch } from "@/lib/backend-api";
 
 function isSafeRequestOrigin(request: Request) {
   const origin = request.headers.get("origin");
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Email, password, and CAPTCHA are required." }, { status: 400 });
     }
 
-    const backendResponse = await fetch(getBackendApiUrl("auth/login"), {
+    const backendResponse = await backendFetch(getBackendApiUrl("auth/login"), {
       method: "POST",
       headers: { ...(await getTrustedClientIpHeaders(request)), "Content-Type": "application/json" },
       body: JSON.stringify({ email, password, captchaToken, captchaAnswer }),

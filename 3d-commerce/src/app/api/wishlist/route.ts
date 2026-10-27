@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { AUTH_COOKIE_NAME } from "@/lib/auth";
-import { getBackendApiUrl } from "@/lib/backend-api";
+import { getBackendApiUrl, backendFetch } from "@/lib/backend-api";
 
 async function getToken() {
   return (await cookies()).get(AUTH_COOKIE_NAME)?.value;
@@ -22,7 +22,7 @@ async function proxy(
   }
 
   try {
-    const response = await fetch(getBackendApiUrl(path), {
+    const response = await backendFetch(getBackendApiUrl(path), {
       ...init,
       headers: {
         ...(init?.body ? { "Content-Type": "application/json" } : {}),

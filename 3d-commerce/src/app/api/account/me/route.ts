@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { AUTH_COOKIE_NAME } from "@/lib/auth";
-import { getBackendApiUrl } from "@/lib/backend-api";
+import { getBackendApiUrl, backendFetch } from "@/lib/backend-api";
 
 async function token() {
   return (await cookies()).get(AUTH_COOKIE_NAME)?.value;
@@ -13,7 +13,7 @@ export async function GET() {
   if (!value) return NextResponse.json({ error: "Authentication is required." }, { status: 401 });
 
   try {
-    const response = await fetch(getBackendApiUrl("users/me"), {
+    const response = await backendFetch(getBackendApiUrl("users/me"), {
       headers: { Authorization: `Bearer ${value}` },
       cache: "no-store",
     });
@@ -29,7 +29,7 @@ export async function PATCH(request: Request) {
   if (!value) return NextResponse.json({ error: "Authentication is required." }, { status: 401 });
 
   try {
-    const response = await fetch(getBackendApiUrl("users/me"), {
+    const response = await backendFetch(getBackendApiUrl("users/me"), {
       method: "PATCH",
       headers: { Authorization: `Bearer ${value}`, "Content-Type": "application/json" },
       body: JSON.stringify(await request.json()),

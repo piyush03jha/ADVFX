@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { ADMIN_COOKIE } from "@/app/api/auth/admin/login/route";
-import { getBackendApiUrl } from "@/lib/backend-api";
+import { getBackendApiUrl, backendFetch } from "@/lib/backend-api";
 
 type Context = {
   params: Promise<{ path: string[] }>;
@@ -35,7 +35,7 @@ async function proxy(request: Request, context: Context) {
       body = await request.arrayBuffer();
     }
 
-    const response = await fetch(getBackendApiUrl(backendPath), {
+    const response = await backendFetch(getBackendApiUrl(backendPath), {
       method: request.method,
       headers,
       body,

@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { ADMIN_COOKIE } from "@/app/api/auth/admin/login/route";
-import { getBackendApiUrl } from "@/lib/backend-api";
+import { getBackendApiUrl, backendFetch } from "@/lib/backend-api";
 
 async function proxy(request: Request, method: string) {
   const token = (await cookies()).get(ADMIN_COOKIE)?.value;
@@ -10,7 +10,7 @@ async function proxy(request: Request, method: string) {
   if (method !== "GET") body = await request.text();
   const query = new URL(request.url).search;
   try {
-    const response = await fetch(getBackendApiUrl("admin/customers" + query), {
+    const response = await backendFetch(getBackendApiUrl("admin/customers" + query), {
       method,
       headers: {
         Authorization: "Bearer " + token,

@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { ADMIN_COOKIE } from "@/app/api/auth/admin/login/route";
-import { getBackendApiUrl } from "@/lib/backend-api";
+import { getBackendApiUrl, backendFetch } from "@/lib/backend-api";
 
 export async function GET(request: Request, context: { params: Promise<{ id: string; mediaId: string }> }) {
   const token = (await cookies()).get(ADMIN_COOKIE)?.value;
@@ -9,7 +9,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
   const { id, mediaId } = await context.params;
 
   try {
-    const response = await fetch(getBackendApiUrl("products/" + encodeURIComponent(id) + "/media/" + encodeURIComponent(mediaId) + "/file"), {
+    const response = await backendFetch(getBackendApiUrl("products/" + encodeURIComponent(id) + "/media/" + encodeURIComponent(mediaId) + "/file"), {
       headers: { Authorization: "Bearer " + token },
       cache: "no-store",
       redirect: "follow",

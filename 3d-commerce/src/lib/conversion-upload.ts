@@ -28,13 +28,27 @@ export async function uploadConversionDirect(
     body: unknown,
     requestSignal: AbortSignal | undefined = signal,
   ) => {
-    const response = await fetch(base + path, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-      signal: requestSignal,
-      cache: "no-store",
-    });
+    // The admin proxy answers 502/503/504 when its call to the API fails
+    // transiently (restart, dropped connection). Retry a couple of times before
+    // surfacing "Upload request failed".
+    let response: Response;
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        response = await fetch(base + path, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+          signal: requestSignal,
+          cache: "no-store",
+        });
+      } catch (error) {
+        if (requestSignal?.aborted || attempt >= 2) throw error;
+        await new Promise((resolve) => window.setTimeout(resolve, 700 * (attempt + 1)));
+        continue;
+      }
+      if (![502, 503, 504].includes(response.status) || attempt >= 2) break;
+      await new Promise((resolve) => window.setTimeout(resolve, 700 * (attempt + 1)));
+    }
 
     const data = await response.json().catch(() => ({}));
 

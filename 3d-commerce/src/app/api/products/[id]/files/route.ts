@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { ADMIN_COOKIE } from "@/app/api/auth/admin/login/route";
-import { getBackendApiUrl } from "@/lib/backend-api";
+import { getBackendApiUrl, backendFetch } from "@/lib/backend-api";
 import { revalidateProductCatalog } from "@/lib/revalidate-catalog";
 
 async function proxy(request: Request, context: { params: Promise<{ id: string }> }, method: "GET" | "POST") {
@@ -13,7 +13,7 @@ async function proxy(request: Request, context: { params: Promise<{ id: string }
     const headers: Record<string,string> = { Authorization: "Bearer " + token };
     const contentType = request.headers.get("content-type");
     if(method === "POST" && contentType) headers["Content-Type"] = contentType;
-    const response = await fetch(getBackendApiUrl("products/" + encodeURIComponent(id) + "/files"), {
+    const response = await backendFetch(getBackendApiUrl("products/" + encodeURIComponent(id) + "/files"), {
       method,
       headers,
       body: method === "POST" ? request.body : undefined,

@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { ADMIN_COOKIE } from "@/app/api/auth/admin/login/route";
-import { getBackendApiUrl } from "@/lib/backend-api";
+import { getBackendApiUrl, backendFetch } from "@/lib/backend-api";
 
 export async function GET(
   _request: Request,
@@ -13,7 +13,7 @@ export async function GET(
   const { id } = await params;
 
   try {
-    const response = await fetch(getBackendApiUrl(`orders/admin/${encodeURIComponent(id)}`), {
+    const response = await backendFetch(getBackendApiUrl(`orders/admin/${encodeURIComponent(id)}`), {
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
     });
