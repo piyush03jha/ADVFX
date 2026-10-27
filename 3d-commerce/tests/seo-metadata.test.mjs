@@ -27,8 +27,8 @@ test("global metadata reinforces the brand and relevant product categories", () 
 });
 
 test("shop metadata targets figure and collectible shopping queries separately from the homepage", () => {
-  assert.match(shop, /Shop 3D Printed Figures, Miniatures & Collectibles/);
-  assert.match(shop, /Shop physical 3D printed figures, miniatures, display models and collectibles/);
+  assert.match(shop, /Shop 3D Printed Models/);
+  assert.match(shop, /Shop physical 3D printed models, figures, miniatures and collectibles/);
   assert.match(shop, /path: "\/shop"/);
 });
 
