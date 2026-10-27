@@ -6,7 +6,6 @@ import {
   Logger,
   Delete,
   Get,
-  NotFoundException,
   Param,
   Post,
   Res,
