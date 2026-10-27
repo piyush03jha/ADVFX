@@ -321,22 +321,11 @@ export class StorageService {
 
     const rangeHeader =
       end === undefined ? `bytes=${start}-` : `bytes=${start}-${end}`;
-    let response: Response;
-    try {
-      response = await this.requestObjectResponse(
-        "GET",
-        storageKey,
-        { range: rangeHeader },
-      );
-    } catch (error) {
-      if (error instanceof HttpException && /\(416\)/.test(error.message)) {
-        throw new HttpException(
-          { error: "Requested byte range is not satisfiable" },
-          HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE,
-        );
-      }
-      throw error;
-    }
+    const response = await this.requestObjectResponse(
+      "GET",
+      storageKey,
+      { range: rangeHeader },
+    );
     if (!response.body) throw new NotFoundException("Stored file not found");
 
     const contentRange = response.headers.get("content-range") ?? "";
@@ -593,6 +582,12 @@ export class StorageService {
       const detail = await this.readRemoteError(response);
       if (response.status === 404) {
         throw new NotFoundException(`Stored file not found: ${detail}`);
+      }
+      if (response.status === 416 && extraHeaders.range) {
+        throw new HttpException(
+          { error: "Requested byte range is not satisfiable" },
+          HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE,
+        );
       }
       throw new BadGatewayException(
         `Remote storage request failed (${response.status}): ${detail}`,
