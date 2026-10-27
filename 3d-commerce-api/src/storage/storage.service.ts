@@ -329,7 +329,7 @@ export class StorageService {
         { range: rangeHeader },
       );
     } catch (error) {
-      if (error instanceof InternalServerErrorException && /\(416\)/.test(error.message)) {
+      if (error instanceof HttpException && /\(416\)/.test(error.message)) {
         throw new HttpException(
           { error: "Requested byte range is not satisfiable" },
           HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE,
