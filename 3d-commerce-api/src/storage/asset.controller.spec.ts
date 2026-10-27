@@ -1,4 +1,5 @@
-import { BadGatewayException, NotFoundException } from "@nestjs/common";
+import { BadGatewayException, NotFoundException, StreamableFile } from "@nestjs/common";
+import { Readable } from "node:stream";
 import { AssetController } from "./asset.controller";
 import { PrismaService } from "../prisma/prisma.service";
 import { StorageService } from "./storage.service";
@@ -62,6 +63,53 @@ describe("AssetController storage error handling", () => {
     await expect(
       controller.getCategoryAsset({ splat: "category-1/image.webp" }),
     ).rejects.toBeInstanceOf(BadGatewayException);
+  });
+
+  it("does not expose storage objects that are not published product media", async () => {
+    prisma.product.findFirst.mockResolvedValue({
+      id: "product-1",
+      media: [{ url: "/api/assets/products/product-1/public.webp" }],
+    });
+    const reply = {
+      request: { headers: {} },
+      header: jest.fn().mockReturnThis(),
+      code: jest.fn().mockReturnThis(),
+      send: jest.fn(),
+    };
+
+    await expect(
+      controller.getProductAsset(
+        { splat: "product-1/internal/source.obj" },
+        reply as never,
+      ),
+    ).rejects.toBeInstanceOf(NotFoundException);
+
+    expect(storage.openReadStream).not.toHaveBeenCalled();
+  });
+
+  it("serves an asset when the active product explicitly publishes its media URL", async () => {
+    prisma.product.findFirst.mockResolvedValue({
+      id: "product-1",
+      media: [{ url: "https://api.voxel3d.org/api/assets/products/product-1/model.glb" }],
+    });
+    storage.openReadStream.mockResolvedValue({
+      stream: Readable.from(Buffer.from("glb")),
+      size: 3,
+    });
+    const reply = {
+      request: { headers: {} },
+      header: jest.fn().mockReturnThis(),
+      code: jest.fn().mockReturnThis(),
+      send: jest.fn(),
+    };
+
+    const result = await controller.getProductAsset(
+      { splat: "product-1/model.glb" },
+      reply as never,
+    );
+
+    expect(result).toBeInstanceOf(StreamableFile);
+    expect(storage.openReadStream).toHaveBeenCalledWith("products/product-1/model.glb");
   });
 
   it("treats malformed percent-encoding as an invalid asset path", async () => {
