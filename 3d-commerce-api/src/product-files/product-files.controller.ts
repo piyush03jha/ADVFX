@@ -170,7 +170,7 @@ export class ProductFilesController {
           `attachment; filename="${encodeURIComponent(safeName)}"`,
       });
     } catch (error) {
-      if (error instanceof HttpException) {
+      if (error instanceof HttpException && error.getStatus() < 500) {
         throw error;
       }
 
