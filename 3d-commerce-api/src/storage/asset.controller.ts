@@ -31,7 +31,7 @@ export class AssetController {
     @Param() params: Record<string, string | undefined>,
   ): Promise<StreamableFile> {
     const wildcard = params["splat"] ?? params["*"] ?? params["0"] ?? "";
-    const normalized = decodeURIComponent(wildcard).replace(/^\/+/, "");
+    const normalized = this.decodeWildcard(wildcard);
 
     if (!normalized || normalized.includes("\0")) {
       throw new NotFoundException("Asset not found");
@@ -105,7 +105,7 @@ export class AssetController {
     kind: "category" | "option",
   ): Promise<StreamableFile> {
     const wildcard = params["splat"] ?? params["*"] ?? params["0"] ?? "";
-    const normalized = decodeURIComponent(wildcard).replace(/^\/+/, "");
+    const normalized = this.decodeWildcard(wildcard);
 
     if (!normalized || normalized.includes("\0")) {
       throw new NotFoundException("Asset not found");
@@ -156,8 +156,16 @@ export class AssetController {
       return new StreamableFile(stream, {
         type: this.storage.getContentTypeForStorageKey(storageKey),
       });
-    } catch {
-      throw new NotFoundException("Asset not found");
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      this.logger.error(
+        `Storage read failed for ${storageKey}`,
+        error instanceof Error ? error.stack : String(error),
+      );
+      throw new BadGatewayException("Storage is unavailable");
     }
   }
 
@@ -190,7 +198,7 @@ export class AssetController {
     @Res({ passthrough: true }) reply: FastifyReply,
   ): Promise<StreamableFile> {
     const wildcard = params["splat"] ?? params["*"] ?? params["0"] ?? "";
-    const normalized = decodeURIComponent(wildcard).replace(/^\/+/, "");
+    const normalized = this.decodeWildcard(wildcard);
 
     if (!normalized || normalized.includes("\0")) {
       throw new NotFoundException("Asset not found");
@@ -294,6 +302,15 @@ export class AssetController {
         error instanceof Error ? error.stack : String(error),
       );
       throw new BadGatewayException("Storage is unavailable");
+    }
+  }
+
+  private decodeWildcard(value: string): string {
+    try {
+      return decodeURIComponent(value).replace(/^\/+/, "");
+    } catch {
+      // Malformed percent-encoding is an invalid asset path, not a server error.
+      return "";
     }
   }
 
