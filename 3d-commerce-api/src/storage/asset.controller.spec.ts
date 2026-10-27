@@ -1,4 +1,4 @@
-import { BadGatewayException, HttpException, NotFoundException } from "@nestjs/common";
+import { BadGatewayException, NotFoundException } from "@nestjs/common";
 import { AssetController } from "./asset.controller";
 import { PrismaService } from "../prisma/prisma.service";
 import { StorageService } from "./storage.service";
@@ -51,7 +51,7 @@ describe("AssetController storage error handling", () => {
     ).rejects.toBeInstanceOf(BadGatewayException);
   });
 
-  it("preserves an explicit storage HTTP exception", async () => {
+  it("normalizes upstream storage server errors to 502", async () => {
     prisma.category.findFirst.mockResolvedValue({
       imageUrl: "/api/assets/categories/category-1/image.webp",
     });
@@ -61,12 +61,7 @@ describe("AssetController storage error handling", () => {
 
     await expect(
       controller.getCategoryAsset({ splat: "category-1/image.webp" }),
-    ).rejects.toMatchObject({
-      getStatus: expect.any(Function),
-    });
-    await expect(
-      controller.getCategoryAsset({ splat: "category-1/image.webp" }),
-    ).rejects.toBeInstanceOf(HttpException);
+    ).rejects.toBeInstanceOf(BadGatewayException);
   });
 
   it("treats malformed percent-encoding as an invalid asset path", async () => {
