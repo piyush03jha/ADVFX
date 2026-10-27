@@ -18,7 +18,10 @@ import { StorageService } from "./storage.service";
 @Controller()
 export class AssetController {
   private readonly logger = new Logger(AssetController.name);
-  private readonly validProducts = new Map<string, number>();
+  private readonly publishedProductAssets = new Map<
+    string,
+    { expiresAt: number; keys: Set<string> }
+  >();
   private readonly productCacheTtlMs = 60_000;
 
   constructor(
@@ -221,23 +224,37 @@ export class AssetController {
     const [productId, ...rest] = segments;
     const storageKey = ["products", productId, ...rest].join("/");
     const now = Date.now();
-    const cachedUntil = this.validProducts.get(productId);
+    let cachedAssets = this.publishedProductAssets.get(productId);
 
-    if (cachedUntil && cachedUntil <= now) {
-      this.validProducts.delete(productId);
+    if (cachedAssets && cachedAssets.expiresAt <= now) {
+      this.publishedProductAssets.delete(productId);
+      cachedAssets = undefined;
     }
 
-    if (!cachedUntil || cachedUntil <= now) {
+    if (!cachedAssets) {
       const product = await this.prisma.product.findFirst({
         where: { id: productId, status: "ACTIVE" },
-        select: { id: true },
+        select: { id: true, media: { select: { url: true } } },
       });
 
       if (!product) {
         throw new NotFoundException("Asset not found");
       }
 
-      this.validProducts.set(productId, now + this.productCacheTtlMs);
+      const keys = new Set(
+        product.media
+          .map((media) => this.productAssetStorageKey(media.url))
+          .filter((key): key is string => key !== null),
+      );
+      cachedAssets = { expiresAt: now + this.productCacheTtlMs, keys };
+      this.publishedProductAssets.set(productId, cachedAssets);
+    }
+
+    // The public route must expose only assets explicitly referenced by active
+    // product media. Do not make conversion intermediates or internal bundle
+    // files public merely because they share a product ID prefix.
+    if (!cachedAssets.keys.has(storageKey)) {
+      throw new NotFoundException("Asset not found");
     }
 
     try {
@@ -302,6 +319,25 @@ export class AssetController {
         error instanceof Error ? error.stack : String(error),
       );
       throw new BadGatewayException("Storage is unavailable");
+    }
+  }
+
+  private productAssetStorageKey(value?: string | null): string | null {
+    const raw = value?.trim();
+    if (!raw) return null;
+
+    try {
+      const pathname = decodeURIComponent(
+        new URL(raw, "https://voxel3d.org").pathname,
+      ).replace(/^\\/+/, "");
+      for (const prefix of ["api/assets/", "assets/", "storage/", ""]) {
+        if (!pathname.startsWith(prefix)) continue;
+        const key = pathname.slice(prefix.length);
+        if (key.startsWith("products/")) return key;
+      }
+      return null;
+    } catch {
+      return null;
     }
   }
 
