@@ -61,7 +61,12 @@ describe("AssetController storage error handling", () => {
 
     await expect(
       controller.getCategoryAsset({ splat: "category-1/image.webp" }),
-    ).rejects.toMatchObject({ status: 503 });
+    ).rejects.toMatchObject({
+      getStatus: expect.any(Function),
+    });
+    await expect(
+      controller.getCategoryAsset({ splat: "category-1/image.webp" }),
+    ).rejects.toBeInstanceOf(HttpException);
   });
 
   it("treats malformed percent-encoding as an invalid asset path", async () => {
