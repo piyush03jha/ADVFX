@@ -34,12 +34,16 @@ test("Next.js llms endpoint uses published FAQ content and preserves FAQ structu
   const route = await readFile(new URL("../../src/app/llms.txt/route.ts", import.meta.url), "utf8");
   const faqPage = await readFile(new URL("../../src/app/faq/page.tsx", import.meta.url), "utf8");
 
-  assert.match(route, /import \{ faqItems, type FAQItem \} from ["']@\/config\/faq["']/);
+  const publicFaqs = await readFile(new URL("../../src/lib/public-faqs.ts", import.meta.url), "utf8");
+
   assert.match(route, /import \{ createLlmsResponse \} from ["']@\/lib\/llms-content\.mjs["']/);
-  assert.match(route, /getBackendApiUrl\("site-content\/faq"\)/);
+  assert.match(route, /import \{ loadPublicFaqs \} from ["']@\/lib\/public-faqs["']/);
+  assert.match(route, /const faqs = await loadPublicFaqs\(revalidate\)/);
   assert.match(route, /faqs,/);
   assert.match(route, /export async function GET\(\): Promise<Response>/);
-  assert.match(route, /return faqItems/);
+  assert.match(publicFaqs, /import \{ faqItems, type FAQItem \} from ["']@\/config\/faq["']/);
+  assert.match(publicFaqs, /getBackendApiUrl\("site-content\/faq"\)/);
+  assert.match(publicFaqs, /return faqItems/);
   assert.match(faqPage, /"@type": "FAQPage"/);
   assert.match(faqPage, /"@type": "Question"/);
   assert.match(faqPage, /"@type": "Answer"/);
