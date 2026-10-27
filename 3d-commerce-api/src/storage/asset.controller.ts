@@ -329,7 +329,7 @@ export class AssetController {
     try {
       const pathname = decodeURIComponent(
         new URL(raw, "https://voxel3d.org").pathname,
-      ).replace(/^\\/+/, "");
+      ).replace(/^\/+/, "");
       for (const prefix of ["api/assets/", "assets/", "storage/", ""]) {
         if (!pathname.startsWith(prefix)) continue;
         const key = pathname.slice(prefix.length);
