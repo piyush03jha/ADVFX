@@ -1,6 +1,9 @@
 import {
+  BadGatewayException,
   BadRequestException,
   Controller,
+  HttpException,
+  Logger,
   Delete,
   Get,
   NotFoundException,
@@ -39,6 +42,8 @@ interface MultipartPart {
 @UseGuards(AuthGuard, AdminGuard)
 @Controller("products/:productId/files")
 export class ProductFilesController {
+  private readonly logger = new Logger(ProductFilesController.name);
+
   constructor(
     private readonly productFilesService: ProductFilesService,
     private readonly storage: StorageService,
@@ -164,10 +169,16 @@ export class ProductFilesController {
         disposition:
           `attachment; filename="${encodeURIComponent(safeName)}"`,
       });
-    } catch {
-      throw new NotFoundException(
-        "Stored file could not be found",
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      this.logger.error(
+        `Storage read failed for product file ${file.id}`,
+        error instanceof Error ? error.stack : String(error),
       );
+      throw new BadGatewayException("Storage is unavailable");
     }
   }
 
