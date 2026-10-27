@@ -9,6 +9,8 @@ import { getBackendApiUrl } from "@/lib/backend-api";
 import { faqItems, type FAQItem } from "@/config/faq";
 import type { CatalogProduct } from "@/lib/catalog-api";
 import { JsonLd } from "@/components/seo/JsonLd";
+import { HomeAbout } from "@/components/home/HomeAbout";
+import { CUSTOM_ORDER_STEPS, READY_MADE_ORDER_STEPS } from "@/lib/aeo-content.mjs";
 import {
   HOME_DESCRIPTION,
   HOME_TITLE,
@@ -131,6 +133,15 @@ export default async function Home() {
   ]);
 
   const featured = products.slice(0, 8);
+  // Real catalog facts for the answer section: count and category names come
+  // from the same API data that renders the product sections above.
+  const categoryNames = Array.from(
+    new Set(
+      products
+        .map((product) => product.category?.name?.trim())
+        .filter((name): name is string => Boolean(name)),
+    ),
+  );
   const latestChange = products
     .map((product) => Date.parse(product.updatedAt ?? product.createdAt ?? ""))
     .filter((time) => !Number.isNaN(time))
@@ -183,6 +194,35 @@ export default async function Home() {
                   },
                 })),
               },
+              // HowTo steps mirror the visible lists in the "About the shop" section.
+              {
+                "@type": "HowTo",
+                "@id": absoluteUrl("/#how-to-order"),
+                name: "How to order a ready-made 3D printed model from Voxel3D",
+                description:
+                  "Browse the shop, check the product page, pay online and track your order.",
+                step: READY_MADE_ORDER_STEPS.map((step, index) => ({
+                  "@type": "HowToStep",
+                  position: index + 1,
+                  name: step.name,
+                  text: step.text,
+                  url: absoluteUrl("/#how-to-order"),
+                })),
+              },
+              {
+                "@type": "HowTo",
+                "@id": absoluteUrl("/#custom-order-steps"),
+                name: "How to order a custom 3D printed model from Voxel3D",
+                description:
+                  "Share reference photos and requirements, let the team review them, and receive the finished physical model.",
+                step: CUSTOM_ORDER_STEPS.map((step, index) => ({
+                  "@type": "HowToStep",
+                  position: index + 1,
+                  name: step.name,
+                  text: step.text,
+                  url: absoluteUrl("/#custom-order-steps"),
+                })),
+              },
             ],
           }}
         />
@@ -194,6 +234,8 @@ export default async function Home() {
         <ShopByCategory />
 
         <NewArrivals initialProducts={products} />
+
+        <HomeAbout productCount={products.length} categoryNames={categoryNames} />
 
         <CustomBuild />
 

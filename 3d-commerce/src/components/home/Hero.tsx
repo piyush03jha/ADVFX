@@ -10,6 +10,7 @@ import {
 
 import { Container } from "@/components/ui/Container";
 import { HOME_H1 } from "@/lib/site";
+import { HOME_OPENING_ANSWER } from "@/lib/aeo-content.mjs";
 import { assetUrl } from "@/lib/catalog-api";
 import { loadModelBuffer } from "@/lib/model-loader";
 import { HERO_MODEL_ROTATION_MS } from "@/config/hero-motion";
@@ -303,8 +304,8 @@ export function Hero() {
             <h1 className="mt-4 text-3xl font-semibold leading-tight tracking-[-0.045em] text-foreground sm:text-5xl">
               {HOME_H1}
             </h1>
-            <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-muted sm:text-base sm:leading-7 lg:mx-0">
-              Buy real 3D printed models, anime figures, miniatures and collectibles in India, or ask for a custom piece made from your photos and size.
+            <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-muted sm:text-base sm:leading-7 lg:mx-0">
+              {HOME_OPENING_ANSWER}
             </p>
             <p role="status" aria-live="polite" className="mt-5 text-[10px] uppercase tracking-[0.18em] text-muted">
               Loading featured models…

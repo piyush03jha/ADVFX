@@ -1,3 +1,11 @@
+import {
+  CUSTOM_ORDER_LIMITS,
+  CUSTOM_ORDER_STEPS,
+  EXTERNAL_REFERENCES,
+  ORDER_OPTIONS,
+  READY_MADE_ORDER_STEPS,
+} from "./aeo-content.mjs";
+
 const DEFAULT_SITE_URL = "https://voxel3d.org";
 
 function normalizeText(value) {
@@ -37,6 +45,7 @@ export function buildLlmsTxt({ siteUrl = DEFAULT_SITE_URL, description, tagline,
     `- [About Voxel3D](${baseUrl}/about) — Information about the brand.`,
     `- [Contact](${baseUrl}/contact) — Contact the team.`,
     `- [Sitemap](${baseUrl}/sitemap.xml) — Public pages, categories, and published products.`,
+    `- [Full reference](${baseUrl}/llms-full.txt) — Step-by-step ordering guides, order types, policies in brief, and the same questions and answers in one file.`,
     "",
     "## Product and ordering information",
     "",
@@ -71,6 +80,115 @@ export function buildLlmsTxt({ siteUrl = DEFAULT_SITE_URL, description, tagline,
   );
 
   return lines.join("\n");
+}
+
+function numbered(steps) {
+  return steps.map((step, index) => `${index + 1}. ${step.name}: ${step.text}`);
+}
+
+/**
+ * Extended reference for answer engines (/llms-full.txt). It starts with the
+ * llms.txt content and adds step-by-step guides, order types and policy summaries.
+ * Policy wording mirrors the published policy pages; those pages stay authoritative.
+ */
+export function buildLlmsFullTxt(options = {}) {
+  const baseUrl = new URL(options.siteUrl ?? DEFAULT_SITE_URL).origin;
+  const lines = [
+    buildLlmsTxt(options).trimEnd(),
+    "",
+    "## How to order a ready-made model, step by step",
+    "",
+    ...numbered(READY_MADE_ORDER_STEPS),
+    "",
+    "## How to order a custom model, step by step",
+    "",
+    ...numbered(CUSTOM_ORDER_STEPS),
+    "",
+    `- Custom request limits shown in the upload form: ${CUSTOM_ORDER_LIMITS.formats} images, at most ${CUSTOM_ORDER_LIMITS.maxImages} images, ${CUSTOM_ORDER_LIMITS.totalMegabytes} MB in total.`,
+    "- The price and timeline of a custom model are confirmed with the customer for that specific request.",
+    "",
+    "## Order types compared",
+    "",
+    ...ORDER_OPTIONS.map(
+      (row) =>
+        `- ${row.option}: best for ${row.bestFor.toLowerCase()}. You provide: ${row.youProvide.toLowerCase()}. Next: ${row.nextStep.toLowerCase()}.`,
+    ),
+    "",
+    "## Policies in brief",
+    "",
+    `- Shipping ([details](${baseUrl}/shipping)): orders ship to supported delivery locations; shipping charges are calculated from the applicable shipping rules and shown before payment. Estimated delivery windows are not guarantees.`,
+    `- Returns ([details](${baseUrl}/shipping)): eligibility depends on the product and order status; custom-made products may have different return conditions because they are produced to customer-specific requirements.`,
+    `- Refunds and cancellations ([details](${baseUrl}/refund)): a failed or abandoned payment does not by itself confirm an order; cancellation eligibility depends on production and fulfillment status; refund timing depends on the payment provider and the customer's bank.`,
+    "",
+    "## Technology and references",
+    "",
+    ...EXTERNAL_REFERENCES.map((reference) => {
+      const purposes = {
+        "3D printing": "background on how physical 3D printed models are made",
+        glTF: "the open format used by the interactive 3D previews on selected product pages",
+        Razorpay: "the provider that processes online payments",
+      };
+      return `- [${reference.label}](${reference.url}) — ${purposes[reference.label] ?? "external reference"}.`;
+    }),
+    "",
+  ];
+
+  return lines.join("\n");
+}
+
+// Paths that robots.txt keeps private. tests/aeo.test.mjs checks this list stays
+// identical to src/app/robots.ts.
+export const AI_TXT_PRIVATE_PATHS = [
+  "/admin",
+  "/api",
+  "/account",
+  "/cart",
+  "/checkout",
+  "/payment",
+  "/order",
+  "/wishlist",
+  "/login",
+  "/register",
+  "/forgot-password",
+  "/reset-password",
+  "/verify-email",
+];
+
+/**
+ * /.well-known/ai.txt: a plain-text statement of which paths AI systems may read.
+ * It mirrors robots.txt and makes no additional rights claims.
+ */
+export function buildAiTxt({ siteUrl = DEFAULT_SITE_URL } = {}) {
+  const baseUrl = new URL(siteUrl).origin;
+  return [
+    `# ai.txt for ${baseUrl}`,
+    "# Mirrors /robots.txt: public pages may be read and cited by AI search and answer engines.",
+    "# Private account, checkout and admin paths are excluded.",
+    `# Machine-readable summaries: ${baseUrl}/llms.txt and ${baseUrl}/llms-full.txt`,
+    "",
+    "User-Agent: *",
+    "Allow: /",
+    "Allow: /api/assets/",
+    ...AI_TXT_PRIVATE_PATHS.map((path) => `Disallow: ${path}`),
+    "",
+    `Sitemap: ${baseUrl}/sitemap.xml`,
+    `Contact: ${baseUrl}/contact`,
+    "",
+  ].join("\n");
+}
+
+const TEXT_HEADERS = {
+  "Content-Type": "text/plain; charset=utf-8",
+  "Cache-Control": "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400",
+  "X-Content-Type-Options": "nosniff",
+};
+
+export function createLlmsFullResponse(options = {}) {
+  return new Response(buildLlmsFullTxt(options), { status: 200, headers: TEXT_HEADERS });
+}
+
+export function createAiTxtResponse(options = {}) {
+  return new Response(buildAiTxt(options), { status: 200, headers: TEXT_HEADERS });
 }
 
 /**
