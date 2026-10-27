@@ -73,8 +73,16 @@ export class AssetController {
       return new StreamableFile(stream, {
         type: this.storage.getContentTypeForStorageKey(storageKey),
       });
-    } catch {
-      throw new NotFoundException("Asset not found");
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      this.logger.error(
+        `Storage read failed for ${storageKey}`,
+        error instanceof Error ? error.stack : String(error),
+      );
+      throw new BadGatewayException("Storage is unavailable");
     }
   }
 
