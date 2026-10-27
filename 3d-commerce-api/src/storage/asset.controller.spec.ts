@@ -56,7 +56,7 @@ describe("AssetController storage error handling", () => {
       imageUrl: "/api/assets/categories/category-1/image.webp",
     });
     storage.createReadStream.mockRejectedValue(
-      new HttpException("Storage unavailable", 503),
+      new BadGatewayException("Storage unavailable"),
     );
 
     await expect(
