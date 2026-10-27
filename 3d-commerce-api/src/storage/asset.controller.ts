@@ -74,7 +74,7 @@ export class AssetController {
         type: this.storage.getContentTypeForStorageKey(storageKey),
       });
     } catch (error) {
-      if (error instanceof HttpException) {
+      if (error instanceof HttpException && error.getStatus() < 500) {
         throw error;
       }
 
@@ -157,7 +157,7 @@ export class AssetController {
         type: this.storage.getContentTypeForStorageKey(storageKey),
       });
     } catch (error) {
-      if (error instanceof HttpException) {
+      if (error instanceof HttpException && error.getStatus() < 500) {
         throw error;
       }
 
@@ -296,7 +296,7 @@ export class AssetController {
 
       return new StreamableFile(stream, { type: contentType });
     } catch (error) {
-      if (error instanceof NotFoundException || error instanceof HttpException) throw error;
+      if (error instanceof HttpException && error.getStatus() < 500) throw error;
       this.logger.error(
         `Storage read failed for ${storageKey}`,
         error instanceof Error ? error.stack : String(error),
