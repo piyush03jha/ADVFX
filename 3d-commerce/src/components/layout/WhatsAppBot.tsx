@@ -93,18 +93,35 @@ export function WhatsAppBot() {
           </div>
 
           <div className="max-h-[min(60vh,24rem)] overflow-y-auto p-2">
-            {PREDEFINED_QUESTIONS.map((question) => (
-              <a
-                key={question.label}
-                href={createWhatsAppUrl(question.message)}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => setIsOpen(false)}
-                className="block rounded-xl px-3 py-3 text-sm transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
-              >
-                {question.label}
-              </a>
-            ))}
+            {PREDEFINED_QUESTIONS.map((question) => {
+              const href = createWhatsAppUrl(question.message);
+              return href ? (
+                <a
+                  key={question.label}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setIsOpen(false)}
+                  className="block rounded-xl px-3 py-3 text-sm transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
+                >
+                  {question.label}
+                </a>
+              ) : (
+                <span
+                  key={question.label}
+                  aria-disabled="true"
+                  title="WhatsApp support is not configured"
+                  className="block cursor-not-allowed rounded-xl px-3 py-3 text-sm text-muted-foreground"
+                >
+                  {question.label}
+                </span>
+              );
+            })}
+            {!WHATSAPP_NUMBER && !WHATSAPP_URL && (
+              <p role="status" className="px-3 py-2 text-xs text-muted-foreground">
+                WhatsApp support is temporarily unavailable. Please use the contact page.
+              </p>
+            )}
           </div>
         </section>
       )}
