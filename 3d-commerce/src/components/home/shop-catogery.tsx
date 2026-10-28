@@ -87,7 +87,7 @@ export function ShopByCategory() {
       {categories.length > 0 ? (
         <div
           aria-label="Browse product categories"
-          className="!flex !w-full !flex-nowrap !overflow-x-auto overscroll-x-contain snap-x snap-mandatory -mx-3 gap-3 px-3 pb-4 [scrollbar-width:thin] [scrollbar-color:var(--primary)_transparent] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:-mx-5 sm:px-5 lg:-mx-6 lg:gap-4 lg:px-6"
+          className="category-scrollbar flex w-full flex-nowrap overflow-x-auto overscroll-x-contain snap-x snap-mandatory -mx-3 gap-3 px-3 pb-3 sm:-mx-5 sm:px-5 lg:-mx-6 lg:gap-4 lg:px-6"
           tabIndex={0}
           role="region"
         >
