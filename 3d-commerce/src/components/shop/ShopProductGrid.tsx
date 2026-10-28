@@ -44,6 +44,7 @@ export function ShopProductGrid({
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [searchText, setSearchText] = useState(state.q);
   const navRef = useRef<HTMLDivElement>(null);
+  const categoryScrollYRef = useRef<number | null>(null);
 
   const navigate = (patch: Partial<ShopQueryState>) => {
     const next: ShopQueryState = { ...state, page: 1, ...patch };
