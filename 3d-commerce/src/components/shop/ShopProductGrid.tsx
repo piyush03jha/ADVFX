@@ -60,6 +60,13 @@ export function ShopProductGrid({
   };
 
   useEffect(() => {
+    if (categoryScrollYRef.current === null) return;
+    const scrollY = categoryScrollYRef.current;
+    categoryScrollYRef.current = null;
+    window.requestAnimationFrame(() => window.scrollTo({ top: scrollY, behavior: "instant" }));
+  }, [state.categories]);
+
+  useEffect(() => {
     if (searchText.trim() === state.q.trim()) return;
     const timer = window.setTimeout(() => navigate({ q: searchText }), 350);
     return () => window.clearTimeout(timer);
