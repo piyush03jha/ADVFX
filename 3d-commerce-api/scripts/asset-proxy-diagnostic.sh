@@ -6,7 +6,7 @@ set -Eeuo pipefail
 #   API_BASE_URL=https://api.voxel3d.org \
 #   RAILWAY_ORIGIN_HOST=e1p6d3up.up.railway.app \
 #   ASSET_PATH='/products/<product-id>/<published-file>.webp' \
-#   ./scripts/asset-proxy-diagnostic.sh
+#   bash scripts/asset-proxy-diagnostic.sh
 #
 # Optional:
 #   MISSING_PATH='/products/not-a-real-product/not-found.webp'
