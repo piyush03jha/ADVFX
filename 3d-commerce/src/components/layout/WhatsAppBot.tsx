@@ -7,7 +7,7 @@ import { IconBrandWhatsapp, IconMessageCircle, IconX } from "@tabler/icons-react
 // Accept international numbers entered with a leading "+" or spaces, but pass
 // digits only to wa.me. Prefer the number variable; support the documented URL
 // variable as a fallback for deployments that configure a full WhatsApp link.
-const WHATSAPP_NUMBER = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "").replace(/\\D/g, "");
+const WHATSAPP_NUMBER = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "").replace(/\D/g, "");
 const WHATSAPP_URL = process.env.NEXT_PUBLIC_WHATSAPP_URL?.trim() ?? "";
 
 function createWhatsAppUrl(message: string) {
