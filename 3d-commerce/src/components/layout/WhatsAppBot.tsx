@@ -61,10 +61,6 @@ const PREDEFINED_QUESTIONS = [
   },
 ] as const;
 
-function createWhatsAppUrl(message: string) {
-  return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
-}
-
 export function WhatsAppBot() {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
