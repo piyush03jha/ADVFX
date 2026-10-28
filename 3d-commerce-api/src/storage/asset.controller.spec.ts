@@ -112,6 +112,53 @@ describe("AssetController storage error handling", () => {
     expect(storage.openReadStream).toHaveBeenCalledWith("products/product-1/model.glb");
   });
 
+  it("serves a published asset when its stored URL uses the production /products path", async () => {
+    prisma.product.findFirst.mockResolvedValue({
+      id: "product-1",
+      media: [{ url: "https://api.voxel3d.org/products/product-1/model.webp" }],
+    });
+    storage.openReadStream.mockResolvedValue({
+      stream: Readable.from(Buffer.from("image")),
+      size: 5,
+    });
+    const reply = {
+      request: { headers: {} },
+      header: jest.fn().mockReturnThis(),
+      code: jest.fn().mockReturnThis(),
+      send: jest.fn(),
+    };
+
+    const result = await controller.getProductAsset(
+      { splat: "product-1/model.webp" },
+      reply as never,
+    );
+
+    expect(result).toBeInstanceOf(StreamableFile);
+    expect(storage.openReadStream).toHaveBeenCalledWith("products/product-1/model.webp");
+  });
+
+  it("does not read a product asset when the published media URL points to a different file", async () => {
+    prisma.product.findFirst.mockResolvedValue({
+      id: "product-1",
+      media: [{ url: "https://api.voxel3d.org/products/product-1/other.webp" }],
+    });
+    const reply = {
+      request: { headers: {} },
+      header: jest.fn().mockReturnThis(),
+      code: jest.fn().mockReturnThis(),
+      send: jest.fn(),
+    };
+
+    await expect(
+      controller.getProductAsset(
+        { splat: "product-1/requested.webp" },
+        reply as never,
+      ),
+    ).rejects.toBeInstanceOf(NotFoundException);
+
+    expect(storage.openReadStream).not.toHaveBeenCalled();
+  });
+
   it("treats malformed percent-encoding as an invalid asset path", async () => {
     await expect(
       controller.getProductAsset(
