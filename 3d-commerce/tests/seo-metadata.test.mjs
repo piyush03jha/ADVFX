@@ -8,6 +8,9 @@ const layout = await readFile(new URL("../src/app/layout.tsx", import.meta.url),
 const shop = await readFile(new URL("../src/app/shop/page.tsx", import.meta.url), "utf8");
 const custom = await readFile(new URL("../src/app/custom/page.tsx", import.meta.url), "utf8");
 const customLayout = await readFile(new URL("../src/app/custom/layout.tsx", import.meta.url), "utf8");
+const about = await readFile(new URL("../src/app/about/page.tsx", import.meta.url), "utf8");
+const categories = await readFile(new URL("../src/components/home/shop-catogery.tsx", import.meta.url), "utf8");
+const navbar = await readFile(new URL("../src/components/layout/SiteNavbar.tsx", import.meta.url), "utf8");
 
 test("homepage targets physical-product purchase intent without promising digital downloads", () => {
   assert.match(site, /Buy 3D Printed Models & Collectibles in India \| Voxel3D/);
@@ -47,4 +50,28 @@ test("custom-order HowTo structured data matches the visible three-step workflow
   assert.match(custom, /Confirm the build and arrange delivery/);
   assert.match(custom, /id="custom-request"/);
   assert.match(custom, /id="how-we-work"/);
+});
+
+
+test("homepage keeps the long-form About section on the About page", () => {
+  assert.doesNotMatch(homepage, /HomeAbout/);
+  assert.match(about, /<HomeAbout productCount=\{0\} categoryNames=\{\[\]\} \/>/);
+  assert.match(about, /canonical: "\/about"/);
+  assert.match(homepage, /absoluteUrl\("\/about#how-to-order"\)/);
+  assert.match(homepage, /absoluteUrl\("\/about#custom-order-steps"\)/);
+});
+
+test("landing-page category rail is horizontally scrollable and keyboard accessible", () => {
+  assert.match(categories, /aria-label="Browse product categories"/);
+  assert.match(categories, /overflow-x-auto/);
+  assert.match(categories, /scrollbar-width:thin/);
+  assert.match(categories, /tabIndex=\{0\}/);
+  assert.match(categories, /snap-mandatory/);
+});
+
+test("Category navigation uses an in-page anchor when already on the homepage", () => {
+  assert.match(navbar, /usePathname/);
+  assert.match(navbar, /pathname === "\/" \? "#categories" : "\/#categories"/);
+  assert.match(navbar, /<NavItems items=\{visibleNavItems\} \/>/);
+  assert.match(navbar, /visibleNavItems\.map\(\(item\) => \(/);
 });
