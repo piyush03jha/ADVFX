@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useMotionValueEvent, useScroll } from "motion/react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   IconHeart,
   IconSearch,
@@ -37,6 +37,16 @@ const navItems = [
 ];
 
 export function Navbar() {
+  const pathname = usePathname();
+  const visibleNavItems = useMemo(
+    () =>
+      navItems.map((item) =>
+        item.name === "Category"
+          ? { ...item, link: pathname === "/" ? "#categories" : "/#categories" }
+          : item,
+      ),
+    [pathname],
+  );
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isDesktopSearchOpen, setIsDesktopSearchOpen] = useState(false);
@@ -183,7 +193,7 @@ export function Navbar() {
       <NavBody>
         <NavbarLogo />
 
-        <NavItems items={navItems} />
+        <NavItems items={visibleNavItems} />
 
         <div className="pointer-events-auto ml-auto flex min-w-0 items-center gap-1 xl:gap-2">
           <div className="relative hidden min-[1529px]:block">
@@ -338,7 +348,7 @@ export function Navbar() {
           </div>
 
           <div className="mt-3 flex flex-col gap-2">
-            {navItems.map((item) => (
+            {visibleNavItems.map((item) => (
               <Link
                 key={item.name}
                 href={item.link}
