@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Navbar } from "@/components/layout/SiteNavbar";
 import { JsonLd } from "@/components/seo/JsonLd";
+import { HomeAbout } from "@/components/home/HomeAbout";
 import { absoluteUrl } from "@/lib/site";
 
 export const metadata: Metadata = {
