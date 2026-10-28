@@ -64,6 +64,8 @@ export default function AboutPage() {
             <Link href="/faq" className="inline-flex h-11 items-center rounded-full border border-border px-5 text-sm font-semibold transition hover:border-primary">Read FAQs</Link>
           </div>
         </div>
+
+        <HomeAbout productCount={0} categoryNames={[]} />
       </main>
     </div>
   );
