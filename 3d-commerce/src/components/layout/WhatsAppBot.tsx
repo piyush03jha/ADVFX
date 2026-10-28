@@ -4,7 +4,31 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { IconBrandWhatsapp, IconMessageCircle, IconX } from "@tabler/icons-react";
 
-const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "";
+// Accept international numbers entered with a leading "+" or spaces, but pass
+// digits only to wa.me. Prefer the number variable; support the documented URL
+// variable as a fallback for deployments that configure a full WhatsApp link.
+const WHATSAPP_NUMBER = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "").replace(/\\D/g, "");
+const WHATSAPP_URL = process.env.NEXT_PUBLIC_WHATSAPP_URL?.trim() ?? "";
+
+function createWhatsAppUrl(message: string) {
+  if (WHATSAPP_NUMBER) {
+    return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+  }
+
+  if (WHATSAPP_URL) {
+    try {
+      const url = new URL(WHATSAPP_URL);
+      if (url.protocol === "https:" && (url.hostname === "wa.me" || url.hostname.endsWith(".whatsapp.com") || url.hostname === "api.whatsapp.com")) {
+        url.searchParams.set("text", message);
+        return url.toString();
+      }
+    } catch {
+      // Treat invalid configuration as unavailable instead of opening a broken URL.
+    }
+  }
+
+  return null;
+}
 
 const PREDEFINED_QUESTIONS = [
   {
