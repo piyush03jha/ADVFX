@@ -63,7 +63,7 @@ export function ShopProductGrid({
     if (categoryScrollYRef.current === null) return;
     const scrollY = categoryScrollYRef.current;
     categoryScrollYRef.current = null;
-    window.requestAnimationFrame(() => window.scrollTo({ top: scrollY, behavior: "instant" }));
+    window.requestAnimationFrame(() => window.scrollTo({ top: scrollY, behavior: "auto" }));
   }, [state.categories]);
 
   useEffect(() => {
@@ -103,6 +103,9 @@ export function ShopProductGrid({
 
   const handleCategoryChange = (categorySlug: string) => {
     if (lockedCategory) return;
+
+    // Preserve the current viewport while the selected category and products update.
+    categoryScrollYRef.current = window.scrollY;
 
     // Category navigation is single-select: selecting a new category
     // replaces the previous one; selecting the active category clears it.
