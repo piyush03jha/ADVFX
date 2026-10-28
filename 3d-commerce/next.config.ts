@@ -48,6 +48,8 @@ const nextConfig: NextConfig = {
     ];
   },
   images: {
+    // Components request both the default 75 and product-image quality 80.
+    qualities: [75, 80],
     // Product/category images can be local files or private product assets
     // exposed through the same-origin /api/assets proxy.
     localPatterns: [
