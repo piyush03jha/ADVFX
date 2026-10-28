@@ -645,6 +645,34 @@ summary,
   display: none;
 }
 
+/* Keep the homepage category carousel scrollbar visible and draggable. */
+.category-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--primary) var(--surface-elevated);
+  -webkit-overflow-scrolling: touch;
+}
+
+.category-scrollbar::-webkit-scrollbar {
+  display: block;
+  width: auto;
+  height: 7px;
+}
+
+.category-scrollbar::-webkit-scrollbar-track {
+  background: var(--surface-elevated);
+  border-radius: 999px;
+}
+
+.category-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border: 1px solid var(--surface-elevated);
+  border-radius: 999px;
+}
+
+.category-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-hover);
+}
+
 .snap-rail > * {
   flex-shrink: 0;
   scroll-snap-align: start;
