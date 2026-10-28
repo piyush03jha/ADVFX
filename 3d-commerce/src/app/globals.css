@@ -654,8 +654,13 @@ summary,
 
 .category-scrollbar::-webkit-scrollbar {
   display: block;
-  width: auto;
+  width: 0;
   height: 7px;
+}
+
+.category-scrollbar::-webkit-scrollbar:vertical {
+  display: none;
+  width: 0;
 }
 
 .category-scrollbar::-webkit-scrollbar-track {
