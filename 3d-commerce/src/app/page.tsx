@@ -9,7 +9,6 @@ import { getBackendApiUrl } from "@/lib/backend-api";
 import { faqItems, type FAQItem } from "@/config/faq";
 import type { CatalogProduct } from "@/lib/catalog-api";
 import { JsonLd } from "@/components/seo/JsonLd";
-import { HomeAbout } from "@/components/home/HomeAbout";
 import { CUSTOM_ORDER_STEPS, READY_MADE_ORDER_STEPS } from "@/lib/aeo-content.mjs";
 import {
   HOME_DESCRIPTION,
@@ -133,15 +132,6 @@ export default async function Home() {
   ]);
 
   const featured = products.slice(0, 8);
-  // Real catalog facts for the answer section: count and category names come
-  // from the same API data that renders the product sections above.
-  const categoryNames = Array.from(
-    new Set(
-      products
-        .map((product) => product.category?.name?.trim())
-        .filter((name): name is string => Boolean(name)),
-    ),
-  );
   const latestChange = products
     .map((product) => Date.parse(product.updatedAt ?? product.createdAt ?? ""))
     .filter((time) => !Number.isNaN(time))
@@ -206,7 +196,7 @@ export default async function Home() {
                   position: index + 1,
                   name: step.name,
                   text: step.text,
-                  url: absoluteUrl("/#how-to-order"),
+                  url: absoluteUrl("/about#how-to-order"),
                 })),
               },
               {
@@ -220,7 +210,7 @@ export default async function Home() {
                   position: index + 1,
                   name: step.name,
                   text: step.text,
-                  url: absoluteUrl("/#custom-order-steps"),
+                  url: absoluteUrl("/about#custom-order-steps"),
                 })),
               },
             ],
@@ -234,8 +224,6 @@ export default async function Home() {
         <ShopByCategory />
 
         <NewArrivals initialProducts={products} />
-
-        <HomeAbout productCount={products.length} categoryNames={categoryNames} />
 
         <CustomBuild />
 
