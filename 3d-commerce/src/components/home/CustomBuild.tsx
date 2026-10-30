@@ -6,6 +6,7 @@ import { IconArrowUpRight, IconCamera, IconBox, IconSparkles } from "@tabler/ico
 
 import { Container } from "@/components/ui/Container";
 import { Button } from "@/components/ui/Button";
+import { CUSTOM_ORDER_LIMITS } from "@/lib/aeo-content.mjs";
 
 const steps = [
   { number: "01", icon: IconCamera, title: "Share", text: "Send a photo, sketch, or simply tell us what you have in mind." },
@@ -37,7 +38,8 @@ export function CustomBuild() {
                 <span className="block text-muted">made tangible.</span>
               </h2>
               <p className="mt-4 max-w-lg text-sm leading-6 text-muted sm:mt-6 sm:text-lg sm:leading-8">
-                Have something personal in mind? Send us your reference and requirements. We handle the design, production, and physical delivery.
+                Have something personal in mind? Send us your reference and requirements. We handle the design, production, and physical delivery.{" "}
+                Upload up to {CUSTOM_ORDER_LIMITS.maxImages} {CUSTOM_ORDER_LIMITS.formats} photos ({CUSTOM_ORDER_LIMITS.totalMegabytes} MB in total); our team reviews every request and confirms the price and timeline before production starts.
               </p>
               <div className="mt-6 sm:mt-8">
                 <Button href="/custom" size="lg" className="group">

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Container } from "@/components/ui/Container";
 import {
   CUSTOM_ORDER_STEPS,
+  describeCatalog,
   ORDER_OPTIONS,
   PRODUCT_TYPES,
   READY_MADE_ORDER_STEPS,
@@ -22,22 +23,6 @@ interface HomeAboutProps {
 const linkClass = "text-primary underline-offset-4 hover:underline";
 const paragraphClass = "mt-4 text-sm leading-7 text-muted sm:text-base sm:leading-8";
 const subheadingClass = "mt-10 font-serif text-xl tracking-[-0.03em] text-foreground sm:text-2xl";
-
-function describeCatalog(productCount: number, categoryNames: string[]) {
-  if (productCount <= 0) return null;
-
-  const products = `${productCount} physical ${productCount === 1 ? "product" : "products"}`;
-  if (categoryNames.length === 0) return `The shop currently lists ${products}.`;
-
-  const shown = categoryNames.slice(0, 4);
-  const categories = `${categoryNames.length} ${categoryNames.length === 1 ? "category" : "categories"}`;
-  const names =
-    shown.length === 1
-      ? shown[0]
-      : `${shown.slice(0, -1).join(", ")} and ${shown[shown.length - 1]}`;
-
-  return `The shop currently lists ${products} in ${categories}, including ${names}.`;
-}
 
 export function HomeAbout({ productCount, categoryNames }: HomeAboutProps) {
   const catalogFact = describeCatalog(productCount, categoryNames);

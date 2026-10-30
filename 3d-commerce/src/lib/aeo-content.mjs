@@ -15,6 +15,14 @@ export const CUSTOM_ORDER_LIMITS = {
   formats: "JPG or PNG",
 };
 
+// Publicly stated business details. They mirror the footer and the contact page
+// (components/layout/Footer.tsx); update both together.
+export const BUSINESS_FACTS = {
+  legalName: "Voxel3D Studios Pvt. Ltd.",
+  city: "New Delhi, India",
+  supportHours: "Monday to Saturday, 10am to 7pm IST",
+};
+
 export const PRODUCT_TYPES = [
   "Anime figures",
   "Miniatures",
@@ -90,3 +98,70 @@ export const EXTERNAL_REFERENCES = [
 // First paragraph rendered by the homepage hero. It is the opening answer that
 // answer engines read first, so it states what the shop is in one place.
 export const HOME_OPENING_ANSWER = `Voxel3D is an online shop in India for physical 3D printed models, anime figures, miniatures and collectibles. Every item is a real printed piece delivered to your home, not a digital file. Browse ready-made models with interactive 3D previews, or send up to ${CUSTOM_ORDER_LIMITS.maxImages} ${CUSTOM_ORDER_LIMITS.formats} photos and your preferred size to request a custom figure that our team reviews before production.`;
+
+// Id of the FAQ answer that also renders the order-type comparison table.
+export const ORDER_TYPES_FAQ_ID = "order-types";
+
+/**
+ * Factual questions that are always part of the homepage FAQ. The FAQ list itself
+ * is editable in the admin (site-content/faq), so these are merged in by id rather
+ * than relying on the bundled fallback list: the visible FAQ, the FAQPage schema
+ * and /llms-full.txt then all show the same answers. Every number and name comes
+ * from CUSTOM_ORDER_LIMITS or BUSINESS_FACTS above, which mirror the storefront.
+ */
+export const FACT_FAQS = [
+  {
+    id: "what-is-voxel3d",
+    question: "What is Voxel3D?",
+    answer: `Voxel3D is an online shop run by ${BUSINESS_FACTS.legalName} in ${BUSINESS_FACTS.city}. It sells physical 3D printed models, anime figures, miniatures and collectibles that are delivered across India, and it makes custom figures from customer photos. It does not sell digital 3D files.`,
+  },
+  {
+    id: "custom-photo-limits",
+    question: "How many photos can I upload for a custom model?",
+    answer: `You can upload up to ${CUSTOM_ORDER_LIMITS.maxImages} ${CUSTOM_ORDER_LIMITS.formats} photos, ${CUSTOM_ORDER_LIMITS.totalMegabytes} MB in total, together with the size you want and any important details. The team reviews every request and confirms the price and timeline with you before production starts.`,
+  },
+  {
+    id: ORDER_TYPES_FAQ_ID,
+    question: "What is the difference between ready-made, custom and bulk orders?",
+    answer:
+      "A ready-made order is a model that is already in the shop: you pay online and it ships to you. A custom order is a model made from your own photos after the Voxel3D team reviews the request. A bulk or business order is for a team, event or shop that needs many pieces, and the team discusses feasibility, price and timing with you.",
+  },
+  {
+    id: "support-hours",
+    question: "When can I contact the Voxel3D team?",
+    answer: `The Voxel3D team is available ${BUSINESS_FACTS.supportHours}. You can reach it through the contact page, by email or on WhatsApp for product questions, order status, custom requests and bulk orders.`,
+  },
+];
+
+/** Appends FACT_FAQS to a FAQ list, skipping any whose id or question is already there. */
+export function mergeFactFaqs(items) {
+  const list = Array.isArray(items) ? items : [];
+  const seenIds = new Set(list.map((item) => item.id));
+  const seenQuestions = new Set(list.map((item) => String(item.question).trim().toLowerCase()));
+  return [
+    ...list,
+    ...FACT_FAQS.filter(
+      (fact) => !seenIds.has(fact.id) && !seenQuestions.has(fact.question.toLowerCase()),
+    ),
+  ];
+}
+
+/**
+ * One sentence of live catalog facts (counts and category names come from the same
+ * API data that renders the product sections), or null when nothing is listed.
+ */
+export function describeCatalog(productCount, categoryNames = []) {
+  if (!Number.isFinite(productCount) || productCount <= 0) return null;
+
+  const products = `${productCount} physical ${productCount === 1 ? "product" : "products"}`;
+  if (categoryNames.length === 0) return `The shop currently lists ${products}.`;
+
+  const shown = categoryNames.slice(0, 4);
+  const categories = `${categoryNames.length} ${categoryNames.length === 1 ? "category" : "categories"}`;
+  const names =
+    shown.length === 1
+      ? shown[0]
+      : `${shown.slice(0, -1).join(", ")} and ${shown[shown.length - 1]}`;
+
+  return `The shop currently lists ${products} in ${categories}, including ${names}.`;
+}

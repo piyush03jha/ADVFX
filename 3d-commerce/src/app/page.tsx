@@ -9,7 +9,12 @@ import { getBackendApiUrl } from "@/lib/backend-api";
 import { faqItems, type FAQItem } from "@/config/faq";
 import type { CatalogProduct } from "@/lib/catalog-api";
 import { JsonLd } from "@/components/seo/JsonLd";
-import { CUSTOM_ORDER_STEPS, READY_MADE_ORDER_STEPS } from "@/lib/aeo-content.mjs";
+import {
+  CUSTOM_ORDER_STEPS,
+  READY_MADE_ORDER_STEPS,
+  describeCatalog,
+  mergeFactFaqs,
+} from "@/lib/aeo-content.mjs";
 import {
   HOME_DESCRIPTION,
   HOME_TITLE,
@@ -115,14 +120,14 @@ async function loadFaq(): Promise<FAQItem[]> {
             typeof (item as FAQItem).answer === "string",
         )
       ) {
-        return payload.value as FAQItem[];
+        return mergeFactFaqs(payload.value as FAQItem[]) as FAQItem[];
       }
     }
   } catch {
     // Fall back to bundled, server-rendered FAQ content.
   }
 
-  return faqItems;
+  return mergeFactFaqs(faqItems) as FAQItem[];
 }
 
 export default async function Home() {
@@ -132,6 +137,18 @@ export default async function Home() {
   ]);
 
   const featured = products.slice(0, 8);
+  // Live catalog facts: the count and category names come from the same API data
+  // that renders the product sections below.
+  const catalogFact = describeCatalog(
+    products.length,
+    Array.from(
+      new Set(
+        products
+          .map((product) => product.category?.name?.trim())
+          .filter((name): name is string => Boolean(name)),
+      ),
+    ),
+  );
   const latestChange = products
     .map((product) => Date.parse(product.updatedAt ?? product.createdAt ?? ""))
     .filter((time) => !Number.isNaN(time))
@@ -219,7 +236,7 @@ export default async function Home() {
 
         <Hero />
 
-        <BestSellers initialProducts={products} />
+        <BestSellers initialProducts={products} catalogFact={catalogFact} />
 
         <ShopByCategory />
 

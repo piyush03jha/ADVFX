@@ -5,6 +5,7 @@ import { IconArrowUpRight, IconBuildingStore, IconPackage, IconUsers } from "@ta
 
 import { Button } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
+import { BUSINESS_FACTS } from "@/lib/aeo-content.mjs";
 
 const points = [
   { icon: IconPackage, title: "Volume pricing", text: "Tell us your quantity and requirements." },
@@ -26,7 +27,7 @@ export function BulkOrder() {
               Need a collection, not just one piece?
             </h2>
             <p className="mt-5 max-w-lg text-base leading-7 text-muted sm:text-lg sm:leading-8">
-              Share the quantity, product requirements and delivery timeline. Our team will help plan the order from pricing through production.
+              Share the quantity, product requirements and delivery timeline. Our team will help plan the order from pricing through production, and is available {BUSINESS_FACTS.supportHours}.
             </p>
             <div className="mt-7">
               <Button href="/contact" size="lg">
@@ -36,18 +37,19 @@ export function BulkOrder() {
             </div>
           </motion.div>
 
-          <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:grid-cols-1 lg:gap-3">
+          {/* A real list (same grid, same cards) so the three benefits are exposed as list items. */}
+          <ul className="m-0 grid list-none grid-cols-3 gap-2 p-0 sm:gap-3 lg:grid-cols-1 lg:gap-3">
             {points.map((point, index) => {
               const Icon = point.icon;
               return (
-                <motion.div key={point.title} initial={reduceMotion ? false : { opacity: 0, x: 20 }} whileInView={reduceMotion ? undefined : { opacity: 1, x: 0 }} viewport={{ once: true, amount: 0.2 }} transition={{ duration: 0.5, delay: reduceMotion ? 0 : index * 0.07 }} className="rounded-xl border border-border bg-surface/60 p-3 sm:rounded-2xl sm:p-6 lg:p-7">
+                <motion.li key={point.title} initial={reduceMotion ? false : { opacity: 0, x: 20 }} whileInView={reduceMotion ? undefined : { opacity: 1, x: 0 }} viewport={{ once: true, amount: 0.2 }} transition={{ duration: 0.5, delay: reduceMotion ? 0 : index * 0.07 }} className="rounded-xl border border-border bg-surface/60 p-3 sm:rounded-2xl sm:p-6 lg:p-7">
                   <Icon size={20} stroke={1.5} className="text-primary sm:size-6" />
                   <h3 className="mt-2 text-xs font-semibold leading-snug text-foreground sm:mt-4 sm:text-lg">{point.title}</h3>
                   <p className="mt-2 text-[11px] leading-5 text-muted sm:text-base sm:leading-7">{point.text}</p>
-                </motion.div>
+                </motion.li>
               );
             })}
-          </div>
+          </ul>
         </div>
       </Container>
     </section>

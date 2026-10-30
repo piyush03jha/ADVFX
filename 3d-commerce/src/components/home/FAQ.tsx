@@ -15,6 +15,9 @@ import { IconButton } from "@/components/ui/IconButton";
 import { Button } from "@/components/ui/Button";
 import { Section } from "@/components/ui/Section";
 import { faqItems, type FAQItem } from "@/config/faq";
+import { ORDER_TYPES_FAQ_ID } from "@/lib/aeo-content.mjs";
+
+import { OrderOptionsTable } from "./OrderOptionsTable";
 
 export function FAQ({ initialItems = faqItems }: { initialItems?: FAQItem[] }) {
   const [items] = useState<FAQItem[]>(initialItems);
@@ -72,6 +75,7 @@ export function FAQ({ initialItems = faqItems }: { initialItems?: FAQItem[] }) {
       <div
         className="
           grid
+          grid-cols-1
           gap-8
           lg:grid-cols-[0.72fr_1.28fr]
           lg:gap-10 wide:gap-20
@@ -182,6 +186,7 @@ export function FAQ({ initialItems = faqItems }: { initialItems?: FAQItem[] }) {
 
         <div
           className="
+            min-w-0
             border-t
             border-border/80
           "
@@ -329,49 +334,53 @@ function FAQItem({
           sm:gap-5
         "
       >
-        <button
-          type="button"
-          onClick={() =>
-            onToggle(item.id)
-          }
-          aria-expanded={isOpen}
-          aria-controls={`faq-answer-${item.id}`}
-          className="
-            group
-            flex
-            min-w-0
-            flex-1
-            items-center
-            justify-between
-            gap-4
-            py-4
-            text-left
-            sm:gap-5
-            sm:py-5
-          "
-        >
-          <span
-            role="heading"
-            aria-level={3}
-            className={`
-              text-xs
-              font-medium
-              leading-5
-              transition-colors
-              duration-300
-              sm:text-base
-              sm:leading-6
-              ${
-                isOpen
-                  ? "text-foreground"
-                  : "text-muted"
-              }
-              group-hover:text-foreground
-            `}
+        {/* A real <h3> wrapping the toggle button (the WAI-ARIA accordion
+            pattern). The question used to be an ARIA-only heading on a span inside
+            the button, which crawlers and AI extractors do not count as a heading. */}
+        <h3 className="m-0 flex min-w-0 flex-1">
+          <button
+            type="button"
+            onClick={() =>
+              onToggle(item.id)
+            }
+            aria-expanded={isOpen}
+            aria-controls={`faq-answer-${item.id}`}
+            className="
+              group
+              flex
+              w-full
+              min-w-0
+              flex-1
+              items-center
+              justify-between
+              gap-4
+              py-4
+              text-left
+              sm:gap-5
+              sm:py-5
+            "
           >
-            {item.question}
-          </span>
-        </button>
+            <span
+              className={`
+                text-xs
+                font-medium
+                leading-5
+                transition-colors
+                duration-300
+                sm:text-base
+                sm:leading-6
+                ${
+                  isOpen
+                    ? "text-foreground"
+                    : "text-muted"
+                }
+                group-hover:text-foreground
+              `}
+            >
+              {item.question}
+            </span>
+          </button>
+        </h3>
 
         {/* PLUS / MINUS */}
 
@@ -425,6 +434,7 @@ function FAQItem({
       >
         <div className="max-w-2xl pb-6 pr-10 text-xs leading-6 text-muted sm:pb-7 sm:pr-16 sm:text-sm sm:leading-7">
           <p>{item.answer}</p>
+          {item.id === ORDER_TYPES_FAQ_ID ? <OrderOptionsTable /> : null}
         </div>
       </motion.div>
     </motion.div>

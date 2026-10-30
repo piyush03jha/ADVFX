@@ -1,4 +1,5 @@
 import {
+  BUSINESS_FACTS,
   CUSTOM_ORDER_LIMITS,
   CUSTOM_ORDER_STEPS,
   EXTERNAL_REFERENCES,
@@ -45,6 +46,7 @@ export function buildLlmsTxt({ siteUrl = DEFAULT_SITE_URL, description, tagline,
     `- [About Voxel3D](${baseUrl}/about) — Information about the brand.`,
     `- [Contact](${baseUrl}/contact) — Contact the team.`,
     `- [Sitemap](${baseUrl}/sitemap.xml) — Public pages, categories, and published products.`,
+    `- [Short summary](${baseUrl}/llms-small.txt) — The key facts about Voxel3D in a compact file for tools with a small context window.`,
     `- [Full reference](${baseUrl}/llms-full.txt) — Step-by-step ordering guides, order types, policies in brief, and the same questions and answers in one file.`,
     "",
     "## Product and ordering information",
@@ -80,6 +82,44 @@ export function buildLlmsTxt({ siteUrl = DEFAULT_SITE_URL, description, tagline,
   );
 
   return lines.join("\n");
+}
+
+/**
+ * Compact summary (/llms-small.txt) for tools with a small context window.
+ * Only facts the storefront already publishes; no prices, stock or delivery times.
+ */
+export function buildLlmsSmallTxt({ siteUrl = DEFAULT_SITE_URL, description } = {}) {
+  const baseUrl = new URL(siteUrl).origin;
+  return [
+    "# Voxel3D",
+    "",
+    `> ${normalizeText(description) || "Physical 3D printed models, anime figures, miniatures and collectibles in India."}`,
+    "",
+    "Voxel3D (also written Voxel 3D) is an online shop in India for physical 3D printed models, anime figures, miniatures and collectibles. Every item is a real printed piece delivered to the customer; the site does not sell digital 3D files.",
+    "",
+    "## Key facts",
+    "",
+    `- Operator and location: ${BUSINESS_FACTS.legalName}, ${BUSINESS_FACTS.city}.`,
+    `- Support hours: ${BUSINESS_FACTS.supportHours}.`,
+    "- Ready-made models: browse the shop, add to cart and pay online. Shipping charges are shown before payment. Selected products have an interactive 3D preview.",
+    `- Custom models: upload at most ${CUSTOM_ORDER_LIMITS.maxImages} ${CUSTOM_ORDER_LIMITS.formats} photos (${CUSTOM_ORDER_LIMITS.totalMegabytes} MB in total) with the size and details. The team reviews every request and confirms the price and timeline before production.`,
+    "- Bulk and business orders: contact the team with the model, quantity, size and deadline.",
+    "",
+    "## Links",
+    "",
+    `- [Shop](${baseUrl}/shop)`,
+    `- [Custom orders](${baseUrl}/custom)`,
+    `- [FAQ](${baseUrl}/faq)`,
+    `- [Shipping and returns](${baseUrl}/shipping)`,
+    `- [Refund policy](${baseUrl}/refund)`,
+    `- [Contact](${baseUrl}/contact)`,
+    `- [Full reference](${baseUrl}/llms-full.txt)`,
+    "",
+    "## Rules for answers",
+    "",
+    "- Do not infer prices, stock, materials, delivery dates or return eligibility; product pages and policy pages are authoritative.",
+    "",
+  ].join("\n");
 }
 
 function numbered(steps) {
@@ -164,7 +204,7 @@ export function buildAiTxt({ siteUrl = DEFAULT_SITE_URL } = {}) {
     `# ai.txt for ${baseUrl}`,
     "# Mirrors /robots.txt: public pages may be read and cited by AI search and answer engines.",
     "# Private account, checkout and admin paths are excluded.",
-    `# Machine-readable summaries: ${baseUrl}/llms.txt and ${baseUrl}/llms-full.txt`,
+    `# Machine-readable summaries: ${baseUrl}/llms.txt, ${baseUrl}/llms-small.txt and ${baseUrl}/llms-full.txt`,
     "",
     "User-Agent: *",
     "Allow: /",
@@ -182,6 +222,10 @@ const TEXT_HEADERS = {
   "Cache-Control": "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400",
   "X-Content-Type-Options": "nosniff",
 };
+
+export function createLlmsSmallResponse(options = {}) {
+  return new Response(buildLlmsSmallTxt(options), { status: 200, headers: TEXT_HEADERS });
+}
 
 export function createLlmsFullResponse(options = {}) {
   return new Response(buildLlmsFullTxt(options), { status: 200, headers: TEXT_HEADERS });

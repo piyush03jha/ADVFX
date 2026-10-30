@@ -44,7 +44,12 @@ export const metadata: Metadata = {
   description: HOME_DESCRIPTION,
   alternates: {
     canonical: "/",
-    types: { "text/plain": [{ url: "/llms.txt", title: "llms.txt" }] },
+    types: {
+      "text/plain": [
+        { url: "/llms.txt", title: "llms.txt" },
+        { url: "/llms-small.txt", title: "llms-small.txt" },
+      ],
+    },
   },
   // `article:*` tags are for articles, not a storefront, and a modified_time of
   // "now" on every request is misleading to crawlers, so they are not emitted.

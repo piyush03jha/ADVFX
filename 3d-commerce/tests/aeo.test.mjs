@@ -5,15 +5,21 @@ import {
   AI_TXT_PRIVATE_PATHS,
   buildAiTxt,
   buildLlmsFullTxt,
+  buildLlmsSmallTxt,
   buildLlmsTxt,
 } from "../src/lib/llms-content.mjs";
 import {
+  BUSINESS_FACTS,
   CUSTOM_ORDER_LIMITS,
   CUSTOM_ORDER_STEPS,
   EXTERNAL_REFERENCES,
+  FACT_FAQS,
   HOME_OPENING_ANSWER,
   ORDER_OPTIONS,
+  ORDER_TYPES_FAQ_ID,
   READY_MADE_ORDER_STEPS,
+  describeCatalog,
+  mergeFactFaqs,
 } from "../src/lib/aeo-content.mjs";
 
 test("builds canonical links from the configured site origin", () => {
@@ -125,7 +131,127 @@ test("homepage answer section uses question headings and shared structured conte
   assert.match(source, /<table /);
   for (const reference of EXTERNAL_REFERENCES) assert.ok(source.includes(reference.url));
 
+  // The long answer section was moved from the landing page to /about on purpose
+  // (commit a7ec2c2); the landing page keeps its sections and gets its answers
+  // from the FAQ, so only /about renders it and the HowTo schema points there.
+  const about = readFileSync(new URL("../src/app/about/page.tsx", import.meta.url), "utf8");
+  assert.match(about, /<HomeAbout /);
   const home = readFileSync(new URL("../src/app/page.tsx", import.meta.url), "utf8");
-  assert.match(home, /<HomeAbout /);
+  assert.doesNotMatch(home, /<HomeAbout /);
   assert.match(home, /"@type": "HowTo"/);
+  assert.match(home, /\/about#how-to-order/);
+});
+
+test("llms-small.txt is a compact summary with the key published facts", () => {
+  const output = buildLlmsSmallTxt({ siteUrl: "https://voxel3d.org", description: "Physical 3D models" });
+
+  assert.ok(output.length < 3000, `llms-small.txt is ${output.length} characters`);
+  assert.match(output, /^# Voxel3D/m);
+  assert.match(output, /physical 3D printed models, anime figures, miniatures and collectibles/);
+  assert.ok(output.includes(BUSINESS_FACTS.city));
+  assert.ok(output.includes(BUSINESS_FACTS.supportHours));
+  assert.match(output, /at most 5 JPG or PNG photos \(50 MB in total\)/);
+  assert.match(output, /\[Full reference\]\(https:\/\/voxel3d\.org\/llms-full\.txt\)/);
+  assert.match(output, /does not sell digital 3D files/);
+});
+
+test("llms-small.txt does not invent prices, delivery times or return windows", () => {
+  const output = buildLlmsSmallTxt({ siteUrl: "https://voxel3d.org" });
+  assert.doesNotMatch(output, /₹|\brs\.?\s?\d|\$\d/i);
+  assert.doesNotMatch(output, /\b\d+\s*(business\s+|working\s+)?days?\b/i);
+});
+
+test("llms.txt and ai.txt point to llms-small.txt", () => {
+  assert.match(buildLlmsTxt({ siteUrl: "https://voxel3d.org" }), /\[Short summary\]\(https:\/\/voxel3d\.org\/llms-small\.txt\)/);
+  assert.match(buildAiTxt({ siteUrl: "https://voxel3d.org" }), /llms-small\.txt/);
+});
+
+test("FAQ questions are real headings wrapping the toggle button", () => {
+  const faq = readFileSync(new URL("../src/components/home/FAQ.tsx", import.meta.url), "utf8");
+  assert.doesNotMatch(faq, /role="heading"/);
+  assert.match(faq, /<h3 [^>]*>\s*<button/);
+});
+
+test("homepage keeps its existing section order", () => {
+  const home = readFileSync(new URL("../src/app/page.tsx", import.meta.url), "utf8");
+  const order = ["<Hero />", "<BestSellers", "<ShopByCategory />", "<NewArrivals", "<CustomBuild />", "<BulkOrder />", "<Reviews />", "<FAQ "]
+    .map((tag) => home.indexOf(tag, home.indexOf("<main")));
+  assert.ok(order.every((index) => index > -1), `missing section: ${JSON.stringify(order)}`);
+  assert.deepEqual(order, [...order].sort((a, b) => a - b));
+});
+
+test("fact FAQs are merged into the FAQ list once and never duplicate admin entries", () => {
+  const admin = [{ id: "custom-model-process", question: "How do custom 3D printed model orders work?", answer: "x" }];
+  const merged = mergeFactFaqs(admin);
+
+  assert.equal(merged[0], admin[0], "admin entries keep their order and come first");
+  assert.equal(merged.length, admin.length + FACT_FAQS.length);
+  assert.equal(new Set(merged.map((item) => item.id)).size, merged.length);
+  assert.deepEqual(mergeFactFaqs(merged), merged, "merging twice changes nothing");
+
+  const customised = mergeFactFaqs([{ id: "x", question: "WHAT IS VOXEL3D?", answer: "admin wording" }]);
+  assert.equal(customised.filter((item) => item.question.toLowerCase() === "what is voxel3d?").length, 1);
+  assert.deepEqual(mergeFactFaqs(undefined).map((item) => item.id), FACT_FAQS.map((item) => item.id));
+});
+
+test("fact FAQs are questions that state published facts and invent no prices or delivery times", () => {
+  for (const faq of FACT_FAQS) {
+    assert.match(faq.question, /\?$/, `${faq.id} is phrased as a question`);
+    assert.doesNotMatch(faq.answer, /₹|\brs\.?\s?\d|\$\d/i, `${faq.id} states a price`);
+    assert.doesNotMatch(faq.answer, /\b\d+\s*(business\s+|working\s+)?days?\b/i, `${faq.id} states a delivery time`);
+  }
+  const text = FACT_FAQS.map((faq) => faq.answer).join(" ");
+  assert.ok(text.includes(BUSINESS_FACTS.legalName));
+  assert.ok(text.includes(BUSINESS_FACTS.city));
+  assert.ok(text.includes(BUSINESS_FACTS.supportHours));
+  assert.match(text, new RegExp(`${CUSTOM_ORDER_LIMITS.maxImages} ${CUSTOM_ORDER_LIMITS.formats}`));
+  assert.ok(FACT_FAQS.some((faq) => faq.id === ORDER_TYPES_FAQ_ID));
+});
+
+test("describeCatalog only states counts it was given", () => {
+  assert.equal(describeCatalog(0, ["A"]), null);
+  assert.equal(describeCatalog(Number.NaN, []), null);
+  assert.equal(describeCatalog(1, []), "The shop currently lists 1 physical product.");
+  assert.equal(
+    describeCatalog(102, ["Anime", "Marvel", "Keychains"]),
+    "The shop currently lists 102 physical products in 3 categories, including Anime, Marvel and Keychains.",
+  );
+});
+
+test("homepage FAQ, schema and llms-full share the merged list, and the table sits in its FAQ answer", () => {
+  const home = readFileSync(new URL("../src/app/page.tsx", import.meta.url), "utf8");
+  assert.equal([...home.matchAll(/mergeFactFaqs\(/g)].length, 2, "API result and bundled fallback are both merged");
+  assert.match(home, /mainEntity: faqs\.map/);
+
+  const publicFaqs = readFileSync(new URL("../src/lib/public-faqs.ts", import.meta.url), "utf8");
+  assert.equal([...publicFaqs.matchAll(/mergeFactFaqs\(/g)].length, 2);
+
+  const faq = readFileSync(new URL("../src/components/home/FAQ.tsx", import.meta.url), "utf8");
+  assert.match(faq, /item\.id === ORDER_TYPES_FAQ_ID \? <OrderOptionsTable \/>/);
+
+  const table = readFileSync(new URL("../src/components/home/OrderOptionsTable.tsx", import.meta.url), "utf8");
+  assert.match(table, /<table /);
+  assert.match(table, /<caption /);
+  assert.match(table, /scope="col"/);
+  assert.match(table, /ORDER_OPTIONS\.map/);
+});
+
+test("landing page cites outside sources and lists its steps and benefits as real lists", () => {
+  const reviews = readFileSync(new URL("../src/components/home/Reviews.tsx", import.meta.url), "utf8");
+  for (const label of ["3D printing", "glTF"]) {
+    assert.ok(EXTERNAL_REFERENCES.some((reference) => reference.label === label));
+    assert.match(reviews, new RegExp(`referenceUrl\\("${label}"\\)`));
+  }
+  assert.match(reviews, /target="_blank" rel="noopener"/);
+  assert.match(reviews, /<ul /);
+
+  const custom = readFileSync(new URL("../src/components/home/CustomBuild.tsx", import.meta.url), "utf8");
+  assert.match(custom, /<ol /);
+  const bulk = readFileSync(new URL("../src/components/home/BulkOrder.tsx", import.meta.url), "utf8");
+  assert.match(bulk, /<ul /);
+});
+
+test("layout advertises llms-small.txt next to llms.txt", () => {
+  const layout = readFileSync(new URL("../src/app/layout.tsx", import.meta.url), "utf8");
+  assert.match(layout, /url: "\/llms-small\.txt"/);
 });

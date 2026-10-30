@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import { IconArrowUpRight, IconCheck } from "@tabler/icons-react";
 
 import { Container } from "@/components/ui/Container";
+import { BUSINESS_FACTS, EXTERNAL_REFERENCES } from "@/lib/aeo-content.mjs";
 
 const HIGHLIGHTS = [
   {
@@ -32,6 +33,12 @@ const HIGHLIGHTS = [
   },
 ];
 
+const referenceUrl = (label: string) => EXTERNAL_REFERENCES.find((reference) => reference.label === label)?.url ?? "";
+// "!" because globals.css sets an unlayered `a { color: inherit; text-decoration: none }`,
+// which otherwise beats the Tailwind color/underline utilities on anchors. The
+// underline stays visible so the links do not rely on color alone.
+const citationClass = "!text-primary !underline !underline-offset-4 hover:!text-primary-hover";
+
 export function Reviews() {
   return (
     <section className="w-full overflow-hidden py-10 sm:py-20 lg:py-24">
@@ -50,9 +57,9 @@ export function Reviews() {
           </p>
         </div>
 
-        <div className="-mx-4 mt-7 flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:mt-8 sm:gap-4 sm:px-0 desk:grid desk:grid-cols-4 desk:overflow-visible desk:pb-0">
+        <ul className="-mx-4 mt-7 flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:mt-8 sm:gap-4 sm:px-0 desk:grid desk:grid-cols-4 desk:overflow-visible desk:pb-0">
           {HIGHLIGHTS.map((highlight, index) => (
-            <motion.article
+            <motion.li
               key={highlight.eyebrow}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -83,9 +90,20 @@ export function Reviews() {
                   {highlight.product}
                 </span>
               </div>
-            </motion.article>
+            </motion.li>
           ))}
-        </div>
+        </ul>
+
+        {/* Short sourced note under the cards: names the operator and cites the two
+            outside references behind the technical claims. */}
+        <p className="mt-6 max-w-3xl text-xs leading-6 text-muted sm:mt-8 sm:text-sm sm:leading-7">
+          Every Voxel3D piece is made by{" "}
+          <a href={referenceUrl("3D printing")} target="_blank" rel="noopener" className={citationClass}>3D printing</a>
+          , which builds a model layer by layer from a digital design. Selected products also include an interactive preview in{" "}
+          <a href={referenceUrl("glTF")} target="_blank" rel="noopener" className={citationClass}>glTF</a>
+          , an open 3D file format maintained by the Khronos Group, so you can turn the model on screen before you order.
+          Voxel3D is run by {BUSINESS_FACTS.legalName} in {BUSINESS_FACTS.city}.
+        </p>
       </Container>
     </section>
   );

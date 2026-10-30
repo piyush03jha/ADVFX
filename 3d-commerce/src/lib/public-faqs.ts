@@ -1,5 +1,6 @@
 import { faqItems, type FAQItem } from "@/config/faq";
 import { getBackendApiUrl } from "@/lib/backend-api";
+import { mergeFactFaqs } from "@/lib/aeo-content.mjs";
 
 export type PublicFaq = Pick<FAQItem, "question" | "answer">;
 
@@ -27,12 +28,12 @@ export async function loadPublicFaqs(revalidate = 3600): Promise<PublicFaq[]> {
             typeof (item as PublicFaq).answer === "string",
         )
       ) {
-        return payload.value as PublicFaq[];
+        return mergeFactFaqs(payload.value as PublicFaq[]) as PublicFaq[];
       }
     }
   } catch {
     // Keep the endpoint available when the content API is temporarily unavailable.
   }
 
-  return faqItems;
+  return mergeFactFaqs(faqItems) as PublicFaq[];
 }
