@@ -65,9 +65,9 @@ function LoginPageContent() {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-background text-foreground">
+    <main className="relative min-h-dvh overflow-hidden bg-background text-foreground">
       <Navbar />
-      <section className="relative mx-auto flex min-h-screen w-full max-w-7xl items-center px-4 pb-12 pt-28 sm:px-6 sm:pt-32 lg:px-8">
+      <section className="relative mx-auto flex min-h-dvh w-full max-w-7xl items-center px-4 pb-12 pt-28 sm:px-6 sm:pt-32 lg:px-8">
         <div className="grid w-full overflow-hidden rounded-[2rem] border border-border bg-[linear-gradient(135deg,rgb(from var(--foreground) r g b / 0.065),rgb(from var(--background) r g b / 0.02)_48%,rgb(from var(--primary) r g b / 0.07))] shadow-[0_32px_120px_rgba(0,0,0,0.3)] lg:grid-cols-[1.05fr_0.95fr]">
           <div className="relative hidden min-h-[690px] overflow-hidden border-r border-border lg:flex lg:flex-col lg:justify-between lg:p-12">
             <div><div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/[0.07] px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.18em] text-primary"><IconSparkles size={13} />Private studio access</div><h1 className="mt-8 max-w-xl font-serif text-5xl leading-[0.98] tracking-[-0.055em] xl:text-6xl">Your collection,<span className="block text-primary">beautifully personal.</span></h1><p className="mt-6 max-w-md text-sm leading-7 text-muted">Sign in to manage orders, follow production progress and keep your custom creations in one place.</p></div>
@@ -98,7 +98,7 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <main className="flex min-h-screen items-center justify-center bg-background text-xs text-muted">
+        <main className="flex min-h-dvh items-center justify-center bg-background text-xs text-muted">
           Loading sign in…
         </main>
       }

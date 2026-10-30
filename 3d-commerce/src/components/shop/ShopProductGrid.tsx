@@ -46,11 +46,13 @@ export function ShopProductGrid({
   const navRef = useRef<HTMLDivElement>(null);
   const categoryScrollYRef = useRef<number | null>(null);
 
-  const navigate = (patch: Partial<ShopQueryState>) => {
+  // Page/filter/sort changes push a history entry so Back returns to the
+  // previous page or filter; only the debounced search-as-you-type replaces.
+  const navigate = (patch: Partial<ShopQueryState>, mode: "push" | "replace" = "push") => {
     const next: ShopQueryState = { ...state, page: 1, ...patch };
 
     startTransition(() => {
-      router.replace(
+      router[mode](
         `${pathname || basePath}${buildShopSearch(next, {
           omitCategory: Boolean(lockedCategory),
         })}`,
@@ -68,7 +70,7 @@ export function ShopProductGrid({
 
   useEffect(() => {
     if (searchText.trim() === state.q.trim()) return;
-    const timer = window.setTimeout(() => navigate({ q: searchText }), 350);
+    const timer = window.setTimeout(() => navigate({ q: searchText }, "replace"), 350);
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchText]);
@@ -144,7 +146,7 @@ export function ShopProductGrid({
                 <ShopSearch value={searchText} onChange={setSearchText} />
               </div>
               <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2 sm:flex sm:flex-wrap sm:justify-center xl:shrink-0">
-                <div className="hidden lg:block">
+                <div className="hidden desk:block">
                   <ShopFilters
                     filters={filters}
                     onChange={handleFilterChange}
@@ -157,7 +159,7 @@ export function ShopProductGrid({
                   variant="outline"
                   size="sm"
                   onClick={() => setMobileFiltersOpen(true)}
-                  className="relative min-h-11 rounded-full lg:hidden"
+                  className="relative min-h-11 rounded-full desk:hidden"
                 >
                   Filters
                   {activeFilterCount > 0 && (

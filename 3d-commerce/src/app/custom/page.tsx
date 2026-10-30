@@ -17,7 +17,13 @@ import { Reviews } from "@/components/home/Reviews";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { absoluteUrl } from "@/lib/site";
 
-const whatsappUrl = process.env.NEXT_PUBLIC_WHATSAPP_URL || "/contact";
+// Same sources as the floating WhatsApp widget and /contact. When neither is
+// configured there is no WhatsApp link to show: the button used to fall back to
+// "/contact" while still being labelled "WhatsApp", which was misleading.
+const whatsappNumber = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "").replace(/\D/g, "");
+const whatsappUrl = whatsappNumber
+  ? `https://wa.me/${whatsappNumber}`
+  : (process.env.NEXT_PUBLIC_WHATSAPP_URL ?? "").trim();
 
 export default function CustomPage() {
   const [body, setBody] = useState("full");
@@ -138,9 +144,11 @@ function CustomPageSupport() {
               <Button href="/contact" variant="primary" size="md">
                 Contact us <IconArrowRight size={15} />
               </Button>
-              <a href={whatsappUrl} target={whatsappUrl.startsWith("http") ? "_blank" : undefined} rel={whatsappUrl.startsWith("http") ? "noreferrer" : undefined} className="inline-flex h-11 items-center gap-2 rounded-full border border-border bg-background px-5 text-xs font-semibold transition hover:border-primary hover:text-primary">
-                <IconBrandWhatsapp size={16} /> WhatsApp
-              </a>
+              {whatsappUrl ? (
+                <a href={whatsappUrl} target="_blank" rel="noreferrer" className="inline-flex h-11 items-center gap-2 rounded-full border border-border bg-background px-5 text-xs font-semibold transition hover:border-primary hover:text-primary">
+                  <IconBrandWhatsapp size={16} /> WhatsApp
+                </a>
+              ) : null}
             </div>
           </div>
 

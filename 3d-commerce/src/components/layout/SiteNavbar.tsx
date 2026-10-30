@@ -408,7 +408,7 @@ function NavIconLink({
     <Link
       href={href}
       aria-label={label}
-      className="pointer-events-auto relative z-50 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-muted transition-all duration-300 hover:bg-surface-elevated hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:h-9 lg:w-9"
+      className="pointer-events-auto relative z-50 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-muted transition-all duration-300 hover:bg-surface-elevated hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary desk:h-9 desk:w-9"
     >
       {children}
       <span className="sr-only">{label}</span>
@@ -466,7 +466,7 @@ function CartLink({
           ? `Shopping cart, ${itemCount} items`
           : "Shopping cart"
       }
-      className="pointer-events-auto relative z-50 flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted transition-all duration-300 hover:bg-surface-elevated hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:h-9 lg:w-9"
+      className="pointer-events-auto relative z-50 flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted transition-all duration-300 hover:bg-surface-elevated hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary desk:h-9 desk:w-9"
     >
       <IconShoppingCart size={18} stroke={1.7} />
       <span className="sr-only">Shopping cart</span>

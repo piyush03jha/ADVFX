@@ -1,6 +1,7 @@
 "use client";
 
-import { IconLayoutGrid, IconPlus } from "@tabler/icons-react";
+import { useRef } from "react";
+import { IconChevronLeft, IconChevronRight, IconPlus } from "@tabler/icons-react";
 import type { ShopCategory } from "@/lib/category-api";
 import { resolveMediaUrl } from "@/lib/media-url";
 import { getActiveMainCategory, getMainCategories, getSubcategories } from "@/lib/category-hierarchy.mjs";
@@ -24,11 +25,37 @@ export function ShopNavigation({
   const selectedSlug = selectedCategories[0] ?? "";
   const activeRoot = getActiveMainCategory(categories, selectedSlug);
   const visibleSubcategories = activeRoot ? getSubcategories(categories, activeRoot.id) : [];
+  const railRef = useRef<HTMLDivElement>(null);
+
+  // Mouse users cannot swipe the hidden-scrollbar rail, so desktop gets arrows.
+  const scrollRail = (direction: 1 | -1) => {
+    const rail = railRef.current;
+    if (!rail) return;
+    rail.scrollBy({ left: direction * Math.max(rail.clientWidth * 0.8, 200), behavior: "smooth" });
+  };
 
   return (
     <section aria-label="Product categories">
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => scrollRail(-1)}
+          aria-label="Scroll categories left"
+          className="absolute left-0 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-surface/95 text-foreground shadow-md transition-colors hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary desk:flex"
+        >
+          <IconChevronLeft size={18} stroke={1.8} />
+        </button>
+        <button
+          type="button"
+          onClick={() => scrollRail(1)}
+          aria-label="Scroll categories right"
+          className="absolute right-0 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-surface/95 text-foreground shadow-md transition-colors hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary desk:flex"
+        >
+          <IconChevronRight size={18} stroke={1.8} />
+        </button>
       <div
-        className="-mx-3 flex w-full flex-nowrap items-stretch gap-3 overflow-x-auto px-3 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        ref={railRef}
+        className="-mx-3 flex w-full flex-nowrap items-stretch gap-3 overflow-x-auto px-3 pb-2 [mask-image:linear-gradient(to_right,black_calc(100%-28px),transparent)] [scrollbar-width:none] desk:[mask-image:none] [&::-webkit-scrollbar]:hidden"
         aria-label="Main categories"
       >
         <CategoryCard active={allActive} onClick={onShowAll} label="All Models">
@@ -75,6 +102,7 @@ export function ShopNavigation({
           );
         })}
       </div>
+      </div>
 
       {activeRoot && (
         <div className="mt-3 flex flex-wrap items-center gap-2" aria-label={`${activeRoot.name} subcategories`}>
@@ -84,7 +112,7 @@ export function ShopNavigation({
               type="button"
               aria-pressed={selectedCategories.includes(category.slug)}
               onClick={() => onCategoryChange(category.slug)}
-              className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${selectedCategories.includes(category.slug) ? "border-primary bg-primary/10 text-primary" : "border-border bg-surface text-foreground hover:border-primary/40"}`}
+              className={`min-h-10 rounded-full border px-3.5 py-2 text-xs font-medium transition-colors sm:min-h-9 ${selectedCategories.includes(category.slug) ? "border-primary bg-primary/10 text-primary" : "border-border bg-surface text-foreground hover:border-primary/40"}`}
             >
               {category.name}
             </button>
@@ -112,7 +140,7 @@ function CategoryCard({
       onClick={onClick}
       aria-label={label}
       aria-pressed={active}
-      className={`group relative h-[190px] w-[148px] shrink-0 overflow-hidden rounded-2xl border text-left transition-all duration-300 sm:h-[212px] sm:w-[164px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 ${active ? "border-primary shadow-[0_0_0_1px_rgba(139,92,246,0.3)]" : "border-border/70 hover:border-primary/45"}`}
+      className={`group relative h-[160px] w-[132px] shrink-0 overflow-hidden rounded-2xl border text-left transition-all duration-300 sm:h-[212px] sm:w-[164px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 ${active ? "border-primary shadow-[0_0_0_1px_rgba(139,92,246,0.3)]" : "border-border/70 hover:border-primary/45"}`}
     >
       {children}
     </button>

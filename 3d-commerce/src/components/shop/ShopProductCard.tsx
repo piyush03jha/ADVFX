@@ -145,26 +145,32 @@ export function ShopProductCard({ product, priority = false }: ShopProductCardPr
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(139,92,246,0.20),transparent_58%)] opacity-0 transition-opacity duration-500 group-hover:opacity-100"
         />
 
+        {/* Reserve room for the 32px wishlist button (right-2/3 + w-8) so a long
+            badge/category name truncates instead of sliding under it. */}
         {product.badge && (
-          <div className="absolute left-3 top-3">
-            <Badge variant="mediaPrimary">{product.badge}</Badge>
+          <div className="absolute left-2 top-2 max-w-[calc(100%-3.25rem)] sm:left-3 sm:top-3 sm:max-w-[calc(100%-4rem)]">
+            <Badge variant="mediaPrimary" className="max-w-full">
+              <span className="truncate" title={product.badge}>{product.badge}</span>
+            </Badge>
           </div>
         )}
 
         <WishlistButton
           product={product}
-          className="absolute right-3 top-3 z-10"
+          className="absolute right-2 top-2 z-10 sm:right-3 sm:top-3"
         />
 
         {product.discount && (
-          <div className="absolute bottom-3 left-3">
-            <Badge variant="media">{product.discount}</Badge>
+          <div className="absolute bottom-2 left-2 max-w-[calc(100%-1rem)] sm:bottom-3 sm:left-3 sm:max-w-[calc(100%-1.5rem)]">
+            <Badge variant="media" className="max-w-full">
+              <span className="truncate">{product.discount}</span>
+            </Badge>
           </div>
         )}
       </div>
 
       <div className="p-2.5 sm:p-4 lg:p-5">
-        <p className="text-[9px] font-medium uppercase tracking-[0.16em] text-muted">
+        <p className="truncate text-[10px] font-medium uppercase tracking-[0.14em] text-muted sm:text-[11px] sm:tracking-[0.16em]">
           {product.category}
         </p>
 
@@ -176,9 +182,9 @@ export function ShopProductCard({ product, priority = false }: ShopProductCardPr
           </Link>
 
           <div className="flex shrink-0 flex-row items-baseline gap-2 sm:flex-col sm:items-end sm:gap-0">
-            {product.price > 0 ? <Price value={product.price} size="sm" /> : <span className="text-[10px] font-medium text-muted">Price on request</span>}
+            {product.price > 0 ? <Price value={product.price} size="sm" /> : <span className="text-[11px] font-medium text-muted">Price on request</span>}
             {product.price > 0 && product.oldPrice !== undefined && (
-              <span className="text-[10px] text-muted line-through">
+              <span className="text-[11px] text-muted line-through">
                 ₹{product.oldPrice.toLocaleString("en-IN")}
               </span>
             )}
@@ -200,32 +206,43 @@ export function ShopProductCard({ product, priority = false }: ShopProductCardPr
           </p>
         ) : null}
 
-        <div className="mt-3 grid grid-cols-2 gap-1.5 sm:mt-4 sm:gap-2">
-          <Button
-            type="button"
-            variant="primary"
-            size="lg"
-            onClick={handleAddToCart}
-            disabled={product.price <= 0}
-            ariaLabel={product.price <= 0 ? `Price on request for ${product.name}` : added ? "Added to cart" : `Add ${product.name} to cart`}
-            className="min-h-10 w-full gap-1.5 px-2 text-xs font-semibold sm:min-h-11 sm:px-3 sm:text-sm"
-          >
-            {added ? <IconCheck size={16} stroke={2} aria-hidden="true" /> : <IconShoppingBag size={16} stroke={1.8} aria-hidden="true" />}<span>{added ? "Added" : product.price > 0 ? "Add" : "Price on request"}</span>
-          </Button>
+        {product.price > 0 ? (
+          <div className="mt-3 grid grid-cols-2 gap-1.5 sm:mt-4 sm:gap-2">
+            <Button
+              type="button"
+              variant="primary"
+              size="lg"
+              onClick={handleAddToCart}
+              ariaLabel={added ? "Added to cart" : `Add ${product.name} to cart`}
+              className="min-h-10 w-full gap-1.5 px-2 text-xs font-semibold sm:min-h-11 sm:px-3 sm:text-sm"
+            >
+              {added ? <IconCheck size={16} stroke={2} aria-hidden="true" /> : <IconShoppingBag size={16} stroke={1.8} aria-hidden="true" />}<span>{added ? "Added" : "Add"}</span>
+            </Button>
 
-          <Button
-            type="button"
-            variant="outline"
-            size="lg"
-            onClick={handleBuyNow}
-            disabled={buying || product.price <= 0}
-            ariaLabel={product.price <= 0 ? `Price on request for ${product.name}` : `Buy ${product.name} now`}
-            className="min-h-10 w-full gap-1.5 px-2 text-xs font-semibold sm:min-h-11 sm:px-3 sm:text-sm"
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              onClick={handleBuyNow}
+              disabled={buying}
+              ariaLabel={`Buy ${product.name} now`}
+              className="min-h-10 w-full gap-1.5 px-2 text-xs font-semibold sm:min-h-11 sm:px-3 sm:text-sm"
+            >
+              <IconBolt size={16} stroke={1.8} aria-hidden="true" />
+              <span>Buy</span>
+            </Button>
+          </div>
+        ) : (
+          // No price yet: one compact one-line action instead of two disabled
+          // buttons whose long label wrapped into a tall block on phones.
+          <Link
+            href="/contact"
+            aria-label={`Ask for the price of ${product.name}`}
+            className="mt-3 inline-flex min-h-9 w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-primary/45 px-3 text-xs font-semibold text-primary transition-colors hover:bg-primary/[0.07] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:mt-4 sm:min-h-10"
           >
-            <IconBolt size={16} stroke={1.8} aria-hidden="true" />
-            <span>Buy</span>
-          </Button>
-        </div>
+            Ask for price
+          </Link>
+        )}
       </div>
     </Card>
   );

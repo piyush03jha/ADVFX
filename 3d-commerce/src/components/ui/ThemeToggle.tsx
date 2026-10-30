@@ -22,7 +22,7 @@ export function ThemeToggle() {
         aria-label="Toggle theme"
         title="Toggle theme"
         disabled
-        className="relative z-50 flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full border border-border bg-surface text-muted opacity-70 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        className="relative z-50 flex h-10 w-10 shrink-0 cursor-pointer desk:h-9 desk:w-9 items-center justify-center rounded-full border border-border bg-surface text-muted opacity-70 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
         <span className="sr-only">Toggle theme</span>
       </button>
@@ -38,7 +38,7 @@ export function ThemeToggle() {
       aria-pressed={theme === "dark"}
       title={`Switch to ${nextTheme} mode`}
       onClick={toggleTheme}
-      className="relative z-50 flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full border border-border bg-surface text-muted transition-all duration-300 hover:border-primary hover:bg-surface-elevated hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      className="relative z-50 flex h-10 w-10 shrink-0 cursor-pointer desk:h-9 desk:w-9 items-center justify-center rounded-full border border-border bg-surface text-muted transition-all duration-300 hover:border-primary hover:bg-surface-elevated hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
     >
       <span className="sr-only">{nextTheme === "dark" ? "Dark mode" : "Light mode"}</span>
       {theme === "dark" ? (

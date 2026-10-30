@@ -80,8 +80,12 @@ export function ProductCard({ product }: { product: StorefrontProduct }) {
           </div>
         </Link>
 
-        <div className="absolute left-2.5 top-2.5 sm:left-3 sm:top-3">
-          <Badge variant="default" className="px-2 py-0.5 text-[8px]">{product.category}</Badge>
+        {/* Leave room for the wishlist heart (28px mobile / 32px sm+) so a long
+            category name truncates with an ellipsis instead of sliding under it. */}
+        <div className="pointer-events-none absolute left-2.5 top-2.5 max-w-[calc(100%-3.75rem)] sm:left-3 sm:top-3 sm:max-w-[calc(100%-4.5rem)]">
+          <Badge variant="default" className="max-w-full px-2 py-0.5 text-[9px]">
+            <span className="truncate" title={product.category}>{product.category}</span>
+          </Badge>
         </div>
 
         <WishlistButton
@@ -91,27 +95,39 @@ export function ProductCard({ product }: { product: StorefrontProduct }) {
       </div>
 
       <div className="flex flex-col px-3 pb-3 pt-3 sm:px-4 sm:pb-4 sm:pt-4">
-        <div className="flex items-start justify-between gap-3">
+        <div className={`flex justify-between ${product.price > 0 ? "items-start gap-3" : "flex-col gap-1 sm:flex-row sm:items-start sm:gap-3"}`}>
           <Link href={`/product/${product.slug}`} className="min-w-0 flex-1">
             <h3 className="line-clamp-2 text-xs font-medium leading-4 tracking-[-0.01em] text-foreground transition-colors duration-300 hover:text-primary-hover sm:text-sm sm:leading-5">{product.name}</h3>
           </Link>
-          <div className="shrink-0 pt-0.5 text-right">{product.price > 0 ? <Price value={product.price} size="sm" /> : <span className="text-[10px] font-medium text-muted">Price on request</span>}</div>
+          <div className={`pt-0.5 sm:shrink-0 sm:text-right ${product.price > 0 ? "shrink-0 text-right" : ""}`}>{product.price > 0 ? <Price value={product.price} size="sm" /> : <span className="text-[11px] font-medium text-muted">Price on request</span>}</div>
         </div>
 
         {product.reviewCount > 0 && product.rating > 0 ? <Rating value={product.rating} reviewCount={product.reviewCount} size={11} showValue className="mt-2" /> : null}
 
-        <Button
-          type="button"
-          variant="primary"
-          size="sm"
-          ariaLabel={`Add ${product.name} to cart`}
-          onClick={handleAddToCart}
-          disabled={isLoading || product.price <= 0}
-          className="mt-3 !h-11 !min-h-11 w-full !rounded-xl !px-4 shadow-[0_0_18px_rgba(139,92,246,0.18)] sm:!h-12 sm:!min-h-12"
-        >
-          {added ? <IconCheck size={15} stroke={2} /> : <IconShoppingCart size={15} stroke={1.8} />}
-          <span>{added ? "Added to Cart" : product.price > 0 ? "Add to Cart" : "Price on request"}</span>
-        </Button>
+        {product.price > 0 ? (
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            ariaLabel={`Add ${product.name} to cart`}
+            onClick={handleAddToCart}
+            disabled={isLoading}
+            className="mt-3 !h-11 !min-h-11 w-full whitespace-nowrap !rounded-xl !px-2 text-xs shadow-[0_0_18px_rgba(139,92,246,0.18)] sm:!h-12 sm:!min-h-12 sm:!px-4 sm:text-sm"
+          >
+            {added ? <IconCheck size={15} stroke={2} /> : <IconShoppingCart size={15} stroke={1.8} />}
+            <span>{added ? "Added to Cart" : "Add to Cart"}</span>
+          </Button>
+        ) : (
+          // Compact one-line action; the price is already shown as "Price on
+          // request" above, so the old tall disabled button only repeated it.
+          <Link
+            href="/contact"
+            aria-label={`Ask for the price of ${product.name}`}
+            className="mt-3 inline-flex min-h-9 w-full items-center justify-center whitespace-nowrap rounded-full border border-primary/45 px-3 text-xs font-semibold text-primary transition-colors hover:bg-primary/[0.07] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:min-h-10"
+          >
+            Ask for price
+          </Link>
+        )}
       </div>
     </Card>
   );

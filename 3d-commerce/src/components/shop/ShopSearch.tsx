@@ -25,7 +25,7 @@ export function ShopSearch({ value, onChange }: ShopSearchProps) {
             type="button"
             aria-label="Clear search"
             onClick={() => onChange("")}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-elevated hover:text-foreground"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-elevated hover:text-foreground"
           >
             <IconX size={15} />
           </button>

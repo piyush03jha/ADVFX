@@ -48,14 +48,14 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-background text-foreground">
+    <main className="relative min-h-dvh overflow-hidden bg-background text-foreground">
       <Navbar />
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute left-[15%] top-[22%] h-72 w-72 rounded-full bg-primary/[0.1] blur-[115px]" />
         <div className="absolute bottom-[10%] right-[12%] h-72 w-72 rounded-full bg-violet-500/[0.05] blur-[120px]" />
       </div>
 
-      <section className="relative mx-auto flex min-h-screen w-full max-w-6xl items-center px-4 pb-12 pt-28 sm:px-6 sm:pt-32 lg:px-8 lg:pt-28">
+      <section className="relative mx-auto flex min-h-dvh w-full max-w-6xl items-center px-4 pb-12 pt-28 sm:px-6 sm:pt-32 lg:px-8 lg:pt-28">
         <div className="mx-auto grid w-full max-w-5xl overflow-hidden rounded-[2rem] border border-white/[0.1] bg-[linear-gradient(135deg,hsl(var(--foreground)/0.06),hsl(var(--background)/0.02)_52%,hsl(var(--primary)/0.07))] shadow-[0_30px_110px_rgba(0,0,0,0.28)] lg:grid-cols-[0.78fr_1.22fr]">
           <div className="relative hidden min-h-[560px] overflow-hidden border-r border-white/[0.08] p-10 lg:flex lg:flex-col lg:justify-between">
             <div aria-hidden="true" className="absolute right-[-20%] top-[-20%] h-72 w-72 rounded-full bg-primary/[0.08] blur-3xl" />

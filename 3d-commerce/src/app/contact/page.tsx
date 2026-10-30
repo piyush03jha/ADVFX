@@ -12,11 +12,32 @@ import {
 
 import { Navbar } from "@/components/layout/SiteNavbar";
 import { Button } from "@/components/ui/Button";
+import { SITE_LOGO_PATH, SITE_NAME, absoluteUrl } from "@/lib/site";
+
+const CONTACT_TITLE = "Contact Voxel3D Support and Orders";
+const CONTACT_DESCRIPTION = "Questions about an order, a custom 3D print or a bulk request? Reach the Voxel3D team by WhatsApp or email.";
 
 export const metadata: Metadata = {
-  title: { absolute: "Contact Voxel3D Support and Orders" },
-  description: "Questions about an order, a custom 3D print or a bulk request? Reach the Voxel3D team by WhatsApp or email.",
+  title: { absolute: CONTACT_TITLE },
+  description: CONTACT_DESCRIPTION,
   alternates: { canonical: "/contact" },
+  // Page-level openGraph replaces the root one, so the social card points at
+  // /contact instead of the homepage and carries this page's own title.
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    title: CONTACT_TITLE,
+    description: CONTACT_DESCRIPTION,
+    url: absoluteUrl("/contact"),
+    locale: "en_IN",
+    images: [{ url: SITE_LOGO_PATH, alt: `${SITE_NAME} logo` }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: CONTACT_TITLE,
+    description: CONTACT_DESCRIPTION,
+    images: [SITE_LOGO_PATH],
+  },
 };
 
 const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "";
@@ -69,12 +90,12 @@ export default async function ContactPage() {
                 </div>
 
                 <h1 className="mt-6 max-w-4xl font-serif text-[2.75rem] leading-[0.94] tracking-[-0.055em] text-foreground sm:text-6xl lg:text-[5.5rem]">
-                  Let&apos;s make your
+                  Let&apos;s make your{" "}
                   <span className="block text-muted">idea tangible.</span>
                 </h1>
 
                 <p className="mt-6 max-w-2xl text-sm leading-6 text-muted sm:mt-7 sm:text-base sm:leading-7">
-                  Let's make your idea tangible. Contact Voxel3D if you have a question about a product, need help with an order, want a custom 3D printed model, or are planning a bulk order. Tell us what you have in mind and share any useful details. Our team will help you understand the next step.
+                  Let&apos;s make your idea tangible. Contact Voxel3D if you have a question about a product, need help with an order, want a custom 3D printed model, or are planning a bulk order. Tell us what you have in mind and share any useful details. Our team will help you understand the next step.
                 </p>
               </div>
 

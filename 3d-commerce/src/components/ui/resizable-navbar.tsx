@@ -39,7 +39,7 @@ export const NavBody = ({ children, className, visible }: NavBodyProps) => (
     }}
     transition={{ type: "spring", stiffness: 220, damping: 32, mass: 0.8 }}
     className={cn(
-      "relative z-[60] mx-auto hidden w-[calc(96%-8px)] flex-row items-center justify-between rounded-full border border-border/70 bg-background/70 px-3 py-2 transition-[width] duration-500 wide:w-[calc(88%-24px)] xl:w-[calc(80%-32px)] lg:flex",
+      "relative z-[60] mx-auto hidden w-[calc(96%-8px)] flex-row items-center justify-between rounded-full border border-border/70 bg-background/70 px-3 py-2 transition-[width] duration-500 wide:w-[calc(88%-24px)] xl:w-[calc(80%-32px)] desk:flex",
       visible && "w-[calc(98%-8px)] border-border bg-surface/90 wide:w-[calc(82%-32px)] xl:w-[calc(75%-48px)]",
       className,
     )}
@@ -54,7 +54,7 @@ export const NavItems = ({ items, className, onItemClick }: NavItemsProps) => {
   return (
     <motion.div
       onMouseLeave={() => setHovered(null)}
-      className={cn("pointer-events-none absolute inset-0 hidden flex-row items-center justify-center gap-0.5 text-sm font-medium lg:flex", className)}
+      className={cn("pointer-events-none absolute inset-0 hidden flex-row items-center justify-center gap-0.5 text-sm font-medium desk:flex", className)}
     >
       {items.map((item, idx) => (
         <Link
@@ -80,6 +80,10 @@ export const NavItems = ({ items, className, onItemClick }: NavItemsProps) => {
 
 export const MobileNav = ({ children, className, visible }: MobileNavProps) => (
   <motion.div
+    // SiteNavbar's outside-press handler closes the menu for any pointerdown
+    // outside [data-mobile-nav]; without this marker every tap (toggle, search,
+    // links) counted as "outside" and the menu closed/reopened itself.
+    data-mobile-nav=""
     animate={{
       backdropFilter: visible ? "blur(20px)" : "blur(0px)",
       boxShadow: visible ? "0 12px 40px color-mix(in srgb, var(--foreground) 16%, transparent)" : "none",
@@ -88,7 +92,7 @@ export const MobileNav = ({ children, className, visible }: MobileNavProps) => (
     }}
     transition={{ type: "spring", stiffness: 220, damping: 32, mass: 0.8 }}
     className={cn(
-      "relative z-50 mx-auto flex w-full max-w-[calc(100vw-1rem)] flex-col items-center justify-between rounded-full border border-border/70 bg-background/70 px-2.5 py-2 lg:hidden",
+      "relative z-50 mx-auto flex w-full max-w-[calc(100vw-1rem)] flex-col items-center justify-between rounded-full border border-border/70 bg-background/70 px-2.5 py-2 desk:hidden",
       visible && "border-border bg-surface/90",
       className,
     )}

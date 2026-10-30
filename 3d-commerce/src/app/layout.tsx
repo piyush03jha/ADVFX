@@ -46,11 +46,8 @@ export const metadata: Metadata = {
     canonical: "/",
     types: { "text/plain": [{ url: "/llms.txt", title: "llms.txt" }] },
   },
-  other: {
-    "article:published_time": SITE_PUBLISHED_ISO,
-    "article:modified_time": new Date().toISOString(),
-  },
-
+  // `article:*` tags are for articles, not a storefront, and a modified_time of
+  // "now" on every request is misleading to crawlers, so they are not emitted.
   applicationName: SITE_NAME,
   category: "shopping",
   keywords: [

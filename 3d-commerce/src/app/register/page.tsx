@@ -74,7 +74,7 @@ function RegisterPageContent() {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-background text-foreground">
+    <main className="relative min-h-dvh overflow-hidden bg-background text-foreground">
       <Navbar />
 
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -83,7 +83,7 @@ function RegisterPageContent() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_48%_0%,rgb(from var(--primary) r g b / 0.055),transparent_34%)]" />
       </div>
 
-      <section className="relative mx-auto flex min-h-screen w-full max-w-7xl items-center px-4 pb-12 pt-28 sm:px-6 sm:pb-16 sm:pt-32 lg:px-8 lg:pt-28">
+      <section className="relative mx-auto flex min-h-dvh w-full max-w-7xl items-center px-4 pb-12 pt-28 sm:px-6 sm:pb-16 sm:pt-32 lg:px-8 lg:pt-28">
         <div className="grid w-full overflow-hidden rounded-[2rem] border border-border bg-[linear-gradient(135deg,rgb(from var(--foreground) r g b / 0.065),rgb(from var(--background) r g b / 0.02)_48%,rgb(from var(--primary) r g b / 0.07))] shadow-[0_32px_120px_rgba(0,0,0,0.3)] lg:grid-cols-[0.92fr_1.08fr]">
           <div className="relative hidden min-h-[730px] overflow-hidden border-r border-border lg:flex lg:flex-col lg:justify-between lg:p-12">
             <div aria-hidden="true" className="absolute -right-24 top-[12%] h-72 w-72 rounded-full bg-primary/[0.09] blur-3xl" />
@@ -220,7 +220,7 @@ export default function RegisterPage() {
   return (
     <Suspense
       fallback={
-        <main className="flex min-h-screen items-center justify-center bg-background text-xs text-muted">
+        <main className="flex min-h-dvh items-center justify-center bg-background text-xs text-muted">
           Loading account creation…
         </main>
       }

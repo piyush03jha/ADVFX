@@ -68,7 +68,7 @@ function FiltersSheet({ onClose, categories, filters, onChange }: MobileFiltersP
   };
 
   return (
-    <div className="fixed inset-0 z-[110] lg:hidden" role="dialog" aria-modal="true" aria-label="Filters">
+    <div className="fixed inset-0 z-[110] desk:hidden" role="dialog" aria-modal="true" aria-label="Filters">
       <button type="button" aria-label="Close filters" onClick={onClose} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
       <div className="absolute inset-x-0 bottom-0 flex max-h-[88svh] flex-col rounded-t-[28px] border-t border-border bg-surface text-foreground shadow-[0_-20px_80px_rgba(0,0,0,0.35)]">
         <div className="mx-auto mt-2.5 h-1 w-10 rounded-full bg-border" aria-hidden="true" />

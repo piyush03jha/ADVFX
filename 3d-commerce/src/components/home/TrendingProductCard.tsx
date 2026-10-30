@@ -55,11 +55,11 @@ export function TrendingProductCard({ product }: TrendingProductCardProps) {
           />
 
           {product.badge && (
-            <Badge variant="mediaPrimary" className="absolute left-2 top-2 rounded-none px-1.5 py-0.5 text-[7px] tracking-[0.1em] sm:left-3 sm:top-3 sm:px-2 sm:py-1 sm:text-[9px]">{product.badge}</Badge>
+            <Badge variant="mediaPrimary" className="absolute left-2 top-2 max-w-[calc(100%-3.25rem)] rounded-none px-1.5 py-0.5 text-[9px] tracking-[0.1em] sm:left-3 sm:top-3 sm:max-w-[calc(100%-4.5rem)] sm:px-2 sm:py-1 sm:text-[10px]"><span className="truncate">{product.badge}</span></Badge>
           )}
 
           {product.discount && (
-            <Badge variant="media" className="absolute left-2 top-8 rounded-none px-1.5 py-0.5 text-[7px] normal-case tracking-normal sm:left-3 sm:top-10 sm:px-2 sm:py-1 sm:text-[9px]">{product.discount}</Badge>
+            <Badge variant="media" className="absolute left-2 top-8 max-w-[calc(100%-3.25rem)] rounded-none px-1.5 py-0.5 text-[9px] normal-case tracking-normal sm:left-3 sm:top-10 sm:max-w-[calc(100%-4.5rem)] sm:px-2 sm:py-1 sm:text-[10px]"><span className="truncate">{product.discount}</span></Badge>
           )}
 
           <WishlistButton

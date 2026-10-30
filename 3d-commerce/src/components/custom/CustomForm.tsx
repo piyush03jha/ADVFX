@@ -58,10 +58,15 @@ export function CustomForm({
   const [pricingLoading, setPricingLoading] = useState(false);
   const [config, setConfig] = useState<{categories:ConfigCategory[]}|null>(null);
   const [configError, setConfigError] = useState<string | null>(null);
+  const [configAttempt, setConfigAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
-    void fetch("/api/custom-requests/config", { cache: "no-store" })
+    // Abort a hung request so visitors get the retry/contact fallback instead
+    // of an endless "Loading…" card when the API is slow or blocked.
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 12000);
+    void fetch("/api/custom-requests/config", { cache: "no-store", signal: controller.signal })
       .then(async (response) => {
         const data = await response.json().catch(() => null);
         if (!response.ok || !data?.categories?.length) {
@@ -78,11 +83,20 @@ export function CustomForm({
       .catch((error) => {
         if (!cancelled) {
           setConfig(null);
-          setConfigError(error instanceof Error ? error.message : "Custom configuration is unavailable.");
+          setConfigError(
+            error instanceof Error && error.name !== "AbortError"
+              ? error.message
+              : "The custom studio is taking too long to load.",
+          );
         }
-      });
-    return () => { cancelled = true; };
-  }, []);
+      })
+      .finally(() => window.clearTimeout(timeout));
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [configAttempt]);
 
   useEffect(() => {
     if (!config?.categories.length) return;
@@ -330,9 +344,29 @@ export function CustomForm({
 
   if (!config) {
     return (
-      <section className="mx-auto max-w-3xl rounded-3xl border border-border bg-surface p-8 text-center">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">Custom creation studio</p>
-        <p className="mt-3 text-sm text-muted">{configError ?? "Loading admin-managed custom configuration…"}</p>
+      <section className="mx-auto max-w-3xl rounded-3xl border border-border bg-surface p-6 text-center sm:p-8" aria-live="polite">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Custom creation studio</p>
+        <p className="mt-3 text-sm text-muted">{configError ?? "Loading the custom studio…"}</p>
+        {configError ? (
+          <div className="mt-5 flex flex-col items-stretch justify-center gap-2 sm:flex-row sm:items-center">
+            <button
+              type="button"
+              onClick={() => {
+                setConfigError(null);
+                setConfigAttempt((attempt) => attempt + 1);
+              }}
+              className="inline-flex min-h-11 items-center justify-center rounded-full bg-primary px-5 text-sm font-semibold text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
+              Try again
+            </button>
+            <a
+              href="/contact"
+              className="inline-flex min-h-11 items-center justify-center rounded-full border border-border px-5 text-sm font-medium text-foreground transition-colors hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              Contact us instead
+            </a>
+          </div>
+        ) : null}
       </section>
     );
   }
@@ -355,23 +389,20 @@ export function CustomForm({
 
       <div className="grid overflow-hidden rounded-[20px] border border-border bg-surface/80 shadow-[0_12px_40px_rgba(0,0,0,0.08)] sm:rounded-[24px] sm:shadow-[0_30px_100px_rgba(0,0,0,0.12)] desk:backdrop-blur-xl desk:grid-cols-[minmax(0,1.08fr)_minmax(440px,0.92fr)]">
         <div className="relative flex min-h-0 flex-col bg-surface p-3 sm:p-4 desk:h-[calc(100svh-120px)] desk:max-h-[820px] desk:min-h-[620px]">
-          <div className="relative min-h-0 flex-1 overflow-hidden rounded-[18px] border border-border bg-surface-elevated">
+          {/* Every child is absolutely positioned, so below the desk breakpoint
+              (where the parent has no fixed height) this box collapsed to 0.
+              Give it an explicit height on phones/tablets. */}
+          <div className="relative min-h-[260px] flex-1 overflow-hidden rounded-[18px] border border-border bg-surface-elevated sm:min-h-[340px] desk:min-h-0">
             {previewImage ? <img src={previewImage} alt={previewLabel} className="absolute inset-0 h-full w-full object-contain transition duration-500" /> : <div className="absolute inset-0 flex items-center justify-center text-xs uppercase tracking-[0.16em] text-muted">{selectedCategory?.name ?? "Custom studio"}</div>}
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-foreground/35 via-transparent to-foreground/5" />
             <div className="absolute left-4 top-4 rounded-full border border-white/15 bg-foreground/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-foreground/80 backdrop-blur-md">
               Custom 3D Studio
             </div>
-            <button type="button" disabled aria-label="Previous product example" className="absolute left-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl border border-white/15 bg-black/35 text-white backdrop-blur-md sm:left-5">
-              <span className="text-xl">‹</span>
-            </button>
-            <button type="button" disabled aria-label="Next product example" className="absolute right-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl border border-white/15 bg-black/35 text-white backdrop-blur-md sm:right-5">
-              <span className="text-xl">›</span>
-            </button>
             <div className="absolute bottom-3 left-3 right-3 sm:bottom-5 sm:left-5 sm:right-5">
-              <p className="text-[10px] uppercase tracking-[0.16em] text-white/70">
+              <p className="text-[11px] uppercase tracking-[0.16em] text-white/80 [text-shadow:0_1px_6px_rgba(0,0,0,0.6)]">
                 Example product
               </p>
-              <h2 className="mt-1 text-xl font-semibold text-foreground sm:text-2xl">
+              <h2 className="mt-1 text-xl font-semibold text-white [text-shadow:0_1px_8px_rgba(0,0,0,0.6)] sm:text-2xl">
                 {previewLabel || selectedCategory?.name || "Custom studio"}
               </h2>
             </div>
