@@ -36,12 +36,12 @@ export function ShopNavigation({
 
   return (
     <section aria-label="Product categories">
-      <div className="relative">
+      <div className="desk:flex desk:items-center desk:gap-3">
         <button
           type="button"
           onClick={() => scrollRail(-1)}
           aria-label="Scroll categories left"
-          className="absolute left-0 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-surface/95 text-foreground shadow-md transition-colors hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary desk:flex"
+          className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-surface/95 text-foreground shadow-sm transition-colors hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary desk:flex"
         >
           <IconChevronLeft size={18} stroke={1.8} />
         </button>
@@ -49,13 +49,13 @@ export function ShopNavigation({
           type="button"
           onClick={() => scrollRail(1)}
           aria-label="Scroll categories right"
-          className="absolute right-0 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-surface/95 text-foreground shadow-md transition-colors hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary desk:flex"
+          className="order-last hidden h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-surface/95 text-foreground shadow-sm transition-colors hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary desk:flex"
         >
           <IconChevronRight size={18} stroke={1.8} />
         </button>
       <div
         ref={railRef}
-        className="-mx-3 flex w-full flex-nowrap items-stretch gap-3 overflow-x-auto px-3 pb-2 [mask-image:linear-gradient(to_right,black_calc(100%-28px),transparent)] [scrollbar-width:none] desk:[mask-image:none] [&::-webkit-scrollbar]:hidden"
+        className="-mx-3 flex w-full min-w-0 flex-nowrap items-stretch gap-3 overflow-x-auto px-3 pb-2 desk:mx-0 desk:w-auto desk:flex-1 desk:px-0 [mask-image:linear-gradient(to_right,black_calc(100%-28px),transparent)] [scrollbar-width:none] desk:[mask-image:none] [&::-webkit-scrollbar]:hidden"
         aria-label="Main categories"
       >
         <CategoryCard active={allActive} onClick={onShowAll} label="All Models">
