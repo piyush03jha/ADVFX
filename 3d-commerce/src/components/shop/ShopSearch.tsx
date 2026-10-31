@@ -1,18 +1,22 @@
 "use client";
 
+import type { Ref } from "react";
 import { IconSearch, IconX } from "@tabler/icons-react";
 
 interface ShopSearchProps {
   value: string;
   onChange: (value: string) => void;
+  /** Lets the shop grid put the cursor back after the results page remounts. */
+  inputRef?: Ref<HTMLInputElement>;
 }
 
-export function ShopSearch({ value, onChange }: ShopSearchProps) {
+export function ShopSearch({ value, onChange, inputRef }: ShopSearchProps) {
   return (
     <div className="relative w-full">
       <div className="flex min-h-14 w-full items-center rounded-2xl border border-border bg-surface px-4 shadow-[0_14px_45px_rgba(0,0,0,0.08)] outline-none transition-[border-color,box-shadow] duration-200 focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/20">
         <IconSearch size={20} stroke={1.7} className="shrink-0 text-muted" />
         <input
+          ref={inputRef}
           type="search"
           value={value}
           onChange={(event) => onChange(event.target.value)}
