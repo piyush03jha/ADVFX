@@ -14,6 +14,7 @@ import type { StorefrontProduct } from "@/lib/catalog-api";
 import { resolveMediaUrl } from "@/lib/media-url";
 import { useTheme } from "@/context/ThemeContext";
 import { IconButton } from "@/components/ui/IconButton";
+import { loadModelBuffer } from "@/lib/model-loader";
 
 const Product3DStage = dynamic(() => import("./Product3DStage"), {
   ssr: false,
@@ -50,18 +51,29 @@ export function ProductGallery({ product }: ProductGalleryProps) {
     setFailedImages(new Set());
   }, [product.id]);
 
-  // Warm the 3D viewer code in the background so switching to the 3D tab is instant.
+  // Warm the 3D viewer code AND the model file in the background so switching to the
+  // 3D tab is instant. The download is shared with the viewer (see model-loader), so
+  // it is never fetched twice. Skipped on data-saver / slow connections.
   const hasModel = Boolean(product.model.trim());
   useEffect(() => {
     if (!hasModel) return;
-    const preload = () => void import("./Product3DStage");
+    const modelUrl = product.model.trim();
+    const preload = () => {
+      void import("./Product3DStage");
+      const connection = (navigator as Navigator & {
+        connection?: { effectiveType?: string; saveData?: boolean };
+      }).connection;
+      const constrained =
+        connection?.saveData || ["slow-2g", "2g", "3g"].includes(connection?.effectiveType ?? "");
+      if (!constrained) void loadModelBuffer(modelUrl).catch(() => undefined);
+    };
     if (typeof window.requestIdleCallback === "function") {
       const handle = window.requestIdleCallback(preload, { timeout: 4000 });
       return () => window.cancelIdleCallback?.(handle);
     }
     const timer = window.setTimeout(preload, 1500);
     return () => window.clearTimeout(timer);
-  }, [hasModel]);
+  }, [hasModel, product.model]);
 
   const imageItems: MediaItem[] = (product.images?.length ? product.images : [product.image])
     .map((src, index) => ({

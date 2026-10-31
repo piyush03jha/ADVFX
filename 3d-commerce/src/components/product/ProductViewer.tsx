@@ -14,6 +14,7 @@ import {
   OrbitControls,
   useGLTF,
 } from "@react-three/drei";
+import "@/lib/gltf-decoders";
 
 import {
   IconMaximize,

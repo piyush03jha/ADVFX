@@ -6,6 +6,8 @@ import { AdaptiveDpr, Environment, Lightformer, OrbitControls, useGLTF } from "@
 import * as THREE from "three";
 import { ModelErrorBoundary } from "@/components/3d/ModelErrorBoundary";
 import { useModelUrl } from "@/lib/useModelUrl";
+import "@/lib/gltf-decoders";
+
 
 interface Product3DStageProps {
   model: string;
