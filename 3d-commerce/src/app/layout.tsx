@@ -134,19 +134,25 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#eceef3" },
-    { media: "(prefers-color-scheme: dark)", color: "#0a0b0f" },
-  ],
+  themeColor: "#0a0b0f",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} h-full antialiased`}
+      data-theme="dark"
+      suppressHydrationWarning
+      style={{ colorScheme: "dark" }}
+      className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} dark h-full antialiased`}
     >
       <head>
+        {/* Dark by default; only switch to light if the visitor chose it. Runs before paint to avoid a flash. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var l=localStorage.getItem("advfx-theme-v2")==="light",r=document.documentElement;r.classList.toggle("dark",!l);r.dataset.theme=l?"light":"dark";r.style.colorScheme=l?"light":"dark"}catch(e){}`,
+          }}
+        />
         <link
           rel="preconnect"
           href="https://api.voxel3d.org"
