@@ -1,4 +1,4 @@
-export interface OrderSummaryData {
+interface OrderSummaryData {
   subtotal: number;
   shipping: number;
   tax: number;

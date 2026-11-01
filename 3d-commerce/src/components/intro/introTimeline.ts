@@ -2,7 +2,7 @@ import gsap from "gsap";
 import type { IntroScene } from "./introScene";
 
 /** Shortened choreography: preserve the logo reveal while keeping the intro near 3 seconds. */
-export const TIMING = {
+const TIMING = {
   iconIn: { at: 0, dur: 0.9 },
   trackLag: { at: 0.05, dur: 0.9 },
   camera: { at: 0, dur: 2.0 },
@@ -16,7 +16,7 @@ export const TIMING = {
   fadeOut: 0.25,
 } as const;
 
-export const INTRO_DURATION =
+const INTRO_DURATION =
   Math.max(
     TIMING.camera.at + TIMING.camera.dur,
     TIMING.word.at + TIMING.word.dur,

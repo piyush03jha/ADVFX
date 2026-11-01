@@ -19,7 +19,7 @@ export interface ShopCategory {
  * Accept both flat category APIs and APIs that return roots with nested children.
  * Some deployments return a { data: [...] } envelope rather than a bare array.
  */
-export function normalizeShopCategories(data: unknown): ShopCategory[] {
+function normalizeShopCategories(data: unknown): ShopCategory[] {
   const candidate = Array.isArray(data)
     ? data
     : typeof data === "object" && data !== null

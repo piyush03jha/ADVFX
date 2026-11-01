@@ -30,7 +30,7 @@ export interface CatalogPrice {
   endsAt?: string | null;
 }
 
-export interface CatalogVariantPrice {
+interface CatalogVariantPrice {
   id: string;
   currency: string;
   amountMinor: number;

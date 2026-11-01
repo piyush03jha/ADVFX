@@ -81,7 +81,7 @@ export function CustomBuild() {
               transition={{ duration: 0.8 }}
               className="relative flex min-h-[320px] items-center justify-center overflow-hidden bg-surface sm:min-h-[420px] lg:min-h-full"
             >
-              <Image src="/catogeries/couple1.png" alt="Custom 3D printed collectible made to order by Voxel3D" fill sizes="(max-width: 1023px) 100vw, 45vw" className="object-contain object-center" />
+              <Image src="/catogeries/couple1.webp" alt="Custom 3D printed collectible made to order by Voxel3D" fill sizes="(max-width: 1023px) 100vw, 45vw" className="object-contain object-center" />
             </motion.div>
           </div>
         </div>

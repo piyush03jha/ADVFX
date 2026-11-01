@@ -155,30 +155,3 @@ export const NavbarLogo = () => (
   </Link>
 );
 
-export const NavbarButton = ({ href, children, className, variant = "primary", type = "button", target, rel, onClick }: NavbarButtonProps) => {
-  const baseStyles = "relative inline-flex items-center justify-center rounded-full px-5 py-2.5 text-sm font-medium transition-all duration-300 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary";
-  const variantStyles = {
-    primary: "bg-[image:var(--gradient-primary)] text-white shadow-[0_8px_30px_rgba(139,92,246,0.25)] hover:shadow-[0_10px_40px_rgba(139,92,246,0.4)]",
-    secondary: "border border-border bg-surface text-foreground hover:border-primary hover:bg-surface-elevated",
-    dark: "border border-border bg-background text-foreground hover:border-primary hover:bg-surface",
-    gradient: "bg-[image:var(--gradient-primary)] text-white shadow-[0_8px_30px_rgba(139,92,246,0.25)] hover:shadow-[0_10px_40px_rgba(139,92,246,0.4)]",
-  };
-  const classes = cn(baseStyles, variantStyles[variant], className);
-
-  if (href) {
-    return <Link href={href} className={classes} target={target} rel={rel} onClick={onClick as React.MouseEventHandler<HTMLAnchorElement> | undefined}>{children}</Link>;
-  }
-
-  return <button type={type} className={classes} onClick={onClick as React.MouseEventHandler<HTMLButtonElement> | undefined}>{children}</button>;
-};
-
-interface NavbarButtonProps {
-  href?: string;
-  children: React.ReactNode;
-  className?: string;
-  variant?: "primary" | "secondary" | "dark" | "gradient";
-  type?: "button" | "submit" | "reset";
-  target?: string;
-  rel?: string;
-  onClick?: React.MouseEventHandler<HTMLAnchorElement> | React.MouseEventHandler<HTMLButtonElement>;
-}

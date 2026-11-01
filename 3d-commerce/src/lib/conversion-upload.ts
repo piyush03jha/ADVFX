@@ -1,4 +1,4 @@
-export interface ConversionUploadProgress {
+interface ConversionUploadProgress {
   (percent: number): void;
 }
 

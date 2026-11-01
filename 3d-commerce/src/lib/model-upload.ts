@@ -1,4 +1,4 @@
-export interface ModelUploadProgress {
+interface ModelUploadProgress {
   (percent: number): void;
 }
 

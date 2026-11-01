@@ -1,6 +1,6 @@
 import type { CreatedOrder } from "@/lib/checkout-api";
 
-export type OrderStatusResponse = {
+type OrderStatusResponse = {
   order: CreatedOrder;
   orderId: string;
   orderNumber: string;

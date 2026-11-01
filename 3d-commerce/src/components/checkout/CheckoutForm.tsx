@@ -26,7 +26,7 @@ interface FormState {
   email: string;
   phone: string;
 }
-export interface CheckoutDraft {
+interface CheckoutDraft {
   email: string;
   phone: string;
   addressId: string;

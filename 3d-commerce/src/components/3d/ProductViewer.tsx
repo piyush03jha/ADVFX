@@ -16,6 +16,8 @@ import * as THREE from "three";
 import { HERO_MODEL_ROTATION_MS } from "@/config/hero-motion";
 import type { HeroProduct } from "@/config/hero-products";
 import { useModelUrl } from "@/lib/useModelUrl";
+import "@/lib/gltf-decoders";
+
 
 const ENTER_DURATION = 0.85;
 const EXIT_DURATION = 0.7;

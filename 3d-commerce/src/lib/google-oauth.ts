@@ -5,13 +5,13 @@ export const GOOGLE_OAUTH_COOKIE = "forma_google_oauth";
 export const GOOGLE_OAUTH_COOKIE_PATH = "/api/auth/google";
 export const GOOGLE_OAUTH_COOKIE_MAX_AGE_SECONDS = 60 * 10;
 
-export type GoogleOAuthConfig = {
+type GoogleOAuthConfig = {
   clientId: string;
   redirectUri: string;
   origin: string;
 };
 
-export type GoogleOAuthCookie = {
+type GoogleOAuthCookie = {
   state: string;
   verifier: string;
   returnTo: string;
