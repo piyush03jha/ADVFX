@@ -14,7 +14,7 @@ import type { StorefrontVariant } from "@/lib/catalog-api";
 import { useAuth } from "@/context/AuthContext";
 import { resolveMediaUrl } from "@/lib/media-url";
 
-export type CartSize = string;
+type CartSize = string;
 
 export interface CartProduct {
   id: string;
@@ -41,7 +41,7 @@ export interface CartItem {
   quantity: number;
 }
 
-export interface BackendCartProduct {
+interface BackendCartProduct {
   id: string;
   name: string;
   slug?: string;
@@ -63,7 +63,7 @@ export interface BackendCartProduct {
   }>;
 }
 
-export interface BackendCartVariant {
+interface BackendCartVariant {
   id: string;
   name: string;
   size?: string | null;
@@ -77,7 +77,7 @@ export interface BackendCartVariant {
   } | null;
 }
 
-export interface BackendCartItem {
+interface BackendCartItem {
   id: string;
   productId: string;
   variantId?: string | null;
@@ -86,7 +86,7 @@ export interface BackendCartItem {
   product: BackendCartProduct;
 }
 
-export interface BackendCart {
+interface BackendCart {
   id: string;
   items: BackendCartItem[];
 }

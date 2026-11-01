@@ -26,7 +26,7 @@ const CONNECT_FAILURE_CODES = new Set([
 const DEFAULT_TIMEOUT_MS = 60_000;
 const MAX_ATTEMPTS = 3;
 
-export type BackendFetchInit = RequestInit & {
+type BackendFetchInit = RequestInit & {
   /** Abort if response headers have not arrived within this time. */
   timeoutMs?: number;
   /**

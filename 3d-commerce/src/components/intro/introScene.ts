@@ -11,7 +11,7 @@ import { LOGO } from "./logoLayout";
  * only touches a plain object) and keeps every 3D detail in one place.
  */
 
-export interface IntroTextures {
+interface IntroTextures {
   icon: THREE.Texture;
   word: THREE.Texture;
   line: THREE.Texture;
@@ -48,7 +48,7 @@ export interface IntroState {
   threeZ: number;
 }
 
-export const FOV = 30;
+const FOV = 30;
 
 // Where inside the icon the pour starts, measured up from the icon's bottom.
 const SEAM_INSIDE = 55;

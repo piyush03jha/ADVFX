@@ -36,6 +36,8 @@ const nextConfig: NextConfig = {
                 "https://static.cloudflareinsights.com",
               ].join(" "),
               "style-src 'self' 'unsafe-inline'",
+              // Draco/Meshopt decoders run in blob: workers.
+              "worker-src 'self' blob:",
               "img-src 'self' data: blob: https:",
               "font-src 'self' data:",
               "connect-src 'self' blob: https://*.backblazeb2.com https://api.voxel3d.org https://challenges.cloudflare.com https://checkout.razorpay.com https://cloudflareinsights.com https://static.cloudflareinsights.com",

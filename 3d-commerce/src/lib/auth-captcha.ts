@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-export type CaptchaPurpose = "login" | "register" | "forgot-password";
-export type CaptchaProvider = "math" | "turnstile";
-export type CaptchaChallenge = {
+type CaptchaPurpose = "login" | "register" | "forgot-password";
+type CaptchaProvider = "math" | "turnstile";
+type CaptchaChallenge = {
   token: string;
   first: number;
   second: number;

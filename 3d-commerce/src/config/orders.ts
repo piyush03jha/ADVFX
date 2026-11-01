@@ -29,7 +29,7 @@ export interface TrackingEvent {
   current?: boolean;
 }
 
-export interface Shipment {
+interface Shipment {
   carrier: string;
   trackingNumber: string;
   trackingUrl?: string;
@@ -38,7 +38,7 @@ export interface Shipment {
   events: TrackingEvent[];
 }
 
-export interface OrderAddress {
+interface OrderAddress {
   name: string;
   phone: string;
   addressLine1: string;
@@ -49,7 +49,7 @@ export interface OrderAddress {
   country: string;
 }
 
-export interface Order {
+interface Order {
   id: string;
   orderNumber: string;
   createdAt: string;

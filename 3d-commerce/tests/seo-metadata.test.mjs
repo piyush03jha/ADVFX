@@ -9,6 +9,7 @@ const shop = await readFile(new URL("../src/app/shop/page.tsx", import.meta.url)
 const custom = await readFile(new URL("../src/app/custom/page.tsx", import.meta.url), "utf8");
 const customLayout = await readFile(new URL("../src/app/custom/layout.tsx", import.meta.url), "utf8");
 const about = await readFile(new URL("../src/app/about/page.tsx", import.meta.url), "utf8");
+const globalCss = await readFile(new URL("../src/app/globals.css", import.meta.url), "utf8");
 const categories = await readFile(new URL("../src/components/home/shop-catogery.tsx", import.meta.url), "utf8");
 const navbar = await readFile(new URL("../src/components/layout/SiteNavbar.tsx", import.meta.url), "utf8");
 
@@ -64,7 +65,8 @@ test("homepage keeps the long-form About section on the About page", () => {
 test("landing-page category rail is horizontally scrollable and keyboard accessible", () => {
   assert.match(categories, /aria-label="Browse product categories"/);
   assert.match(categories, /overflow-x-auto/);
-  assert.match(categories, /scrollbar-width:thin/);
+  assert.match(categories, /category-scrollbar/);
+  assert.match(globalCss, /\.category-scrollbar \{[^}]*scrollbar-width: thin;/);
   assert.match(categories, /tabIndex=\{0\}/);
   assert.match(categories, /snap-mandatory/);
 });

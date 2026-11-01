@@ -7,7 +7,7 @@ export type RazorpayOrder = {
   orderNumber: string;
 };
 
-export type VerifiedPayment = {
+type VerifiedPayment = {
   orderId: string;
   orderNumber: string;
   orderStatus: string;
@@ -60,14 +60,7 @@ export function createRazorpayOrder(orderId: string) {
   });
 }
 
-export function retryRazorpayPayment(orderId: string) {
-  return request<RazorpayOrder>("/api/payments/razorpay/retry", {
-    method: "POST",
-    body: JSON.stringify({ orderId }),
-  });
-}
-
-export type RazorpayCancelResult = {
+type RazorpayCancelResult = {
   orderId: string;
   status: string;
   refunded?: boolean;
@@ -94,7 +87,7 @@ export function verifyRazorpayPayment(input: {
 }
 
 
-export type CheckoutOrderStatus = {
+type CheckoutOrderStatus = {
   orderId: string;
   orderNumber: string;
   status: string;

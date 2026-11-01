@@ -10,7 +10,7 @@ export type CountryCode =
   | "FR"
   | "JP";
 
-export interface CountryConfig {
+interface CountryConfig {
   code: CountryCode;
   name: string;
   currency:
