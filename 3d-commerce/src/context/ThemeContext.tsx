@@ -16,7 +16,10 @@ interface ThemeContextValue {
   setTheme: (theme: Theme) => void;
 }
 
-const STORAGE_KEY = "advfx-theme";
+// Dark is the default. The key is versioned so visitors whose old "light" value
+// was auto-saved from their system setting (not chosen) also get the new default.
+const STORAGE_KEY = "advfx-theme-v2";
+const DEFAULT_THEME: Theme = "dark";
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
@@ -32,14 +35,6 @@ function getStoredTheme(): Theme | null {
   return null;
 }
 
-function getSystemTheme(): Theme {
-  if (typeof window === "undefined") return "light";
-
-  return window.matchMedia("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light";
-}
-
 function applyTheme(theme: Theme) {
   const root = document.documentElement;
   root.classList.toggle("dark", theme === "dark");
@@ -53,40 +48,19 @@ export function ThemeProvider({
   children: React.ReactNode;
 }) {
   // Keep the first server and client render identical.
-  // The persisted/system theme is restored after hydration.
-  const [theme, setThemeState] = useState<Theme>("light");
+  // The persisted theme (default: dark) is restored after hydration.
+  const [theme, setThemeState] = useState<Theme>(DEFAULT_THEME);
 
   useEffect(() => {
-    const resolvedTheme = getStoredTheme() ?? getSystemTheme();
+    const resolvedTheme = getStoredTheme() ?? DEFAULT_THEME;
 
     setThemeState(resolvedTheme);
     applyTheme(resolvedTheme);
-    window.localStorage.setItem(STORAGE_KEY, resolvedTheme);
   }, []);
 
   useEffect(() => {
     applyTheme(theme);
   }, [theme]);
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-
-    const handleSystemThemeChange = (event: MediaQueryListEvent) => {
-      if (window.localStorage.getItem(STORAGE_KEY)) {
-        return;
-      }
-
-      const nextTheme: Theme = event.matches ? "dark" : "light";
-      setThemeState(nextTheme);
-      applyTheme(nextTheme);
-    };
-
-    mediaQuery.addEventListener("change", handleSystemThemeChange);
-
-    return () => {
-      mediaQuery.removeEventListener("change", handleSystemThemeChange);
-    };
-  }, []);
 
   const setTheme = useCallback((nextTheme: Theme) => {
     setThemeState(nextTheme);
