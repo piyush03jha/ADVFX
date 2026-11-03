@@ -660,6 +660,20 @@ model ProductVariant {
  * PRODUCT VARIANT PRICE
  * ============================================================
  */
+model MaterialPricingRule {
+  id String @id @default(cuid())
+  material String
+  sizeKey String
+  currency String @default("INR")
+  amountMinor Int
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([material, sizeKey])
+  @@index([material, isActive])
+}
+
 model ProductVariantCountryPrice {
   id          String         @id @default(cuid())
   variantId   String
