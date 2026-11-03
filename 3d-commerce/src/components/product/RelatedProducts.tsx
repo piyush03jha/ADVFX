@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { resolveMediaUrl } from "@/lib/media-url";
+import { prefetchProductMedia } from "@/lib/image-prefetch";
 
 import { IconArrowUpRight } from "@tabler/icons-react";
 
@@ -133,6 +134,7 @@ export function RelatedProducts({
             key={product.id}
             href={`/product/${product.slug}`}
             scroll={true}
+            onPointerDown={() => prefetchProductMedia(product)}
             onClick={handleProductClick}
             className="group w-[190px] shrink-0 snap-start sm:w-[240px] desk:w-auto"
           >
@@ -156,7 +158,7 @@ export function RelatedProducts({
                   alt={product.name}
                   fill
                   sizes="(max-width: 640px) 190px, (max-width: 1024px) 240px, 25vw"
-                  loading="lazy"
+                  loading="eager"
                   unoptimized={product.image.startsWith("/api/assets/") || !product.image.startsWith("/")}
                   className="object-cover transition-transform duration-700 group-hover:scale-105"
                 />

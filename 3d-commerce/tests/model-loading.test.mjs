@@ -18,13 +18,33 @@ test("every viewer that loads GLBs configures the local decoder", () => {
   }
 });
 
-test("the model file is only downloaded once the visitor shows interest in the 3D view", () => {
+test("choosing a product starts its photos and 3D file immediately", () => {
+  const helper = read("../src/lib/image-prefetch.ts");
+  assert.match(helper, /export function prefetchProductMedia/);
+  assert.match(helper, /loadModelBuffer\(model\)/);
+  assert.match(helper, /saveData/, "skipped on data-saver connections");
+
+  for (const file of ["shop/ShopProductCard", "home/ProductCard", "product/RelatedProducts"]) {
+    const source = read(`../src/components/${file}.tsx`);
+    assert.match(source, /prefetchProductMedia/, file);
+    assert.match(source, /onPointerDown=/, `${file} starts on pointer down`);
+  }
+
   const gallery = read("../src/components/product/ProductGallery.tsx");
-  assert.match(gallery, /loadModelBuffer\(modelUrl\)/);
-  assert.match(gallery, /saveData/, "skipped on data-saver connections");
-  assert.match(gallery, /onPointerEnter=\{item\.type === "model" \? prefetchModel/);
-  const idleEffect = gallery.slice(gallery.indexOf("const preload = () =>"), gallery.indexOf("const imageItems"));
-  assert.doesNotMatch(idleEffect, /loadModelBuffer/, "no background download of the GLB on page load");
+  assert.match(gallery, /prefetchProductMedia\(product\)/, "the product page itself also starts everything on mount");
+});
+
+test("landing, shop and suggested-product images are requested right away, not lazily", () => {
+  for (const file of ["home/ProductCard", "home/shop-catogery", "shop/ShopProductCard", "product/RelatedProducts"]) {
+    assert.doesNotMatch(read(`../src/components/${file}.tsx`), /loading="lazy"|"eager" : "lazy"/, file);
+  }
+  assert.match(read("../src/components/shop/ShopProductCard.tsx"), /loading=\{priority \? undefined : "eager"\}/);
+});
+
+test("the hero loads every hero model once the visible one is ready", () => {
+  const hero = read("../src/components/home/Hero.tsx");
+  assert.match(hero, /heroProducts\.forEach\(\(_, index\) => \{\s*if \(index !== currentIndex\) void preloadModel\(index\)/);
+  assert.doesNotMatch(hero, /const keep = new Set/);
 });
 
 test("admin product photos retry instead of staying broken after an upload", () => {

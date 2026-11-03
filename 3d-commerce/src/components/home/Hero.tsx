@@ -133,28 +133,14 @@ export function Hero() {
     return promise;
   }, [heroProducts]);
 
-  // Give the visible model download priority. Only after the active GLB is
-  // completely available do we spend bandwidth preloading the next model.
-  // This prevents two large GLBs from competing for the same connection and
-  // prevents a rotation from ever advancing to a partially downloaded model.
+  // Give the visible model download priority. Once the active GLB is completely
+  // available, every other hero model starts downloading together. Rotation never
+  // advances to a partially downloaded model (see scheduleNextProduct).
   useEffect(() => {
     if (!canLoadHeroModel || !heroProducts.length) return;
 
     let cancelled = false;
     const currentIndex = activeIndex;
-
-    const keep = new Set<string>();
-    for (const index of [currentIndex, (currentIndex + 1) % heroProducts.length]) {
-      const modelUrl = heroProducts[index]?.model?.trim();
-      if (modelUrl) keep.add(modelUrl);
-    }
-
-    preloadAbortRef.current.forEach((controller, modelUrl) => {
-      if (keep.has(modelUrl)) return;
-      controller.abort();
-      preloadAbortRef.current.delete(modelUrl);
-      preloadPromisesRef.current.delete(modelUrl);
-    });
 
     void preloadModel(currentIndex)
       .then(() => {
@@ -162,10 +148,11 @@ export function Hero() {
 
         setActiveModelReady(true);
 
-        if (heroProducts.length > 1) {
-          const nextIndex = (currentIndex + 1) % heroProducts.length;
-          void preloadModel(nextIndex).catch(() => undefined);
-        }
+        // The visible model is ready: now fetch every other hero model at once so the
+        // whole rotation is on the device within moments, not one model per turn.
+        heroProducts.forEach((_, index) => {
+          if (index !== currentIndex) void preloadModel(index).catch(() => undefined);
+        });
       })
       .catch(() => {
         if (!cancelled && currentIndex === activeIndex) {
