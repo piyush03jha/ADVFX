@@ -5,10 +5,13 @@ import { IconPlus, IconRefresh } from "@tabler/icons-react";
 
 type Promotion = { id:string; name:string; code?:string|null; type:string; value:number; usageLimit?:number|null; usageCount:number; isActive:boolean };
 type TaxRule = { id:string; name:string; countryCode:string; stateCode?:string|null; rateBps:number; priority:number; isActive:boolean };
+type MaterialRule = {id:string;material:string;sizeKey:string;currency:string;amountMinor:number;isActive:boolean};
 
 export default function AdminCommerceRulesPage() {
   const [promotions,setPromotions]=useState<Promotion[]>([]);
   const [taxRules,setTaxRules]=useState<TaxRule[]>([]);
+  const [materialRules,setMaterialRules]=useState<MaterialRule[]>([]);
+  const [materialRule,setMaterialRule]=useState({material:"",sizeKey:"small",currency:"INR",amount:""});
   const [promo,setPromo]=useState({name:"",code:"",type:"PERCENTAGE",value:"",minSubtotalMinor:"",maxDiscountMinor:"",usageLimit:""});
   const [tax,setTax]=useState({name:"",countryCode:"IN",stateCode:"",rate:"",priority:"0",applyToShipping:false});
   const [message,setMessage]=useState("");
@@ -17,9 +20,9 @@ export default function AdminCommerceRulesPage() {
   async function load(){
     setLoading(true);
     try{
-      const [p,t]=await Promise.all([fetch("/api/admin/promotions",{cache:"no-store"}),fetch("/api/admin/tax-rules",{cache:"no-store"})]);
-      if(!p.ok||!t.ok) throw new Error();
-      setPromotions(await p.json()); setTaxRules(await t.json()); setMessage("");
+      const [p,t,m]=await Promise.all([fetch("/api/admin/promotions",{cache:"no-store"}),fetch("/api/admin/tax-rules",{cache:"no-store"}),fetch("/api/admin/material-pricing",{cache:"no-store"})]);
+      if(!p.ok||!t.ok||!m.ok) throw new Error();
+      setPromotions(await p.json()); setTaxRules(await t.json()); setMaterialRules(await m.json()); setMessage("");
     }catch{setMessage("Unable to load commerce rules.");}finally{setLoading(false);}
   }
   useEffect(()=>{void load();},[]);
@@ -42,6 +45,15 @@ export default function AdminCommerceRulesPage() {
     })});
     if(!response.ok){setMessage("Unable to save tax rule.");return;}
     setTax({name:"",countryCode:"IN",stateCode:"",rate:"",priority:"0",applyToShipping:false}); await load();
+  }
+
+  async function saveMaterialRule(){
+    const amount=Number(materialRule.amount);
+    if(!materialRule.material.trim()||!Number.isFinite(amount)||amount<=0){setMessage("Enter a material and a valid positive price.");return;}
+    const response=await fetch("/api/admin/material-pricing",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({material:materialRule.material.trim(),sizeKey:materialRule.sizeKey,currency:materialRule.currency,amountMinor:Math.round(amount*100)})});
+    const data=await response.json().catch(()=>null);
+    if(!response.ok){setMessage(data?.message||"Unable to save material rate.");return;}
+    setMaterialRule({...materialRule,amount:""}); await load();
   }
 
   async function toggle(kind:string,id:string,isActive:boolean){
@@ -74,5 +86,16 @@ export default function AdminCommerceRulesPage() {
         <div className="mt-5 space-y-2">{taxRules.map(t=><div key={t.id} className="flex items-center justify-between gap-3 rounded-xl border border-border p-3"><div><p className="text-xs font-medium">{t.name}</p><p className="mt-1 text-[10px] text-muted">{t.countryCode}{t.stateCode ? " / "+t.stateCode : ""} · {(t.rateBps/100).toFixed(2)}% · priority {t.priority}</p></div><button type="button" onClick={()=>void toggle("tax-rules",t.id,t.isActive)} className="text-[10px] text-muted">{t.isActive?"Disable":"Enable"}</button></div>)}</div>
       </section>
     </div>}
+    <section className="mt-6 rounded-2xl border border-border bg-surface p-5">
+      <div><h2 className="text-xl font-semibold">Material pricing matrix</h2><p className="mt-1 text-xs leading-5 text-muted">Configure the selling price for each material and size. Selecting a material on a product recalculates all active size variants from these rates.</p></div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <input value={materialRule.material} onChange={e=>setMaterialRule({...materialRule,material:e.target.value})} placeholder="Material (e.g. Resin)" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
+        <select value={materialRule.sizeKey} onChange={e=>setMaterialRule({...materialRule,sizeKey:e.target.value})} className="h-10 rounded-xl border border-border bg-background px-3 text-xs"><option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option></select>
+        <select value={materialRule.currency} onChange={e=>setMaterialRule({...materialRule,currency:e.target.value})} className="h-10 rounded-xl border border-border bg-background px-3 text-xs"><option value="INR">INR</option></select>
+        <input value={materialRule.amount} onChange={e=>setMaterialRule({...materialRule,amount:e.target.value})} type="number" min="0.01" step="0.01" placeholder="Final price (₹)" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
+        <button type="button" onClick={()=>void saveMaterialRule()} className="h-10 rounded-full bg-primary px-5 text-xs font-semibold text-white">Save material rate</button>
+      </div>
+      <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{materialRules.map(rule=><div key={rule.id} className="flex items-center justify-between rounded-xl border border-border p-3"><div><p className="text-xs font-medium">{rule.material} · {rule.sizeKey}</p><p className="mt-1 text-[10px] text-muted">{rule.currency} {(rule.amountMinor/100).toLocaleString("en-IN",{minimumFractionDigits:2})}</p></div><span className="text-[10px] text-muted">{rule.isActive?"Active":"Inactive"}</span></div>)}</div>
+    </section>
   </main>;
 }
