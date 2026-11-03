@@ -55,13 +55,26 @@ export class ProductsService {
         },
       });
 
-      // Every physical product starts with the standard three size options.
-      // Admin can change these names, dimensions and prices from the catalog.
+      // Material rates are configured centrally for each standard size.
+      // A newly-created product inherits those prices immediately when its
+      // material has a complete pricing matrix.
+      const materialRules = dto.material?.trim()
+        ? await tx.materialPricingRule.findMany({
+            where: { material: { equals: dto.material.trim(), mode: 'insensitive' }, isActive: true },
+          })
+        : [];
+      const materialPriceBySize = new Map(materialRules.map((rule) => [rule.sizeKey.toLowerCase(), rule]));
       for (const item of [
         { name: 'Small', size: '15 cm' },
         { name: 'Medium', size: '20 cm' },
         { name: 'Large', size: '25 cm' },
       ]) {
+        const materialPrice = dto.material?.trim()
+          ? materialPriceBySize.get(item.name.toLowerCase())
+          : null;
+        if (dto.material?.trim() && !materialPrice) {
+          throw new BadRequestException('Configure active Small, Medium and Large prices for ' + dto.material + ' before creating this product');
+        }
         await tx.productVariant.create({
           data: {
             productId: product.id,
@@ -70,7 +83,8 @@ export class ProductsService {
             price: {
               create: {
                 currency: 'INR',
-                amountMinor: baseAmount,
+                amountMinor: materialPrice?.amountMinor ?? baseAmount,
+                currency: materialPrice?.currency ?? 'INR',
                 isActive: true,
               },
             },
