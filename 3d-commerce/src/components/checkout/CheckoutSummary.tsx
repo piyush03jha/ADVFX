@@ -100,7 +100,7 @@ export function CheckoutSummary({
           <p className="mt-2 text-xs leading-5 text-error">{quoteError}</p>
         ) : quote ? (
           <div className="mt-3 space-y-2.5 text-sm">
-            <SummaryRow label="Subtotal" value={money(quote.summary.subtotalMinor, quote.currency)} />
+            <SummaryRow label="Subtotal (GST inclusive)" value={money(quote.summary.subtotalMinor, quote.currency)} />
             <SummaryRow
               label="Shipping"
               value={quote.summary.shippingMinor === 0 ? "FREE" : money(quote.summary.shippingMinor, quote.currency)}
@@ -110,9 +110,9 @@ export function CheckoutSummary({
               <SummaryRow label="Discount" value={`-${money(quote.summary.discountMinor, quote.currency)}`} positive />
             )}
             {quote.summary.taxMinor > 0 && (
-              <SummaryRow label="Tax" value={money(quote.summary.taxMinor, quote.currency)} />
+              <SummaryRow label="GST included" value={money(quote.summary.taxMinor, quote.currency)} />
             )}
-            <div className="mt-3 flex items-end justify-between gap-4 border-t border-border pt-3">
+            {quote.summary.roundingMinor !== undefined && quote.summary.roundingMinor !== 0 && (\n              <SummaryRow label="Rounding adjustment" value={money(quote.summary.roundingMinor, quote.currency)} />\n            )}\n            <div className="mt-3 flex items-end justify-between gap-4 border-t border-border pt-3">
               <span className="text-[11px] uppercase tracking-[0.15em] text-muted">Total</span>
               <span className="text-xl font-semibold tracking-[-0.03em] text-primary">{money(quote.summary.totalMinor, quote.currency)}</span>
             </div>
