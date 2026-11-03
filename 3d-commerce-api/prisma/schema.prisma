@@ -715,6 +715,7 @@ model Order {
   discountMinor Int @default(0)
   shippingMinor Int @default(0)
   taxMinor      Int @default(0)
+  roundingMinor Int @default(0)
   totalMinor    Int
 
   shippingRuleId String?
