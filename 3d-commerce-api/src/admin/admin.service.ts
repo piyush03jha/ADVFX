@@ -175,6 +175,34 @@ export class AdminService {
     return this.prisma.user.update({ where: { id }, data: { isActive }, select: { id: true, name: true, email: true, phone: true, isActive: true } });
   }
 
+  async materialPricingRules() {
+    return this.prisma.materialPricingRule.findMany({
+      orderBy: [{ material: 'asc' }, { sizeKey: 'asc' }],
+    });
+  }
+
+  async upsertMaterialPricingRule(input: {
+    material: string;
+    sizeKey: string;
+    currency?: string;
+    amountMinor: number;
+    isActive?: boolean;
+  }) {
+    const material = input.material?.trim();
+    const sizeKey = input.sizeKey?.trim().toLowerCase();
+    const currency = (input.currency || 'INR').trim().toUpperCase();
+    if (!material || !sizeKey) throw new BadRequestException('Material and size are required');
+    if (!/^[A-Z]{3}$/.test(currency)) throw new BadRequestException('Currency must be a three-letter ISO code');
+    if (!Number.isSafeInteger(input.amountMinor) || input.amountMinor <= 0) {
+      throw new BadRequestException('Material price must be a positive amount in minor currency units');
+    }
+    return this.prisma.materialPricingRule.upsert({
+      where: { material_sizeKey: { material, sizeKey } },
+      create: { material, sizeKey, currency, amountMinor: input.amountMinor, isActive: input.isActive ?? true },
+      update: { currency, amountMinor: input.amountMinor, isActive: input.isActive ?? true },
+    });
+  }
+
   async catalog() {
     const [products, categories] = await Promise.all([
       this.prisma.product.findMany({
