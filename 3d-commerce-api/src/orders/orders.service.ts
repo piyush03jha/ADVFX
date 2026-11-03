@@ -263,6 +263,7 @@ export class OrdersService {
           discountMinor: quote.summary.discountMinor,
           shippingMinor: quote.summary.shippingMinor,
           taxMinor: quote.summary.taxMinor,
+          roundingMinor: quote.summary.roundingMinor ?? 0,
           totalMinor: quote.summary.totalMinor,
           shippingRule: quote.shippingRule
             ? { connect: { id: quote.shippingRule.id } }
