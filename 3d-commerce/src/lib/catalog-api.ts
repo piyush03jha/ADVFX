@@ -18,6 +18,7 @@ export interface CatalogCategory {
   id: string;
   name: string;
   slug: string;
+  gstRateBps?: number | null;
 }
 
 export interface CatalogPrice {
@@ -122,6 +123,7 @@ export interface StorefrontProduct {
   slug: string;
   category: string;
   categorySlug?: string;
+  gstRateBps?: number | null;
   description: string;
   price: number;
   currency: string;
@@ -333,6 +335,7 @@ export function mapCatalogProduct(product: CatalogProduct): StorefrontProduct {
     createdAt: product.createdAt,
     category: product.category?.name ?? "Uncategorized",
     categorySlug: product.category?.slug,
+    gstRateBps: product.category?.gstRateBps ?? null,
     description: product.description ?? "",
     price: amount / 100,
     currency,
