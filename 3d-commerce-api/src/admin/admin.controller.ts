@@ -74,6 +74,14 @@ export class AdminController {
     return this.adminService.setCustomerActive(id, isActive);
   }
 
+  @Get('material-pricing')
+  materialPricingRules() { return this.adminService.materialPricingRules(); }
+
+  @Post('material-pricing')
+  upsertMaterialPricingRule(@Body() body: { material: string; sizeKey: string; currency?: string; amountMinor: number; isActive?: boolean }) {
+    return this.adminService.upsertMaterialPricingRule(body);
+  }
+
   @Get('catalog')
   catalog() { return this.adminService.catalog(); }
 
