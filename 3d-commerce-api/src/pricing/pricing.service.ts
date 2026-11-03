@@ -27,6 +27,7 @@ export class PricingService {
       const products = await this.prisma.product.findMany({
         where: { id: { in: productIds } },
         include: {
+          category: { select: { id: true, name: true, gstRateBps: true } },
           inventory: true,
           prices: {
             where: {
@@ -76,6 +77,7 @@ export class PricingService {
               variant: { include: { price: true } },
               product: {
                 include: {
+                  category: { select: { id: true, name: true, gstRateBps: true } },
                   inventory: true,
                   prices: {
                     where: {
@@ -174,6 +176,7 @@ export class PricingService {
       }
 
       const lineTotalMinor = price.amountMinor * item.quantity;
+      const taxRateBps = product.category?.gstRateBps ?? 0;
       subtotalMinor += lineTotalMinor;
       currency = price.currency;
       totalWeightGrams +=
@@ -200,6 +203,10 @@ export class PricingService {
         variantId: variant?.id ?? null,
         productName: product.name,
         variantName: variant?.name ?? null,
+        material: product.material ?? null,
+        size: variant?.size ?? variant?.name ?? null,
+        taxRateBps,
+        taxMinor: taxRateBps > 0 ? Math.round(lineTotalMinor * taxRateBps / (10000 + taxRateBps)) : 0,
         quantity: item.quantity,
         unitPriceMinor: price.amountMinor,
         lineTotalMinor,
@@ -324,28 +331,20 @@ export class PricingService {
       };
     }
 
-    const taxRule = await this.prisma.taxRule.findFirst({
-      where: {
-        isActive: true,
-        countryCode: address.country,
-        OR: [{ stateCode: address.state }, { stateCode: null }],
-      },
-      orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
+    // Product prices are tax-inclusive. Extract category GST from the
+    // already displayed price; never add it a second time at checkout.
+    const pricedItems = items.map((item) => {
+      const allocatedDiscount = subtotalMinor > 0
+        ? Math.floor(discountMinor * item.lineTotalMinor / subtotalMinor)
+        : 0;
+      const discountedLineMinor = Math.max(0, item.lineTotalMinor - allocatedDiscount);
+      const taxMinor = item.taxRateBps > 0
+        ? Math.round(discountedLineMinor * item.taxRateBps / (10000 + item.taxRateBps))
+        : 0;
+      return { ...item, taxMinor };
     });
-
-    const taxableBase =
-      subtotalMinor -
-      discountMinor +
-      (taxRule?.applyToShipping ? shippingMinor : 0);
-
-    const taxMinor = taxRule
-      ? Math.floor(Math.max(0, taxableBase) * taxRule.rateBps / 10000)
-      : 0;
-
-    const totalMinor = Math.max(
-      0,
-      subtotalMinor + shippingMinor + taxMinor - discountMinor,
-    );
+    const taxMinor = pricedItems.reduce((sum, item) => sum + item.taxMinor, 0);
+    const totalMinor = Math.max(0, subtotalMinor + shippingMinor - discountMinor);
 
     // Razorpay Orders require a positive amount. Reject zero-value checkout
     // rather than creating an order that cannot be paid.
@@ -357,10 +356,10 @@ export class PricingService {
 
     return {
       currency: currency ?? "INR",
-      items,
+      items: pricedItems,
+      taxInclusive: true,
       shippingRule: shipping,
       promotion,
-      taxRule,
       summary: {
         subtotalMinor,
         shippingMinor,
