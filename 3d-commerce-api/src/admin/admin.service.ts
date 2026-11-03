@@ -196,10 +196,36 @@ export class AdminService {
     if (!Number.isSafeInteger(input.amountMinor) || input.amountMinor <= 0) {
       throw new BadRequestException('Material price must be a positive amount in minor currency units');
     }
-    return this.prisma.materialPricingRule.upsert({
-      where: { material_sizeKey: { material, sizeKey } },
-      create: { material, sizeKey, currency, amountMinor: input.amountMinor, isActive: input.isActive ?? true },
-      update: { currency, amountMinor: input.amountMinor, isActive: input.isActive ?? true },
+    return this.prisma.$transaction(async (tx) => {
+      const rule = await tx.materialPricingRule.upsert({
+        where: { material_sizeKey: { material, sizeKey } },
+        create: { material, sizeKey, currency, amountMinor: input.amountMinor, isActive: input.isActive ?? true },
+        update: { currency, amountMinor: input.amountMinor, isActive: input.isActive ?? true },
+      });
+      if (rule.isActive) {
+        const products = await tx.product.findMany({
+          where: { material: { equals: material, mode: 'insensitive' }, status: { not: 'ARCHIVED' } },
+          include: { variants: { where: { isActive: true }, include: { price: true } } },
+        });
+        const keyFor = (value: string | null | undefined) => {
+          const normalized = (value ?? '').trim().toLowerCase();
+          if (/\\bsmall\\b|\\bs\\b/.test(normalized)) return 'small';
+          if (/\\bmedium\\b|\\bmid\\b|\\bm\\b/.test(normalized)) return 'medium';
+          if (/\\blarge\\b|\\bl\\b/.test(normalized)) return 'large';
+          return normalized.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+        };
+        for (const product of products) {
+          for (const variant of product.variants) {
+            if (keyFor(variant.name) !== sizeKey && keyFor(variant.size) !== sizeKey) continue;
+            await tx.productVariantPrice.upsert({
+              where: { variantId: variant.id },
+              create: { variantId: variant.id, currency, amountMinor: rule.amountMinor, isActive: true },
+              update: { currency, amountMinor: rule.amountMinor, compareAtMinor: null, isActive: true },
+            });
+          }
+        }
+      }
+      return rule;
     });
   }
 
