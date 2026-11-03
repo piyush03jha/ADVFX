@@ -27,6 +27,17 @@ async function proxy(request: Request, params: Promise<{ id: string }>, method: 
   }
 }
 
+export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
+  const { id } = await context.params;
+  try {
+    const response = await backendFetch(getBackendApiUrl("products/" + encodeURIComponent(id)), { cache: "no-store" });
+    const data = await response.json().catch(() => null);
+    return NextResponse.json(data ?? { error: "Product lookup failed." }, { status: response.status });
+  } catch {
+    return NextResponse.json({ error: "Catalog service is unavailable." }, { status: 503 });
+  }
+}
+
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   return proxy(request, context.params, "PATCH");
 }
