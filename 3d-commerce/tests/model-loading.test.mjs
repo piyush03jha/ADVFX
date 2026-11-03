@@ -26,8 +26,11 @@ test("choosing a product starts its photos and 3D file immediately", () => {
 
   for (const file of ["shop/ShopProductCard", "home/ProductCard", "product/RelatedProducts"]) {
     const source = read(`../src/components/${file}.tsx`);
-    assert.match(source, /prefetchProductMedia/, file);
-    assert.match(source, /onPointerDown=/, `${file} starts on pointer down`);
+    assert.match(source, /prefetchProductMedia/, `${file} starts the model on click`);
+    // Pointer down also fires when a phone user starts swiping past a card, so it may
+    // only warm the (small) photos, never the 3D file.
+    assert.match(source, /onPointerDown=\{\(\) => prefetchProductPhotos\(product\)\}/, file);
+    assert.doesNotMatch(source, /onPointerDown=\{[^}]*prefetchProductMedia/, `${file} must not start the model on pointer down`);
   }
 
   const gallery = read("../src/components/product/ProductGallery.tsx");

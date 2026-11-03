@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { resolveMediaUrl } from "@/lib/media-url";
-import { prefetchProductMedia } from "@/lib/image-prefetch";
+import { prefetchProductMedia, prefetchProductPhotos } from "@/lib/image-prefetch";
 
 import { IconArrowUpRight } from "@tabler/icons-react";
 
@@ -25,7 +25,9 @@ export function RelatedProducts({
     return null;
   }
 
-  const handleProductClick = () => {
+  const handleProductClick = (product: StorefrontProduct) => {
+    // Chosen: start its photos and 3D file now (see prefetchProductMedia).
+    prefetchProductMedia(product);
     /*
      * Make sure the next product page starts
      * at the top instead of preserving the
@@ -134,8 +136,8 @@ export function RelatedProducts({
             key={product.id}
             href={`/product/${product.slug}`}
             scroll={true}
-            onPointerDown={() => prefetchProductMedia(product)}
-            onClick={handleProductClick}
+            onPointerDown={() => prefetchProductPhotos(product)}
+            onClick={() => handleProductClick(product)}
             className="group w-[190px] shrink-0 snap-start sm:w-[240px] desk:w-auto"
           >
             <Card

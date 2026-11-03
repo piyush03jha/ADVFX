@@ -16,7 +16,7 @@ import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import type { StorefrontProduct } from "@/lib/catalog-api";
 import { resolveMediaUrl } from "@/lib/media-url";
-import { prefetchProductMedia } from "@/lib/image-prefetch";
+import { prefetchProductMedia, prefetchProductPhotos } from "@/lib/image-prefetch";
 
 export function ProductCard({ product }: { product: StorefrontProduct }) {
   const router = useRouter();
@@ -61,7 +61,7 @@ export function ProductCard({ product }: { product: StorefrontProduct }) {
   return (
     <Card interactive className="group h-full rounded-xl">
       <div className="relative overflow-hidden">
-        <Link href={`/product/${product.slug}`} aria-label={`View ${product.name}`} onPointerDown={() => prefetchProductMedia(product)} onClick={() => prefetchProductMedia(product)} className="block">
+        <Link href={`/product/${product.slug}`} aria-label={`View ${product.name}`} onPointerDown={() => prefetchProductPhotos(product)} onClick={() => prefetchProductMedia(product)} className="block">
           <div className="relative aspect-[1/0.82] overflow-hidden bg-surface-elevated/40 sm:aspect-[4/4.1]">
             <Image
               src={imageSrc}

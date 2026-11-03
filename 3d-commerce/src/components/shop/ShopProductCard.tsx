@@ -17,7 +17,7 @@ import { useAuth } from "@/context/AuthContext";
 
 import type { StorefrontProduct } from "@/lib/catalog-api";
 import { resolveMediaUrl } from "@/lib/media-url";
-import { prefetchProductMedia } from "@/lib/image-prefetch";
+import { prefetchProductMedia, prefetchProductPhotos } from "@/lib/image-prefetch";
 
 interface ShopProductCardProps {
   product: StorefrontProduct;
@@ -112,7 +112,7 @@ export function ShopProductCard({ product, priority = false }: ShopProductCardPr
   return (
     <Card interactive className="group h-full rounded-2xl">
       <div className="relative aspect-[0.75/1] overflow-hidden bg-surface-elevated">
-        <Link href={`/product/${product.slug}`} onPointerDown={prefetchModel} onClick={prefetchModel} className="relative block h-full">
+        <Link href={`/product/${product.slug}`} onPointerDown={() => prefetchProductPhotos(product)} onClick={prefetchModel} className="relative block h-full">
           <Image
             src={imageSrc}
             alt={product.name}
@@ -171,7 +171,7 @@ export function ShopProductCard({ product, priority = false }: ShopProductCardPr
         </p>
 
         <div className="mt-1.5 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-2">
-          <Link href={`/product/${product.slug}`} onPointerDown={prefetchModel} onClick={prefetchModel} className="min-w-0 flex-1">
+          <Link href={`/product/${product.slug}`} onPointerDown={() => prefetchProductPhotos(product)} onClick={prefetchModel} className="min-w-0 flex-1">
             <h3 className="line-clamp-2 text-sm font-medium leading-5 tracking-[-0.015em] text-foreground transition-colors hover:text-primary-hover">
               {product.name}
             </h3>
