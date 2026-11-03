@@ -31,7 +31,7 @@ export function CartSummary() {
       </div>
 
       <div className="relative mt-6 space-y-3 rounded-xl border border-border bg-[linear-gradient(135deg,rgb(from var(--foreground) r g b / 0.035),rgb(from var(--background) r g b / 0.015))] p-4">
-        <SummaryRow label="Subtotal" value={`₹${subtotal.toLocaleString("en-IN")}`} />
+        <SummaryRow label="Subtotal (GST inclusive)" value={`₹${subtotal.toLocaleString("en-IN")}`} />
         <SummaryRow label="Shipping" value="Calculated at checkout" />
       </div>
 
@@ -40,7 +40,7 @@ export function CartSummary() {
           <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Subtotal</p>
           <p className="mt-1 text-2xl font-semibold tracking-[-0.03em] text-foreground">₹{subtotal.toLocaleString("en-IN")}</p>
         </div>
-        <span className="max-w-[130px] text-right text-[11px] leading-4 text-muted">Final total calculated at checkout</span>
+        <span className="max-w-[130px] text-right text-[11px] leading-4 text-muted">Product prices include applicable GST. Final total and rounding calculated at checkout</span>
       </div>
 
       {error && <p className="mt-4 rounded-xl border border-red-400/20 bg-red-400/[0.06] p-3 text-xs leading-5 text-error">{error}</p>}
