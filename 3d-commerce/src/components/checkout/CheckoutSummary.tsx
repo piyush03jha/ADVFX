@@ -112,7 +112,10 @@ export function CheckoutSummary({
             {quote.summary.taxMinor > 0 && (
               <SummaryRow label="GST included" value={money(quote.summary.taxMinor, quote.currency)} />
             )}
-            {quote.summary.roundingMinor !== undefined && quote.summary.roundingMinor !== 0 && (\n              <SummaryRow label="Rounding adjustment" value={money(quote.summary.roundingMinor, quote.currency)} />\n            )}\n            <div className="mt-3 flex items-end justify-between gap-4 border-t border-border pt-3">
+            {quote.summary.roundingMinor !== undefined && quote.summary.roundingMinor !== 0 && (
+              <SummaryRow label="Rounding adjustment" value={money(quote.summary.roundingMinor, quote.currency)} />
+            )}
+            <div className="mt-3 flex items-end justify-between gap-4 border-t border-border pt-3">
               <span className="text-[11px] uppercase tracking-[0.15em] text-muted">Total</span>
               <span className="text-xl font-semibold tracking-[-0.03em] text-primary">{money(quote.summary.totalMinor, quote.currency)}</span>
             </div>
