@@ -204,15 +204,16 @@ export class AdminService {
   }
 
   async catalog() {
-    const [products, categories] = await Promise.all([
+    const [products, categories, materialPricingRules] = await Promise.all([
       this.prisma.product.findMany({
         where: { status: { not: 'ARCHIVED' } },
         include: { category: true, prices: { where: { isActive: true }, orderBy: { createdAt: 'desc' }, take: 1 }, inventory: true, variants: { include: { price: true }, orderBy: { createdAt: 'asc' } }, media: { orderBy: { sortOrder: 'asc' } }, metrics: true },
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.category.findMany({ where: { isActive: true }, orderBy: [{ parentId: 'asc' }, { sortOrder: 'asc' }, { name: 'asc' }] }),
+      this.prisma.materialPricingRule.findMany({ where: { isActive: true }, orderBy: [{ material: 'asc' }, { sizeKey: 'asc' }] }),
     ]);
-    return { products, categories };
+    return { products, categories, materialPricingRules };
   }
 
   async promotions() {
