@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { ADMIN_COOKIE } from "@/app/api/auth/admin/login/route";
 import { getBackendApiUrl, backendFetch } from "@/lib/backend-api";
+import { revalidateProductCatalog } from "@/lib/revalidate-catalog";
 
 async function proxy(request: Request) {
   const token = (await cookies()).get(ADMIN_COOKIE)?.value;
@@ -14,6 +15,7 @@ async function proxy(request: Request) {
       cache: "no-store",
     });
     const data = await response.json().catch(() => null);
+    if (request.method === "POST" && response.ok) revalidateProductCatalog();
     return NextResponse.json(data ?? { error: "Material pricing operation failed." }, { status: response.status });
   } catch {
     return NextResponse.json({ error: "Admin service is unavailable." }, { status: 503 });
