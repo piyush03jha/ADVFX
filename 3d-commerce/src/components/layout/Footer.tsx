@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { SOCIAL_LINKS } from "@/lib/site";
+import { useWhatsAppConfig } from "@/lib/whatsapp";
 import {
   IconArrowUpRight,
   IconMail,
@@ -34,6 +35,7 @@ const legalLinks = [
 ];
 
 export function Footer() {
+  const whatsapp = useWhatsAppConfig();
   const currentYear = new Date().getFullYear();
 
   return (
@@ -102,12 +104,12 @@ export function Footer() {
                   >
                     Contact support
                   </ContactItem>
-                  {process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ? (
+                  {whatsapp.number ? (
                     <ContactItem
                       icon={IconBrandWhatsapp}
-                      href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER.replace(/\D/g, "")}`}
+                      href={`https://wa.me/${whatsapp.number}`}
                     >
-                      WhatsApp: +{process.env.NEXT_PUBLIC_WHATSAPP_NUMBER.replace(/\D/g, "")}
+                      WhatsApp: +{whatsapp.number}
                     </ContactItem>
                   ) : null}
                   <ContactItem icon={IconMapPin}>New Delhi, India</ContactItem>

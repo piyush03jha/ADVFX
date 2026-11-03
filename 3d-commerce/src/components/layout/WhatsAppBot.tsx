@@ -3,32 +3,7 @@
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { IconBrandWhatsapp, IconMessageCircle, IconX } from "@tabler/icons-react";
-
-// Accept international numbers entered with a leading "+" or spaces, but pass
-// digits only to wa.me. Prefer the number variable; support the documented URL
-// variable as a fallback for deployments that configure a full WhatsApp link.
-const WHATSAPP_NUMBER = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "").replace(/\D/g, "");
-const WHATSAPP_URL = process.env.NEXT_PUBLIC_WHATSAPP_URL?.trim() ?? "";
-
-function createWhatsAppUrl(message: string) {
-  if (WHATSAPP_NUMBER) {
-    return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
-  }
-
-  if (WHATSAPP_URL) {
-    try {
-      const url = new URL(WHATSAPP_URL);
-      if (url.protocol === "https:" && (url.hostname === "wa.me" || url.hostname.endsWith(".whatsapp.com") || url.hostname === "api.whatsapp.com")) {
-        url.searchParams.set("text", message);
-        return url.toString();
-      }
-    } catch {
-      // Treat invalid configuration as unavailable instead of opening a broken URL.
-    }
-  }
-
-  return null;
-}
+import { buildWhatsAppUrl, useWhatsAppConfig } from "@/lib/whatsapp";
 
 const PREDEFINED_QUESTIONS = [
   {
@@ -64,6 +39,8 @@ const PREDEFINED_QUESTIONS = [
 export function WhatsAppBot() {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
+  const whatsapp = useWhatsAppConfig();
+  const configured = Boolean(whatsapp.number || whatsapp.url);
   const raised = pathname === "/custom";
 
   return (
@@ -94,7 +71,7 @@ export function WhatsAppBot() {
 
           <div className="max-h-[min(60vh,24rem)] overflow-y-auto p-2">
             {PREDEFINED_QUESTIONS.map((question) => {
-              const href = createWhatsAppUrl(question.message);
+              const href = buildWhatsAppUrl(whatsapp, question.message);
               return href ? (
                 <a
                   key={question.label}
@@ -117,7 +94,7 @@ export function WhatsAppBot() {
                 </span>
               );
             })}
-            {!WHATSAPP_NUMBER && !WHATSAPP_URL && (
+            {!configured && (
               <p role="status" className="px-3 py-2 text-xs text-muted-foreground">
                 WhatsApp support is temporarily unavailable. Please use the contact page.
               </p>
