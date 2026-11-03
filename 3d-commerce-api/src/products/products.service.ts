@@ -82,7 +82,6 @@ export class ProductsService {
             size: item.size,
             price: {
               create: {
-                currency: 'INR',
                 amountMinor: materialPrice?.amountMinor ?? baseAmount,
                 currency: materialPrice?.currency ?? 'INR',
                 isActive: true,
