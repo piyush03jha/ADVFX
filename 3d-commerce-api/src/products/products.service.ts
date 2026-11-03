@@ -915,7 +915,56 @@ export class ProductsService {
     const { stock, lowStockAt, ...productData } = dto;
 
     return this.prisma.$transaction(async (tx) => {
+      const current = await tx.product.findUniqueOrThrow({
+        where: { id },
+        select: { material: true },
+      });
       await tx.product.update({ where: { id }, data: productData });
+
+      const nextMaterial = dto.material?.trim();
+      if (nextMaterial && nextMaterial.toLowerCase() !== (current.material ?? '').trim().toLowerCase()) {
+        const [rules, variants] = await Promise.all([
+          tx.materialPricingRule.findMany({
+            where: { material: { equals: nextMaterial, mode: 'insensitive' }, isActive: true },
+          }),
+          tx.productVariant.findMany({
+            where: { productId: id, isActive: true },
+            select: { id: true, name: true, size: true },
+          }),
+        ]);
+        const ruleBySize = new Map(rules.map((rule) => [rule.sizeKey.trim().toLowerCase(), rule]));
+        const normalizedSizeKey = (value: string) => {
+          const normalized = value.trim().toLowerCase();
+          if (/\\bsmall\\b|\\bs\\b/.test(normalized)) return 'small';
+          if (/\\bmedium\\b|\\bmid\\b|\\bm\\b/.test(normalized)) return 'medium';
+          if (/\\blarge\\b|\\bl\\b/.test(normalized)) return 'large';
+          return normalized.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+        };
+        for (const variant of variants) {
+          const key = normalizedSizeKey(variant.name);
+          const rule = ruleBySize.get(key) ?? ruleBySize.get(normalizedSizeKey(variant.size ?? ''));
+          if (!rule) {
+            throw new BadRequestException(
+              'No active ' + nextMaterial + ' price is configured for size "' + variant.name + '". Configure every size under Admin > Promotions & tax before changing this product material.',
+            );
+          }
+          await tx.productVariantPrice.upsert({
+            where: { variantId: variant.id },
+            create: {
+              variantId: variant.id,
+              currency: rule.currency,
+              amountMinor: rule.amountMinor,
+              isActive: true,
+            },
+            update: {
+              currency: rule.currency,
+              amountMinor: rule.amountMinor,
+              isActive: true,
+              compareAtMinor: null,
+            },
+          });
+        }
+      }
 
       if (stock !== undefined || lowStockAt !== undefined) {
         await tx.productInventory.upsert({
