@@ -42,15 +42,15 @@ export type CheckoutQuote = {
     value: number;
   } | null;
   tax: {
-    ruleId: string;
-    name: string;
-    rateBps: number;
+    included: true;
+    amountMinor: number;
   } | null;
   summary: {
     subtotalMinor: number;
     shippingMinor: number;
     discountMinor: number;
     taxMinor: number;
+    roundingMinor?: number;
     totalMinor: number;
   };
   payment: {
@@ -102,6 +102,7 @@ export type CreatedOrder = {
   discountMinor: number;
   shippingMinor: number;
   taxMinor: number;
+  roundingMinor?: number;
   totalMinor: number;
   shippingAddress: CheckoutQuote["shippingAddress"];
   items: Array<{
