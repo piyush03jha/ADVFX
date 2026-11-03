@@ -51,29 +51,32 @@ export function ProductGallery({ product }: ProductGalleryProps) {
     setFailedImages(new Set());
   }, [product.id]);
 
-  // Warm the 3D viewer code AND the model file in the background so switching to the
-  // 3D tab is instant. The download is shared with the viewer (see model-loader), so
-  // it is never fetched twice. Skipped on data-saver / slow connections.
+  // Warm the 3D viewer CODE in the background so switching to the 3D tab is instant.
+  // The model FILE is not downloaded until the visitor shows interest (hover, focus or
+  // touch on the 3D thumbnail, or opening it): most visitors never open the 3D view and
+  // each model is tens of MB, which counts against storage download bandwidth.
   const hasModel = Boolean(product.model.trim());
+  const modelUrl = product.model.trim();
+  const prefetchModel = () => {
+    if (!modelUrl) return;
+    const connection = (navigator as Navigator & {
+      connection?: { effectiveType?: string; saveData?: boolean };
+    }).connection;
+    const constrained =
+      connection?.saveData || ["slow-2g", "2g", "3g"].includes(connection?.effectiveType ?? "");
+    if (!constrained) void loadModelBuffer(modelUrl).catch(() => undefined);
+  };
+
   useEffect(() => {
     if (!hasModel) return;
-    const modelUrl = product.model.trim();
-    const preload = () => {
-      void import("./Product3DStage");
-      const connection = (navigator as Navigator & {
-        connection?: { effectiveType?: string; saveData?: boolean };
-      }).connection;
-      const constrained =
-        connection?.saveData || ["slow-2g", "2g", "3g"].includes(connection?.effectiveType ?? "");
-      if (!constrained) void loadModelBuffer(modelUrl).catch(() => undefined);
-    };
+    const preload = () => void import("./Product3DStage");
     if (typeof window.requestIdleCallback === "function") {
       const handle = window.requestIdleCallback(preload, { timeout: 4000 });
       return () => window.cancelIdleCallback?.(handle);
     }
     const timer = window.setTimeout(preload, 1500);
     return () => window.clearTimeout(timer);
-  }, [hasModel, product.model]);
+  }, [hasModel]);
 
   const imageItems: MediaItem[] = (product.images?.length ? product.images : [product.image])
     .map((src, index) => ({
@@ -209,6 +212,9 @@ export function ProductGallery({ product }: ProductGalleryProps) {
               key={item.label + "-" + index}
               type="button"
               onClick={() => setActiveIndex(index)}
+              onPointerEnter={item.type === "model" ? prefetchModel : undefined}
+              onFocus={item.type === "model" ? prefetchModel : undefined}
+              onTouchStart={item.type === "model" ? prefetchModel : undefined}
               aria-label={"View " + item.label}
               className={
                 "group relative aspect-[4/3] min-w-0 overflow-hidden rounded-xl border transition-all duration-200 " +

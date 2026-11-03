@@ -18,10 +18,13 @@ test("every viewer that loads GLBs configures the local decoder", () => {
   }
 });
 
-test("product page starts the GLB download before the 3D tab is opened", () => {
+test("the model file is only downloaded once the visitor shows interest in the 3D view", () => {
   const gallery = read("../src/components/product/ProductGallery.tsx");
   assert.match(gallery, /loadModelBuffer\(modelUrl\)/);
   assert.match(gallery, /saveData/, "skipped on data-saver connections");
+  assert.match(gallery, /onPointerEnter=\{item\.type === "model" \? prefetchModel/);
+  const idleEffect = gallery.slice(gallery.indexOf("const preload = () =>"), gallery.indexOf("const imageItems"));
+  assert.doesNotMatch(idleEffect, /loadModelBuffer/, "no background download of the GLB on page load");
 });
 
 test("admin product photos retry instead of staying broken after an upload", () => {

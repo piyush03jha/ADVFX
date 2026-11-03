@@ -34,6 +34,8 @@ Set these on **both the API and worker Railway services**:
 - `STORAGE_ENDPOINT=https://s3.<region>.backblazeb2.com`
 - `STORAGE_ACCESS_KEY_ID=<B2 application key ID>`
 - `STORAGE_SECRET_ACCESS_KEY=<B2 application key secret>`
+- `ASSET_CACHE_MAX_MB=4096` (optional): size of the local disk cache for objects read from B2. Each product image/model is downloaded from B2 once and later served from disk, which keeps you under B2's daily download cap (about 1 GB free). `0` turns it off.
+- `ASSET_CACHE_DIR=/data/asset-cache` (optional): where the cache lives. By default it is in the container's temp folder and is emptied on every deploy/restart; mount a Railway Volume (for example at `/data`) and point this at it to keep the cache across deploys.
 - `STORAGE_REGION=<same region embedded in the B2 endpoint>`
 - Leave `STORAGE_PUBLIC_BASE_URL` unset for a private bucket.
 - `TRUST_PROXY=true` when Railway/proxy configuration requires it.

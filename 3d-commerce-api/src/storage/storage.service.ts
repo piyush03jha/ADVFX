@@ -10,6 +10,8 @@ import {
 import { createHash, createHmac, randomUUID } from "node:crypto";
 import { access, mkdir, unlink, writeFile, readFile } from "node:fs/promises";
 import { createReadStream } from "node:fs";
+import { tmpdir } from "node:os";
+import { ObjectDiskCache } from "./object-disk-cache";
 import { Readable } from "node:stream";
 import { basename, dirname, extname, join, resolve, sep } from "node:path";
 import type { SaveProductFileOptions, StoredFile } from "./storage.types";
@@ -32,6 +34,13 @@ export class StorageService {
   private readonly accessKey = process.env.STORAGE_ACCESS_KEY_ID ?? "";
   private readonly secretKey = process.env.STORAGE_SECRET_ACCESS_KEY ?? "";
   private readonly region = process.env.STORAGE_REGION ?? "us-east-1";
+  // Local copy of objects read from remote storage, so repeat views do not re-download
+  // them (Backblaze B2 limits daily download bandwidth). ASSET_CACHE_MAX_MB=0 turns it off;
+  // point ASSET_CACHE_DIR at a persistent volume to keep it across restarts.
+  private readonly objectCache = new ObjectDiskCache(
+    process.env.ASSET_CACHE_DIR?.trim() || join(tmpdir(), "voxel3d-asset-cache"),
+    this.provider === "s3" ? Math.max(0, Number(process.env.ASSET_CACHE_MAX_MB ?? 4096) || 0) * 1024 * 1024 : 0,
+  );
 
   constructor() {
     if (!["local", "s3"].includes(this.provider)) {
@@ -156,6 +165,7 @@ export class StorageService {
 
   async completeMultipartUpload(storageKey: string, uploadId: string, parts: MultipartUploadPart[]): Promise<void> {
     if (this.provider !== "s3") throw new BadRequestException("Multipart uploads require S3-compatible remote storage");
+    await this.objectCache.invalidate(this.normalizeRemoteKey(storageKey));
     const url = this.multipartObjectUrl(this.normalizeRemoteKey(storageKey));
     const xml = '<?xml version="1.0" encoding="UTF-8"?><CompleteMultipartUpload>' +
       parts.map((part) => "<Part><PartNumber>" + part.PartNumber + "</PartNumber><ETag>" + this.escapeMultipartXml(part.ETag) + "</ETag></Part>").join("") +
@@ -258,6 +268,9 @@ export class StorageService {
       return { stream: createReadStream(path), size: info.size };
     }
 
+    const cached = await this.cachedObject(storageKey);
+    if (cached) return { stream: this.objectCache.readStream(cached), size: cached.size };
+
     const response = await this.requestObjectResponse("GET", storageKey);
     if (!response.body) throw new NotFoundException("Stored file not found");
     const len = response.headers.get("content-length");
@@ -265,6 +278,23 @@ export class StorageService {
       stream: Readable.fromWeb(response.body as any),
       size: len ? Number(len) : undefined,
     };
+  }
+
+  /** The object on local disk (downloaded once on first use), or null to read remote storage directly. */
+  private async cachedObject(storageKey: string) {
+    if (!this.objectCache.enabled) return null;
+    try {
+      return await this.objectCache.getOrFill(storageKey, async () => {
+        const response = await this.requestObjectResponse("GET", storageKey);
+        if (!response.body) throw new NotFoundException("Stored file not found");
+        const len = response.headers.get("content-length");
+        return { stream: Readable.fromWeb(response.body as any), size: len ? Number(len) : undefined };
+      });
+    } catch (error) {
+      // Real answers (404, 403, ...) are the same as a direct read would give.
+      if (error instanceof HttpException) throw error;
+      return null;
+    }
   }
 
   async getObjectSize(storageKey: string): Promise<number> {
@@ -314,6 +344,24 @@ export class StorageService {
         stream: createReadStream(path, { start, end: boundedEnd }),
         size: boundedEnd - start + 1,
         totalSize: info.size,
+        start,
+        end: boundedEnd,
+      };
+    }
+
+    const cached = await this.cachedObject(storageKey);
+    if (cached) {
+      if (start >= cached.size) {
+        throw new HttpException(
+          { error: "Requested byte range is not satisfiable" },
+          HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE,
+        );
+      }
+      const boundedEnd = end === undefined ? cached.size - 1 : Math.min(end, cached.size - 1);
+      return {
+        stream: this.objectCache.readStream(cached, start, boundedEnd),
+        size: boundedEnd - start + 1,
+        totalSize: cached.size,
         start,
         end: boundedEnd,
       };
@@ -482,8 +530,8 @@ export class StorageService {
     return value.replace(/[<>&'"]/g, (char) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", "'": "&apos;", '"': "&quot;" }[char] ?? char));
   }
 
-  private async putObject(key: string, body: Buffer, contentType: string, cacheControl?: string) { await this.requestObject("PUT", key, body, contentType, cacheControl); }
-  private async deleteObject(key: string) { await this.requestObject("DELETE", key); }
+  private async putObject(key: string, body: Buffer, contentType: string, cacheControl?: string) { await this.objectCache.invalidate(key); await this.requestObject("PUT", key, body, contentType, cacheControl); }
+  private async deleteObject(key: string) { await this.objectCache.invalidate(key); await this.requestObject("DELETE", key); }
 
   private buildSignedRequest(
     method: "PUT" | "DELETE" | "HEAD" | "GET",
