@@ -207,7 +207,7 @@ export default function AdminOrderDetailPage() {
 
           <section className="rounded-3xl border border-border bg-surface p-5 sm:p-6">
             <p className="text-[9px] uppercase tracking-[0.16em] text-primary">Totals</p>
-            <div className="mt-4 space-y-2"><Row label="Subtotal" value={money(order.subtotalMinor, order.currency)} /><Row label="Shipping" value={money(order.shippingMinor, order.currency)} /><Row label="Tax" value={money(order.taxMinor, order.currency)} /><Row label="Discount" value={money(order.discountMinor, order.currency)} /><div className="border-t border-border pt-3"><Row label="Grand total" value={money(order.totalMinor, order.currency)} strong /></div></div>
+            <div className="mt-4 space-y-2"><Row label="Subtotal (GST inclusive)" value={money(order.subtotalMinor, order.currency)} /><Row label="Shipping" value={money(order.shippingMinor, order.currency)} /><Row label="GST included" value={money(order.taxMinor, order.currency)} /><Row label="Discount" value={money(order.discountMinor, order.currency)} />{order.roundingMinor ? <Row label="Final rounding" value={money(order.roundingMinor, order.currency)} /> : null}<div className="border-t border-border pt-3"><Row label="Grand total" value={money(order.totalMinor, order.currency)} strong /></div></div>
           </section>
         </aside>
       </div>
