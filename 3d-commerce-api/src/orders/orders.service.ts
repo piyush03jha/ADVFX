@@ -245,6 +245,10 @@ export class OrdersService {
           quantity: item.quantity,
           unitPriceMinor: item.unitPriceMinor,
           totalPriceMinor: item.lineTotalMinor,
+          materialSnapshot: item.material ?? null,
+          sizeSnapshot: item.size ?? item.variantName ?? null,
+          taxRateBps: item.taxRateBps ?? 0,
+          taxMinor: item.taxMinor ?? 0,
         }));
 
       const order = await tx.order.create({
