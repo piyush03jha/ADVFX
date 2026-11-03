@@ -151,6 +151,8 @@ export function ProductInfo({
         />
       </div>
 
+      <p className="mt-1 text-[10px] text-muted">Inclusive of applicable category GST</p>
+
       {/* ==================================================
           DESCRIPTION
       ================================================== */}
