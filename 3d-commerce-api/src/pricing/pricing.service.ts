@@ -344,7 +344,11 @@ export class PricingService {
       return { ...item, taxMinor };
     });
     const taxMinor = pricedItems.reduce((sum, item) => sum + item.taxMinor, 0);
-    const totalMinor = Math.max(0, subtotalMinor + shippingMinor - discountMinor);
+    const unroundedTotalMinor = Math.max(0, subtotalMinor + shippingMinor - discountMinor);
+    const totalMinor = (currency ?? "INR") === "INR"
+      ? Math.round(unroundedTotalMinor / 100) * 100
+      : unroundedTotalMinor;
+    const roundingMinor = totalMinor - unroundedTotalMinor;
 
     // Razorpay Orders require a positive amount. Reject zero-value checkout
     // rather than creating an order that cannot be paid.
@@ -365,6 +369,7 @@ export class PricingService {
         shippingMinor,
         discountMinor,
         taxMinor,
+        roundingMinor,
         totalMinor,
       },
     };
