@@ -949,9 +949,9 @@ export class ProductsService {
         const ruleBySize = new Map(rules.map((rule) => [rule.sizeKey.trim().toLowerCase(), rule]));
         const normalizedSizeKey = (value: string) => {
           const normalized = value.trim().toLowerCase();
-          if (/\\bsmall\\b|\\bs\\b/.test(normalized)) return 'small';
-          if (/\\bmedium\\b|\\bmid\\b|\\bm\\b/.test(normalized)) return 'medium';
-          if (/\\blarge\\b|\\bl\\b/.test(normalized)) return 'large';
+          if (/\bsmall\b|\bs\b/.test(normalized)) return 'small';
+          if (/\bmedium\b|\bmid\b|\bm\b/.test(normalized)) return 'medium';
+          if (/\blarge\b|\bl\b/.test(normalized)) return 'large';
           return normalized.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
         };
         for (const variant of variants) {
