@@ -14,10 +14,11 @@ type Order = {
   subtotalMinor: number;
   shippingMinor: number;
   taxMinor: number;
+  roundingMinor?: number;
   discountMinor: number;
   totalMinor: number;
   user?: { id: string; name?: string | null; email?: string; phone?: string | null } | null;
-  items: Array<{ id: string; productName: string; variantName?: string | null; quantity: number; unitPriceMinor: number; totalPriceMinor: number }>;
+  items: Array<{ id: string; productName: string; variantName?: string | null; materialSnapshot?: string | null; sizeSnapshot?: string | null; taxRateBps?: number; taxMinor?: number; quantity: number; unitPriceMinor: number; totalPriceMinor: number }>;
   shippingAddress: { fullName: string; phone: string; line1: string; line2?: string | null; city: string; state: string; postalCode: string; country: string } | null;
   payment?: { provider: string; status: string; providerPaymentId?: string | null } | null;
   shipment?: { status: string; carrier?: string | null; trackingNumber?: string | null; trackingUrl?: string | null } | null;
@@ -172,7 +173,7 @@ export default function AdminOrderDetailPage() {
             <div className="mt-5 divide-y divide-border">
               {order.items.map((item) => (
                 <div key={item.id} className="flex items-center justify-between gap-4 py-4 first:pt-0 last:pb-0">
-                  <div><p className="text-sm font-medium text-foreground">{item.productName}</p><p className="mt-1 text-[10px] text-muted">{item.variantName ? `${item.variantName} · ` : ""}Qty {item.quantity}</p></div>
+                  <div><p className="text-sm font-medium text-foreground">{item.productName}</p><p className="mt-1 text-[10px] text-muted">{item.materialSnapshot ? `Material: ${item.materialSnapshot} · ` : ""}{item.sizeSnapshot || item.variantName || "Standard"} · Qty {item.quantity}</p><p className="mt-1 text-[9px] text-muted">GST {(item.taxRateBps ?? 0)/100}% · included {money(item.taxMinor ?? 0, order.currency)}</p></div>
                   <p className="text-xs font-medium">{money(item.totalPriceMinor, order.currency)}</p>
                 </div>
               ))}
