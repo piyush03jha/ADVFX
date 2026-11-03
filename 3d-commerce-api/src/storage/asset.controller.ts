@@ -20,9 +20,10 @@ export class AssetController {
   private readonly logger = new Logger(AssetController.name);
   private readonly publishedProductAssets = new Map<
     string,
-    { expiresAt: number; keys: Set<string> }
+    { expiresAt: number; loadedAt: number; keys: Set<string> }
   >();
   private readonly productCacheTtlMs = 60_000;
+  private readonly productRefreshMinMs = 2_000;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -223,21 +224,14 @@ export class AssetController {
 
     const [productId, ...rest] = segments;
     const storageKey = ["products", productId, ...rest].join("/");
-    const now = Date.now();
-    let cachedAssets = this.publishedProductAssets.get(productId);
-
-    if (cachedAssets && cachedAssets.expiresAt <= now) {
-      this.publishedProductAssets.delete(productId);
-      cachedAssets = undefined;
-    }
-
-    if (!cachedAssets) {
+    const loadPublishedKeys = async () => {
       const product = await this.prisma.product.findFirst({
         where: { id: productId, status: "ACTIVE" },
         select: { id: true, media: { select: { url: true } } },
       });
 
       if (!product) {
+        this.publishedProductAssets.delete(productId);
         throw new NotFoundException("Asset not found");
       }
 
@@ -246,14 +240,35 @@ export class AssetController {
           .map((media) => this.productAssetStorageKey(media.url))
           .filter((key): key is string => key !== null),
       );
-      cachedAssets = { expiresAt: now + this.productCacheTtlMs, keys };
-      this.publishedProductAssets.set(productId, cachedAssets);
+      const entry = { expiresAt: Date.now() + this.productCacheTtlMs, loadedAt: Date.now(), keys };
+      this.publishedProductAssets.set(productId, entry);
+      return entry;
+    };
+
+    const now = Date.now();
+    let cachedAssets = this.publishedProductAssets.get(productId);
+
+    if (cachedAssets && cachedAssets.expiresAt <= now) {
+      this.publishedProductAssets.delete(productId);
+      cachedAssets = undefined;
+    }
+
+    cachedAssets ??= await loadPublishedKeys();
+
+    // The allow-list is cached, so an image uploaded after it was loaded is missing
+    // from it and would 404 for up to a minute. On a miss, reload it once - but at
+    // most every few seconds per product, so random URLs cannot hammer the database.
+    if (!cachedAssets.keys.has(storageKey) && now - cachedAssets.loadedAt >= this.productRefreshMinMs) {
+      cachedAssets = await loadPublishedKeys();
     }
 
     // The public route must expose only assets explicitly referenced by active
     // product media. Do not make conversion intermediates or internal bundle
     // files public merely because they share a product ID prefix.
     if (!cachedAssets.keys.has(storageKey)) {
+      // A freshly uploaded image may not be published yet; never let a CDN or the
+      // browser remember this 404 for the file name.
+      reply.header("Cache-Control", "no-store");
       throw new NotFoundException("Asset not found");
     }
 

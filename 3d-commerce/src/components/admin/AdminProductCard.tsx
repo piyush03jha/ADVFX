@@ -1,7 +1,42 @@
 "use client";
-import type { Dispatch, SetStateAction } from "react";
+import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { IconArchive, IconBox, IconEdit, IconTrash, IconUpload, IconX } from "@tabler/icons-react";
 import { resolveMediaUrl } from "@/lib/media-url";
+
+// A freshly uploaded image can briefly 404 while the API publishes it (or while a
+// CDN holds a stale answer). Retry a few times with a cache-busting query instead of
+// leaving a broken image with only its alt text.
+const THUMB_RETRY_DELAYS_MS = [1200, 2500, 5000, 9000];
+
+function AdminThumb({ src, alt }: { src: string; alt: string }) {
+  const [attempt, setAttempt] = useState(0);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setAttempt(0);
+    setFailed(false);
+  }, [src]);
+
+  useEffect(() => {
+    if (!failed) return;
+    if (attempt >= THUMB_RETRY_DELAYS_MS.length) return;
+    const timer = window.setTimeout(() => {
+      setAttempt((current) => current + 1);
+      setFailed(false);
+    }, THUMB_RETRY_DELAYS_MS[attempt]);
+    return () => window.clearTimeout(timer);
+  }, [failed, attempt]);
+
+  const url = attempt === 0 ? src : src + (src.includes("?") ? "&" : "?") + "retry=" + attempt;
+  const gaveUp = failed && attempt >= THUMB_RETRY_DELAYS_MS.length;
+
+  return gaveUp ? (
+    <div className="flex aspect-square w-full items-center justify-center bg-surface p-2 text-center text-[9px] text-muted">Preview unavailable</div>
+  ) : (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={url} alt={alt} loading="lazy" onError={() => setFailed(true)} className="aspect-square w-full object-cover" />
+  );
+}
 
 type ProductVariant={id:string;name:string;size?:string|null;sku?:string|null;isActive:boolean;stock?:number;reserved?:number;lowStockAt?:number;trackStock?:boolean;allowBackorder?:boolean;price?:{amountMinor:number;compareAtMinor?:number|null;isActive:boolean}|null};
 type Product={id:string;name:string;slug:string;status:string;isFeatured:boolean;isTrending:boolean;isBestseller:boolean;category?:{id:string;name:string;parentId?:string|null;parent?:{id:string;name:string;slug:string}|null}|null;prices:Array<{amountMinor:number;currency?:string;countryCode?:string|null;compareAtMinor?:number|null;isActive:boolean}>;variants?:ProductVariant[];material?:string|null;scale?:string|null;dimensions?:string|null;height?:string|null;base?:string|null;packaging?:string|null;weight?:string|null;inventory?:{stock:number;reserved:number;lowStockAt:number}|null;media?:Array<{id:string;type:string;url:string;altText?:string|null;isPrimary:boolean;sortOrder:number}>};
@@ -70,7 +105,7 @@ export default function AdminProductCard({product:p,...props}:Props){const {cate
             <div>
               <div className="flex items-center justify-between"><p className="text-xs font-semibold">Product photos</p><label className="cursor-pointer rounded-lg bg-foreground px-3 py-1.5 text-[10px] font-semibold text-background"><IconUpload size={13} className="mr-1 inline"/>Upload images<input type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" disabled={assetBusy} onChange={e=>{void uploadImages(p.id,e.target.files);e.currentTarget.value=""}}/></label></div>
               <div className="mt-3 grid grid-cols-3 gap-2">
-                {(p.media||[]).filter(m=>m.type==="IMAGE").map(m=><div key={m.id} className="group relative overflow-hidden rounded-lg border border-border bg-surface"><img src={resolveMediaUrl(m.url) ?? "/placeholder-product.webp"} alt={m.altText||p.name} className="aspect-square w-full object-cover"/><button onClick={()=>void removeMedia(p.id,m.id)} disabled={assetBusy} className="absolute right-1 top-1 rounded-full bg-black/70 p-1 text-white opacity-0 transition group-hover:opacity-100"><IconX size={12}/></button>{m.isPrimary&&<span className="absolute bottom-1 left-1 rounded bg-black/70 px-1.5 py-0.5 text-[8px] text-white">Primary</span>}</div>)}
+                {(p.media||[]).filter(m=>m.type==="IMAGE").map(m=><div key={m.id} className="group relative overflow-hidden rounded-lg border border-border bg-surface"><AdminThumb src={resolveMediaUrl(m.url) ?? "/placeholder-product.webp"} alt={m.altText||p.name} /><button onClick={()=>void removeMedia(p.id,m.id)} disabled={assetBusy} className="absolute right-1 top-1 rounded-full bg-black/70 p-1 text-white opacity-0 transition group-hover:opacity-100"><IconX size={12}/></button>{m.isPrimary&&<span className="absolute bottom-1 left-1 rounded bg-black/70 px-1.5 py-0.5 text-[8px] text-white">Primary</span>}</div>)}
                 {!p.media?.some(m=>m.type==="IMAGE")&&<p className="col-span-3 rounded-lg border border-dashed border-border p-6 text-center text-[10px] text-muted">No product photos yet.</p>}
               </div>
             </div>

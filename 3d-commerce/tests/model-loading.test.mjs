@@ -23,3 +23,10 @@ test("product page starts the GLB download before the 3D tab is opened", () => {
   assert.match(gallery, /loadModelBuffer\(modelUrl\)/);
   assert.match(gallery, /saveData/, "skipped on data-saver connections");
 });
+
+test("admin product photos retry instead of staying broken after an upload", () => {
+  const card = read("../src/components/admin/AdminProductCard.tsx");
+  assert.match(card, /function AdminThumb/);
+  assert.match(card, /<AdminThumb src=\{resolveMediaUrl\(m\.url\)/);
+  assert.match(card, /"retry=" \+ attempt/);
+});
