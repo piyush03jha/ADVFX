@@ -70,16 +70,16 @@ export default function AdminProductCard({product:p,...props}:Props){const {cate
       </div>
       <div className="mt-4 border-t border-border pt-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div><p className="text-[9px] uppercase tracking-[0.12em] text-muted">Size-specific pricing</p><p className="mt-1 text-[10px] text-muted">Set the exact selling price and stock for each physical size.</p></div>
+          <div><p className="text-[9px] uppercase tracking-[0.12em] text-muted">Size-specific pricing</p><p className="mt-1 text-[10px] text-muted">Material selection fills every size from the pricing matrix. Manually edit a size only for a product-specific price override.</p></div>
         </div>
         {(p.variants||[]).length===0 ? <div className="mt-3 rounded-xl border border-dashed border-border p-4"><p className="text-xs text-muted">This product has no size variants yet, so there are no price fields to edit. Add the standard sizes to enable pricing and stock controls.</p><button type="button" onClick={()=>void ensureStandardVariants(p.id)} disabled={saving} className="mt-3 rounded-lg bg-foreground px-3 py-2 text-[10px] font-semibold text-background">{saving?"Adding sizes…":"Add standard sizes & enable pricing"}</button></div> : <div className="mt-3 grid gap-2 lg:grid-cols-3">
           {(p.variants||[]).map(v=><form key={v.id} onSubmit={e=>{e.preventDefault();const fd=new FormData(e.currentTarget);void updateVariant(p.id,v.id,{name:String(fd.get("name")||""),size:String(fd.get("size")||""),stock:Number(fd.get("stock")||0),price:Number(fd.get("price")||0),compareAtPrice:String(fd.get("compareAtPrice")||"")===""?null:Number(fd.get("compareAtPrice"))})}} className="rounded-xl border border-border bg-background/50 p-3">
             <div className="grid grid-cols-2 gap-2">
               <input name="name" defaultValue={v.name} placeholder="Name" className="h-8 rounded-lg border border-border bg-background px-2 text-[10px]"/>
               <input name="size" defaultValue={v.size||""} placeholder="Size e.g. 15 cm" className="h-8 rounded-lg border border-border bg-background px-2 text-[10px]"/>
-              <input name="price" defaultValue={((v.price?.amountMinor||0)/100).toString()} type="number" min="0" step="1" placeholder="Price ₹" className="h-8 rounded-lg border border-border bg-background px-2 text-[10px]"/>
+              <input name="price" defaultValue={((v.price?.amountMinor||0)/100).toString()} type="number" min="0" step="1" placeholder="Price incl. GST ₹" className="h-8 rounded-lg border border-border bg-background px-2 text-[10px]"/>
               <input name="stock" defaultValue={String(v.stock ?? 0)} type="number" min="0" step="1" placeholder="Stock units" className="h-8 rounded-lg border border-border bg-background px-2 text-[10px]"/>
-              <input name="compareAtPrice" defaultValue={v.price?.compareAtMinor!=null?((v.price.compareAtMinor)/100).toString():""} type="number" min="0" step="1" placeholder="MRP ₹ (optional)" className="h-8 rounded-lg border border-border bg-background px-2 text-[10px]"/>
+              <input name="compareAtPrice" defaultValue={v.price?.compareAtMinor!=null?((v.price.compareAtMinor)/100).toString():""} type="number" min="0" step="1" placeholder="MRP incl. GST ₹ (optional)" className="h-8 rounded-lg border border-border bg-background px-2 text-[10px]"/>
             </div>
             <div className="mt-2 flex items-center justify-between gap-2">
               <span className="text-[9px] text-muted">{v.isActive?"Active":"Inactive"} · {Math.max(0,(v.stock||0)-(v.reserved||0))} available</span>
