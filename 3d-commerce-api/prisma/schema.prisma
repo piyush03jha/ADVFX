@@ -218,6 +218,7 @@ model Category {
   children Category[] @relation("CategoryHierarchy")
 
   products Product[]
+  gstRateBps Int?
 
   @@index([isActive, sortOrder])
   @@index([parentId, isActive, sortOrder])
@@ -779,6 +780,10 @@ model OrderItem {
   quantity        Int
   unitPriceMinor  Int
   totalPriceMinor Int
+  materialSnapshot String?
+  sizeSnapshot String?
+  taxRateBps Int @default(0)
+  taxMinor Int @default(0)
 
   createdAt DateTime @default(now())
 
