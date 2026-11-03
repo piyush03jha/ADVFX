@@ -59,7 +59,8 @@ test("admin thumbnails use canonical media URLs and the 3D stage exposes load pr
   ]);
   assert.match(adminCard, /resolveMediaUrl\(m\.url\)/);
   assert.match(stage, /const \{ blobUrl, progress, error, retry \} = useModelUrl\(model\)/);
-  assert.match(stage, /Loading 3D preview/);
-  assert.match(stage, /width: `\$\{Math\.max\(4, Math\.min\(progress, 100\)\)\}%`/);
+  assert.match(stage, /Downloading 3D model/);
+  assert.match(stage, /useSmoothProgress\(/);
+  assert.match(stage, /width: `\$\{Math\.max\(2, displayProgress\)\}%`/);
   assert.match(stage, /onReady=\{handleModelReady\}/);
 });

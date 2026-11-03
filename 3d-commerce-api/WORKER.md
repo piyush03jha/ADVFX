@@ -30,11 +30,12 @@ Blender 4.5 LTS handles other non-GLB imports. glTF Transform optimizes the resu
 - `VOXEL3D_3MF_MAX_NODES`: default `10000` glTF nodes to cap extreme instancing.
 - `VOXEL3D_3MF_EXTRA_SCALE`: optional multiplier applied after 3MF unit conversion; default `1`.
 - `THREEMF_NATIVE_CONVERTER=false`: disables the native converter and routes 3MF through Blender.
-- `VOXEL3D_GLTF_MAX_FACES`: native STL/PLY/large-OBJ output face budget; default `250000`. This is a reduction target, not a quality guarantee.
+- `VOXEL3D_GLTF_MAX_FACES`: native STL/PLY/large-OBJ output face budget. Default `0` = no limit (all triangles kept, identical vertices welded). Set a positive number to cap output. If this is set to `200000` (or any number) on your host, delete the variable or set it to `0`.
 - `VOXEL3D_DENSE_MAX_TRIANGLES`: maximum accepted input triangles for the dense mesh converter; default `12000000`.
 - `VOXEL3D_DENSE_MAX_CELLS`: maximum occupied clustering cells; default `1500000`.
 - `VOXEL3D_NATIVE_OBJ_MIN_MB`: minimum OBJ file size for native conversion; default `30` MB. Native OBJ conversion loses materials/UVs/textures.
 - `NATIVE_MESH_CONVERTERS=false`: disables all native mesh converters. `THREEMF_NATIVE_CONVERTER=false` separately disables native 3MF conversion.
+- `MODEL_OPTIMIZER_SIMPLIFY`: default on. When the optimized GLB is still above the size target (8 MB, 5.5 MB for the smallest preset) the worker simplifies geometry to 50% and then 30%. Set to `false` to keep every triangle.
 - `MODEL_OPTIMIZER_NODE_OPTIONS`: defaults to `--max-old-space-size=384` in the worker code to leave RAM for native allocations and the worker process.
 
 These limits are guardrails, not guarantees that every model below them fits in 1 GB. Vertex clustering is lossy geometry reduction and can remove thin details or merge nearby surfaces. Validate representative slicer exports and dense meshes, compare the generated GLBs visually, and monitor container peak memory before raising limits. The native STL/PLY/OBJ measurements supplied with the patch are synthetic/local tests; they are not proof of peak memory on Railway.

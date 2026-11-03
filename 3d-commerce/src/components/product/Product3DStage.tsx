@@ -6,6 +6,7 @@ import { AdaptiveDpr, Environment, Lightformer, OrbitControls, useGLTF } from "@
 import * as THREE from "three";
 import { ModelErrorBoundary } from "@/components/3d/ModelErrorBoundary";
 import { useModelUrl } from "@/lib/useModelUrl";
+import { useSmoothProgress } from "@/lib/useSmoothProgress";
 import "@/lib/gltf-decoders";
 
 
@@ -249,6 +250,15 @@ export default function Product3DStage({
   const background = stageBackground(isDark, tone);
   const handleModelReady = useCallback(() => setModelReady(true), []);
 
+  // Download fills the first 90% of the bar; building the scene (parsing, decoding,
+  // uploading to the GPU) fills the rest. Both creep forward while they wait.
+  const downloaded = Boolean(blobUrl);
+  const displayProgress = useSmoothProgress(
+    downloaded ? 97 : Math.min(progress, 100) * 0.9,
+    downloaded ? 99 : 90,
+    modelReady,
+  );
+
   useEffect(() => {
     setModelReady(false);
   }, [model]);
@@ -329,11 +339,11 @@ export default function Product3DStage({
               </>
             ) : (
               <>
-                <p className="text-[10px] font-medium uppercase tracking-[0.16em]">Loading 3D preview</p>
+                <p className="text-[10px] font-medium uppercase tracking-[0.16em]">{downloaded ? "Preparing 3D scene" : "Downloading 3D model"}</p>
                 <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-black/15 dark:bg-white/15">
-                  <div className="h-full rounded-full bg-primary transition-[width] duration-200" style={{ width: `${Math.max(4, Math.min(progress, 100))}%` }} />
+                  <div className="h-full rounded-full bg-primary transition-[width] duration-150 ease-out" style={{ width: `${Math.max(2, displayProgress)}%` }} />
                 </div>
-                <p className="mt-2 text-[10px] text-muted">{Math.max(0, Math.min(progress, 100))}%</p>
+                <p className="mt-2 text-[10px] tabular-nums text-muted">{displayProgress}%</p>
               </>
             )}
           </div>

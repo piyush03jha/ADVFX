@@ -6,9 +6,9 @@ Blender is SIGKILLed. STL is read in streaming passes. OBJ and PLY retain compac
 indexed geometry arrays during parsing, but avoid Blender's much larger scene
 representation. Clustering memory is bounded by an explicit occupied-cell cap:
 
-  * <= VOXEL3D_GLTF_MAX_FACES triangles (default 250000): exact vertex weld
+  * <= VOXEL3D_GLTF_MAX_FACES triangles (default 0 = no limit): exact vertex weld
     (identical positions merged, nothing else changed).
-  * more triangles: vertex-clustering decimation. Vertices are snapped to a
+  * more triangles than a positive limit: vertex-clustering decimation. Vertices are snapped to a
     cubic grid, merged, degenerate triangles dropped; the grid is coarsened or
     refined (<= 3 passes) toward the face budget.
 
@@ -32,7 +32,10 @@ import tempfile
 from array import array
 
 EXIT_INVALID, EXIT_UNSUPPORTED = 2, 3
-MAX_FACES = int(os.environ.get("VOXEL3D_GLTF_MAX_FACES", "250000"))
+# 0 (the default) or a negative value means "no face budget": every triangle is kept
+# and only identical vertices are welded. Set a positive number to cap output size.
+MAX_FACES = int(os.environ.get("VOXEL3D_GLTF_MAX_FACES", "0"))
+UNLIMITED_FACES = MAX_FACES <= 0
 MAX_INPUT_TRIANGLES = int(os.environ.get("VOXEL3D_DENSE_MAX_TRIANGLES", "12000000"))
 MAX_CELLS = int(os.environ.get("VOXEL3D_DENSE_MAX_CELLS", "1500000"))
 MAX_PASSES = 3
@@ -466,7 +469,7 @@ def convert(src, dst, ext):
         def make_iter():
             return stl_triangles(src, kind, n)
 
-        if n <= MAX_FACES:
+        if UNLIMITED_FACES or n <= MAX_FACES:
             cl, tris = Clusterer(), array("I")
             for t in make_iter():
                 a, b, c = cl.vid(*t[0:3]), cl.vid(*t[3:6]), cl.vid(*t[6:9])
@@ -496,7 +499,7 @@ def convert(src, dst, ext):
     else:
         raise Unsupported("unsupported extension " + ext)
     print("%s: %d vertices, %d faces read" % (ext, len(verts) // 3, len(tris) // 3), flush=True)
-    if len(tris) // 3 > MAX_FACES:
+    if not UNLIMITED_FACES and len(tris) // 3 > MAX_FACES:
         verts, tris, colors = reduce_indexed(verts, tris, colors)
     write_glb(dst, verts, tris, colors, z_up)
 

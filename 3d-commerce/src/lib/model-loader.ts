@@ -127,7 +127,52 @@ function validateGlbHeader(buffer: ArrayBuffer): number {
   return length;
 }
 
-async function fetchRange(url: string, start: number, end: number, signal: AbortSignal): Promise<ArrayBuffer> {
+/**
+ * Reads a response body chunk by chunk so the caller sees bytes arrive. A plain
+ * `response.arrayBuffer()` reports nothing until the whole body is in, which made
+ * the progress bar jump from 0 straight to 100.
+ */
+async function readBody(response: Response, onBytes: (count: number) => void, signal: AbortSignal): Promise<ArrayBuffer> {
+  const body = response.body;
+  if (!body) {
+    const whole = await response.arrayBuffer();
+    onBytes(whole.byteLength);
+    return whole;
+  }
+
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    for (;;) {
+      if (signal.aborted) throw abortError();
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      size += value.byteLength;
+      onBytes(value.byteLength);
+    }
+  } catch (error) {
+    if (signal.aborted) throw abortError();
+    throw error;
+  }
+
+  const out = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    out.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return out.buffer as ArrayBuffer;
+}
+
+async function fetchRange(
+  url: string,
+  start: number,
+  end: number,
+  signal: AbortSignal,
+  onBytes: (count: number) => void,
+): Promise<ArrayBuffer> {
   const response = await fetchWithRetry(
     url,
     { headers: { Range: `bytes=${start}-${end}`, Accept: "model/gltf-binary,application/octet-stream" } },
@@ -135,7 +180,7 @@ async function fetchRange(url: string, start: number, end: number, signal: Abort
   );
 
   if (response.status !== 206) {
-    if (start === 0 && response.status === 200) return response.arrayBuffer();
+    if (start === 0 && response.status === 200) return readBody(response, onBytes, signal);
     throw new Error("Asset CDN did not return a byte range");
   }
 
@@ -144,7 +189,7 @@ async function fetchRange(url: string, start: number, end: number, signal: Abort
   if (!match || Number(match[1]) !== start) {
     throw new Error("Asset CDN returned an invalid byte range");
   }
-  return response.arrayBuffer();
+  return readBody(response, onBytes, signal);
 }
 
 async function readCachedModel(url: string): Promise<string | null> {
@@ -214,10 +259,23 @@ async function downloadModel(url: string, emit: (percent: number) => void, signa
     throw new Error(`Asset CDN did not return a usable model response (${firstResponse.status})`);
   }
 
-  const firstChunk = await firstResponse.arrayBuffer();
-  const total = validateGlbHeader(firstChunk);
   const contentRange = firstResponse.headers.get("Content-Range") ?? "";
   const rangeMatch = /^bytes (\d+)-(\d+)\/(\d+)$/.exec(contentRange);
+
+  // Progress is counted in real bytes as they stream in. The size is known up front
+  // from the headers; it is only trusted for display, the GLB header check below
+  // still decides whether the file is valid.
+  let loaded = 0;
+  const expectedTotal =
+    Number(rangeMatch?.[3]) || Number(firstResponse.headers.get("Content-Length")) || 0;
+  const report = (count: number) => {
+    loaded += count;
+    // Hold at 99 until the file is validated and stored, so 100 means "ready".
+    if (expectedTotal > 0) emit(Math.min(99, Math.floor((loaded / expectedTotal) * 100)));
+  };
+
+  const firstChunk = await readBody(firstResponse, report, signal);
+  const total = validateGlbHeader(firstChunk);
 
   if (firstResponse.status === 206) {
     if (
@@ -236,7 +294,6 @@ async function downloadModel(url: string, emit: (percent: number) => void, signa
 
   if (firstChunk.byteLength === total) {
     buffer = firstChunk;
-    emit(100);
   } else {
     let output: Uint8Array;
     try {
@@ -245,9 +302,6 @@ async function downloadModel(url: string, emit: (percent: number) => void, signa
       throw new Error("Not enough memory to load this 3D model");
     }
     output.set(new Uint8Array(firstChunk), 0);
-
-    let completed = firstChunk.byteLength;
-    emit(Math.round((completed / total) * 100));
 
     const ranges: Array<{ start: number; end: number }> = [];
     for (let start = firstChunk.byteLength; start < total; start += CHUNK_SIZE) {
@@ -281,15 +335,13 @@ async function downloadModel(url: string, emit: (percent: number) => void, signa
 
               const range = ranges[next];
               next += 1;
-              const chunk = await fetchRange(url, range.start, range.end, inner.signal);
+              const chunk = await fetchRange(url, range.start, range.end, inner.signal, report);
 
               if (chunk.byteLength !== range.end - range.start + 1) {
                 throw new Error("Asset CDN returned an incomplete byte range");
               }
 
               output.set(new Uint8Array(chunk), range.start);
-              completed += chunk.byteLength;
-              emit(Math.min(100, Math.round((completed / total) * 100)));
             }
           } catch (error) {
             inner.abort();
@@ -331,6 +383,8 @@ function startDownload(url: string): Entry {
   };
 
   const emit = (percent: number) => {
+    // Progress only ever moves forward, even when parallel ranges finish out of order.
+    if (percent < entry.lastProgress) return;
     entry.lastProgress = percent;
     entry.listeners.forEach((listener) => listener(percent));
   };

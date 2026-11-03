@@ -250,7 +250,10 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
   ) {
     const textureSizes = preset === "SMALLEST" ? [768, 768, 512] : [1024, 1024, 512];
     const target = preset === "SMALLEST" ? 5.5 * 1024 * 1024 : TARGET_MAX_BYTES;
-    const simplifyRatios = hasAnimations ? [null, null, null] : [null, 0.5, 0.3];
+    // Set MODEL_OPTIMIZER_SIMPLIFY=false to keep every triangle even when the optimized
+    // file stays above the size target (the default reduces geometry to reach it).
+    const simplifyAllowed = process.env.MODEL_OPTIMIZER_SIMPLIFY !== "false";
+    const simplifyRatios = hasAnimations || !simplifyAllowed ? [null, null, null] : [null, 0.5, 0.3];
 
     let best = inputPath;
     let bestSize = (await fs.stat(inputPath)).size;
