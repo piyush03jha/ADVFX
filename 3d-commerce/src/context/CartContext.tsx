@@ -9,8 +9,7 @@ import {
   useState,
 } from "react";
 
-import type { StorefrontProduct as Product } from "@/lib/catalog-api";
-import type { StorefrontVariant } from "@/lib/catalog-api";
+import { mapCatalogProduct, type CatalogProduct, type StorefrontProduct as Product, type StorefrontVariant } from "@/lib/catalog-api";
 import { useAuth } from "@/context/AuthContext";
 import { resolveMediaUrl } from "@/lib/media-url";
 
@@ -380,9 +379,41 @@ export function CartProvider({
       }
 
       const guestItems = getLocalGuestCart();
+      const productIds = [...new Set(guestItems.map((item) => item.product.id))];
+      const refreshedProducts = new Map<string, Product>();
+      await Promise.all(productIds.map(async (productId) => {
+        try {
+          const response = await fetch("/api/products/" + encodeURIComponent(productId), { cache: "no-store" });
+          if (!response.ok) return;
+          const catalogProduct = await response.json() as CatalogProduct;
+          refreshedProducts.set(productId, mapCatalogProduct(catalogProduct));
+        } catch {
+          // Preserve the last known guest-cart price during a transient catalog outage.
+        }
+      }));
+      const refreshedItems = guestItems.map((item) => {
+        const currentProduct = refreshedProducts.get(item.product.id);
+        if (!currentProduct) return item;
+        const currentVariant = currentProduct.variants.find((variant) => variant.id === item.variantId);
+        return {
+          ...item,
+          product: {
+            ...item.product,
+            name: currentProduct.name,
+            category: currentProduct.category,
+            price: currentVariant?.price ?? currentProduct.price,
+            oldPrice: currentVariant?.oldPrice ?? currentProduct.oldPrice,
+            image: currentProduct.image,
+            model: currentProduct.model,
+          },
+          variantName: currentVariant?.name ?? item.variantName,
+          variantSize: currentVariant?.size ?? item.variantSize,
+        };
+      });
+      setLocalGuestCart(refreshedItems);
 
       setItems(
-        guestItems.map((item) => ({
+        refreshedItems.map((item) => ({
           key: getItemKey(item.product.id, item.variantId, item.size),
           product: item.product,
           variantId: item.variantId,
