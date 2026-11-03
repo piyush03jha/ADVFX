@@ -25,8 +25,8 @@ Blender 4.5 LTS handles other non-GLB imports. glTF Transform optimizes the resu
 
 ### 3MF resource limits
 
-- `VOXEL3D_3MF_MAX_TRIANGLES`: default `2000000` triangles. Increase only after measuring peak RSS on the actual worker.
-- `VOXEL3D_3MF_MAX_XML_MB`: default `512` MB per model XML part.
+- `VOXEL3D_3MF_MAX_TRIANGLES`: by default sized from the worker's RAM (about 150 bytes per triangle, at most 55% of RAM, minimum 2,000,000, maximum 40,000,000; roughly 31 million on 8 GB). Set a number to override it, or `0` for no limit (the converter still stops cleanly if it runs out of memory). If you set this to `2000000` on your host, delete it to get the automatic value.
+- `VOXEL3D_3MF_MAX_XML_MB`: by default `max(512, RAM/4)` MB capped at 4096 per model XML part (about 2 GB on 8 GB). `0` = no limit.
 - `VOXEL3D_3MF_MAX_NODES`: default `10000` glTF nodes to cap extreme instancing.
 - `VOXEL3D_3MF_EXTRA_SCALE`: optional multiplier applied after 3MF unit conversion; default `1`.
 - `THREEMF_NATIVE_CONVERTER=false`: disables the native converter and routes 3MF through Blender.
@@ -36,7 +36,7 @@ Blender 4.5 LTS handles other non-GLB imports. glTF Transform optimizes the resu
 - `VOXEL3D_NATIVE_OBJ_MIN_MB`: minimum OBJ file size for native conversion; default `30` MB. Native OBJ conversion loses materials/UVs/textures.
 - `NATIVE_MESH_CONVERTERS=false`: disables all native mesh converters. `THREEMF_NATIVE_CONVERTER=false` separately disables native 3MF conversion.
 - `MODEL_OPTIMIZER_SIMPLIFY`: default on. When the optimized GLB is still above the size target (8 MB, 5.5 MB for the smallest preset) the worker simplifies geometry to 50% and then 30%. Set to `false` to keep every triangle.
-- `MODEL_OPTIMIZER_NODE_OPTIONS`: defaults to `--max-old-space-size=384` in the worker code to leave RAM for native allocations and the worker process.
+- `MODEL_OPTIMIZER_NODE_OPTIONS`: defaults to 35% of the worker's RAM (minimum 384 MB, maximum 4096 MB). Set it to override, e.g. `--max-old-space-size=4096`.
 
 These limits are guardrails, not guarantees that every model below them fits in 1 GB. Vertex clustering is lossy geometry reduction and can remove thin details or merge nearby surfaces. Validate representative slicer exports and dense meshes, compare the generated GLBs visually, and monitor container peak memory before raising limits. The native STL/PLY/OBJ measurements supplied with the patch are synthetic/local tests; they are not proof of peak memory on Railway.
 

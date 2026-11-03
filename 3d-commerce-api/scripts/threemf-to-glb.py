@@ -46,8 +46,54 @@ UNIT_TO_METERS = {
     "meter": 1.0,
 }
 SKIP_OBJECT_TYPES = {"support", "solidsupport", "surface"}
-MAX_XML_BYTES = int(os.environ.get("VOXEL3D_3MF_MAX_XML_MB", "512")) * 1024 * 1024
-MAX_TRIANGLES = int(os.environ.get("VOXEL3D_3MF_MAX_TRIANGLES", "2000000"))
+def _memory_limit_bytes():
+    """RAM this process may use: the container (cgroup) limit when there is one,
+    otherwise the machine's total memory. None when it cannot be determined."""
+    candidates = []
+    for path in ("/sys/fs/cgroup/memory.max", "/sys/fs/cgroup/memory/memory.limit_in_bytes"):
+        try:
+            with open(path) as handle:
+                text = handle.read().strip()
+            if text.isdigit():
+                candidates.append(int(text))
+        except OSError:
+            pass
+    try:
+        with open("/proc/meminfo") as handle:
+            for line in handle:
+                if line.startswith("MemTotal:"):
+                    candidates.append(int(line.split()[1]) * 1024)
+                    break
+    except (OSError, ValueError, IndexError):
+        pass
+    # cgroup "no limit" shows up as a huge number; ignore anything above 1 TB.
+    candidates = [value for value in candidates if 0 < value < (1 << 40)]
+    return min(candidates) if candidates else None
+
+
+# Peak memory while converting is roughly 100-150 bytes per triangle (compact vertex
+# and index arrays plus the copies made when writing each mesh). Budget 150 and use
+# at most ~55% of RAM, leaving the rest for the worker, Node and the OS.
+BYTES_PER_TRIANGLE = 150
+_MEMORY = _memory_limit_bytes()
+
+
+def _env_limit(name, auto):
+    """Env value wins ("0" = no limit); when unset, use the RAM-based default."""
+    raw = os.environ.get(name, "").strip()
+    if raw:
+        value = int(raw)
+        return value if value > 0 else None
+    return auto
+
+
+_AUTO_TRIANGLES = (
+    max(2_000_000, min(40_000_000, int(_MEMORY * 0.55 / BYTES_PER_TRIANGLE))) if _MEMORY else 2_000_000
+)
+_AUTO_XML_MB = max(512, min(4096, (_MEMORY >> 20) // 4)) if _MEMORY else 512
+_xml_mb = _env_limit("VOXEL3D_3MF_MAX_XML_MB", _AUTO_XML_MB)
+MAX_XML_BYTES = _xml_mb * 1024 * 1024 if _xml_mb else float("inf")
+MAX_TRIANGLES = _env_limit("VOXEL3D_3MF_MAX_TRIANGLES", _AUTO_TRIANGLES) or float("inf")
 MAX_DEPTH = 32
 MAX_NODES = int(os.environ.get("VOXEL3D_3MF_MAX_NODES", "10000"))
 
@@ -244,7 +290,7 @@ class ModelFile:
                 self.budget["triangles"] += nt
                 if self.budget["triangles"] > MAX_TRIANGLES:
                     raise Invalid(
-                        "model has more than %d triangles (limit VOXEL3D_3MF_MAX_TRIANGLES)" % MAX_TRIANGLES
+                        "model has more than %d triangles (limit VOXEL3D_3MF_MAX_TRIANGLES; raise it or use a larger worker)" % MAX_TRIANGLES
                     )
             self.verts = self.tris = None
         elif n in ("basematerials", "colorgroup") and self.cur_group:

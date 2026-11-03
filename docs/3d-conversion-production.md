@@ -8,7 +8,12 @@ CONVERSION_WORKER_POLL_INTERVAL_MS=2000
 CONVERSION_WORKER_STALE_AFTER_MS=7200000
 CONVERSION_TIMEOUT_MS=600000
 MODEL_OPTIMIZATION_TIMEOUT_MS=600000
-MODEL_OPTIMIZER_NODE_OPTIONS=--max-old-space-size=2048
+# Optional: the optimizer heap and the 3MF/STL triangle limits now size themselves from the
+# worker's RAM. Remove any old VOXEL3D_3MF_MAX_TRIANGLES / VOXEL3D_GLTF_MAX_FACES /
+# MODEL_OPTIMIZER_NODE_OPTIONS values to use the automatic ones (see WORKER.md).
+# Conversion of very large models takes longer, so also consider:
+# CONVERSION_TIMEOUT_MS=1800000
+# MODEL_OPTIMIZATION_TIMEOUT_MS=1800000
 ```
 
 For automatic storefront revalidation after a background publish, also set:

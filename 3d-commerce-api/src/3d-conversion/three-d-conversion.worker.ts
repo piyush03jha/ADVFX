@@ -5,11 +5,24 @@ import { extname, join, relative, resolve, sep } from "node:path";
 import { randomUUID } from "node:crypto";
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
+import { totalmem as osTotalMemory } from "node:os";
 import { PrismaService } from "../prisma/prisma.service";
 import { StorageService } from "../storage/storage.service";
 import { ThreeDConversionService } from "./three-d-conversion.service";
 
 const execFileAsync = promisify(execFile);
+
+/**
+ * Heap for the glTF-Transform optimizer. A fixed 384 MB is enough on a 1 GB worker but
+ * fails on large meshes now that the worker has more memory, so size it from the RAM
+ * this container may use (35%, between 384 MB and 4 GB). Concurrency is 1, so the
+ * conversion script and the optimizer never run at the same time.
+ */
+function defaultOptimizerNodeOptions(): string {
+  const limit = (process as NodeJS.Process & { constrainedMemory?: () => number }).constrainedMemory?.() || osTotalMemory();
+  const heapMb = Math.max(384, Math.min(4096, Math.floor((limit / 1024 / 1024) * 0.35)));
+  return `--max-old-space-size=${heapMb}`;
+}
 const TARGET_MAX_BYTES = 8 * 1024 * 1024;
 
 type OptimizationPreset = "BALANCED" | "SMALLEST";
@@ -318,7 +331,7 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
       maxBuffer: 16 * 1024 * 1024,
       env: {
         ...process.env,
-        NODE_OPTIONS: process.env.MODEL_OPTIMIZER_NODE_OPTIONS ?? "--max-old-space-size=384",
+        NODE_OPTIONS: process.env.MODEL_OPTIMIZER_NODE_OPTIONS ?? defaultOptimizerNodeOptions(),
       },
     });
   }
