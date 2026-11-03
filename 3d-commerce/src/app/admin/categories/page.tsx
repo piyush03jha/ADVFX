@@ -21,6 +21,7 @@ type Category = {
   description?: string | null;
   imageUrl?: string | null;
   sortOrder: number;
+  gstRateBps?: number | null;
   isActive: boolean;
   parentId?: string | null;
   parent?: { id: string; name: string; slug: string } | null;
@@ -33,6 +34,7 @@ const empty = {
   slug: "",
   description: "",
   sortOrder: "0",
+  gstRate: "",
   parentId: "",
   isActive: true,
 };
@@ -83,6 +85,7 @@ export default function AdminCategories() {
       slug: c.slug,
       description: c.description || "",
       sortOrder: String(c.sortOrder ?? 0),
+      gstRate: c.gstRateBps != null ? String(c.gstRateBps / 100) : "",
       parentId: c.parentId ?? "",
       isActive: c.isActive,
     });
@@ -104,6 +107,7 @@ export default function AdminCategories() {
         slug: form.slug.trim(),
         description: form.description.trim() || undefined,
         sortOrder: Number(form.sortOrder) || 0,
+        gstRateBps: form.gstRate.trim() === "" ? null : Math.round(Number(form.gstRate) * 100),
         parentId: form.parentId || null,
         isActive: form.isActive,
       };
@@ -550,6 +554,16 @@ export default function AdminCategories() {
               setForm({ ...form, slug: e.target.value.toLowerCase() })
             }
             placeholder="slug (e.g. ocean-life)"
+            className="h-10 rounded-xl border border-border bg-background px-3 text-xs"
+          />
+          <input
+            type="number"
+            min="0"
+            max="100"
+            step="0.01"
+            value={form.gstRate}
+            onChange={(e) => setForm({ ...form, gstRate: e.target.value })}
+            placeholder="GST rate % (blank = none)"
             className="h-10 rounded-xl border border-border bg-background px-3 text-xs"
           />
           <input
