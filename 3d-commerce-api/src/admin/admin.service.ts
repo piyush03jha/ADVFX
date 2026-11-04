@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { NotificationType } from '@prisma/client';
+import { NotificationType, Prisma } from '@prisma/client';
+import { calculateManufacturingPrice, normalizePricingSize } from '../pricing/manufacturing-pricing';
 
 type ProductRank = { product: any; score: number };
 
@@ -181,56 +182,196 @@ export class AdminService {
     });
   }
 
+  private async recalculateProductPrices(tx: Prisma.TransactionClient, productId: string) {
+    const product = await tx.product.findUnique({
+      where: { id: productId },
+      select: { id: true, material: true, variants: { where: { isActive: true }, select: { id: true, name: true, size: true } } },
+    });
+    if (!product?.material?.trim()) return;
+    for (const variant of product.variants) {
+      try {
+        const calculated = await calculateManufacturingPrice(tx, {
+          productId: product.id,
+          material: product.material,
+          size: variant.size,
+          variantName: variant.name,
+        });
+        await tx.productVariantPrice.upsert({
+          where: { variantId: variant.id },
+          create: {
+            variantId: variant.id,
+            currency: calculated.currency,
+            amountMinor: calculated.amountMinor,
+            costBreakdown: calculated.costBreakdown,
+            isActive: true,
+          },
+          update: {
+            currency: calculated.currency,
+            amountMinor: calculated.amountMinor,
+            compareAtMinor: null,
+            costBreakdown: calculated.costBreakdown,
+            isActive: true,
+          },
+        });
+      } catch (error) {
+        // An incomplete matrix must not silently replace an existing sellable price.
+        if (!(error instanceof BadRequestException)) throw error;
+      }
+    }
+  }
+
   async upsertMaterialPricingRule(input: {
     material: string;
     sizeKey: string;
     currency?: string;
-    amountMinor: number;
+    rawMaterialCostMinor: number;
+    wastageRateBps: number;
+    electricityKwhMilli: number;
+    machineHoursMilli: number;
     isActive?: boolean;
   }) {
     const material = input.material?.trim();
-    const sizeKey = input.sizeKey?.trim().toLowerCase();
+    const sizeKey = normalizePricingSize(input.sizeKey);
     const currency = (input.currency || 'INR').trim().toUpperCase();
     if (!material || !sizeKey) throw new BadRequestException('Material and size are required');
     if (!/^[A-Z]{3}$/.test(currency)) throw new BadRequestException('Currency must be a three-letter ISO code');
-    if (!Number.isSafeInteger(input.amountMinor) || input.amountMinor <= 0) {
-      throw new BadRequestException('Material price must be a positive amount in minor currency units');
+    const numericValues = [
+      input.rawMaterialCostMinor,
+      input.wastageRateBps,
+      input.electricityKwhMilli,
+      input.machineHoursMilli,
+    ];
+    if (numericValues.some((value) => !Number.isSafeInteger(value) || value < 0)) {
+      throw new BadRequestException('Manufacturing cost inputs must be non-negative integer values');
     }
+    if (input.wastageRateBps > 100000) {
+      throw new BadRequestException('Wastage rate cannot exceed 1000%');
+    }
+
     return this.prisma.$transaction(async (tx) => {
       const rule = await tx.materialPricingRule.upsert({
         where: { material_sizeKey: { material, sizeKey } },
-        create: { material, sizeKey, currency, amountMinor: input.amountMinor, isActive: input.isActive ?? true },
-        update: { currency, amountMinor: input.amountMinor, isActive: input.isActive ?? true },
+        create: {
+          material, sizeKey, currency, amountMinor: 0,
+          rawMaterialCostMinor: input.rawMaterialCostMinor,
+          wastageRateBps: input.wastageRateBps,
+          electricityKwhMilli: input.electricityKwhMilli,
+          machineHoursMilli: input.machineHoursMilli,
+          isActive: input.isActive ?? true,
+        },
+        update: {
+          currency,
+          rawMaterialCostMinor: input.rawMaterialCostMinor,
+          wastageRateBps: input.wastageRateBps,
+          electricityKwhMilli: input.electricityKwhMilli,
+          machineHoursMilli: input.machineHoursMilli,
+          isActive: input.isActive ?? true,
+        },
       });
-      if (rule.isActive) {
-        const products = await tx.product.findMany({
-          where: { material: { equals: material, mode: 'insensitive' }, status: { not: 'ARCHIVED' } },
-          include: { variants: { where: { isActive: true }, include: { price: true } } },
-        });
-        const keyFor = (value: string | null | undefined) => {
-          const normalized = (value ?? '').trim().toLowerCase();
-          if (/\bsmall\b|\bs\b/.test(normalized)) return 'small';
-          if (/\bmedium\b|\bmid\b|\bm\b/.test(normalized)) return 'medium';
-          if (/\blarge\b|\bl\b/.test(normalized)) return 'large';
-          return normalized.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-        };
-        for (const product of products) {
-          for (const variant of product.variants) {
-            if (keyFor(variant.name) !== sizeKey && keyFor(variant.size) !== sizeKey) continue;
-            await tx.productVariantPrice.upsert({
-              where: { variantId: variant.id },
-              create: { variantId: variant.id, currency, amountMinor: rule.amountMinor, isActive: true },
-              update: { currency, amountMinor: rule.amountMinor, compareAtMinor: null, isActive: true },
-            });
-          }
-        }
-      }
+      const products = await tx.product.findMany({
+        where: { material: { equals: material, mode: 'insensitive' }, status: { not: 'ARCHIVED' } },
+        select: { id: true },
+      });
+      for (const product of products) await this.recalculateProductPrices(tx, product.id);
       return rule;
     });
   }
 
+  async productCostRules(productId?: string) {
+    return this.prisma.productCostRule.findMany({
+      where: productId ? { productId } : undefined,
+      include: { product: { select: { id: true, name: true, material: true } } },
+      orderBy: [{ productId: 'asc' }, { sizeKey: 'asc' }],
+    });
+  }
+
+  async upsertProductCostRule(input: {
+    productId: string;
+    sizeKey: string;
+    labourCostMinor?: number | null;
+    paintingCostMinor?: number;
+    finishingCostMinor?: number;
+    machineSetupCostMinor?: number;
+    packagingCostMinor?: number | null;
+  }) {
+    const product = await this.prisma.product.findUnique({ where: { id: input.productId }, select: { id: true } });
+    if (!product) throw new NotFoundException('Product not found');
+    const sizeKey = normalizePricingSize(input.sizeKey);
+    if (!sizeKey) throw new BadRequestException('A valid size is required');
+    const values = [
+      input.labourCostMinor,
+      input.paintingCostMinor,
+      input.finishingCostMinor,
+      input.machineSetupCostMinor,
+      input.packagingCostMinor,
+    ];
+    if (values.some((value) => value != null && (!Number.isSafeInteger(value) || value < 0))) {
+      throw new BadRequestException('Product manufacturing costs must be non-negative integer values');
+    }
+    return this.prisma.$transaction(async (tx) => {
+      const rule = await tx.productCostRule.upsert({
+        where: { productId_sizeKey: { productId: input.productId, sizeKey } },
+        create: {
+          productId: input.productId,
+          sizeKey,
+          labourCostMinor: input.labourCostMinor ?? null,
+          paintingCostMinor: input.paintingCostMinor ?? 0,
+          finishingCostMinor: input.finishingCostMinor ?? 0,
+          machineSetupCostMinor: input.machineSetupCostMinor ?? 0,
+          packagingCostMinor: input.packagingCostMinor ?? null,
+        },
+        update: {
+          labourCostMinor: input.labourCostMinor ?? null,
+          paintingCostMinor: input.paintingCostMinor ?? 0,
+          finishingCostMinor: input.finishingCostMinor ?? 0,
+          machineSetupCostMinor: input.machineSetupCostMinor ?? 0,
+          packagingCostMinor: input.packagingCostMinor ?? null,
+        },
+      });
+      await this.recalculateProductPrices(tx, input.productId);
+      return rule;
+    });
+  }
+
+  async manufacturingRates() {
+    return this.prisma.manufacturingRate.upsert({
+      where: { id: 'default' },
+      create: { id: 'default' },
+      update: {},
+    });
+  }
+
+  async upsertManufacturingRates(input: {
+    electricityRatePerKwhMinor: number;
+    machineHourlyCostMinor: number;
+    generalOverheadBps: number;
+    defaultLabourCostMinor: number;
+    standardPackagingCostMinor: number;
+  }) {
+    const values = Object.values(input);
+    if (values.some((value) => !Number.isSafeInteger(value) || value < 0)) {
+      throw new BadRequestException('Global manufacturing rates must be non-negative integer values');
+    }
+    if (input.generalOverheadBps > 10000) {
+      throw new BadRequestException('General overhead cannot exceed 100%');
+    }
+    return this.prisma.$transaction(async (tx) => {
+      const rates = await tx.manufacturingRate.upsert({
+        where: { id: 'default' },
+        create: { id: 'default', ...input },
+        update: input,
+      });
+      const products = await tx.product.findMany({
+        where: { status: { not: 'ARCHIVED' }, material: { not: null } },
+        select: { id: true },
+      });
+      for (const product of products) await this.recalculateProductPrices(tx, product.id);
+      return rates;
+    });
+  }
+
   async catalog() {
-    const [products, categories, materialPricingRules] = await Promise.all([
+    const [products, categories, materialPricingRules, productCostRules, manufacturingRates] = await Promise.all([
       this.prisma.product.findMany({
         where: { status: { not: 'ARCHIVED' } },
         include: { category: true, prices: { where: { isActive: true }, orderBy: { createdAt: 'desc' }, take: 1 }, inventory: true, variants: { include: { price: true }, orderBy: { createdAt: 'asc' } }, media: { orderBy: { sortOrder: 'asc' } }, metrics: true },
@@ -238,8 +379,10 @@ export class AdminService {
       }),
       this.prisma.category.findMany({ where: { isActive: true }, orderBy: [{ parentId: 'asc' }, { sortOrder: 'asc' }, { name: 'asc' }] }),
       this.prisma.materialPricingRule.findMany({ where: { isActive: true }, orderBy: [{ material: 'asc' }, { sizeKey: 'asc' }] }),
+      this.prisma.productCostRule.findMany({ orderBy: [{ productId: 'asc' }, { sizeKey: 'asc' }] }),
+      this.prisma.manufacturingRate.findUnique({ where: { id: 'default' } }),
     ]);
-    return { products, categories, materialPricingRules };
+    return { products, categories, materialPricingRules, productCostRules, manufacturingRates };
   }
 
   async promotions() {
