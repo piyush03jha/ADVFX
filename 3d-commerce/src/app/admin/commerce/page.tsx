@@ -27,7 +27,7 @@ export default function AdminCommerceRulesPage() {
   const [saleCampaign,setSaleCampaign]=useState<SaleCampaign>({enabled:false,priceIncreaseBps:2000,discountBps:2000,startsAt:null,endsAt:null});
   const [saleForm,setSaleForm]=useState({priceIncreasePercent:"20",discountPercent:"20",startsAt:"",endsAt:""});
   const [materialRule,setMaterialRule]=useState({material:"",sizeKey:"all",pricePerKg:"",rawMaterialCost:"",wastagePercent:"",electricityKwh:"",machineHours:""});
-  const [productCost,setProductCost]=useState({productId:"",sizeKey:"small",labour:"",painting:"0",finishing:"0",machineSetup:"0",packaging:""});
+  const [productCost,setProductCost]=useState({productId:"",sizeKey:"small",labour:"",painting:"",finishing:"",machineSetup:"",packaging:""});
   const [globalForm,setGlobalForm]=useState({generalOverheadPercent:"",profitMarginPercent:""});
   const [promo,setPromo]=useState({name:"",code:"",type:"PERCENTAGE",value:"",minSubtotalMinor:"",maxDiscountMinor:"",usageLimit:""});
   const [tax,setTax]=useState({name:"",countryCode:"IN",stateCode:"",rate:"",priority:"0",applyToShipping:false});
@@ -235,15 +235,15 @@ export default function AdminCommerceRulesPage() {
       </section>
 
       <section className="mt-8 rounded-3xl border border-border bg-surface p-6 sm:p-7">
-        <p className="text-[9px] uppercase tracking-[0.16em] text-primary">Layer 03 · Product overrides</p><h2 className="mt-1 text-xl font-semibold">Product-based pricing</h2><p className="mt-2 text-sm leading-6 text-muted">Set product-specific labour, painting, finishing, machine setup and packaging costs for each size. Leave labour or packaging blank to use the global default.</p>
+        <p className="text-[9px] uppercase tracking-[0.16em] text-primary">Layer 03 · Product overrides</p><h2 className="mt-1 text-xl font-semibold">Product-based pricing</h2><p className="mt-2 text-sm leading-6 text-muted">Optional product-specific adjustments for a selected size. Leave painting, finishing or machine setup blank for ₹0 extra; leave labour or packaging blank to use the configured size/global default.</p>
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <select value={productCost.productId} onChange={e=>setProductCost({...productCost,productId:e.target.value})} className={inputClass}><option value="">Select product</option>{products.map(product=><option key={product.id} value={product.id}>{product.name}{product.material?" · "+product.material:""}</option>)}</select>
           <select value={productCost.sizeKey} onChange={e=>setProductCost({...productCost,sizeKey:e.target.value})} className={inputClass}><option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option></select>
-          <input value={productCost.labour} onChange={e=>setProductCost({...productCost,labour:e.target.value})} type="number" min="0" step="0.01" placeholder="Labour override (₹, blank = default)" className={inputClass}/>
-          <input value={productCost.painting} onChange={e=>setProductCost({...productCost,painting:e.target.value})} type="number" min="0" step="0.01" placeholder="Painting cost (₹)" className={inputClass}/>
-          <input value={productCost.finishing} onChange={e=>setProductCost({...productCost,finishing:e.target.value})} type="number" min="0" step="0.01" placeholder="Finishing cost (₹)" className={inputClass}/>
-          <input value={productCost.machineSetup} onChange={e=>setProductCost({...productCost,machineSetup:e.target.value})} type="number" min="0" step="0.01" placeholder="Machine setup cost (₹)" className={inputClass}/>
-          <input value={productCost.packaging} onChange={e=>setProductCost({...productCost,packaging:e.target.value})} type="number" min="0" step="0.01" placeholder="Packaging override (₹, blank = default)" className={inputClass}/>
+          <input value={productCost.labour} onChange={e=>setProductCost({...productCost,labour:e.target.value})} type="number" min="0" step="0.01" placeholder="Labour override · ₹ (blank = size default)" className={inputClass}/>
+          <input value={productCost.painting} onChange={e=>setProductCost({...productCost,painting:e.target.value})} type="number" min="0" step="0.01" placeholder="Extra painting cost · ₹ (blank = 0)" className={inputClass}/>
+          <input value={productCost.finishing} onChange={e=>setProductCost({...productCost,finishing:e.target.value})} type="number" min="0" step="0.01" placeholder="Extra finishing cost · ₹ (blank = 0)" className={inputClass}/>
+          <input value={productCost.machineSetup} onChange={e=>setProductCost({...productCost,machineSetup:e.target.value})} type="number" min="0" step="0.01" placeholder="Machine setup cost · ₹ (blank = 0)" className={inputClass}/>
+          <input value={productCost.packaging} onChange={e=>setProductCost({...productCost,packaging:e.target.value})} type="number" min="0" step="0.01" placeholder="Packaging override · ₹ (blank = size default)" className={inputClass}/>
         </div>
         <button disabled={saving} type="button" onClick={()=>void saveProductCost()} className="mt-4 min-h-11 rounded-full bg-primary px-5 text-xs font-semibold text-white disabled:opacity-50">Save product costs</button>
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{productCostRules.map(rule=><div key={rule.id} className="rounded-2xl border border-border p-4"><p className="text-xs font-medium">{rule.product?.name??products.find(p=>p.id===rule.productId)?.name??"Product"} · {rule.sizeKey}</p><p className="mt-1 text-[10px] text-muted">Labour {money(rule.labourCostMinor)} · Painting {money(rule.paintingCostMinor)} · Finishing {money(rule.finishingCostMinor)}</p><p className="mt-1 text-[10px] text-muted">Setup {money(rule.machineSetupCostMinor)} · Packaging {money(rule.packagingCostMinor)}</p></div>)}</div>
