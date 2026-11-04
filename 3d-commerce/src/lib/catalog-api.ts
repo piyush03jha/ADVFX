@@ -18,6 +18,7 @@ export interface CatalogCategory {
   id: string;
   name: string;
   slug: string;
+  parentId?: string | null;
   gstRateBps?: number | null;
 }
 
@@ -82,7 +83,7 @@ export interface CatalogProduct {
   packaging?: string | null;
   weight?: string | null;
   prices: CatalogPrice[];
-  saleCampaign?: { enabled: boolean; active: boolean; priceIncreaseBps: number; discountBps: number; startsAt?: string | null; endsAt?: string | null };
+  saleCampaign?: { enabled: boolean; active: boolean; categoryId?: string | null; priceIncreaseBps: number; discountBps: number; startsAt?: string | null; endsAt?: string | null };
   variants?: CatalogVariant[];
   media: CatalogMedia[];
   /** Legacy API fields used by older product records. */
@@ -303,7 +304,7 @@ function primaryModel(product: CatalogProduct): string {
 
 export function mapCatalogProduct(product: CatalogProduct): StorefrontProduct {
   const price = activePrice(product);
-  const saleActive = product.saleCampaign?.active === true;
+  const saleActive = product.saleCampaign?.active === true && (!product.saleCampaign.categoryId || product.saleCampaign.categoryId === product.category?.id || product.saleCampaign.categoryId === product.category?.parentId);
   const saleListMinor = price && saleActive
     ? Math.round(price.amountMinor * (10000 + Math.max(0, product.saleCampaign!.priceIncreaseBps)) / 10000)
     : price?.amountMinor ?? 0;
@@ -402,7 +403,7 @@ export function mapCatalogProduct(product: CatalogProduct): StorefrontProduct {
       unitsSold: product.metrics?.unitsSold ?? 0,
     },
     variants: (product.variants ?? [])
-      .map((variant) => mapVariant(variant, product.saleCampaign))
+      .map((variant) => mapVariant(variant, saleActive ? product.saleCampaign : (product.saleCampaign ? { ...product.saleCampaign, active: false } : undefined)))
       .filter(
         (variant): variant is StorefrontVariant => Boolean(variant),
       ),
