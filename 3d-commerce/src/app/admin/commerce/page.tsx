@@ -52,8 +52,8 @@ export default function AdminCommerceRulesPage() {
       setSaleForm({
         priceIncreasePercent:(sale.priceIncreaseBps/100).toString(),
         discountPercent:(sale.discountBps/100).toString(),
-        startsAt:sale.startsAt ? new Date(sale.startsAt).toISOString().slice(0,16) : "",
-        endsAt:sale.endsAt ? new Date(sale.endsAt).toISOString().slice(0,16) : "",
+        startsAt:sale.startsAt ? new Date(new Date(sale.startsAt).getTime()-new Date(sale.startsAt).getTimezoneOffset()*60000).toISOString().slice(0,16) : "",
+        endsAt:sale.endsAt ? new Date(new Date(sale.endsAt).getTime()-new Date(sale.endsAt).getTimezoneOffset()*60000).toISOString().slice(0,16) : "",
       });
       setGlobalForm({
         electricityRatePerKwh:(global.electricityRatePerKwhMinor/100).toString(),
