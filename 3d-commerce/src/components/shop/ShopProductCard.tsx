@@ -210,7 +210,9 @@ export function ShopProductCard({ product, priority = false }: ShopProductCardPr
           </p>
         ) : null}
 
-        {product.price > 0 ? (
+        {!product.ordersEnabled ? (
+          <div className="mt-3 rounded-xl border border-red-500/20 bg-red-500/5 px-3 py-2.5 text-center text-xs font-semibold text-red-300">Currently unavailable · Orders paused</div>
+        ) : product.price > 0 ? (
           <div className="mt-3 grid grid-cols-2 gap-1.5 sm:mt-4 sm:gap-2">
             <Button
               type="button"
