@@ -159,7 +159,7 @@ export class ProductsService {
           ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
           ...(input.stock !== undefined ? { stock: input.stock } : {}),
           ...(input.lowStockAt !== undefined ? { lowStockAt: input.lowStockAt } : {}),
-          ...(input.trackStock !== undefined ? { trackStock: input.trackStock } : {}),
+          trackStock: false,
           ...(input.allowBackorder !== undefined ? { allowBackorder: input.allowBackorder } : {}),
         },
       });
@@ -233,7 +233,7 @@ export class ProductsService {
           reserved: 0,
           lowStockAt: input.lowStockAt ?? 5,
           trackStock: false,
-          allowBackorder: input.allowBackorder ?? false,
+          allowBackorder: false,
           price: { create: { currency: 'INR', amountMinor: 0, isActive: false } },
         },
       });
@@ -1457,26 +1457,9 @@ export class ProductsService {
         amountMinor: variant.price!.amountMinor,
       }));
 
-    const canPurchase = (item: (typeof pricedVariants)[number]) =>
-      !item.variant.trackStock ||
-      item.variant.allowBackorder ||
-      item.variant.stock - item.variant.reserved > 0;
-
-    // Prefer the Small variant when it can currently be purchased. Otherwise
-    // show the cheapest purchasable size, then the cheapest configured size.
-    const smallInStock = pricedVariants.find(
-      (item) =>
-        /small/i.test(item.variant.name) &&
-        canPurchase(item),
-    );
-    const purchasableVariant = pricedVariants
-      .filter(canPurchase)
-      .sort((a, b) => a.amountMinor - b.amountMinor)[0];
-    const fallbackVariant = [...pricedVariants].sort(
-      (a, b) => a.amountMinor - b.amountMinor,
-    )[0];
-    const selectedVariant =
-      smallInStock ?? purchasableVariant ?? fallbackVariant;
+    // Made-to-order products are not filtered by inventory counts.
+    const smallInStock = pricedVariants.find((item) => /small/i.test(item.variant.name));
+    const selectedVariant = smallInStock ?? [...pricedVariants].sort((a, b) => a.amountMinor - b.amountMinor)[0];
 
     const priceMinor = selectedVariant?.amountMinor ?? activePrice?.amountMinor;
     const currency =
