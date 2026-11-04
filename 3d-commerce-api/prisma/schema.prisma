@@ -636,6 +636,7 @@ model ProductVariant {
   sku      String?              @unique
   name     String
   size     String?
+  weightGrams Float?
   price         ProductVariantPrice?
   countryPrices ProductVariantCountryPrice[]
   isActive      Boolean              @default(true)
@@ -669,6 +670,7 @@ model MaterialPricingRule {
   // Legacy inclusive selling-price column retained during migration; new pricing uses the cost inputs below.
   amountMinor Int @default(0)
   rawMaterialCostMinor Int @default(0)
+  pricePerKgMinor Int @default(0)
   wastageRateBps Int @default(0)
   electricityKwhMilli Int @default(0)
   machineHoursMilli Int @default(0)
@@ -678,6 +680,18 @@ model MaterialPricingRule {
 
   @@unique([material, sizeKey])
   @@index([material, isActive])
+}
+
+model SizeManufacturingRule {
+  id String @id @default(cuid())
+  sizeKey String @unique
+  electricityCostMinor Int @default(0)
+  machineCostMinor Int @default(0)
+  labourCostMinor Int @default(0)
+  finishingCostMinor Int @default(0)
+  platformCostMinor Int @default(0)
+  packagingCostMinor Int @default(0)
+  updatedAt DateTime @updatedAt
 }
 
 model ProductCostRule {

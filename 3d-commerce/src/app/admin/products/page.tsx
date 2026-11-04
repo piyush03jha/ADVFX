@@ -265,7 +265,7 @@ export default function AdminProducts(){
         <div className="flex items-center justify-between gap-3">
           <div><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">Size-specific pricing</p><p className="mt-1 text-[9px] text-muted">Customer prices are calculated automatically for each physical size.</p></div>
         </div>
-        <p className="mt-3 rounded-xl border border-border bg-background/60 px-3 py-3 text-[10px] leading-5 text-muted">Size prices are generated automatically from the selected material and size using the manufacturing pricing rules. Configure those rules under Admin → Promotions & tax. Only stock quantities are entered here.</p>
+        <p className="mt-3 rounded-xl border border-border bg-background/60 px-3 py-3 text-[10px] leading-5 text-muted">After creating the product, enter the measured or estimated weight (grams) for each size in its variant editor. Per-kg material pricing stays inactive until each variant has a weight. Configure material rates and fixed size costs under Admin → Promotions & tax.</p>
         <div className="mt-3 grid gap-2 sm:grid-cols-3">
           <input value={createVariantStock.small} onChange={e=>setCreateVariantStock({...createVariantStock,small:e.target.value})} type="number" min="0" step="1" placeholder="Small stock · units" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
           <input value={createVariantStock.medium} onChange={e=>setCreateVariantStock({...createVariantStock,medium:e.target.value})} type="number" min="0" step="1" placeholder="Medium stock · units" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>

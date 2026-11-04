@@ -92,11 +92,21 @@ export class AdminController {
   @Post('material-pricing')
   upsertMaterialPricingRule(@Body() body: {
     material: string; sizeKey: string; currency?: string;
-    rawMaterialCostMinor: number; wastageRateBps: number;
+    rawMaterialCostMinor: number; pricePerKgMinor?: number; wastageRateBps: number;
     electricityKwhMilli: number; machineHoursMilli: number; isActive?: boolean;
   }) {
     return this.adminService.upsertMaterialPricingRule(body);
   }
+
+  @Get('size-manufacturing-rules')
+  sizeManufacturingRules() { return this.adminService.sizeManufacturingRules(); }
+
+  @Post('size-manufacturing-rules')
+  upsertSizeManufacturingRule(@Body() body: {
+    sizeKey: string; electricityCostMinor: number; machineCostMinor: number;
+    labourCostMinor: number; finishingCostMinor: number; platformCostMinor: number;
+    packagingCostMinor: number;
+  }) { return this.adminService.upsertSizeManufacturingRule(body); }
 
   @Get('product-costs')
   productCostRules(@Query('productId') productId?: string) { return this.adminService.productCostRules(productId); }

@@ -43,6 +43,7 @@ export interface CatalogVariant {
   id: string;
   name: string;
   size?: string | null;
+  weightGrams?: number | null;
   sku?: string | null;
   isActive: boolean;
   stock?: number;
@@ -108,6 +109,7 @@ export interface StorefrontVariant {
   id: string;
   name: string;
   size?: string | null;
+  weightGrams?: number | null;
   sku?: string | null;
   stock?: number;
   reserved?: number;
@@ -186,6 +188,7 @@ function mapVariant(variant: CatalogVariant, saleCampaign?: CatalogProduct["sale
     id: variant.id,
     name: variant.name,
     size: variant.size,
+    weightGrams: variant.weightGrams ?? undefined,
     sku: variant.sku,
     stock: variant.stock ?? 0,
     reserved: variant.reserved ?? 0,

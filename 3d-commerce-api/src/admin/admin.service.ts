@@ -185,16 +185,34 @@ export class AdminService {
   private async recalculateProductPrices(tx: Prisma.TransactionClient, productId: string) {
     const product = await tx.product.findUnique({
       where: { id: productId },
-      select: { id: true, material: true, variants: { where: { isActive: true }, select: { id: true, name: true, size: true } } },
+      select: { id: true, material: true, variants: { where: { isActive: true }, select: { id: true, name: true, size: true, weightGrams: true } } },
     });
     if (!product?.material?.trim()) return;
     for (const variant of product.variants) {
+      if (variant.weightGrams == null) {
+        const perKgRule = await tx.materialPricingRule.findFirst({
+          where: {
+            material: { equals: product.material, mode: 'insensitive' },
+            sizeKey: { in: [normalizePricingSize(variant.name) || normalizePricingSize(variant.size), 'all'] },
+            isActive: true,
+            pricePerKgMinor: { gt: 0 },
+          },
+        });
+        if (perKgRule) {
+          await tx.productVariantPrice.updateMany({
+            where: { variantId: variant.id },
+            data: { isActive: false },
+          });
+          continue;
+        }
+      }
       try {
         const calculated = await calculateManufacturingPrice(tx, {
           productId: product.id,
           material: product.material,
           size: variant.size,
           variantName: variant.name,
+          weightGrams: variant.weightGrams,
         });
         await tx.productVariantPrice.upsert({
           where: { variantId: variant.id },
@@ -229,6 +247,7 @@ export class AdminService {
     sizeKey: string;
     currency?: string;
     rawMaterialCostMinor: number;
+    pricePerKgMinor?: number;
     wastageRateBps: number;
     electricityKwhMilli: number;
     machineHoursMilli: number;
@@ -241,6 +260,7 @@ export class AdminService {
     if (!/^[A-Z]{3}$/.test(currency)) throw new BadRequestException('Currency must be a three-letter ISO code');
     const numericValues = [
       input.rawMaterialCostMinor,
+      input.pricePerKgMinor ?? 0,
       input.wastageRateBps,
       input.electricityKwhMilli,
       input.machineHoursMilli,
@@ -262,6 +282,7 @@ export class AdminService {
             data: {
               currency,
               rawMaterialCostMinor: input.rawMaterialCostMinor,
+              pricePerKgMinor: input.pricePerKgMinor ?? 0,
               wastageRateBps: input.wastageRateBps,
               electricityKwhMilli: input.electricityKwhMilli,
               machineHoursMilli: input.machineHoursMilli,
@@ -272,6 +293,7 @@ export class AdminService {
             data: {
               material, sizeKey, currency, amountMinor: 0,
               rawMaterialCostMinor: input.rawMaterialCostMinor,
+              pricePerKgMinor: input.pricePerKgMinor ?? 0,
               wastageRateBps: input.wastageRateBps,
               electricityKwhMilli: input.electricityKwhMilli,
               machineHoursMilli: input.machineHoursMilli,
@@ -297,6 +319,58 @@ export class AdminService {
       } else {
         for (const product of products) await this.recalculateProductPrices(tx, product.id);
       }
+      return rule;
+    });
+  }
+
+  async sizeManufacturingRules() {
+    return this.prisma.sizeManufacturingRule.findMany({ orderBy: { sizeKey: 'asc' } });
+  }
+
+  async upsertSizeManufacturingRule(input: {
+    sizeKey: string;
+    electricityCostMinor: number;
+    machineCostMinor: number;
+    labourCostMinor: number;
+    finishingCostMinor: number;
+    platformCostMinor: number;
+    packagingCostMinor: number;
+  }) {
+    const sizeKey = normalizePricingSize(input.sizeKey);
+    if (!sizeKey) throw new BadRequestException('A valid size is required');
+    const values = [
+      input.electricityCostMinor, input.machineCostMinor, input.labourCostMinor,
+      input.finishingCostMinor, input.platformCostMinor, input.packagingCostMinor,
+    ];
+    if (values.some((value) => !Number.isSafeInteger(value) || value < 0)) {
+      throw new BadRequestException('Size manufacturing costs must be non-negative integer values');
+    }
+    return this.prisma.$transaction(async (tx) => {
+      const rule = await tx.sizeManufacturingRule.upsert({
+        where: { sizeKey },
+        create: {
+          sizeKey,
+          electricityCostMinor: input.electricityCostMinor,
+          machineCostMinor: input.machineCostMinor,
+          labourCostMinor: input.labourCostMinor,
+          finishingCostMinor: input.finishingCostMinor,
+          platformCostMinor: input.platformCostMinor,
+          packagingCostMinor: input.packagingCostMinor,
+        },
+        update: {
+          electricityCostMinor: input.electricityCostMinor,
+          machineCostMinor: input.machineCostMinor,
+          labourCostMinor: input.labourCostMinor,
+          finishingCostMinor: input.finishingCostMinor,
+          platformCostMinor: input.platformCostMinor,
+          packagingCostMinor: input.packagingCostMinor,
+        },
+      });
+      const products = await tx.product.findMany({
+        where: { status: { not: 'ARCHIVED' }, material: { not: null } },
+        select: { id: true },
+      });
+      for (const product of products) await this.recalculateProductPrices(tx, product.id);
       return rule;
     });
   }

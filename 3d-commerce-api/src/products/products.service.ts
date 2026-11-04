@@ -17,7 +17,7 @@ import { CreateProductReviewDto } from './dto/create-product-review.dto';
 import { StorageService } from '../storage/storage.service';
 import sharp from 'sharp';
 import { createHmac } from 'node:crypto';
-import { calculateManufacturingPrice } from '../pricing/manufacturing-pricing';
+import { calculateManufacturingPrice, normalizePricingSize } from '../pricing/manufacturing-pricing';
 
 export interface ShopListQuery {
   page: number;
@@ -75,6 +75,18 @@ export class ProductsService {
           },
         });
         if (dto.material?.trim()) {
+          const sizeKey = normalizePricingSize(item.name) || normalizePricingSize(item.size);
+          const perKgRule = await tx.materialPricingRule.findFirst({
+            where: {
+              material: { equals: dto.material, mode: 'insensitive' },
+              sizeKey: { in: [sizeKey, 'all'] },
+              isActive: true,
+              pricePerKgMinor: { gt: 0 },
+            },
+          });
+          // Per-kg pricing requires an admin-entered weight for each size.
+          // Keep the initial variant price inactive until that weight is saved.
+          if (perKgRule) continue;
           const calculated = await calculateManufacturingPrice(tx, {
             productId: product.id,
             material: dto.material,
@@ -107,6 +119,7 @@ export class ProductsService {
       name?: string;
       size?: string | null;
       sku?: string | null;
+      weightGrams?: number | null;
       price?: number;
       compareAtPrice?: number | null;
       isActive?: boolean;
@@ -141,6 +154,7 @@ export class ProductsService {
           ...(name !== undefined ? { name } : {}),
           ...(input.size !== undefined ? { size } : {}),
           ...(input.sku !== undefined ? { sku } : {}),
+          ...(input.weightGrams !== undefined ? { weightGrams: input.weightGrams } : {}),
           ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
           ...(input.stock !== undefined ? { stock: input.stock } : {}),
           ...(input.lowStockAt !== undefined ? { lowStockAt: input.lowStockAt } : {}),
@@ -149,7 +163,7 @@ export class ProductsService {
         },
       });
 
-      if (updated.name !== variant.name || updated.size !== variant.size) {
+      if (updated.name !== variant.name || updated.size !== variant.size || updated.weightGrams !== variant.weightGrams) {
         const product = await tx.product.findUnique({ where: { id: productId }, select: { material: true } });
         if (product?.material?.trim()) {
           const calculated = await calculateManufacturingPrice(tx, {
@@ -157,6 +171,7 @@ export class ProductsService {
             material: product.material,
             size: updated.size,
             variantName: updated.name,
+            weightGrams: updated.weightGrams,
           });
           await tx.productVariantPrice.update({
             where: { variantId },
@@ -184,6 +199,7 @@ export class ProductsService {
       name: string;
       size?: string | null;
       sku?: string | null;
+      weightGrams?: number | null;
       stock?: number;
       lowStockAt?: number;
       trackStock?: boolean;
@@ -204,6 +220,7 @@ export class ProductsService {
           productId,
           name,
           size: input.size?.trim() || null,
+          weightGrams: input.weightGrams ?? null,
           sku: input.sku?.trim() || null,
           stock: input.stock ?? 0,
           reserved: 0,
@@ -219,6 +236,7 @@ export class ProductsService {
           material: product.material,
           size: variant.size,
           variantName: variant.name,
+          weightGrams: variant.weightGrams,
         });
         await tx.productVariantPrice.update({
           where: { variantId: variant.id },
@@ -983,14 +1001,21 @@ export class ProductsService {
       if (nextMaterial && nextMaterial.toLowerCase() !== (current.material ?? '').trim().toLowerCase()) {
         const variants = await tx.productVariant.findMany({
           where: { productId: id, isActive: true },
-          select: { id: true, name: true, size: true },
+          select: { id: true, name: true, size: true, weightGrams: true },
         });
         for (const variant of variants) {
+          const sizeKey = normalizePricingSize(variant.name) || normalizePricingSize(variant.size);
+          const perKgRule = await tx.materialPricingRule.findFirst({ where: { material: { equals: nextMaterial, mode: 'insensitive' }, sizeKey: { in: [sizeKey, 'all'] }, isActive: true, pricePerKgMinor: { gt: 0 } } });
+          if (perKgRule && variant.weightGrams == null) {
+            await tx.productVariantPrice.updateMany({ where: { variantId: variant.id }, data: { isActive: false } });
+            continue;
+          }
           const calculated = await calculateManufacturingPrice(tx, {
             productId: id,
             material: nextMaterial,
             size: variant.size,
             variantName: variant.name,
+            weightGrams: variant.weightGrams,
           });
           await tx.productVariantPrice.upsert({
             where: { variantId: variant.id },
