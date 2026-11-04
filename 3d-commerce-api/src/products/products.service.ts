@@ -54,6 +54,7 @@ export class ProductsService {
             create: {
               stock: stock ?? 0,
               lowStockAt: lowStockAt ?? 5,
+              trackStock: false,
             },
           },
         },
@@ -231,7 +232,7 @@ export class ProductsService {
           stock: input.stock ?? 0,
           reserved: 0,
           lowStockAt: input.lowStockAt ?? 5,
-          trackStock: input.trackStock ?? true,
+          trackStock: false,
           allowBackorder: input.allowBackorder ?? false,
           price: { create: { currency: 'INR', amountMinor: 0, isActive: false } },
         },
@@ -1498,6 +1499,7 @@ export class ProductsService {
       currency,
       model,
       category: product.category?.name ?? '',
+      ordersEnabled: product.ordersEnabled && product.category?.ordersEnabled !== false && product.category?.parent?.ordersEnabled !== false,
     };
   }
 
@@ -1536,7 +1538,7 @@ export class ProductsService {
 
   private productInclude(): Prisma.ProductInclude {
     return {
-      category: true,
+      category: { include: { parent: { select: { id: true, ordersEnabled: true } } } },
       inventory: true,
       prices: {
         where: { isActive: true, countryCode: null },
