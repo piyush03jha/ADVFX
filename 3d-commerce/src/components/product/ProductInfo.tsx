@@ -163,7 +163,6 @@ export function ProductInfo({
           const available = Math.max(0, (inventory.stock ?? product.stock) - (inventory.reserved ?? product.reserved));
           const tracksStock = inventory.trackStock ?? product.trackStock;
           const backorder = inventory.allowBackorder ?? product.allowBackorder;
-          const lowStockAt = inventory.lowStockAt ?? product.lowStockAt;
 
           if (!tracksStock) return <Badge>Made to order</Badge>;
           if (available <= 0 && !backorder) {
@@ -174,7 +173,8 @@ export function ProductInfo({
             );
           }
           if (available <= 0 && backorder) return <Badge>Available to order</Badge>;
-          if (available <= lowStockAt) {
+          // Keep exact inventory private once ten or more units are available.
+          if (available < 10) {
             return (
               <Badge className="border-orange-800/25 bg-orange-50 text-orange-950 dark:border-orange-300/25 dark:bg-orange-300/10 dark:text-orange-100">
                 Only {available} left
