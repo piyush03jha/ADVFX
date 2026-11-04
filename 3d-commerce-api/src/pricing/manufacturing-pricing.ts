@@ -45,7 +45,7 @@ export type ManufacturingPriceResult = {
  */
 export async function calculateManufacturingPrice(
   tx: Prisma.TransactionClient,
-  input: { productId: string; material: string; size: string | null; variantName: string },
+  input: { productId: string; material: string; size: string | null; variantName: string; weightGrams: number | null },
 ): Promise<ManufacturingPriceResult> {
   const sizeKey = normalizePricingSize(input.variantName) || normalizePricingSize(input.size);
   const material = input.material.trim();
