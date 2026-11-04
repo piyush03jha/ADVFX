@@ -924,7 +924,7 @@ export class ProductsService {
         where: { id },
         select: { material: true, status: true },
       });
-      if (dto.status === 'ACTIVE' && dto.material !== undefined && !dto.material.trim()) {
+      if ((dto.status ?? current.status) === 'ACTIVE' && !(dto.material ?? current.material)?.trim()) {
         throw new BadRequestException('An active product must have a material for manufacturing price calculation.');
       }
       await tx.product.update({ where: { id }, data: productData });
