@@ -137,7 +137,7 @@ export class PricingService {
         variant?.isActive && variant.price?.isActive ? variant.price : null;
       const price = variantPrice ?? basePrice;
 
-      if (!product.ordersEnabled || product.category?.ordersEnabled === false || product.category?.parent?.ordersEnabled === false) {
+      if (product.ordersEnabled === false || product.category?.ordersEnabled === false || product.category?.parent?.ordersEnabled === false) {
         throw new BadRequestException('Product "' + product.name + '" is currently not accepting orders.');
       }
 
