@@ -107,6 +107,7 @@ export class ProductsService {
       name?: string;
       size?: string | null;
       sku?: string | null;
+      weightGrams?: number | null;
       price?: number;
       compareAtPrice?: number | null;
       isActive?: boolean;
