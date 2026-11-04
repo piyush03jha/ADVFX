@@ -214,8 +214,12 @@ export class AdminService {
           },
         });
       } catch (error) {
-        // An incomplete matrix must not silently replace an existing sellable price.
-        if (!(error instanceof BadRequestException)) throw error;
+        // Products without a configured material/size rule are skipped during
+        // bulk recalculation; invalid configured costs must still fail loudly.
+        if (
+          !(error instanceof BadRequestException) ||
+          !error.message.includes('No active material pricing is configured')
+        ) throw error;
       }
     }
   }
