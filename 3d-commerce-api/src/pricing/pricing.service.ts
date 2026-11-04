@@ -70,6 +70,9 @@ export class PricingService {
         where: { userId },
         include: {
           items: {
+            // Match CartService.getOrCreate: archived and draft products are
+            // not purchasable and must not block checkout with stale cart rows.
+            where: { product: { status: 'ACTIVE' } },
             include: {
               variant: { include: { price: true } },
               product: {
