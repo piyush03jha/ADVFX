@@ -109,7 +109,7 @@ export class PricingService {
     }
 
     const saleSetting = await this.prisma.siteSetting.findUnique({ where: { key: "saleCampaign" } });
-    let saleCampaign: { enabled: boolean; priceIncreaseBps: number; discountBps: number; startsAt?: string | null; endsAt?: string | null } | null = null;
+    let saleCampaign: { enabled: boolean; categoryId?: string | null; priceIncreaseBps: number; discountBps: number; startsAt?: string | null; endsAt?: string | null } | null = null;
     try {
       saleCampaign = saleSetting ? JSON.parse(saleSetting.value) : null;
     } catch {
@@ -119,8 +119,6 @@ export class PricingService {
     const saleActive = saleCampaign?.enabled === true
       && (!saleCampaign.startsAt || new Date(saleCampaign.startsAt) <= now)
       && (!saleCampaign.endsAt || new Date(saleCampaign.endsAt) > now);
-    const priceIncreaseBps = saleActive ? Math.min(10000, Math.max(0, Number(saleCampaign?.priceIncreaseBps) || 0)) : 0;
-    const saleDiscountBps = saleActive ? Math.min(10000, Math.max(0, Number(saleCampaign?.discountBps) || 0)) : 0;
 
     let subtotalMinor = 0;
     let saleDiscountMinor = 0;
@@ -172,10 +170,13 @@ export class PricingService {
         );
       }
 
-      const saleListUnitPriceMinor = saleActive
+      const saleApplies = saleActive && (!saleCampaign?.categoryId || saleCampaign.categoryId === product.categoryId);
+      const priceIncreaseBps = saleApplies ? Math.min(10000, Math.max(0, Number(saleCampaign?.priceIncreaseBps) || 0)) : 0;
+      const saleDiscountBps = saleApplies ? Math.min(10000, Math.max(0, Number(saleCampaign?.discountBps) || 0)) : 0;
+      const saleListUnitPriceMinor = saleApplies
         ? Math.round(price.amountMinor * (10000 + priceIncreaseBps) / 10000)
         : price.amountMinor;
-      const unitPriceMinor = saleActive
+      const unitPriceMinor = saleApplies
         ? Math.round(saleListUnitPriceMinor * (10000 - saleDiscountBps) / 10000)
         : price.amountMinor;
       const lineTotalMinor = unitPriceMinor * item.quantity;
@@ -215,7 +216,7 @@ export class PricingService {
         taxRateBps,
         taxMinor: taxRateBps > 0 ? Math.round(lineTotalMinor * taxRateBps / (10000 + taxRateBps)) : 0,
         manufacturingCostSnapshot: variant?.price?.costBreakdown ?? null,
-        saleSnapshot: saleActive ? {
+        saleSnapshot: saleApplies ? {
           baseUnitPriceMinor: price.amountMinor,
           saleListUnitPriceMinor,
           saleUnitPriceMinor: unitPriceMinor,
