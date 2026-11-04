@@ -1,4 +1,5 @@
 ALTER TABLE "MaterialPricingRule"
+  ALTER COLUMN "amountMinor" SET DEFAULT 0,
   ADD COLUMN "rawMaterialCostMinor" INTEGER NOT NULL DEFAULT 0,
   ADD COLUMN "wastageRateBps" INTEGER NOT NULL DEFAULT 0,
   ADD COLUMN "electricityKwhMilli" INTEGER NOT NULL DEFAULT 0,
