@@ -274,9 +274,11 @@ export class ProductsService {
 
     const bestsellerIds = new Set(bestsellerScores.map((item) => item.id));
     const ratings = await this.reviewAggregates(products.map((product) => product.id));
+    const saleCampaign = await this.storefrontSaleCampaign();
 
     return products.map((product) => ({
       ...product,
+      saleCampaign,
       isBestseller: bestsellerIds.has(product.id),
       rating: ratings.get(product.id)?.rating ?? 0,
       reviewCount: ratings.get(product.id)?.reviewCount ?? 0,
@@ -466,12 +468,14 @@ export class ProductsService {
         })
       : [];
 
+    const saleCampaign = await this.storefrontSaleCampaign();
     const byId = new Map(products.map((product) => [product.id, product]));
     const items = pageIds
       .map((id) => byId.get(id))
       .filter((product): product is NonNullable<typeof product> => Boolean(product))
       .map((product) => ({
         ...product,
+        saleCampaign,
         tags: [],
         isBestseller: false,
         rating: ratingMap.get(product.id)?.rating ?? 0,
@@ -867,7 +871,7 @@ export class ProductsService {
     });
 
     if (!product) throw new NotFoundException(`Product "${id}" not found`);
-    return this.ensurePublicModelMedia(product);
+    return this.withStorefrontSaleCampaign(this.ensurePublicModelMedia(product));
   }
 
   async findBySlug(slug: string) {
@@ -877,7 +881,33 @@ export class ProductsService {
     });
 
     if (!product) throw new NotFoundException(`Product "${slug}" not found`);
-    return this.ensurePublicModelMedia(product);
+    return this.withStorefrontSaleCampaign(this.ensurePublicModelMedia(product));
+  }
+
+  private async storefrontSaleCampaign() {
+    const row = await this.prisma.siteSetting.findUnique({ where: { key: 'saleCampaign' } });
+    if (!row) return { enabled: false, priceIncreaseBps: 2000, discountBps: 2000, startsAt: null, endsAt: null, active: false };
+    try {
+      const value = JSON.parse(row.value) as { enabled?: boolean; priceIncreaseBps?: number; discountBps?: number; startsAt?: string | null; endsAt?: string | null };
+      const now = Date.now();
+      const active = value.enabled === true
+        && (!value.startsAt || new Date(value.startsAt).getTime() <= now)
+        && (!value.endsAt || new Date(value.endsAt).getTime() > now);
+      return {
+        enabled: value.enabled === true,
+        priceIncreaseBps: Number(value.priceIncreaseBps) || 0,
+        discountBps: Number(value.discountBps) || 0,
+        startsAt: value.startsAt ?? null,
+        endsAt: value.endsAt ?? null,
+        active,
+      };
+    } catch {
+      return { enabled: false, priceIncreaseBps: 2000, discountBps: 2000, startsAt: null, endsAt: null, active: false };
+    }
+  }
+
+  private async withStorefrontSaleCampaign(product: any) {
+    return { ...product, saleCampaign: await this.storefrontSaleCampaign() };
   }
 
   private ensurePublicModelMedia(product: any) {
