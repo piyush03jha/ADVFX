@@ -618,7 +618,8 @@ export class ProductsService {
     return products
       .map((product) => {
         const hero = this.toHeroProduct(product);
-        if (!saleCampaign.active || !hero.price) return { ...hero, saleCampaign };
+        const campaignApplies = !saleCampaign.categoryId || saleCampaign.categoryId === product.categoryId || saleCampaign.categoryId === product.category?.parentId;
+        if (!saleCampaign.active || !campaignApplies || !hero.price) return { ...hero, saleCampaign: campaignApplies ? saleCampaign : { ...saleCampaign, active: false } };
         const baseMinor = Math.round(hero.price * 100);
         const listMinor = Math.round(baseMinor * (10000 + saleCampaign.priceIncreaseBps) / 10000);
         const saleMinor = Math.round(listMinor * (10000 - saleCampaign.discountBps) / 10000);
