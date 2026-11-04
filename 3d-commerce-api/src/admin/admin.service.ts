@@ -413,6 +413,65 @@ export class AdminService {
     return { products, categories, materialPricingRules, productCostRules, manufacturingRates };
   }
 
+  async saleCampaign() {
+    const row = await this.prisma.siteSetting.findUnique({ where: { key: 'saleCampaign' } });
+    const defaults = { enabled: false, priceIncreaseBps: 2000, discountBps: 2000, startsAt: null as string | null, endsAt: null as string | null };
+    if (!row) return defaults;
+    try {
+      const value = JSON.parse(row.value) as Partial<typeof defaults>;
+      return {
+        enabled: value.enabled === true,
+        priceIncreaseBps: Number.isInteger(value.priceIncreaseBps) ? value.priceIncreaseBps! : defaults.priceIncreaseBps,
+        discountBps: Number.isInteger(value.discountBps) ? value.discountBps! : defaults.discountBps,
+        startsAt: value.startsAt ?? null,
+        endsAt: value.endsAt ?? null,
+      };
+    } catch {
+      return defaults;
+    }
+  }
+
+  async updateSaleCampaign(input: {
+    enabled?: boolean;
+    priceIncreaseBps?: number;
+    discountBps?: number;
+    startsAt?: string | null;
+    endsAt?: string | null;
+  }) {
+    const current = await this.saleCampaign();
+    const priceIncreaseBps = input.priceIncreaseBps ?? current.priceIncreaseBps;
+    const discountBps = input.discountBps ?? current.discountBps;
+    if (!Number.isInteger(priceIncreaseBps) || priceIncreaseBps < 0 || priceIncreaseBps > 10000) {
+      throw new BadRequestException('Sale price increase must be between 0% and 100%.');
+    }
+    if (!Number.isInteger(discountBps) || discountBps < 0 || discountBps > 10000) {
+      throw new BadRequestException('Sale discount must be between 0% and 100%.');
+    }
+    const startsAt = input.startsAt === undefined ? current.startsAt : input.startsAt;
+    const endsAt = input.endsAt === undefined ? current.endsAt : input.endsAt;
+    const startDate = startsAt ? new Date(startsAt) : null;
+    const endDate = endsAt ? new Date(endsAt) : null;
+    if ((startDate && Number.isNaN(startDate.getTime())) || (endDate && Number.isNaN(endDate.getTime()))) {
+      throw new BadRequestException('Sale campaign dates are invalid.');
+    }
+    if (startDate && endDate && endDate <= startDate) {
+      throw new BadRequestException('Sale end date must be after its start date.');
+    }
+    const campaign = {
+      enabled: input.enabled ?? current.enabled,
+      priceIncreaseBps,
+      discountBps,
+      startsAt: startDate?.toISOString() ?? null,
+      endsAt: endDate?.toISOString() ?? null,
+    };
+    await this.prisma.siteSetting.upsert({
+      where: { key: 'saleCampaign' },
+      create: { key: 'saleCampaign', value: JSON.stringify(campaign) },
+      update: { value: JSON.stringify(campaign) },
+    });
+    return campaign;
+  }
+
   async promotions() {
     return this.prisma.promotion.findMany({ orderBy: { createdAt: 'desc' } });
   }
