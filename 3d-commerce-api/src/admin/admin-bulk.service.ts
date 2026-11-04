@@ -15,7 +15,7 @@ export class AdminBulkService {
   }
 
   async duplicate(actorId: string|undefined, productId: string) {
-    const source = await this.prisma.product.findUnique({ where:{id:productId}, include:{inventory:true,variants:{include:{price:true}}, prices:{where:{isActive:true}}, media:{orderBy:{sortOrder:'asc'}}} });
+    const source = await this.prisma.product.findUnique({ where:{id:productId}, include:{inventory:true,variants:{include:{price:true}}, prices:{where:{isActive:true,countryCode:null}}, media:{orderBy:{sortOrder:'asc'}}} });
     if (!source) throw new NotFoundException('Product not found');
     const baseSlug = source.slug+'-copy';
     let slug=baseSlug; let suffix=2;
@@ -154,7 +154,7 @@ export class AdminBulkService {
           }
 
           if (basePrice !== undefined) {
-            await tx.productPrice.updateMany({ where: { productId, currency: 'INR', isActive: true }, data: { isActive: false } });
+            await tx.productPrice.updateMany({ where: { productId, currency: 'INR', isActive: true, countryCode: null }, data: { isActive: false } });
             await tx.productPrice.create({ data: { productId, currency: 'INR', amountMinor: basePrice, isActive: true } });
           }
           if (imageUrl) {

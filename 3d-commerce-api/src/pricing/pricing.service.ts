@@ -32,16 +32,13 @@ export class PricingService {
           prices: {
             where: {
               isActive: true,
+              countryCode: null,
               AND: [
                 { OR: [{ startsAt: null }, { startsAt: { lte: new Date() } }] },
                 { OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }] },
               ],
-              OR: [{ countryCode: address.country }, { countryCode: null }],
             },
-            orderBy: [
-              { countryCode: { sort: "desc", nulls: "last" } },
-              { createdAt: "desc" },
-            ],
+            orderBy: { createdAt: "desc" },
             take: 1,
           },
           variants: { include: { price: true } },
@@ -82,16 +79,13 @@ export class PricingService {
                   prices: {
                     where: {
                       isActive: true,
+                      countryCode: null,
                       AND: [
                         { OR: [{ startsAt: null }, { startsAt: { lte: new Date() } }] },
                         { OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }] },
                       ],
-                      OR: [{ countryCode: address.country }, { countryCode: null }],
                     },
-                    orderBy: [
-                      { countryCode: { sort: "desc", nulls: "last" } },
-                      { createdAt: "desc" },
-                    ],
+                    orderBy: { createdAt: "desc" },
                     take: 1,
                   },
                 },
@@ -113,24 +107,6 @@ export class PricingService {
         variant: item.variant,
       }));
     }
-
-    const variantIds = [...new Set(
-      sourceItems
-        .map((item) => item.variantId)
-        .filter((variantId): variantId is string => Boolean(variantId)),
-    )];
-    const countryVariantPrices = variantIds.length
-      ? await this.prisma.productVariantCountryPrice.findMany({
-          where: {
-            variantId: { in: variantIds },
-            countryCode: address.country,
-            isActive: true,
-          },
-        })
-      : [];
-    const countryVariantPriceById = new Map(
-      countryVariantPrices.map((price) => [price.variantId, price]),
-    );
 
     const saleSetting = await this.prisma.siteSetting.findUnique({ where: { key: "saleCampaign" } });
     let saleCampaign: { enabled: boolean; priceIncreaseBps: number; discountBps: number; startsAt?: string | null; endsAt?: string | null } | null = null;
@@ -156,12 +132,8 @@ export class PricingService {
       const product = item.product;
       const variant = item.variant;
       const basePrice = product.prices[0];
-      const countryVariantPrice = variant?.id
-        ? countryVariantPriceById.get(variant.id) ?? null
-        : null;
       const variantPrice =
-        countryVariantPrice ??
-        (variant?.isActive && variant.price?.isActive ? variant.price : null);
+        variant?.isActive && variant.price?.isActive ? variant.price : null;
       const price = variantPrice ?? basePrice;
 
       if (product.status !== "ACTIVE" || !price) {

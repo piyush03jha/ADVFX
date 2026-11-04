@@ -4,7 +4,6 @@ describe('PricingService sale campaign integration', () => {
   const prisma = {
     address: { findFirst: jest.fn() },
     product: { findMany: jest.fn() },
-    productVariantCountryPrice: { findMany: jest.fn() },
     siteSetting: { findUnique: jest.fn() },
     deliveryZone: { findUnique: jest.fn() },
     shippingRule: { findFirst: jest.fn() },
@@ -24,7 +23,6 @@ describe('PricingService sale campaign integration', () => {
       state: 'DL',
       postalCode: '110001',
     });
-    prisma.productVariantCountryPrice.findMany.mockResolvedValue([]);
     prisma.deliveryZone.findUnique.mockResolvedValue(null);
     prisma.shippingRule.findFirst.mockResolvedValue({
       id: 'shipping-1',

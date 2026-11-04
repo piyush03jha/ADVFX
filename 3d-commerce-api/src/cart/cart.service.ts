@@ -131,7 +131,7 @@ export class CartService {
               category: true,
               inventory: true,
               prices: {
-                where: { isActive: true },
+                where: { isActive: true, countryCode: null },
                 orderBy: { createdAt: 'desc' as const },
               },
               media: {

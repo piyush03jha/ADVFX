@@ -23,38 +23,6 @@ describe('ProductsService', () => {
     service = new ProductsService(prisma, storage);
   });
 
-  it('upserts country-specific variant pricing without overwriting its global price', async () => {
-    prisma.productVariant.findFirst.mockResolvedValue({ id: 'v1' });
-    const price = {
-      id: 'price-in-v1', variantId: 'v1', countryCode: 'IN',
-      currency: 'INR', amountMinor: 15000, compareAtMinor: 17000, isActive: true,
-    };
-    const tx = {
-      $queryRaw: jest.fn().mockResolvedValue([{ id: 'v1' }]),
-      productVariantCountryPrice: { upsert: jest.fn().mockResolvedValue(price) },
-    };
-    prisma.$transaction.mockImplementation((callback: any) => callback(tx));
-
-    await expect(service.setVariantCountryPrice('p1', 'v1', {
-      countryCode: 'in',
-      currency: 'inr',
-      amountMinor: 15000,
-      compareAtMinor: 17000,
-    })).resolves.toBe(price);
-
-    expect(tx.productVariantCountryPrice.upsert).toHaveBeenCalledWith({
-      where: { variantId_countryCode: { variantId: 'v1', countryCode: 'IN' } },
-      create: {
-        variantId: 'v1', countryCode: 'IN', currency: 'INR',
-        amountMinor: 15000, compareAtMinor: 17000, isActive: true,
-      },
-      update: {
-        currency: 'INR', amountMinor: 15000,
-        compareAtMinor: 17000, isActive: true,
-      },
-    });
-  });
-
   it('filters and sorts the shop by active variant prices, not the legacy product price', async () => {
     const variantProduct = (id: string, createdAt: string, amounts: number[]) => ({
       id,

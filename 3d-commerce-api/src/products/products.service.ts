@@ -499,6 +499,7 @@ export class ProductsService {
             prices: {
               where: {
                 isActive: true,
+                countryCode: null,
                 AND: [
                   { OR: [{ startsAt: null }, { startsAt: { lte: new Date() } }] },
                   { OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }] },
@@ -1129,75 +1130,24 @@ export class ProductsService {
     }
 
     return this.prisma.$transaction(async (tx) => {
-      const countryCode = dto.countryCode?.trim().toUpperCase() || null;
       const currency = dto.currency?.trim().toUpperCase() || 'INR';
       await tx.$queryRaw<Array<{ id: string }>>(
         Prisma.sql`SELECT "id" FROM "Product" WHERE "id" = ${id} FOR UPDATE`,
       );
       await tx.productPrice.updateMany({
-        where: { productId: id, countryCode, isActive: true },
+        where: { productId: id, countryCode: null, isActive: true },
         data: { isActive: false },
       });
 
       return tx.productPrice.create({
         data: {
           productId: id,
-          countryCode,
+          countryCode: null,
           currency,
           amountMinor,
           compareAtMinor,
           startsAt: dto.startsAt ? new Date(dto.startsAt) : null,
           endsAt: dto.endsAt ? new Date(dto.endsAt) : null,
-          isActive: true,
-        },
-      });
-    });
-  }
-
-  async setVariantCountryPrice(
-    productId: string,
-    variantId: string,
-    dto: { countryCode: string; currency?: string; amountMinor: number; compareAtMinor?: number | null },
-  ) {
-    const variant = await this.prisma.productVariant.findFirst({
-      where: { id: variantId, productId },
-      select: { id: true },
-    });
-    if (!variant) throw new NotFoundException('Product variant not found');
-
-    const countryCode = dto.countryCode.trim().toUpperCase();
-    const currency = dto.currency?.trim().toUpperCase() || 'INR';
-    if (!/^[A-Z]{2}$/.test(countryCode)) {
-      throw new BadRequestException('Country code must be a two-letter ISO country code');
-    }
-    if (!/^[A-Z]{3}$/.test(currency)) {
-      throw new BadRequestException('Currency must be a three-letter ISO currency code');
-    }
-    if (!Number.isInteger(dto.amountMinor) || dto.amountMinor < 0) {
-      throw new BadRequestException('Price must be a non-negative integer in minor currency units');
-    }
-    if (dto.compareAtMinor != null && dto.compareAtMinor < dto.amountMinor) {
-      throw new ConflictException('compareAtMinor cannot be lower than amountMinor');
-    }
-
-    return this.prisma.$transaction(async (tx) => {
-      await tx.$queryRaw<Array<{ id: string }>>(
-        Prisma.sql`SELECT "id" FROM "ProductVariant" WHERE "id" = ${variantId} FOR UPDATE`,
-      );
-      return tx.productVariantCountryPrice.upsert({
-        where: { variantId_countryCode: { variantId, countryCode } },
-        create: {
-          variantId,
-          countryCode,
-          currency,
-          amountMinor: dto.amountMinor,
-          compareAtMinor: dto.compareAtMinor ?? null,
-          isActive: true,
-        },
-        update: {
-          currency,
-          amountMinor: dto.amountMinor,
-          compareAtMinor: dto.compareAtMinor ?? null,
           isActive: true,
         },
       });
@@ -1458,8 +1408,7 @@ export class ProductsService {
     return {
       category: true,
       prices: {
-        // Public catalog/admin summary defaults to the global fallback price;
-        // checkout selects the matching country-specific price separately.
+        // Pricing is a single global price; there are no per-country prices.
         where: {
           isActive: true,
           countryCode: null,
@@ -1556,6 +1505,7 @@ export class ProductsService {
       prices: {
         where: {
           isActive: true,
+          countryCode: null,
           AND: [
             { OR: [{ startsAt: null }, { startsAt: { lte: new Date() } }] },
             { OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }] },
@@ -1587,7 +1537,7 @@ export class ProductsService {
       category: true,
       inventory: true,
       prices: {
-        where: { isActive: true },
+        where: { isActive: true, countryCode: null },
         orderBy: { createdAt: 'desc' },
       },
       media: { orderBy: { sortOrder: 'asc' } },

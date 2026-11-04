@@ -135,7 +135,7 @@ export class OrdersService {
                     include: {
                       inventory: true,
                       prices: {
-                        where: { isActive: true },
+                        where: { isActive: true, countryCode: null },
                         orderBy: { createdAt: "desc" },
                         take: 1,
                       },

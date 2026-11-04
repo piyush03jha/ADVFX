@@ -10,7 +10,7 @@ import { PrismaService } from '../prisma/prisma.service';
 const PRODUCT_INCLUDE = {
   category: true,
   prices: {
-    where: { isActive: true },
+    where: { isActive: true, countryCode: null },
     orderBy: { createdAt: 'desc' as const },
   },
   media: {
