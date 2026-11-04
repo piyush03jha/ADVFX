@@ -142,7 +142,7 @@ export default function AdminOrderDetailPage() {
   if (!order) return null;
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
+    <main className="mx-auto max-w-7xl px-4 py-10 sm:px-8 sm:py-12">
       <Link href="/admin/orders" className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.12em] text-muted hover:text-foreground"><IconArrowLeft size={14} /> Orders</Link>
 
       <div className="mt-5 flex flex-wrap items-end justify-between gap-4">
@@ -166,11 +166,11 @@ export default function AdminOrderDetailPage() {
       {message && <div className="mt-5 rounded-xl border border-primary/15 bg-primary/[0.05] px-4 py-3 text-xs text-primary">{message}</div>}
       {error && <div className="mt-5 rounded-xl border border-red-400/15 bg-red-400/[0.04] px-4 py-3 text-xs text-red-300">{error}</div>}
 
-      <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="space-y-5">
-          <section className="rounded-3xl border border-border bg-surface p-5 sm:p-6">
+      <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="space-y-6">
+          <section className="rounded-3xl border border-border bg-surface p-6 sm:p-7">
             <div className="flex items-center gap-3"><IconPackage size={18} className="text-primary" /><div><p className="text-[9px] uppercase tracking-[0.16em] text-primary">Production</p><h2 className="mt-1 text-base font-medium">Order contents</h2></div></div>
-            <div className="mt-5 divide-y divide-border">
+            <div className="mt-6 divide-y divide-border">
               {order.items.map((item) => (
                 <div key={item.id} className="flex items-center justify-between gap-4 py-4 first:pt-0 last:pb-0">
                   <div className="min-w-0 flex-1"><p className="text-sm font-medium text-foreground">{item.productName}</p><p className="mt-1 text-[10px] text-muted">{item.materialSnapshot ? `Material: ${item.materialSnapshot} · ` : ""}{item.sizeSnapshot || item.variantName || "Standard"} · Qty {item.quantity}</p><p className="mt-1 text-[9px] text-muted">GST {(item.taxRateBps ?? 0)/100}% · included {money(item.taxMinor ?? 0, order.currency)}</p>
@@ -185,10 +185,10 @@ export default function AdminOrderDetailPage() {
             </div>
           </section>
 
-          <section className="rounded-3xl border border-border bg-surface p-5 sm:p-6">
+          <section className="rounded-3xl border border-border bg-surface p-6 sm:p-7">
             <div className="flex items-center gap-3"><IconTruck size={18} className="text-primary" /><div><p className="text-[9px] uppercase tracking-[0.16em] text-primary">Shipment</p><h2 className="mt-1 text-base font-medium">Fulfillment details</h2></div></div>
 
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <div className="mt-6 grid gap-5 sm:grid-cols-2">
               <Field label="Carrier" value={shipment.carrier} onChange={(value) => setShipment((current) => ({ ...current, carrier: value }))} placeholder="Delhivery, Blue Dart…" />
               <Field label="Tracking number" value={shipment.trackingNumber} onChange={(value) => setShipment((current) => ({ ...current, trackingNumber: value }))} placeholder="Tracking ID" />
               <Field label="Tracking URL" value={shipment.trackingUrl} onChange={(value) => setShipment((current) => ({ ...current, trackingUrl: value }))} placeholder="https://…" wide />
@@ -199,20 +199,20 @@ export default function AdminOrderDetailPage() {
           </section>
         </div>
 
-        <aside className="space-y-5">
-          <section className="rounded-3xl border border-border bg-surface p-5 sm:p-6">
+        <aside className="space-y-6">
+          <section className="rounded-3xl border border-border bg-surface p-6 sm:p-7">
             <div className="flex items-center gap-3"><IconCreditCard size={18} className="text-primary" /><div><p className="text-[9px] uppercase tracking-[0.16em] text-primary">Payment</p><h2 className="mt-1 text-base font-medium">Payment status</h2></div></div>
             <div className="mt-5 space-y-3 text-xs"><Row label="Provider" value={order.payment?.provider ?? "—"} /><Row label="Status" value={order.payment?.status ?? "—"} /><Row label="Total" value={money(order.totalMinor, order.currency)} /></div>
           </section>
 
-          <section className="rounded-3xl border border-border bg-surface p-5 sm:p-6">
+          <section className="rounded-3xl border border-border bg-surface p-6 sm:p-7">
             <div className="flex items-center gap-3"><IconMapPin size={18} className="text-primary" /><div><p className="text-[9px] uppercase tracking-[0.16em] text-primary">Customer</p><h2 className="mt-1 text-base font-medium">Delivery address</h2></div></div>
             {order.shippingAddress ? <div className="mt-4 space-y-1 text-xs leading-5 text-muted"><p className="font-medium text-foreground">{order.shippingAddress.fullName}</p><p>{order.shippingAddress.line1}</p>{order.shippingAddress.line2 && <p>{order.shippingAddress.line2}</p>}<p>{order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.postalCode}</p><p>{order.shippingAddress.country}</p><p>{order.shippingAddress.phone}</p></div> : <p className="mt-4 text-xs text-muted">No delivery address.</p>}
           </section>
 
-          <section className="rounded-3xl border border-border bg-surface p-5 sm:p-6">
+          <section className="rounded-3xl border border-border bg-surface p-6 sm:p-7">
             <p className="text-[9px] uppercase tracking-[0.16em] text-primary">Totals</p>
-            <div className="mt-4 space-y-2"><Row label="Subtotal (GST inclusive)" value={money(order.subtotalMinor, order.currency)} /><Row label="Shipping" value={money(order.shippingMinor, order.currency)} /><Row label="GST included" value={money(order.taxMinor, order.currency)} /><Row label="Discount" value={money(order.discountMinor, order.currency)} />{order.roundingMinor ? <Row label="Final rounding" value={money(order.roundingMinor, order.currency)} /> : null}<div className="border-t border-border pt-3"><Row label="Grand total" value={money(order.totalMinor, order.currency)} strong /></div></div>
+            <div className="mt-5 space-y-3"><Row label="Subtotal (GST inclusive)" value={money(order.subtotalMinor, order.currency)} /><Row label="Shipping" value={money(order.shippingMinor, order.currency)} /><Row label="GST included" value={money(order.taxMinor, order.currency)} /><Row label="Discount" value={money(order.discountMinor, order.currency)} />{order.roundingMinor ? <Row label="Final rounding" value={money(order.roundingMinor, order.currency)} /> : null}<div className="border-t border-border pt-3"><Row label="Grand total" value={money(order.totalMinor, order.currency)} strong /></div></div>
           </section>
         </aside>
       </div>
