@@ -49,6 +49,8 @@ export type CheckoutQuote = {
     subtotalMinor: number;
     shippingMinor: number;
     discountMinor: number;
+    saleDiscountMinor?: number;
+    couponDiscountMinor?: number;
     taxMinor: number;
     roundingMinor?: number;
     totalMinor: number;
