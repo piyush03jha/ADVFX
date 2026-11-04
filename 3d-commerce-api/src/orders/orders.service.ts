@@ -249,6 +249,7 @@ export class OrdersService {
           sizeSnapshot: item.size ?? item.variantName ?? null,
           taxRateBps: item.taxRateBps ?? 0,
           taxMinor: item.taxMinor ?? 0,
+          manufacturingCostSnapshot: item.manufacturingCostSnapshot ?? Prisma.JsonNull,
         }));
 
       const order = await tx.order.create({
