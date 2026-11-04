@@ -1166,7 +1166,7 @@ export class ProductsService {
         productId: id,
         stock: dto.stock ?? 0,
         lowStockAt: dto.lowStockAt ?? 5,
-        trackStock: dto.trackStock ?? true,
+        trackStock: false,
         allowBackorder: dto.allowBackorder ?? false,
       },
       update: {
