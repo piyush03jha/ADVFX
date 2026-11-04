@@ -185,7 +185,7 @@ export class AdminService {
   private async recalculateProductPrices(tx: Prisma.TransactionClient, productId: string) {
     const product = await tx.product.findUnique({
       where: { id: productId },
-      select: { id: true, material: true, variants: { where: { isActive: true }, select: { id: true, name: true, size: true } } },
+      select: { id: true, material: true, variants: { where: { isActive: true }, select: { id: true, name: true, size: true, weightGrams: true } } },
     });
     if (!product?.material?.trim()) return;
     for (const variant of product.variants) {
@@ -195,6 +195,7 @@ export class AdminService {
           material: product.material,
           size: variant.size,
           variantName: variant.name,
+          weightGrams: variant.weightGrams,
         });
         await tx.productVariantPrice.upsert({
           where: { variantId: variant.id },
