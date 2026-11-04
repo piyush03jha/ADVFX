@@ -82,6 +82,26 @@ export class AdminController {
     return this.adminService.upsertMaterialPricingRule(body);
   }
 
+  @Get('product-costs')
+  productCostRules(@Query('productId') productId?: string) { return this.adminService.productCostRules(productId); }
+
+  @Post('product-costs')
+  upsertProductCostRule(@Body() body: {
+    productId: string; sizeKey: string; labourCostMinor?: number | null;
+    paintingCostMinor?: number; finishingCostMinor?: number;
+    machineSetupCostMinor?: number; packagingCostMinor?: number | null;
+  }) { return this.adminService.upsertProductCostRule(body); }
+
+  @Get('manufacturing-rates')
+  manufacturingRates() { return this.adminService.manufacturingRates(); }
+
+  @Post('manufacturing-rates')
+  upsertManufacturingRates(@Body() body: {
+    electricityRatePerKwhMinor: number; machineHourlyCostMinor: number;
+    generalOverheadBps: number; defaultLabourCostMinor: number;
+    standardPackagingCostMinor: number;
+  }) { return this.adminService.upsertManufacturingRates(body); }
+
   @Get('catalog')
   catalog() { return this.adminService.catalog(); }
 
