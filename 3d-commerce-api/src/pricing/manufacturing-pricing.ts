@@ -54,7 +54,7 @@ export async function calculateManufacturingPrice(
     throw new BadRequestException('Product material and variant size are required for manufacturing pricing');
   }
 
-  const [materialRule, productRule, globalRate, sizeRule] = await Promise.all([
+  let [materialRule, productRule, globalRate, sizeRule] = await Promise.all([
     tx.materialPricingRule.findFirst({
       where: { material: { equals: material, mode: 'insensitive' }, sizeKey, isActive: true },
     }),
@@ -64,6 +64,13 @@ export async function calculateManufacturingPrice(
     tx.manufacturingRate.findUnique({ where: { id: 'default' } }),
     tx.sizeManufacturingRule.findUnique({ where: { sizeKey } }),
   ]);
+
+  if (!materialRule) {
+    const fallbackRule = await tx.materialPricingRule.findFirst({
+      where: { material: { equals: material, mode: 'insensitive' }, sizeKey: 'all', isActive: true },
+    });
+    if (fallbackRule) materialRule = fallbackRule;
+  }
 
   if (!materialRule) {
     throw new BadRequestException(
