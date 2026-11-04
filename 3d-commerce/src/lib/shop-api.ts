@@ -35,7 +35,7 @@ async function request(s: ShopQueryState, categories: string[], q: string) {
 
   const response = await fetch(
     getBackendApiUrl("products/shop?" + params.toString()),
-    { next: { revalidate: 60 } },
+    { next: { revalidate: 60, tags: ["catalog-products"] } },
   );
 
   if (!response.ok) {

@@ -179,6 +179,15 @@ export class PricingService {
         );
       }
 
+      // A selected variant must be sold at its own active price. Falling back
+      // to the legacy product-level price would charge a different amount
+      // than the storefront shows.
+      if (variant && !variantPrice) {
+        throw new BadRequestException(
+          'Selected variant for "' + product.name + '" has no active price',
+        );
+      }
+
       if (item.quantity <= 0) {
         throw new BadRequestException(
           'Invalid quantity for "' + product.name + '"',

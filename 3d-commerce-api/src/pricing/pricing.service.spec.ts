@@ -277,4 +277,36 @@ describe('PricingService', () => {
     ).rejects.toThrow('All items in a checkout must use the same currency');
   });
 
+  it('rejects a selected variant whose own price is inactive instead of charging the legacy product price', async () => {
+    prisma.productVariantCountryPrice.findMany.mockResolvedValue([]);
+    prisma.cart.findUnique.mockResolvedValue({
+      items: [
+        {
+          quantity: 1,
+          productId: 'p1',
+          variantId: 'v1',
+          variant: {
+            id: 'v1',
+            productId: 'p1',
+            name: 'Small',
+            isActive: true,
+            price: { amountMinor: 0, currency: 'INR', isActive: false },
+          },
+          product: {
+            id: 'p1',
+            name: 'Model',
+            status: 'ACTIVE',
+            weight: null,
+            inventory: { stock: 5, reserved: 0, trackStock: true, allowBackorder: false },
+            prices: [{ amountMinor: 10000, currency: 'INR' }],
+          },
+        },
+      ],
+    });
+
+    await expect(
+      service.calculate('user-1', { shippingAddressId: 'addr-1' }),
+    ).rejects.toThrow('has no active price');
+  });
+
 });

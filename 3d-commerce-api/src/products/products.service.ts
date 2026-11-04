@@ -17,7 +17,7 @@ import { CreateProductReviewDto } from './dto/create-product-review.dto';
 import { StorageService } from '../storage/storage.service';
 import sharp from 'sharp';
 import { createHmac } from 'node:crypto';
-import { calculateManufacturingPrice, normalizePricingSize } from '../pricing/manufacturing-pricing';
+import { calculateManufacturingPrice, normalizePricingSize, requiresWeightForPricing } from '../pricing/manufacturing-pricing';
 
 export interface ShopListQuery {
   page: number;
@@ -71,7 +71,7 @@ export class ProductsService {
             productId: product.id,
             name: item.name,
             size: item.size,
-            price: { create: { amountMinor: baseAmount, currency: 'INR', isActive: !dto.material?.trim() } },
+            price: { create: { amountMinor: baseAmount, currency: 'INR', isActive: false } },
           },
         });
         if (dto.material?.trim()) {
@@ -163,7 +163,13 @@ export class ProductsService {
         },
       });
 
-      if (updated.name !== variant.name || updated.size !== variant.size || updated.weightGrams !== variant.weightGrams) {
+      const reactivated = updated.isActive && !variant.isActive;
+      if (
+        reactivated ||
+        updated.name !== variant.name ||
+        updated.size !== variant.size ||
+        updated.weightGrams !== variant.weightGrams
+      ) {
         const product = await tx.product.findUnique({ where: { id: productId }, select: { material: true } });
         if (product?.material?.trim()) {
           const calculated = await calculateManufacturingPrice(tx, {
@@ -227,10 +233,20 @@ export class ProductsService {
           lowStockAt: input.lowStockAt ?? 5,
           trackStock: input.trackStock ?? true,
           allowBackorder: input.allowBackorder ?? false,
-          price: { create: { currency: 'INR', amountMinor: 0, isActive: !product.material?.trim() } },
+          price: { create: { currency: 'INR', amountMinor: 0, isActive: false } },
         },
       });
-      if (product.material?.trim()) {
+      const needsWeight =
+        !!product.material?.trim() &&
+        (variant.weightGrams == null || variant.weightGrams <= 0) &&
+        (await requiresWeightForPricing(tx, {
+          material: product.material,
+          size: variant.size,
+          variantName: variant.name,
+        }));
+      // Per-kg pricing cannot price a variant without its weight; keep it
+      // unpriced (and hidden from the storefront) until the weight is saved.
+      if (product.material?.trim() && !needsWeight) {
         const calculated = await calculateManufacturingPrice(tx, {
           productId,
           material: product.material,
@@ -356,32 +372,24 @@ export class ProductsService {
 
     const hasMin = query.minPrice !== undefined && query.minPrice > 0;
     const hasMax = query.maxPrice !== undefined && Number.isFinite(query.maxPrice);
-    if (hasMin || hasMax) {
-      and.push({
-        prices: {
-          some: {
-            isActive: true,
-            countryCode: null,
-            AND: [
-              { OR: [{ startsAt: null }, { startsAt: { lte: new Date() } }] },
-              { OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }] },
-            ],
-            amountMinor: {
-              ...(hasMin ? { gte: Math.round(query.minPrice! * 100) } : {}),
-              ...(hasMax ? { lte: Math.round(query.maxPrice! * 100) } : {}),
-            },
-          },
-        },
-      });
-    }
+    const minPriceMinor = hasMin ? Math.round(query.minPrice! * 100) : undefined;
+    const maxPriceMinor = hasMax ? Math.round(query.maxPrice! * 100) : undefined;
 
     const where: Prisma.ProductWhereInput = { status: 'ACTIVE', AND: and };
     const minRating = query.minRating && query.minRating > 0 ? query.minRating : 0;
 
     // Price and rating live in other tables (one-to-many), so Prisma cannot
     // order or filter on them directly. For those cases we sort a light
-    // id-only projection in memory, then load full rows for just one page.
-    const needsInMemory = sort === 'price-low' || sort === 'price-high' || sort === 'rating' || minRating > 0;
+    // projection in memory, then load full rows for just one page. The
+    // customer-facing price is the cheapest active variant price (manufacturing
+    // pricing); the legacy product-level price is only a fallback.
+    const needsInMemory =
+      sort === 'price-low' ||
+      sort === 'price-high' ||
+      sort === 'rating' ||
+      minRating > 0 ||
+      hasMin ||
+      hasMax;
 
     let total: number;
     let page = requestedPage;
@@ -389,7 +397,7 @@ export class ProductsService {
     let ratingMap: Map<string, { rating: number; reviewCount: number }>;
 
     if (needsInMemory) {
-      const [candidates, ratings] = await Promise.all([
+      const [candidates, ratings, candidateSale] = await Promise.all([
         this.prisma.product.findMany({
           where,
           select: {
@@ -406,28 +414,59 @@ export class ProductsService {
               },
               select: { amountMinor: true, currency: true },
             },
+            variants: {
+              where: { isActive: true },
+              select: {
+                price: { select: { amountMinor: true, currency: true, isActive: true } },
+              },
+            },
           },
         }),
         this.reviewAggregates(),
+        this.storefrontSaleCampaign(),
       ]);
       ratingMap = ratings;
 
       const rows = candidates
-        .map((row) => ({
-          id: row.id,
-          createdAt: row.createdAt.getTime(),
-          price: (row.prices.find((p) => p.currency === 'INR') ?? row.prices[0])?.amountMinor ?? 0,
-          rating: ratings.get(row.id)?.rating ?? 0,
-          reviewCount: ratings.get(row.id)?.reviewCount ?? 0,
-        }))
-        .filter((row) => row.rating >= minRating);
+        .map((row) => {
+          const variantPrices = row.variants
+            .map((variant) => variant.price)
+            .filter((price): price is NonNullable<typeof price> => Boolean(price?.isActive));
+          const pool = variantPrices.length ? variantPrices : row.prices;
+          const inrPool = pool.filter((price) => price.currency === 'INR');
+          const cheapest = (inrPool.length ? inrPool : pool).reduce<number | null>(
+            (lowest, price) => (lowest === null || price.amountMinor < lowest ? price.amountMinor : lowest),
+            null,
+          );
+          return {
+            id: row.id,
+            createdAt: row.createdAt.getTime(),
+            // Compare on the price the storefront actually displays.
+            price: cheapest === null ? null : this.displayedAmountMinor(cheapest, candidateSale),
+            rating: ratings.get(row.id)?.rating ?? 0,
+            reviewCount: ratings.get(row.id)?.reviewCount ?? 0,
+          };
+        })
+        .filter((row) => row.rating >= minRating)
+        .filter((row) => {
+          if (minPriceMinor === undefined && maxPriceMinor === undefined) return true;
+          if (row.price === null) return false;
+          if (minPriceMinor !== undefined && row.price < minPriceMinor) return false;
+          if (maxPriceMinor !== undefined && row.price > maxPriceMinor) return false;
+          return true;
+        });
 
       rows.sort((a, b) => {
         switch (sort) {
           case 'price-low':
-            return a.price - b.price || b.createdAt - a.createdAt;
+            return (
+              (a.price ?? Number.MAX_SAFE_INTEGER) - (b.price ?? Number.MAX_SAFE_INTEGER) ||
+              b.createdAt - a.createdAt
+            );
           case 'price-high':
-            return b.price - a.price || b.createdAt - a.createdAt;
+            return (
+              (b.price ?? -1) - (a.price ?? -1) || b.createdAt - a.createdAt
+            );
           case 'rating':
             return b.rating - a.rating || b.reviewCount - a.reviewCount || b.createdAt - a.createdAt;
           default:
@@ -474,11 +513,12 @@ export class ProductsService {
               // uploaded primary image is missing or temporarily unavailable.
               take: 4,
             },
+            // Return every active variant: the card shows the cheapest priced
+            // one, so a single unpriced first variant must not hide the rest.
             variants: {
               where: { isActive: true },
               include: { price: true },
               orderBy: { createdAt: 'asc' },
-              take: 1,
             },
             inventory: true,
             metrics: true,
@@ -507,6 +547,16 @@ export class ProductsService {
       pageSize,
       totalPages: Math.max(1, Math.ceil(total / pageSize)),
     };
+  }
+
+  /** Mirrors the storefront's sale math so filters/sorts match displayed prices. */
+  private displayedAmountMinor(
+    amountMinor: number,
+    sale: { active: boolean; priceIncreaseBps: number; discountBps: number },
+  ) {
+    if (!sale.active) return amountMinor;
+    const listMinor = Math.round(amountMinor * (10000 + Math.max(0, sale.priceIncreaseBps)) / 10000);
+    return Math.round(listMinor * (10000 - Math.max(0, sale.discountBps)) / 10000);
   }
 
   private shopOrderBy(sort: ShopListQuery['sort']): Prisma.ProductOrderByWithRelationInput[] {

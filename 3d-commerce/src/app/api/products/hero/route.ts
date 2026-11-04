@@ -16,7 +16,7 @@ export async function GET() {
         // Let Cloudflare/browsers reuse the hero list instead of hitting the
         // API on every page view; it refreshes within a minute of changes.
         headers: response.ok
-          ? { "Cache-Control": "public, max-age=30, s-maxage=60, stale-while-revalidate=300" }
+          ? { "Cache-Control": "public, max-age=0, s-maxage=15, stale-while-revalidate=30" }
           : undefined,
       },
     );

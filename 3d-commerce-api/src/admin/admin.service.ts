@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationType, Prisma } from '@prisma/client';
-import { calculateManufacturingPrice, normalizePricingSize } from '../pricing/manufacturing-pricing';
+import { calculateManufacturingPrice, createPricingCache, normalizePricingSize, type PricingCache } from '../pricing/manufacturing-pricing';
 
 type ProductRank = { product: any; score: number };
 
@@ -182,7 +182,15 @@ export class AdminService {
     });
   }
 
-  private async recalculateProductPrices(tx: Prisma.TransactionClient, productId: string) {
+  // Bulk recalculations touch every product, so they get a longer interactive
+  // transaction window than Prisma's 5 second default.
+  private static readonly BULK_PRICING_TX = { maxWait: 10_000, timeout: 120_000 };
+
+  private async recalculateProductPrices(
+    tx: Prisma.TransactionClient,
+    productId: string,
+    options: { cache?: PricingCache; deactivateUnpriced?: boolean } = {},
+  ) {
     const product = await tx.product.findUnique({
       where: { id: productId },
       select: { id: true, material: true, variants: { where: { isActive: true }, select: { id: true, name: true, size: true, weightGrams: true } } },
@@ -213,6 +221,7 @@ export class AdminService {
           size: variant.size,
           variantName: variant.name,
           weightGrams: variant.weightGrams,
+          cache: options.cache,
         });
         await tx.productVariantPrice.upsert({
           where: { variantId: variant.id },
@@ -238,6 +247,14 @@ export class AdminService {
           !(error instanceof BadRequestException) ||
           !error.message.includes('No active material pricing is configured')
         ) throw error;
+        // When a rule was just switched off and nothing else covers this
+        // variant, stop selling it at the old price.
+        if (options.deactivateUnpriced) {
+          await tx.productVariantPrice.updateMany({
+            where: { variantId: variant.id },
+            data: { isActive: false },
+          });
+        }
       }
     }
   }
@@ -302,25 +319,18 @@ export class AdminService {
           });
       const products = await tx.product.findMany({
         where: { material: { equals: material, mode: 'insensitive' }, status: { not: 'ARCHIVED' } },
-        select: { id: true, variants: { where: { isActive: true }, select: { id: true, name: true, size: true } } },
+        select: { id: true },
       });
-      if (!rule.isActive) {
-        const affectedVariantIds = products.flatMap((product) =>
-          product.variants
-            .filter((variant) => normalizePricingSize(variant.name) === sizeKey || normalizePricingSize(variant.size) === sizeKey)
-            .map((variant) => variant.id),
-        );
-        if (affectedVariantIds.length) {
-          await tx.productVariantPrice.updateMany({
-            where: { variantId: { in: affectedVariantIds } },
-            data: { isActive: false },
-          });
-        }
-      } else {
-        for (const product of products) await this.recalculateProductPrices(tx, product.id);
+      // Recalculate through the normal engine in both cases. When the rule was
+      // deactivated, variants that another rule (for example the "all" per-kg
+      // fallback) still covers keep a correct price; only variants left with
+      // no applicable rule are switched off.
+      const cache = createPricingCache();
+      for (const product of products) {
+        await this.recalculateProductPrices(tx, product.id, { cache, deactivateUnpriced: !rule.isActive });
       }
       return rule;
-    });
+    }, AdminService.BULK_PRICING_TX);
   }
 
   async sizeManufacturingRules() {
@@ -370,9 +380,10 @@ export class AdminService {
         where: { status: { not: 'ARCHIVED' }, material: { not: null } },
         select: { id: true },
       });
-      for (const product of products) await this.recalculateProductPrices(tx, product.id);
+      const cache = createPricingCache();
+      for (const product of products) await this.recalculateProductPrices(tx, product.id, { cache });
       return rule;
-    });
+    }, AdminService.BULK_PRICING_TX);
   }
 
   async productCostRules(productId?: string) {
@@ -467,9 +478,10 @@ export class AdminService {
         where: { status: { not: 'ARCHIVED' }, material: { not: null } },
         select: { id: true },
       });
-      for (const product of products) await this.recalculateProductPrices(tx, product.id);
+      const cache = createPricingCache();
+      for (const product of products) await this.recalculateProductPrices(tx, product.id, { cache });
       return rates;
-    });
+    }, AdminService.BULK_PRICING_TX);
   }
 
   async catalog() {

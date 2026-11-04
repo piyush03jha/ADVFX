@@ -9,6 +9,46 @@ export function normalizePricingSize(value: string | null | undefined): string {
   return normalized.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
 
+/**
+ * Optional per-transaction memo for rule lookups. Bulk recalculations price
+ * every variant in the catalog; without this each variant repeats the same
+ * 4-5 reads and the transaction can outlive Prisma's timeout.
+ */
+export type PricingCache = Map<string, Promise<unknown>>;
+
+export function createPricingCache(): PricingCache {
+  return new Map();
+}
+
+function memo<T>(cache: PricingCache | undefined, key: string, load: () => Promise<T>): Promise<T> {
+  if (!cache) return load();
+  let hit = cache.get(key) as Promise<T> | undefined;
+  if (!hit) {
+    hit = load();
+    cache.set(key, hit);
+  }
+  return hit;
+}
+
+/** True when an active per-kg rule means this variant cannot be priced until its weight is set. */
+export async function requiresWeightForPricing(
+  tx: Prisma.TransactionClient,
+  input: { material: string; size: string | null; variantName: string },
+): Promise<boolean> {
+  const sizeKey = normalizePricingSize(input.variantName) || normalizePricingSize(input.size);
+  const material = input.material.trim();
+  if (!material || !sizeKey) return false;
+  const rule = await tx.materialPricingRule.findFirst({
+    where: {
+      material: { equals: material, mode: 'insensitive' },
+      sizeKey: { in: [sizeKey, 'all'] },
+      isActive: true,
+      pricePerKgMinor: { gt: 0 },
+    },
+  });
+  return Boolean(rule);
+}
+
 export type ManufacturingPriceResult = {
   currency: string;
   amountMinor: number;
@@ -46,7 +86,7 @@ export type ManufacturingPriceResult = {
  */
 export async function calculateManufacturingPrice(
   tx: Prisma.TransactionClient,
-  input: { productId: string; material: string; size: string | null; variantName: string; weightGrams?: number | null },
+  input: { productId: string; material: string; size: string | null; variantName: string; weightGrams?: number | null; cache?: PricingCache },
 ): Promise<ManufacturingPriceResult> {
   const sizeKey = normalizePricingSize(input.variantName) || normalizePricingSize(input.size);
   const material = input.material.trim();
@@ -54,21 +94,29 @@ export async function calculateManufacturingPrice(
     throw new BadRequestException('Product material and variant size are required for manufacturing pricing');
   }
 
+  const cache = input.cache;
+  const materialKey = material.toLowerCase();
   let [materialRule, productRule, globalRate, sizeRule] = await Promise.all([
-    tx.materialPricingRule.findFirst({
-      where: { material: { equals: material, mode: 'insensitive' }, sizeKey, isActive: true },
-    }),
-    tx.productCostRule.findUnique({
-      where: { productId_sizeKey: { productId: input.productId, sizeKey } },
-    }),
-    tx.manufacturingRate.findUnique({ where: { id: 'default' } }),
-    tx.sizeManufacturingRule.findUnique({ where: { sizeKey } }),
+    memo(cache, 'material:' + materialKey + ':' + sizeKey, () =>
+      tx.materialPricingRule.findFirst({
+        where: { material: { equals: material, mode: 'insensitive' }, sizeKey, isActive: true },
+      }),
+    ),
+    memo(cache, 'product:' + input.productId + ':' + sizeKey, () =>
+      tx.productCostRule.findUnique({
+        where: { productId_sizeKey: { productId: input.productId, sizeKey } },
+      }),
+    ),
+    memo(cache, 'rates', () => tx.manufacturingRate.findUnique({ where: { id: 'default' } })),
+    memo(cache, 'size:' + sizeKey, () => tx.sizeManufacturingRule.findUnique({ where: { sizeKey } })),
   ]);
 
   if (!materialRule || materialRule.pricePerKgMinor <= 0) {
-    const fallbackRule = await tx.materialPricingRule.findFirst({
-      where: { material: { equals: material, mode: 'insensitive' }, sizeKey: 'all', isActive: true, pricePerKgMinor: { gt: 0 } },
-    });
+    const fallbackRule = await memo(cache, 'material-per-kg-fallback:' + materialKey, () =>
+      tx.materialPricingRule.findFirst({
+        where: { material: { equals: material, mode: 'insensitive' }, sizeKey: 'all', isActive: true, pricePerKgMinor: { gt: 0 } },
+      }),
+    );
     if (fallbackRule) materialRule = fallbackRule;
   }
 

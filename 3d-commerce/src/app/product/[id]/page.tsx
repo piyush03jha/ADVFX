@@ -47,7 +47,7 @@ async function fetchRelatedProducts(product: CatalogProduct): Promise<CatalogPro
 
   try {
     const response = await fetch(getBackendApiUrl("products/shop?" + params.toString()), {
-      next: { revalidate: 60 },
+      next: { revalidate: 60, tags: ["catalog-products"] },
     });
     if (!response.ok) return [];
     const data = (await response.json()) as { items?: CatalogProduct[] };

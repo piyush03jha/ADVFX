@@ -16,7 +16,7 @@ export async function GET() {
     return NextResponse.json(data ?? { error: "Unable to load products." }, {
       status: response.status,
       headers: response.ok
-        ? { "Cache-Control": "public, max-age=30, s-maxage=60, stale-while-revalidate=300" }
+        ? { "Cache-Control": "public, max-age=0, s-maxage=15, stale-while-revalidate=30" }
         : undefined,
     });
   } catch {

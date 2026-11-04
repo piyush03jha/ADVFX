@@ -52,7 +52,7 @@ export const metadata: Metadata = {
 async function loadProducts(): Promise<CatalogProduct[]> {
   try {
     const response = await fetch(getBackendApiUrl("products"), {
-      next: { revalidate: 3600 },
+      next: { revalidate: 3600, tags: ["catalog-products"] },
       headers: { Accept: "application/json" },
     });
 

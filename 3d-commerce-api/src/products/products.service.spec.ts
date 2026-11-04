@@ -4,10 +4,12 @@ import { ProductsService } from './products.service';
 describe('ProductsService', () => {
   const storage = { saveProductFile: jest.fn(), delete: jest.fn(), getAbsolutePath: jest.fn() } as any;
   const prisma = {
-    product: { findFirst: jest.fn() },
+    product: { findFirst: jest.fn(), findMany: jest.fn(), count: jest.fn() },
+    category: { findMany: jest.fn() },
+    siteSetting: { findUnique: jest.fn() },
     productVariant: { findFirst: jest.fn() },
     $transaction: jest.fn(),
-    productReview: { findFirst: jest.fn(), findUnique: jest.fn(), create: jest.fn(), findMany: jest.fn(), aggregate: jest.fn() },
+    productReview: { findFirst: jest.fn(), findUnique: jest.fn(), create: jest.fn(), findMany: jest.fn(), aggregate: jest.fn(), groupBy: jest.fn() },
     order: { findFirst: jest.fn() },
     productMetrics: { upsert: jest.fn(), findUnique: jest.fn() },
     productViewEvent: { createMany: jest.fn(), deleteMany: jest.fn() },
@@ -51,6 +53,37 @@ describe('ProductsService', () => {
         compareAtMinor: 17000, isActive: true,
       },
     });
+  });
+
+  it('filters and sorts the shop by active variant prices, not the legacy product price', async () => {
+    const variantProduct = (id: string, createdAt: string, amounts: number[]) => ({
+      id,
+      createdAt: new Date(createdAt),
+      prices: [],
+      variants: amounts.map((amountMinor) => ({ price: { amountMinor, currency: 'INR', isActive: true } })),
+    });
+    prisma.siteSetting.findUnique.mockResolvedValue(null);
+    prisma.productReview.groupBy.mockResolvedValue([]);
+    prisma.product.findMany
+      .mockResolvedValueOnce([
+        variantProduct('cheap', '2026-01-01', [90000, 120000]),
+        variantProduct('mid', '2026-01-02', [250000]),
+        variantProduct('pricey', '2026-01-03', [900000]),
+        { id: 'unpriced', createdAt: new Date('2026-01-04'), prices: [], variants: [{ price: { amountMinor: 0, currency: 'INR', isActive: false } }] },
+      ])
+      .mockResolvedValueOnce([]);
+
+    const result = await service.findShopPage({
+      page: 1, limit: 12, minPrice: 1000, maxPrice: 5000, sort: 'price-high',
+    });
+
+    // 'cheap' falls below the 1,000 minimum (its cheapest size is 900) and
+    // unpriced products never match an active price filter.
+    expect(result.total).toBe(1);
+    const idQuery = prisma.product.findMany.mock.calls[1][0];
+    expect(idQuery.where).toEqual({ id: { in: ['mid'] } });
+    // Variant prices are only loaded for the page that is returned.
+    expect(idQuery.include.variants.take).toBeUndefined();
   });
 
   it('accepts a review only after a captured purchase', async () => {
