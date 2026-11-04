@@ -17,6 +17,7 @@ import { CreateProductReviewDto } from './dto/create-product-review.dto';
 import { StorageService } from '../storage/storage.service';
 import sharp from 'sharp';
 import { createHmac } from 'node:crypto';
+import { calculateManufacturingPrice } from '../pricing/manufacturing-pricing';
 
 export interface ShopListQuery {
   page: number;
@@ -55,40 +56,38 @@ export class ProductsService {
         },
       });
 
-      // Material rates are configured centrally for each standard size.
-      // A newly-created product inherits those prices immediately when its
-      // material has a complete pricing matrix.
-      const materialRules = dto.material?.trim()
-        ? await tx.materialPricingRule.findMany({
-            where: { material: { equals: dto.material.trim(), mode: 'insensitive' }, isActive: true },
-          })
-        : [];
-      const materialPriceBySize = new Map(materialRules.map((rule) => [rule.sizeKey.toLowerCase(), rule]));
+      // Every variant price is derived from material + size pricing,
+      // product-specific cost rules, and global manufacturing rates.
       for (const item of [
         { name: 'Small', size: '15 cm' },
         { name: 'Medium', size: '20 cm' },
         { name: 'Large', size: '25 cm' },
       ]) {
-        const materialPrice = dto.material?.trim()
-          ? materialPriceBySize.get(item.name.toLowerCase())
-          : null;
-        if (dto.material?.trim() && !materialPrice) {
-          throw new BadRequestException('Configure active Small, Medium and Large prices for ' + dto.material + ' before creating this product');
-        }
-        await tx.productVariant.create({
+        const variant = await tx.productVariant.create({
           data: {
             productId: product.id,
             name: item.name,
             size: item.size,
-            price: {
-              create: {
-                amountMinor: materialPrice?.amountMinor ?? baseAmount,
-                currency: materialPrice?.currency ?? 'INR',
-                isActive: true,
-              },
-            },
+            price: { create: { amountMinor: baseAmount, currency: 'INR', isActive: !dto.material?.trim() } },
           },
         });
+        if (dto.material?.trim()) {
+          const calculated = await calculateManufacturingPrice(tx, {
+            productId: product.id,
+            material: dto.material,
+            size: item.size,
+            variantName: item.name,
+          });
+          await tx.productVariantPrice.update({
+            where: { variantId: variant.id },
+            data: {
+              amountMinor: calculated.amountMinor,
+              currency: calculated.currency,
+              costBreakdown: calculated.costBreakdown,
+              isActive: true,
+            },
+          });
+        }
       }
 
       return tx.product.findUniqueOrThrow({
@@ -936,44 +935,32 @@ export class ProductsService {
 
       const nextMaterial = dto.material?.trim();
       if (nextMaterial && nextMaterial.toLowerCase() !== (current.material ?? '').trim().toLowerCase()) {
-        const [rules, variants] = await Promise.all([
-          tx.materialPricingRule.findMany({
-            where: { material: { equals: nextMaterial, mode: 'insensitive' }, isActive: true },
-          }),
-          tx.productVariant.findMany({
-            where: { productId: id, isActive: true },
-            select: { id: true, name: true, size: true },
-          }),
-        ]);
-        const ruleBySize = new Map(rules.map((rule) => [rule.sizeKey.trim().toLowerCase(), rule]));
-        const normalizedSizeKey = (value: string) => {
-          const normalized = value.trim().toLowerCase();
-          if (/\bsmall\b|\bs\b/.test(normalized)) return 'small';
-          if (/\bmedium\b|\bmid\b|\bm\b/.test(normalized)) return 'medium';
-          if (/\blarge\b|\bl\b/.test(normalized)) return 'large';
-          return normalized.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-        };
+        const variants = await tx.productVariant.findMany({
+          where: { productId: id, isActive: true },
+          select: { id: true, name: true, size: true },
+        });
         for (const variant of variants) {
-          const key = normalizedSizeKey(variant.name);
-          const rule = ruleBySize.get(key) ?? ruleBySize.get(normalizedSizeKey(variant.size ?? ''));
-          if (!rule) {
-            throw new BadRequestException(
-              'No active ' + nextMaterial + ' price is configured for size "' + variant.name + '". Configure every size under Admin > Promotions & tax before changing this product material.',
-            );
-          }
+          const calculated = await calculateManufacturingPrice(tx, {
+            productId: id,
+            material: nextMaterial,
+            size: variant.size,
+            variantName: variant.name,
+          });
           await tx.productVariantPrice.upsert({
             where: { variantId: variant.id },
             create: {
               variantId: variant.id,
-              currency: rule.currency,
-              amountMinor: rule.amountMinor,
+              currency: calculated.currency,
+              amountMinor: calculated.amountMinor,
+              costBreakdown: calculated.costBreakdown,
               isActive: true,
             },
             update: {
-              currency: rule.currency,
-              amountMinor: rule.amountMinor,
-              isActive: true,
+              currency: calculated.currency,
+              amountMinor: calculated.amountMinor,
               compareAtMinor: null,
+              costBreakdown: calculated.costBreakdown,
+              isActive: true,
             },
           });
         }
