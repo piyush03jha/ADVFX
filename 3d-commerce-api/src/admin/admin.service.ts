@@ -501,12 +501,13 @@ export class AdminService {
 
   async saleCampaign() {
     const row = await this.prisma.siteSetting.findUnique({ where: { key: 'saleCampaign' } });
-    const defaults = { enabled: false, priceIncreaseBps: 2000, discountBps: 2000, startsAt: null as string | null, endsAt: null as string | null };
+    const defaults = { enabled: false, categoryId: null as string | null, priceIncreaseBps: 2000, discountBps: 2000, startsAt: null as string | null, endsAt: null as string | null };
     if (!row) return defaults;
     try {
       const value = JSON.parse(row.value) as Partial<typeof defaults>;
       return {
         enabled: value.enabled === true,
+        categoryId: typeof value.categoryId === 'string' && value.categoryId.trim() ? value.categoryId : null,
         priceIncreaseBps: Number.isInteger(value.priceIncreaseBps) ? value.priceIncreaseBps! : defaults.priceIncreaseBps,
         discountBps: Number.isInteger(value.discountBps) ? value.discountBps! : defaults.discountBps,
         startsAt: value.startsAt ?? null,
@@ -519,6 +520,7 @@ export class AdminService {
 
   async updateSaleCampaign(input: {
     enabled?: boolean;
+    categoryId?: string | null;
     priceIncreaseBps?: number;
     discountBps?: number;
     startsAt?: string | null;
@@ -543,8 +545,14 @@ export class AdminService {
     if (startDate && endDate && endDate <= startDate) {
       throw new BadRequestException('Sale end date must be after its start date.');
     }
+    const categoryId = input.categoryId === undefined ? current.categoryId : input.categoryId?.trim() || null;
+    if (categoryId) {
+      const category = await this.prisma.category.findUnique({ where: { id: categoryId }, select: { id: true } });
+      if (!category) throw new BadRequestException('Selected sale category was not found.');
+    }
     const campaign = {
       enabled: input.enabled ?? current.enabled,
+      categoryId,
       priceIncreaseBps,
       discountBps,
       startsAt: startDate?.toISOString() ?? null,
