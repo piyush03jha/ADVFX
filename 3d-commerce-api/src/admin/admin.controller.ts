@@ -90,7 +90,11 @@ export class AdminController {
   materialPricingRules() { return this.adminService.materialPricingRules(); }
 
   @Post('material-pricing')
-  upsertMaterialPricingRule(@Body() body: { material: string; sizeKey: string; currency?: string; amountMinor: number; isActive?: boolean }) {
+  upsertMaterialPricingRule(@Body() body: {
+    material: string; sizeKey: string; currency?: string;
+    rawMaterialCostMinor: number; wastageRateBps: number;
+    electricityKwhMilli: number; machineHoursMilli: number; isActive?: boolean;
+  }) {
     return this.adminService.upsertMaterialPricingRule(body);
   }
 
