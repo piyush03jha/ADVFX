@@ -27,7 +27,6 @@ export default function AdminProducts(){
   const [editingProduct,setEditingProduct]=useState<string|null>(null);
   const [uploadProgress,setUploadProgress]=useState<Record<string,number>>({});
   const [editForm,setEditForm]=useState<Record<string,string|boolean>>({});
-  const [createVariantPrices,setCreateVariantPrices]=useState({small:"",medium:"",large:""});
   const [createVariantStock,setCreateVariantStock]=useState({small:"",medium:"",large:""});
 
   async function load(){setLoading(true);try{const r=await fetch("/api/admin/catalog",{cache:"no-store"});if(!r.ok)throw new Error();setData(await r.json());setMessage("")}catch{setMessage("Unable to load catalog.")}finally{setLoading(false)}}
@@ -89,7 +88,7 @@ export default function AdminProducts(){
       const r=await fetch("/api/products/"+productId+"/variants/"+variantId,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
       const d=await r.json().catch(()=>null);
       if(!r.ok)throw new Error(d?.message||"Unable to update size.");
-      setMessage("Size and price updated.");
+      setMessage("Size and stock updated. Selling price is calculated automatically.");
       await load();
     }catch(e){setMessage(e instanceof Error?e.message:"Unable to update size.")}finally{setSaving(false)}
   }
@@ -98,7 +97,7 @@ export default function AdminProducts(){
     try{
       const defaults=[{name:"Small",size:"15 cm"},{name:"Medium",size:"20 cm"},{name:"Large",size:"25 cm"}];
       for(const variant of defaults){
-        const response=await fetch("/api/products/"+productId+"/variants",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...variant,price:0,stock:0})});
+        const response=await fetch("/api/products/"+productId+"/variants",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...variant,stock:0})});
         const result=await response.json().catch(()=>null);
         if(!response.ok)throw new Error(result?.message||("Unable to create "+variant.name+" size."));
       }
@@ -119,23 +118,18 @@ export default function AdminProducts(){
 
 
       const sizeOptions = [
-        { name: "Small", price: createVariantPrices.small, stock: createVariantStock.small },
-        { name: "Medium", price: createVariantPrices.medium, stock: createVariantStock.medium },
-        { name: "Large", price: createVariantPrices.large, stock: createVariantStock.large },
+        { name: "Small", stock: createVariantStock.small },
+        { name: "Medium", stock: createVariantStock.medium },
+        { name: "Large", stock: createVariantStock.large },
       ];
       for(const sizeOption of sizeOptions){
-        const hasPrice = sizeOption.price !== "";
-        const hasStock = sizeOption.stock !== "";
-        if(!hasPrice && !hasStock) continue;
-        const amount = hasPrice ? Number(sizeOption.price) : undefined;
-        const stock = hasStock ? Number(sizeOption.stock) : undefined;
-        if(amount !== undefined && (!Number.isFinite(amount) || amount < 0)) throw new Error(`${sizeOption.name} price must be a valid number.`);
-        if(stock !== undefined && (!Number.isInteger(stock) || stock < 0)) throw new Error(`${sizeOption.name} stock must be a whole number.`);
+        if(sizeOption.stock === "") continue;
+        const stock = Number(sizeOption.stock);
+        if(!Number.isInteger(stock) || stock < 0) throw new Error(`${sizeOption.name} stock must be a whole number.`);
         const variant = (p.variants || []).find((item: ProductVariant) => item.name === sizeOption.name);
         if(!variant) throw new Error(`${sizeOption.name} size variant was not created.`);
-        const payload = { ...(amount !== undefined ? { price: amount } : {}), ...(stock !== undefined ? { stock } : {}) };
-        const vr=await fetch("/api/products/"+p.id+"/variants/"+variant.id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
-        if(!vr.ok) throw new Error(`${sizeOption.name} settings could not be saved.`);
+        const vr=await fetch("/api/products/"+p.id+"/variants/"+variant.id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({stock})});
+        if(!vr.ok) throw new Error(`${sizeOption.name} stock could not be saved.`);
       }
 
       if(productImages.length){
@@ -155,7 +149,6 @@ export default function AdminProducts(){
       setForm({name:"",slug:"",description:"",categoryId:"",parentCategoryId:"",status:"ACTIVE",stock:"0",isFeatured:false,material:"",scale:"",dimensions:"",height:"",base:"",packaging:"",weight:""});
       setProductImages([]);
       setProductGlb(null);
-      setCreateVariantPrices({small:"",medium:"",large:""});
       setCreateVariantStock({small:"",medium:"",large:""});
       setMessage("Product created with assets.");
       await load();
@@ -272,11 +265,7 @@ export default function AdminProducts(){
         <div className="flex items-center justify-between gap-3">
           <div><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">Size-specific pricing</p><p className="mt-1 text-[9px] text-muted">Set the customer price for each physical size.</p></div>
         </div>
-        <div className="mt-3 grid gap-2 sm:grid-cols-3">
-          <input value={createVariantPrices.small} onChange={e=>setCreateVariantPrices({...createVariantPrices,small:e.target.value})} type="number" min="0" step="1" placeholder="Small · 15 cm · ₹" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
-          <input value={createVariantPrices.medium} onChange={e=>setCreateVariantPrices({...createVariantPrices,medium:e.target.value})} type="number" min="0" step="1" placeholder="Medium · 20 cm · ₹" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
-          <input value={createVariantPrices.large} onChange={e=>setCreateVariantPrices({...createVariantPrices,large:e.target.value})} type="number" min="0" step="1" placeholder="Large · 25 cm · ₹" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
-        </div>
+        <p className="mt-3 rounded-xl border border-border bg-background/60 px-3 py-3 text-[10px] leading-5 text-muted">Size prices are generated automatically from the selected material and size using the manufacturing pricing rules. Configure those rules under Admin → Promotions & tax. Only stock quantities are entered here.</p>
         <div className="mt-3 grid gap-2 sm:grid-cols-3">
           <input value={createVariantStock.small} onChange={e=>setCreateVariantStock({...createVariantStock,small:e.target.value})} type="number" min="0" step="1" placeholder="Small stock · units" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
           <input value={createVariantStock.medium} onChange={e=>setCreateVariantStock({...createVariantStock,medium:e.target.value})} type="number" min="0" step="1" placeholder="Medium stock · units" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
