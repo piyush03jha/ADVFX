@@ -16,6 +16,11 @@ export class UpsertVariantDto {
   @IsNumber()
   @Min(0)
   @IsOptional()
+  weightGrams?: number | null;
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
   price?: number;
 
   @IsNumber()
