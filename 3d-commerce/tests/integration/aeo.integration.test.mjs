@@ -43,7 +43,7 @@ test("Next.js llms endpoint uses published FAQ content and preserves FAQ structu
   assert.match(route, /export async function GET\(\): Promise<Response>/);
   assert.match(publicFaqs, /import \{ faqItems, type FAQItem \} from ["']@\/config\/faq["']/);
   assert.match(publicFaqs, /getBackendApiUrl\("site-content\/faq"\)/);
-  assert.match(publicFaqs, /return faqItems/);
+  assert.match(publicFaqs, /return mergeFactFaqs\\(faqItems\\)/);
   assert.match(faqPage, /"@type": "FAQPage"/);
   assert.match(faqPage, /"@type": "Question"/);
   assert.match(faqPage, /"@type": "Answer"/);
