@@ -18,7 +18,7 @@ type Order = {
   discountMinor: number;
   totalMinor: number;
   user?: { id: string; name?: string | null; email?: string; phone?: string | null } | null;
-  items: Array<{ id: string; productName: string; variantName?: string | null; materialSnapshot?: string | null; sizeSnapshot?: string | null; taxRateBps?: number; taxMinor?: number; quantity: number; unitPriceMinor: number; totalPriceMinor: number }>;
+  items: Array<{ id: string; productName: string; variantName?: string | null; materialSnapshot?: string | null; sizeSnapshot?: string | null; taxRateBps?: number; taxMinor?: number; manufacturingCostSnapshot?: {rawMaterialCostMinor:number;wastageCostMinor:number;electricityCostMinor:number;machineCostMinor:number;labourCostMinor:number;paintingCostMinor:number;finishingCostMinor:number;machineSetupCostMinor:number;packagingCostMinor:number;overheadCostMinor:number;directCostMinor:number;sellingPriceMinor:number}|null; quantity: number; unitPriceMinor: number; totalPriceMinor: number }>;
   shippingAddress: { fullName: string; phone: string; line1: string; line2?: string | null; city: string; state: string; postalCode: string; country: string } | null;
   payment?: { provider: string; status: string; providerPaymentId?: string | null } | null;
   shipment?: { status: string; carrier?: string | null; trackingNumber?: string | null; trackingUrl?: string | null } | null;
@@ -173,8 +173,12 @@ export default function AdminOrderDetailPage() {
             <div className="mt-5 divide-y divide-border">
               {order.items.map((item) => (
                 <div key={item.id} className="flex items-center justify-between gap-4 py-4 first:pt-0 last:pb-0">
-                  <div><p className="text-sm font-medium text-foreground">{item.productName}</p><p className="mt-1 text-[10px] text-muted">{item.materialSnapshot ? `Material: ${item.materialSnapshot} · ` : ""}{item.sizeSnapshot || item.variantName || "Standard"} · Qty {item.quantity}</p><p className="mt-1 text-[9px] text-muted">GST {(item.taxRateBps ?? 0)/100}% · included {money(item.taxMinor ?? 0, order.currency)}</p></div>
-                  <p className="text-xs font-medium">{money(item.totalPriceMinor, order.currency)}</p>
+                  <div className="min-w-0 flex-1"><p className="text-sm font-medium text-foreground">{item.productName}</p><p className="mt-1 text-[10px] text-muted">{item.materialSnapshot ? `Material: ${item.materialSnapshot} · ` : ""}{item.sizeSnapshot || item.variantName || "Standard"} · Qty {item.quantity}</p><p className="mt-1 text-[9px] text-muted">GST {(item.taxRateBps ?? 0)/100}% · included {money(item.taxMinor ?? 0, order.currency)}</p>
+                    {item.manufacturingCostSnapshot&&<details className="mt-2 text-[9px] text-muted"><summary className="cursor-pointer select-none">Manufacturing cost snapshot</summary><div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-3">{[
+                      ["Raw material",item.manufacturingCostSnapshot.rawMaterialCostMinor],["Wastage",item.manufacturingCostSnapshot.wastageCostMinor],["Electricity",item.manufacturingCostSnapshot.electricityCostMinor],["Machine",item.manufacturingCostSnapshot.machineCostMinor],["Labour",item.manufacturingCostSnapshot.labourCostMinor],["Painting",item.manufacturingCostSnapshot.paintingCostMinor],["Finishing",item.manufacturingCostSnapshot.finishingCostMinor],["Machine setup",item.manufacturingCostSnapshot.machineSetupCostMinor],["Packaging",item.manufacturingCostSnapshot.packagingCostMinor],["Overhead",item.manufacturingCostSnapshot.overheadCostMinor],
+                    ].map(([name,value])=><span key={String(name)}>{name}: {money(Number(value),order.currency)}</span>)}</div><p className="mt-2 font-medium text-foreground">Direct cost: {money(item.manufacturingCostSnapshot.directCostMinor,order.currency)} · Calculated selling price: {money(item.manufacturingCostSnapshot.sellingPriceMinor,order.currency)}</p></details>}
+                  </div>
+                  <p className="shrink-0 text-xs font-medium">{money(item.totalPriceMinor, order.currency)}</p>
                 </div>
               ))}
             </div>
