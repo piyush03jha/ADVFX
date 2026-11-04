@@ -93,9 +93,9 @@
      accent, pairing with dark mode's equally warm tag tokens
      below rather than going fully neutral like the rest of the
      palette. */
-  --tag-background: #f2eadf;
-  --tag-border: #e4d8c8;
-  --tag-foreground: #51483f;
+  --tag-background: #252631;
+  --tag-border: #3b3e4b;
+  --tag-foreground: #f4f5f7;
 
   color-scheme: light;
 }
@@ -158,9 +158,9 @@
     0 0 35px rgba(139, 92, 246, 0.06);
 
   /* Product-tag surface */
-  --tag-background: #1a1714;
-  --tag-border: #302b26;
-  --tag-foreground: #d7cec4;
+  --tag-background: #f1f2f6;
+  --tag-border: #c9ced9;
+  --tag-foreground: #252631;
 
   color-scheme: dark;
 }
