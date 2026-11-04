@@ -17,6 +17,7 @@ import { HERO_MODEL_ROTATION_MS } from "@/config/hero-motion";
 import type { HeroProduct } from "@/config/hero-products";
 
 import { HeroContent } from "./HeroContent";
+import { useIntroDone } from "@/lib/introGate";
 import { HeroPagination } from "./HeroPagination";
 import { HeroProductStage } from "./HeroProductStage";
 
@@ -39,7 +40,11 @@ export function Hero() {
   // Defer the heavy R3F/Three.js viewer and its GLB download until the browser
   // has had a chance to paint the page. This keeps the hero's text and controls
   // responsive on low-end phones while preserving the same 3D experience.
+  // On a first visit the logo intro is running its own WebGL scene; starting the hero's
+  // viewer, GLB download and parsing at the same time froze the page right after the intro.
+  const introDone = useIntroDone();
   useEffect(() => {
+    if (!introDone) return;
     let timeoutId: number | undefined;
     let idleId: number | undefined;
     const enableModel = () => {
@@ -58,7 +63,7 @@ export function Hero() {
         window.cancelIdleCallback(idleId);
       }
     };
-  }, []);
+  }, [introDone]);
 
   useEffect(() => {
     let cancelled = false;

@@ -693,3 +693,16 @@ summary,
   flex-shrink: 0;
   scroll-snap-align: start;
 }
+
+
+/* First-visit logo intro: cover the page from first paint until the intro overlay takes over. */
+html[data-intro="pending"] body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 299;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at center, rgba(132, 108, 190, 0.22), rgba(17, 19, 27, 0.96) 68%),
+    #11131b;
+}

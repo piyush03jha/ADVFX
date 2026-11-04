@@ -32,11 +32,14 @@ export function SiteChrome() {
   useEffect(() => {
     if (pathname !== "/") {
       setShowIntro(false);
+      document.documentElement.removeAttribute("data-intro");
       return;
     }
 
     const forceReplay = new URLSearchParams(window.location.search).get("intro") === "1";
-    setShowIntro(forceReplay || !hasPlayedIntro());
+    const play = forceReplay || !hasPlayedIntro();
+    setShowIntro(play);
+    if (!play) document.documentElement.removeAttribute("data-intro");
   }, [pathname]);
 
   if (pathname === "/admin" || pathname.startsWith("/admin/")) return null;

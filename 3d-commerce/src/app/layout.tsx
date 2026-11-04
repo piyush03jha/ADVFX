@@ -153,6 +153,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             __html: `try{var l=localStorage.getItem("advfx-theme-v2")==="light",r=document.documentElement;r.classList.toggle("dark",!l);r.dataset.theme=l?"light":"dark";r.style.colorScheme=l?"light":"dark"}catch(e){}`,
           }}
         />
+        {/* First visit to the home page: cover the page with the intro background from the very
+            first paint, so the site is not shown and then hidden again when the logo
+            animation starts. LogoIntro removes the mark once its own overlay is up; the timer is
+            a safety net so the page can never stay covered. The cover never blocks clicks. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var d=document.documentElement,p=false;for(var i=0;i<2;i++){try{if((i?sessionStorage:localStorage).getItem("voxel-intro-played")==="1")p=true}catch(e){}}if((location.pathname==="/"&&!p)||/[?&]intro(=|&|$)/.test(location.search)){d.setAttribute("data-intro","pending");setTimeout(function(){d.removeAttribute("data-intro")},8000)}}catch(e){}`,
+          }}
+        />
         <link
           rel="preconnect"
           href="https://api.voxel3d.org"
