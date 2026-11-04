@@ -925,10 +925,6 @@ export class ProductsService {
 
       const nextMaterial = dto.material?.trim();
       if (dto.material !== undefined && !nextMaterial) {
-        await tx.productVariant.updateMany({
-          where: { productId: id },
-          data: { price: undefined },
-        }).catch(() => undefined);
         await tx.productVariantPrice.updateMany({
           where: { variant: { productId: id } },
           data: { isActive: false },
