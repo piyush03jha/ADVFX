@@ -110,7 +110,13 @@ export function CheckoutSummary({
               value={quote.summary.shippingMinor === 0 ? "FREE" : money(quote.summary.shippingMinor, quote.currency)}
               positive={quote.summary.shippingMinor === 0}
             />
-            {quote.summary.discountMinor > 0 && (
+            {(quote.summary.saleDiscountMinor ?? 0) > 0 && (
+              <SummaryRow label="Sale discount" value={`-${money(quote.summary.saleDiscountMinor ?? 0, quote.currency)}`} positive />
+            )}
+            {(quote.summary.couponDiscountMinor ?? 0) > 0 && (
+              <SummaryRow label="Coupon discount" value={`-${money(quote.summary.couponDiscountMinor ?? 0, quote.currency)}`} positive />
+            )}
+            {quote.summary.discountMinor > 0 && (quote.summary.saleDiscountMinor === undefined || quote.summary.couponDiscountMinor === undefined) && (
               <SummaryRow label="Discount" value={`-${money(quote.summary.discountMinor, quote.currency)}`} positive />
             )}
             {quote.summary.taxMinor > 0 && (
