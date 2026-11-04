@@ -689,6 +689,7 @@ model SizeManufacturingRule {
   machineCostMinor Int @default(0)
   labourCostMinor Int @default(0)
   finishingCostMinor Int @default(0)
+  platformCostMinor Int @default(0)
   packagingCostMinor Int @default(0)
   updatedAt DateTime @updatedAt
 }
