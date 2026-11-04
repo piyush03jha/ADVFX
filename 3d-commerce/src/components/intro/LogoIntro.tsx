@@ -11,7 +11,10 @@ import { createIntroTimeline } from "./introTimeline";
 // localStorage (survives closing the tab) with sessionStorage as a fallback.
 // Open the site with ?intro=1 to force a replay while testing.
 const PLAYED_KEY = "voxel-intro-played";
-const TEXTURE_TIMEOUT_MS = 2500;
+const TEXTURE_TIMEOUT_MS = 2000;
+// Absolute upper bound: whatever goes wrong (tab throttled, WebGL stall), the overlay is
+// gone by now so it can never leave the site unusable.
+const HARD_STOP_MS = 5000;
 const FALLBACK_HOLD_MS = 850;
 
 function hasPlayed(): boolean {
@@ -23,6 +26,15 @@ function hasPlayed(): boolean {
     }
   }
   return false;
+}
+
+// The layout marks first-time visitors (<html data-intro>) so the page is covered from
+// the first paint. Release that cover once the overlay (same background) is on screen.
+function releaseCover() {
+  document.documentElement.removeAttribute("data-intro");
+}
+function releaseCoverSoon() {
+  window.requestAnimationFrame(() => window.requestAnimationFrame(releaseCover));
 }
 
 function markPlayed() {
@@ -57,6 +69,7 @@ export function LogoIntro() {
     if (!forced && hasPlayed()) {
       setShow(false);
       markIntroDone();
+      releaseCover();
       return;
     }
 
@@ -72,16 +85,24 @@ export function LogoIntro() {
     const finish = () => {
       if (finished) return;
       finished = true;
+      window.clearTimeout(hardStopTimer);
       markPlayed();
       markIntroDone();
       setShow(false);
+      releaseCover();
     };
+    const hardStopTimer = window.setTimeout(() => {
+      timeline?.kill();
+      root.style.opacity = "0";
+      finish();
+    }, HARD_STOP_MS);
 
     const playFallback = () => {
       if (cancelled || finished) return;
       window.clearTimeout(textureTimer);
       setFallback(true);
       setShow(true);
+      releaseCoverSoon();
       fallbackTimer = window.setTimeout(() => {
         root.style.transition = "opacity 350ms ease";
         root.style.opacity = "0";
@@ -175,6 +196,7 @@ export function LogoIntro() {
         // Reveal the overlay only after textures are loaded and the first scene
         // frame has been rendered, so users never see an empty intro canvas.
         setShow(true);
+        releaseCoverSoon();
         frame = window.requestAnimationFrame(animate);
         timeline.play(0);
         // Count the intro as played as soon as it starts, so a reload mid-way
@@ -191,8 +213,10 @@ export function LogoIntro() {
 
     return () => {
       cancelled = true;
+      window.clearTimeout(hardStopTimer);
       window.clearTimeout(textureTimer);
       window.clearTimeout(fallbackTimer);
+      releaseCover();
       window.cancelAnimationFrame(frame);
       resizeObserver?.disconnect();
       timeline?.kill();

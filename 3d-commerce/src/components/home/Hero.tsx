@@ -17,6 +17,7 @@ import { HERO_MODEL_ROTATION_MS } from "@/config/hero-motion";
 import type { HeroProduct } from "@/config/hero-products";
 
 import { HeroContent } from "./HeroContent";
+import { useIntroDone } from "@/lib/introGate";
 import { HeroPagination } from "./HeroPagination";
 import { HeroProductStage } from "./HeroProductStage";
 
@@ -39,7 +40,12 @@ export function Hero() {
   // Defer the heavy R3F/Three.js viewer and its GLB download until the browser
   // has had a chance to paint the page. This keeps the hero's text and controls
   // responsive on low-end phones while preserving the same 3D experience.
+  // On a first visit the logo intro (max 5 s) runs its own WebGL scene. The hero models are
+  // only DOWNLOADED during the intro (network, cheap); the viewer that parses and renders
+  // them waits until the intro is over so the two never fight for the main thread.
+  const introDone = useIntroDone();
   useEffect(() => {
+    if (!introDone) return;
     let timeoutId: number | undefined;
     let idleId: number | undefined;
     const enableModel = () => {
@@ -58,7 +64,7 @@ export function Hero() {
         window.cancelIdleCallback(idleId);
       }
     };
-  }, []);
+  }, [introDone]);
 
   useEffect(() => {
     let cancelled = false;
@@ -137,10 +143,23 @@ export function Hero() {
   // available, every other hero model starts downloading together. Rotation never
   // advances to a partially downloaded model (see scheduleNextProduct).
   useEffect(() => {
-    if (!canLoadHeroModel || !heroProducts.length) return;
+    if (!heroProducts.length) return;
 
     let cancelled = false;
     const currentIndex = activeIndex;
+
+    const keep = new Set<string>();
+    heroProducts.forEach((product) => {
+      const modelUrl = product.model?.trim();
+      if (modelUrl) keep.add(modelUrl);
+    });
+
+    preloadAbortRef.current.forEach((controller, modelUrl) => {
+      if (keep.has(modelUrl)) return;
+      controller.abort();
+      preloadAbortRef.current.delete(modelUrl);
+      preloadPromisesRef.current.delete(modelUrl);
+    });
 
     void preloadModel(currentIndex)
       .then(() => {
@@ -148,8 +167,7 @@ export function Hero() {
 
         setActiveModelReady(true);
 
-        // The visible model is ready: now fetch every other hero model at once so the
-        // whole rotation is on the device within moments, not one model per turn.
+        // Fetch every other hero model right away (network only) so rotating is instant.
         heroProducts.forEach((_, index) => {
           if (index !== currentIndex) void preloadModel(index).catch(() => undefined);
         });
@@ -163,7 +181,7 @@ export function Hero() {
     return () => {
       cancelled = true;
     };
-  }, [activeIndex, canLoadHeroModel, heroProducts, preloadModel]);
+  }, [activeIndex, heroProducts, preloadModel]);
 
   useEffect(() => {
     const controllers = preloadAbortRef.current;
