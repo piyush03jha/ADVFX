@@ -65,9 +65,9 @@ export async function calculateManufacturingPrice(
     tx.sizeManufacturingRule.findUnique({ where: { sizeKey } }),
   ]);
 
-  if (!materialRule) {
+  if (!materialRule || materialRule.pricePerKgMinor <= 0) {
     const fallbackRule = await tx.materialPricingRule.findFirst({
-      where: { material: { equals: material, mode: 'insensitive' }, sizeKey: 'all', isActive: true },
+      where: { material: { equals: material, mode: 'insensitive' }, sizeKey: 'all', isActive: true, pricePerKgMinor: { gt: 0 } },
     });
     if (fallbackRule) materialRule = fallbackRule;
   }
