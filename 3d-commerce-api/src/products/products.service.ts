@@ -17,7 +17,7 @@ import { CreateProductReviewDto } from './dto/create-product-review.dto';
 import { StorageService } from '../storage/storage.service';
 import sharp from 'sharp';
 import { createHmac } from 'node:crypto';
-import { calculateManufacturingPrice } from '../pricing/manufacturing-pricing';
+import { calculateManufacturingPrice, normalizePricingSize } from '../pricing/manufacturing-pricing';
 
 export interface ShopListQuery {
   page: number;
@@ -75,6 +75,18 @@ export class ProductsService {
           },
         });
         if (dto.material?.trim()) {
+          const sizeKey = normalizePricingSize(item.name) || normalizePricingSize(item.size);
+          const perKgRule = await tx.materialPricingRule.findFirst({
+            where: {
+              material: { equals: dto.material, mode: 'insensitive' },
+              sizeKey: { in: [sizeKey, 'all'] },
+              isActive: true,
+              pricePerKgMinor: { gt: 0 },
+            },
+          });
+          // Per-kg pricing requires an admin-entered weight for each size.
+          // Keep the initial variant price inactive until that weight is saved.
+          if (perKgRule) continue;
           const calculated = await calculateManufacturingPrice(tx, {
             productId: product.id,
             material: dto.material,
