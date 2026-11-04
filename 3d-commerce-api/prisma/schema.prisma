@@ -836,6 +836,7 @@ model OrderItem {
   taxRateBps Int @default(0)
   taxMinor Int @default(0)
   manufacturingCostSnapshot Json?
+  saleSnapshot Json?
 
   createdAt DateTime @default(now())
 
