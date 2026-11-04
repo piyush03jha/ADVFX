@@ -496,7 +496,7 @@ export class ProductsService {
       ? await this.prisma.product.findMany({
           where: { id: { in: pageIds } },
           include: {
-            category: true,
+            category: { include: { parent: { select: { id: true, ordersEnabled: true } } } },
             prices: {
               where: {
                 isActive: true,
@@ -1409,7 +1409,7 @@ export class ProductsService {
 
   private heroProductInclude() {
     return {
-      category: true,
+      category: { include: { parent: { select: { id: true, ordersEnabled: true } } } },
       prices: {
         // Pricing is a single global price; there are no per-country prices.
         where: {
@@ -1505,7 +1505,7 @@ export class ProductsService {
 
   private publicProductInclude(): Prisma.ProductInclude {
     return {
-      category: true,
+      category: { include: { parent: { select: { id: true, ordersEnabled: true } } } },
       prices: {
         where: {
           isActive: true,
