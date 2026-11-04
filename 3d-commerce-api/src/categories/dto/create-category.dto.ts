@@ -51,5 +51,9 @@ export class CreateCategoryDto {
 
   @IsOptional()
   @IsBoolean()
+  ordersEnabled?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
   isActive?: boolean;
 }
