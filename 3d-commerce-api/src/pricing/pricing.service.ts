@@ -207,6 +207,7 @@ export class PricingService {
         size: variant?.size ?? variant?.name ?? null,
         taxRateBps,
         taxMinor: taxRateBps > 0 ? Math.round(lineTotalMinor * taxRateBps / (10000 + taxRateBps)) : 0,
+        manufacturingCostSnapshot: variant?.price?.costBreakdown ?? null,
         quantity: item.quantity,
         unitPriceMinor: price.amountMinor,
         lineTotalMinor,
