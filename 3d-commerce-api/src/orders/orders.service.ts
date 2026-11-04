@@ -250,6 +250,7 @@ export class OrdersService {
           taxRateBps: item.taxRateBps ?? 0,
           taxMinor: item.taxMinor ?? 0,
           manufacturingCostSnapshot: item.manufacturingCostSnapshot ?? Prisma.JsonNull,
+          saleSnapshot: item.saleSnapshot ?? Prisma.JsonNull,
         }));
 
       const order = await tx.order.create({
