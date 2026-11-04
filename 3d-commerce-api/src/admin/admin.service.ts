@@ -302,6 +302,43 @@ export class AdminService {
     });
   }
 
+  async sizeManufacturingRules() {
+    return this.prisma.sizeManufacturingRule.findMany({ orderBy: { sizeKey: 'asc' } });
+  }
+
+  async upsertSizeManufacturingRule(input: {
+    sizeKey: string;
+    electricityCostMinor: number;
+    machineCostMinor: number;
+    labourCostMinor: number;
+    finishingCostMinor: number;
+    platformCostMinor: number;
+    packagingCostMinor: number;
+  }) {
+    const sizeKey = normalizePricingSize(input.sizeKey);
+    if (!sizeKey) throw new BadRequestException('A valid size is required');
+    const values = [
+      input.electricityCostMinor, input.machineCostMinor, input.labourCostMinor,
+      input.finishingCostMinor, input.platformCostMinor, input.packagingCostMinor,
+    ];
+    if (values.some((value) => !Number.isSafeInteger(value) || value < 0)) {
+      throw new BadRequestException('Size manufacturing costs must be non-negative integer values');
+    }
+    return this.prisma.$transaction(async (tx) => {
+      const rule = await tx.sizeManufacturingRule.upsert({
+        where: { sizeKey },
+        create: { sizeKey, ...input },
+        update: input,
+      });
+      const products = await tx.product.findMany({
+        where: { status: { not: 'ARCHIVED' }, material: { not: null } },
+        select: { id: true },
+      });
+      for (const product of products) await this.recalculateProductPrices(tx, product.id);
+      return rule;
+    });
+  }
+
   async productCostRules(productId?: string) {
     return this.prisma.productCostRule.findMany({
       where: productId ? { productId } : undefined,
