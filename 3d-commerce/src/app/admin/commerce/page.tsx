@@ -9,6 +9,7 @@ type MaterialRule = {id:string;material:string;sizeKey:string;currency:string;ra
 type Product = {id:string;name:string;material?:string|null;variants:Array<{id:string;name:string;size?:string|null}>};
 type ProductCostRule = {id:string;productId:string;sizeKey:string;labourCostMinor:number|null;paintingCostMinor:number;finishingCostMinor:number;machineSetupCostMinor:number;packagingCostMinor:number|null;product?:{name:string}};
 type ManufacturingRates = {electricityRatePerKwhMinor:number;machineHourlyCostMinor:number;generalOverheadBps:number;profitMarginBps:number;defaultLabourCostMinor:number;standardPackagingCostMinor:number};
+type SaleCampaign = {enabled:boolean;priceIncreaseBps:number;discountBps:number;startsAt:string|null;endsAt:string|null};
 
 const money = (minor:number|null|undefined) => minor == null ? "Use global default" : "₹" + (minor/100).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2});
 const toMinor = (value:string) => value.trim()==="" ? null : Math.round(Number(value)*100);
@@ -20,6 +21,8 @@ export default function AdminCommerceRulesPage() {
   const [products,setProducts]=useState<Product[]>([]);
   const [productCostRules,setProductCostRules]=useState<ProductCostRule[]>([]);
   const [rates,setRates]=useState<ManufacturingRates>({electricityRatePerKwhMinor:0,machineHourlyCostMinor:0,generalOverheadBps:0,profitMarginBps:0,defaultLabourCostMinor:0,standardPackagingCostMinor:0});
+  const [saleCampaign,setSaleCampaign]=useState<SaleCampaign>({enabled:false,priceIncreaseBps:2000,discountBps:2000,startsAt:null,endsAt:null});
+  const [saleForm,setSaleForm]=useState({priceIncreasePercent:"20",discountPercent:"20",startsAt:"",endsAt:""});
   const [materialRule,setMaterialRule]=useState({material:"",sizeKey:"small",rawMaterialCost:"",wastagePercent:"",electricityKwh:"",machineHours:""});
   const [productCost,setProductCost]=useState({productId:"",sizeKey:"small",labour:"",painting:"0",finishing:"0",machineSetup:"0",packaging:""});
   const [globalForm,setGlobalForm]=useState({electricityRatePerKwh:"0",machineHourlyCost:"0",generalOverheadPercent:"0",profitMarginPercent:"0",defaultLabourCost:"0",standardPackagingCost:"0"});
@@ -32,18 +35,26 @@ export default function AdminCommerceRulesPage() {
   async function load(){
     setLoading(true);
     try{
-      const [p,t,m,c,pc,g]=await Promise.all([
+      const [p,t,m,c,pc,g,sc]=await Promise.all([
         fetch("/api/admin/promotions",{cache:"no-store"}),
         fetch("/api/admin/tax-rules",{cache:"no-store"}),
         fetch("/api/admin/material-pricing",{cache:"no-store"}),
         fetch("/api/admin/catalog",{cache:"no-store"}),
         fetch("/api/admin/product-costs",{cache:"no-store"}),
         fetch("/api/admin/manufacturing-rates",{cache:"no-store"}),
+        fetch("/api/admin/sale-campaign",{cache:"no-store"}),
       ]);
-      if(!p.ok||!t.ok||!m.ok||!c.ok||!pc.ok||!g.ok) throw new Error();
-      const [promos,taxes,materials,catalog,costs,global]=await Promise.all([p.json(),t.json(),m.json(),c.json(),pc.json(),g.json()]);
+      if(!p.ok||!t.ok||!m.ok||!c.ok||!pc.ok||!g.ok||!sc.ok) throw new Error();
+      const [promos,taxes,materials,catalog,costs,global,sale]=await Promise.all([p.json(),t.json(),m.json(),c.json(),pc.json(),g.json(),sc.json()]);
       setPromotions(promos);setTaxRules(taxes);setMaterialRules(materials);setProducts(catalog.products||[]);setProductCostRules(costs);
       setRates(global);
+      setSaleCampaign(sale);
+      setSaleForm({
+        priceIncreasePercent:(sale.priceIncreaseBps/100).toString(),
+        discountPercent:(sale.discountBps/100).toString(),
+        startsAt:sale.startsAt ? new Date(sale.startsAt).toISOString().slice(0,16) : "",
+        endsAt:sale.endsAt ? new Date(sale.endsAt).toISOString().slice(0,16) : "",
+      });
       setGlobalForm({
         electricityRatePerKwh:(global.electricityRatePerKwhMinor/100).toString(),
         machineHourlyCost:(global.machineHourlyCostMinor/100).toString(),
@@ -97,6 +108,30 @@ export default function AdminCommerceRulesPage() {
       if(!response.ok){setMessage(data?.message||"Unable to save material pricing.");return;}
       setMaterialRule({...materialRule,rawMaterialCost:"",wastagePercent:"",electricityKwh:"",machineHours:""});
       await load();
+    }finally{setSaving(false);}
+  }
+
+  async function saveSaleCampaign(){
+    const increase=Number(saleForm.priceIncreasePercent);
+    const discount=Number(saleForm.discountPercent);
+    if(!Number.isFinite(increase)||!Number.isFinite(discount)||increase<0||increase>100||discount<0||discount>100){
+      setMessage("Sale price increase and discount must each be between 0% and 100%.");return;
+    }
+    if(saleForm.startsAt&&saleForm.endsAt&&new Date(saleForm.endsAt)<=new Date(saleForm.startsAt)){
+      setMessage("Sale end date must be after its start date.");return;
+    }
+    setSaving(true);
+    try{
+      const response=await fetch("/api/admin/sale-campaign",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+        enabled:saleCampaign.enabled,
+        priceIncreaseBps:Math.round(increase*100),
+        discountBps:Math.round(discount*100),
+        startsAt:saleForm.startsAt?new Date(saleForm.startsAt).toISOString():null,
+        endsAt:saleForm.endsAt?new Date(saleForm.endsAt).toISOString():null,
+      })});
+      const data=await response.json().catch(()=>null);
+      if(!response.ok){setMessage(data?.message||"Unable to save sale campaign.");return;}
+      setSaleCampaign(data);await load();setMessage("Sale campaign settings saved.");
     }finally{setSaving(false);}
   }
 
@@ -194,6 +229,34 @@ export default function AdminCommerceRulesPage() {
         </div>
         <button disabled={saving} type="button" onClick={()=>void saveGlobalRates()} className="mt-3 h-10 rounded-full bg-primary px-5 text-xs font-semibold text-white disabled:opacity-50">Save global rates & recalculate catalog</button>
         <p className="mt-2 text-[10px] text-muted">Current global defaults: electricity {money(rates.electricityRatePerKwhMinor)}/kWh · machine {money(rates.machineHourlyCostMinor)}/hour · overhead {(rates.generalOverheadBps/100).toFixed(2)}% · profit margin {(rates.profitMarginBps/100).toFixed(2)}%.</p>
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-border bg-surface p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div><p className="text-[9px] uppercase tracking-[0.16em] text-primary">Layer 04 · Storefront promotion</p><h2 className="mt-1 text-xl font-semibold">Sale campaign</h2><p className="mt-1 max-w-2xl text-xs leading-5 text-muted">Temporarily increase every active product's list price, then apply a sale discount. Manufacturing prices are never overwritten. Customers can still apply eligible coupon codes on top of the sale.</p></div>
+          <label className="flex items-center gap-2 rounded-full border border-border px-3 py-2 text-xs"><input type="checkbox" checked={saleCampaign.enabled} onChange={e=>setSaleCampaign({...saleCampaign,enabled:e.target.checked})}/> Enable sale</label>
+        </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <label className="text-[10px] text-muted">List price increase (%)
+            <input value={saleForm.priceIncreasePercent} onChange={e=>setSaleForm({...saleForm,priceIncreasePercent:e.target.value})} type="number" min="0" max="100" step="0.01" className={inputClass}/>
+          </label>
+          <label className="text-[10px] text-muted">Sale discount (%)
+            <input value={saleForm.discountPercent} onChange={e=>setSaleForm({...saleForm,discountPercent:e.target.value})} type="number" min="0" max="100" step="0.01" className={inputClass}/>
+          </label>
+          <label className="text-[10px] text-muted">Starts at (optional)
+            <input value={saleForm.startsAt} onChange={e=>setSaleForm({...saleForm,startsAt:e.target.value})} type="datetime-local" className={inputClass}/>
+          </label>
+          <label className="text-[10px] text-muted">Ends at (optional)
+            <input value={saleForm.endsAt} onChange={e=>setSaleForm({...saleForm,endsAt:e.target.value})} type="datetime-local" className={inputClass}/>
+          </label>
+        </div>
+        <div className="mt-4 rounded-xl border border-border p-3 text-xs">
+          <p className="font-medium">Price preview · ₹1,000 base price</p>
+          <p className="mt-1 text-muted">List price: ₹{(1000*(1+Math.max(0,Number(saleForm.priceIncreasePercent)||0)/100)).toLocaleString("en-IN",{maximumFractionDigits:2})} · After sale discount: ₹{(1000*(1+Math.max(0,Number(saleForm.priceIncreasePercent)||0)/100)*(1-Math.min(100,Math.max(0,Number(saleForm.discountPercent)||0))/100)).toLocaleString("en-IN",{maximumFractionDigits:2})}</p>
+          <p className="mt-1 text-[10px] text-muted">The campaign runs only when enabled and inside its optional date window. A coupon is then applied to the discounted sale subtotal.</p>
+        </div>
+        <button disabled={saving} type="button" onClick={()=>void saveSaleCampaign()} className="mt-3 h-10 rounded-full bg-primary px-5 text-xs font-semibold text-white disabled:opacity-50">Save sale campaign</button>
+        <p className="mt-2 text-[10px] text-muted">Current status: {saleCampaign.enabled?"Enabled (date window still applies)":"Disabled"} · {saleCampaign.priceIncreaseBps/100}% list increase · {saleCampaign.discountBps/100}% discount.</p>
       </section>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-2">
