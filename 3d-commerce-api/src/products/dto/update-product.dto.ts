@@ -61,6 +61,10 @@ export class UpdateProductDto {
 
   @IsOptional()
   @IsBoolean()
+  ordersEnabled?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
   isFeatured?: boolean;
 
   @IsOptional()
