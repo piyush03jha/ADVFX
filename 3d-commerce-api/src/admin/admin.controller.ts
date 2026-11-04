@@ -19,6 +19,18 @@ export class AdminController {
     return this.adminService.updateSettings(body);
   }
 
+  @Get('sale-campaign')
+  saleCampaign() { return this.adminService.saleCampaign(); }
+
+  @Post('sale-campaign')
+  updateSaleCampaign(@Body() body: {
+    enabled?: boolean;
+    priceIncreaseBps?: number;
+    discountBps?: number;
+    startsAt?: string | null;
+    endsAt?: string | null;
+  }) { return this.adminService.updateSaleCampaign(body); }
+
   @Get('promotions')
   promotions() { return this.adminService.promotions(); }
 
