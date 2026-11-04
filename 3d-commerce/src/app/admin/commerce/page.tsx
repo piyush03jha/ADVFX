@@ -28,7 +28,7 @@ export default function AdminCommerceRulesPage() {
   const [saleForm,setSaleForm]=useState({priceIncreasePercent:"20",discountPercent:"20",startsAt:"",endsAt:""});
   const [materialRule,setMaterialRule]=useState({material:"",sizeKey:"all",pricePerKg:"",rawMaterialCost:"",wastagePercent:"",electricityKwh:"",machineHours:""});
   const [productCost,setProductCost]=useState({productId:"",sizeKey:"small",labour:"",painting:"0",finishing:"0",machineSetup:"0",packaging:""});
-  const [globalForm,setGlobalForm]=useState({electricityRatePerKwh:"0",machineHourlyCost:"0",generalOverheadPercent:"0",profitMarginPercent:"0",defaultLabourCost:"0",standardPackagingCost:"0"});
+  const [globalForm,setGlobalForm]=useState({generalOverheadPercent:"",profitMarginPercent:""});
   const [promo,setPromo]=useState({name:"",code:"",type:"PERCENTAGE",value:"",minSubtotalMinor:"",maxDiscountMinor:"",usageLimit:""});
   const [tax,setTax]=useState({name:"",countryCode:"IN",stateCode:"",rate:"",priority:"0",applyToShipping:false});
   const [message,setMessage]=useState("");
@@ -60,12 +60,8 @@ export default function AdminCommerceRulesPage() {
         endsAt:sale.endsAt ? new Date(new Date(sale.endsAt).getTime()-new Date(sale.endsAt).getTimezoneOffset()*60000).toISOString().slice(0,16) : "",
       });
       setGlobalForm({
-        electricityRatePerKwh:(global.electricityRatePerKwhMinor/100).toString(),
-        machineHourlyCost:(global.machineHourlyCostMinor/100).toString(),
-        generalOverheadPercent:(global.generalOverheadBps/100).toString(),
-        profitMarginPercent:(global.profitMarginBps/100).toString(),
-        defaultLabourCost:(global.defaultLabourCostMinor/100).toString(),
-        standardPackagingCost:(global.standardPackagingCostMinor/100).toString(),
+        generalOverheadPercent:global.generalOverheadBps ? (global.generalOverheadBps/100).toString() : "",
+        profitMarginPercent:global.profitMarginBps ? (global.profitMarginBps/100).toString() : "",
       });
       setMessage("");
     }catch{setMessage("Unable to load commerce and manufacturing pricing settings.");}
@@ -158,12 +154,14 @@ export default function AdminCommerceRulesPage() {
     setSaving(true);
     try{
       const payload={
-        electricityRatePerKwhMinor:toMinor(globalForm.electricityRatePerKwh)??0,
-        machineHourlyCostMinor:toMinor(globalForm.machineHourlyCost)??0,
+        // Keep legacy defaults unchanged; fixed electricity, machine, labour and packaging
+        // costs are configured per size in Layer 02.
+        electricityRatePerKwhMinor:rates.electricityRatePerKwhMinor,
+        machineHourlyCostMinor:rates.machineHourlyCostMinor,
         generalOverheadBps:Math.round(Number(globalForm.generalOverheadPercent||0)*100),
         profitMarginBps:Math.round(Number(globalForm.profitMarginPercent||0)*100),
-        defaultLabourCostMinor:toMinor(globalForm.defaultLabourCost)??0,
-        standardPackagingCostMinor:toMinor(globalForm.standardPackagingCost)??0,
+        defaultLabourCostMinor:rates.defaultLabourCostMinor,
+        standardPackagingCostMinor:rates.standardPackagingCostMinor,
       };
       const response=await fetch("/api/admin/manufacturing-rates",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
       const data=await response.json().catch(()=>null);
@@ -253,17 +251,13 @@ export default function AdminCommerceRulesPage() {
       </section>
 
       <section className="mt-8 rounded-3xl border border-border bg-surface p-6 sm:p-7">
-        <p className="text-[9px] uppercase tracking-[0.16em] text-primary">Layer 04 · Shared rates</p><h2 className="mt-1 text-xl font-semibold">Global manufacturing pricing</h2><p className="mt-2 text-sm leading-6 text-muted">Overhead and gross profit margin apply globally. Electricity, machine, labour, finishing, platform and packaging use the fixed size costs above; these legacy global rates remain fallbacks where a size-specific cost is not configured.</p>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <input value={globalForm.electricityRatePerKwh} onChange={e=>setGlobalForm({...globalForm,electricityRatePerKwh:e.target.value})} type="number" min="0" step="0.01" placeholder="Electricity rate per kWh (₹)" className={inputClass}/>
-          <input value={globalForm.machineHourlyCost} onChange={e=>setGlobalForm({...globalForm,machineHourlyCost:e.target.value})} type="number" min="0" step="0.01" placeholder="Machine hourly cost (₹)" className={inputClass}/>
-          <input value={globalForm.generalOverheadPercent} onChange={e=>setGlobalForm({...globalForm,generalOverheadPercent:e.target.value})} type="number" min="0" max="100" step="0.01" placeholder="General overhead (%)" className={inputClass}/>
-          <input value={globalForm.profitMarginPercent} onChange={e=>setGlobalForm({...globalForm,profitMarginPercent:e.target.value})} type="number" min="0" max="80" step="0.01" placeholder="Target profit margin (%)" className={inputClass}/>
-          <input value={globalForm.defaultLabourCost} onChange={e=>setGlobalForm({...globalForm,defaultLabourCost:e.target.value})} type="number" min="0" step="0.01" placeholder="Default labour cost per unit (₹)" className={inputClass}/>
-          <input value={globalForm.standardPackagingCost} onChange={e=>setGlobalForm({...globalForm,standardPackagingCost:e.target.value})} type="number" min="0" step="0.01" placeholder="Standard packaging cost (₹)" className={inputClass}/>
+        <p className="text-[9px] uppercase tracking-[0.16em] text-primary">Layer 04 · Shared rates</p><h2 className="mt-1 text-xl font-semibold">Global manufacturing pricing</h2><p className="mt-2 text-sm leading-6 text-muted">Only values that apply across every product are configured here. Electricity, machine, labour, finishing, platform and packaging are managed by size in Layer 02.</p>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <input value={globalForm.generalOverheadPercent} onChange={e=>setGlobalForm({...globalForm,generalOverheadPercent:e.target.value})} type="number" min="0" max="100" step="0.01" placeholder="General overhead percentage · e.g. 12" className={inputClass}/>
+          <input value={globalForm.profitMarginPercent} onChange={e=>setGlobalForm({...globalForm,profitMarginPercent:e.target.value})} type="number" min="0" max="80" step="0.01" placeholder="Gross profit margin percentage · e.g. 30" className={inputClass}/>
         </div>
         <button disabled={saving} type="button" onClick={()=>void saveGlobalRates()} className="mt-4 min-h-11 rounded-full bg-primary px-5 text-xs font-semibold text-white disabled:opacity-50">Save global rates & recalculate catalog</button>
-        <p className="mt-3 text-[11px] leading-5 text-muted">Current global defaults: electricity {money(rates.electricityRatePerKwhMinor)}/kWh · machine {money(rates.machineHourlyCostMinor)}/hour · overhead {(rates.generalOverheadBps/100).toFixed(2)}% · profit margin {(rates.profitMarginBps/100).toFixed(2)}%.</p>
+        <p className="mt-3 text-[11px] leading-5 text-muted">Current global defaults: overhead {(rates.generalOverheadBps/100).toFixed(2)}% · profit margin {(rates.profitMarginBps/100).toFixed(2)}%.</p>
       </section>
 
       <section className="mt-8 rounded-3xl border border-border bg-surface p-6 sm:p-7">
