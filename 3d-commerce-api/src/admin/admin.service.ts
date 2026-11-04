@@ -348,8 +348,23 @@ export class AdminService {
     return this.prisma.$transaction(async (tx) => {
       const rule = await tx.sizeManufacturingRule.upsert({
         where: { sizeKey },
-        create: { sizeKey, ...input },
-        update: input,
+        create: {
+          sizeKey,
+          electricityCostMinor: input.electricityCostMinor,
+          machineCostMinor: input.machineCostMinor,
+          labourCostMinor: input.labourCostMinor,
+          finishingCostMinor: input.finishingCostMinor,
+          platformCostMinor: input.platformCostMinor,
+          packagingCostMinor: input.packagingCostMinor,
+        },
+        update: {
+          electricityCostMinor: input.electricityCostMinor,
+          machineCostMinor: input.machineCostMinor,
+          labourCostMinor: input.labourCostMinor,
+          finishingCostMinor: input.finishingCostMinor,
+          platformCostMinor: input.platformCostMinor,
+          packagingCostMinor: input.packagingCostMinor,
+        },
       });
       const products = await tx.product.findMany({
         where: { status: { not: 'ARCHIVED' }, material: { not: null } },
