@@ -53,6 +53,7 @@ describe('PricingService', () => {
             id: 'p1',
             name: 'Model',
             status: 'ACTIVE',
+            category: { gstRateBps: 1800 },
             weight: '1kg',
             inventory: { stock: 5, reserved: 1, trackStock: true, allowBackorder: false },
             prices: [{ amountMinor: 10000, currency: 'INR' }],
@@ -86,8 +87,8 @@ describe('PricingService', () => {
 
     expect(result.summary.discountMinor).toBe(1000);
     expect(result.summary.shippingMinor).toBe(150);
-    expect(result.summary.taxMinor).toBe(1647);
-    expect(result.summary.totalMinor).toBe(10797);
+    expect(result.summary.taxMinor).toBe(1373);
+    expect(result.summary.totalMinor).toBe(9200);
   });
 
   it('clamps percentage discount to the configured maximum', async () => {
