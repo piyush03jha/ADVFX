@@ -80,7 +80,7 @@ export function ShopProductCard({ product, priority = false }: ShopProductCardPr
     setBuying(true);
     setCartError(false);
 
-    const selectedVariant = product.variants?.find((variant) => (variant.price ?? 0) > 0
+    const selectedVariant = product.variants?.find((variant) => (variant.price ?? 0) > 0)
       ?? product.variants?.[0]
       ?? null;
     const selectedPrice = selectedVariant?.price ?? product.price;
