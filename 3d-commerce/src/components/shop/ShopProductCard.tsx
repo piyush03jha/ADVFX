@@ -80,28 +80,36 @@ export function ShopProductCard({ product, priority = false }: ShopProductCardPr
     setBuying(true);
     setCartError(false);
 
+    const selectedVariant = product.variants?.find((variant) => variant.price > 0)
+      ?? product.variants?.[0]
+      ?? null;
+    const selectedPrice = selectedVariant?.price ?? product.price;
+    const selectedOldPrice = selectedVariant?.oldPrice ?? product.oldPrice;
+    const variantId = selectedVariant?.id ?? null;
+    const selectedSize = selectedVariant?.size ?? selectedVariant?.name ?? "Standard";
+
     window.localStorage.setItem(
       "forma-buy-now",
       JSON.stringify({
-        key: product.id + ":base",
+        key: product.id + ":" + (variantId ?? "base"),
         product: {
           id: product.id,
           name: product.name,
           category: product.category,
-          price: product.price,
+          price: selectedPrice,
           currency: product.currency,
           image: product.image,
-          oldPrice: product.oldPrice,
+          oldPrice: selectedOldPrice,
           rating: product.rating,
           reviewCount: product.reviewCount,
           badge: product.badge,
           discount: product.discount,
           model: product.model,
         },
-        variantId: null,
-        variantName: null,
-        variantSize: null,
-        size: "Standard",
+        variantId,
+        variantName: selectedVariant?.name ?? null,
+        variantSize: selectedVariant?.size ?? null,
+        size: selectedSize,
         quantity: 1,
       }),
     );
