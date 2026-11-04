@@ -209,6 +209,7 @@ model Category {
   imageUrl    String?
   sortOrder   Int     @default(0)
   isActive    Boolean @default(true)
+  ordersEnabled Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -278,6 +279,7 @@ model Product {
   category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
   status ProductStatus @default(DRAFT)
+  ordersEnabled Boolean @default(true)
 
   isFeatured   Boolean @default(false)
   isTrending   Boolean @default(false)
@@ -644,7 +646,7 @@ model ProductVariant {
   stock          Int     @default(0)
   reserved       Int     @default(0)
   lowStockAt     Int     @default(5)
-  trackStock     Boolean @default(true)
+  trackStock     Boolean @default(false)
   allowBackorder Boolean @default(false)
 
   cartItems  CartItem[]
