@@ -97,7 +97,7 @@ export async function calculateManufacturingPrice(
   );
   const labourCostMinor = productRule?.labourCostMinor ?? sizeRule?.labourCostMinor ?? globalRate?.defaultLabourCostMinor ?? 0;
   const paintingCostMinor = productRule?.paintingCostMinor ?? 0;
-  const finishingCostMinor = productRule?.finishingCostMinor ?? sizeRule?.finishingCostMinor ?? 0;
+  const finishingCostMinor = sizeRule?.finishingCostMinor ?? productRule?.finishingCostMinor ?? 0;
   const machineSetupCostMinor = productRule?.machineSetupCostMinor ?? 0;
   const platformCostMinor = sizeRule?.platformCostMinor ?? 0;
   const packagingCostMinor = productRule?.packagingCostMinor ?? sizeRule?.packagingCostMinor ?? globalRate?.standardPackagingCostMinor ?? 0;
