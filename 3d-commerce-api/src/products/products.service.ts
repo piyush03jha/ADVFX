@@ -142,6 +142,7 @@ export class ProductsService {
           ...(name !== undefined ? { name } : {}),
           ...(input.size !== undefined ? { size } : {}),
           ...(input.sku !== undefined ? { sku } : {}),
+          ...(input.weightGrams !== undefined ? { weightGrams: input.weightGrams } : {}),
           ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
           ...(input.stock !== undefined ? { stock: input.stock } : {}),
           ...(input.lowStockAt !== undefined ? { lowStockAt: input.lowStockAt } : {}),
