@@ -924,6 +924,16 @@ export class ProductsService {
       await tx.product.update({ where: { id }, data: productData });
 
       const nextMaterial = dto.material?.trim();
+      if (dto.material !== undefined && !nextMaterial) {
+        await tx.productVariant.updateMany({
+          where: { productId: id },
+          data: { price: undefined },
+        }).catch(() => undefined);
+        await tx.productVariantPrice.updateMany({
+          where: { variant: { productId: id } },
+          data: { isActive: false },
+        });
+      }
       if (nextMaterial && nextMaterial.toLowerCase() !== (current.material ?? '').trim().toLowerCase()) {
         const variants = await tx.productVariant.findMany({
           where: { productId: id, isActive: true },
