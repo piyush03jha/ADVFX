@@ -249,25 +249,31 @@ export class AdminService {
     }
 
     return this.prisma.$transaction(async (tx) => {
-      const rule = await tx.materialPricingRule.upsert({
-        where: { material_sizeKey: { material, sizeKey } },
-        create: {
-          material, sizeKey, currency, amountMinor: 0,
-          rawMaterialCostMinor: input.rawMaterialCostMinor,
-          wastageRateBps: input.wastageRateBps,
-          electricityKwhMilli: input.electricityKwhMilli,
-          machineHoursMilli: input.machineHoursMilli,
-          isActive: input.isActive ?? true,
-        },
-        update: {
-          currency,
-          rawMaterialCostMinor: input.rawMaterialCostMinor,
-          wastageRateBps: input.wastageRateBps,
-          electricityKwhMilli: input.electricityKwhMilli,
-          machineHoursMilli: input.machineHoursMilli,
-          isActive: input.isActive ?? true,
-        },
+      const existingRule = await tx.materialPricingRule.findFirst({
+        where: { material: { equals: material, mode: 'insensitive' }, sizeKey },
       });
+      const rule = existingRule
+        ? await tx.materialPricingRule.update({
+            where: { id: existingRule.id },
+            data: {
+              currency,
+              rawMaterialCostMinor: input.rawMaterialCostMinor,
+              wastageRateBps: input.wastageRateBps,
+              electricityKwhMilli: input.electricityKwhMilli,
+              machineHoursMilli: input.machineHoursMilli,
+              isActive: input.isActive ?? true,
+            },
+          })
+        : await tx.materialPricingRule.create({
+            data: {
+              material, sizeKey, currency, amountMinor: 0,
+              rawMaterialCostMinor: input.rawMaterialCostMinor,
+              wastageRateBps: input.wastageRateBps,
+              electricityKwhMilli: input.electricityKwhMilli,
+              machineHoursMilli: input.machineHoursMilli,
+              isActive: input.isActive ?? true,
+            },
+          });
       const products = await tx.product.findMany({
         where: { material: { equals: material, mode: 'insensitive' }, status: { not: 'ARCHIVED' } },
         select: { id: true },
