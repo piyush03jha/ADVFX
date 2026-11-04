@@ -111,6 +111,7 @@ export class ProductsService {
       price?: number;
       compareAtPrice?: number | null;
       isActive?: boolean;
+      weightGrams?: number | null;
       stock?: number;
       lowStockAt?: number;
       trackStock?: boolean;
@@ -159,6 +160,7 @@ export class ProductsService {
             material: product.material,
             size: updated.size,
             variantName: updated.name,
+            weightGrams: updated.weightGrams,
           });
           await tx.productVariantPrice.update({
             where: { variantId },
@@ -206,6 +208,7 @@ export class ProductsService {
           productId,
           name,
           size: input.size?.trim() || null,
+          weightGrams: input.weightGrams ?? null,
           sku: input.sku?.trim() || null,
           stock: input.stock ?? 0,
           reserved: 0,
@@ -221,6 +224,7 @@ export class ProductsService {
           material: product.material,
           size: variant.size,
           variantName: variant.name,
+          weightGrams: variant.weightGrams,
         });
         await tx.productVariantPrice.update({
           where: { variantId: variant.id },
