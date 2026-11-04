@@ -81,6 +81,7 @@ export interface CatalogProduct {
   packaging?: string | null;
   weight?: string | null;
   prices: CatalogPrice[];
+  saleCampaign?: { enabled: boolean; active: boolean; priceIncreaseBps: number; discountBps: number; startsAt?: string | null; endsAt?: string | null };
   variants?: CatalogVariant[];
   media: CatalogMedia[];
   /** Legacy API fields used by older product records. */
@@ -128,6 +129,8 @@ export interface StorefrontProduct {
   price: number;
   currency: string;
   oldPrice?: number;
+  saleActive?: boolean;
+  saleDiscountPercent?: number;
   rating: number;
   reviewCount: number;
   image: string;
@@ -165,10 +168,18 @@ export interface StorefrontProduct {
   };
 }
 
-function mapVariant(variant: CatalogVariant): StorefrontVariant | null {
+function mapVariant(variant: CatalogVariant, saleCampaign?: CatalogProduct["saleCampaign"]): StorefrontVariant | null {
   if (!variant.isActive) return null;
 
   const price = variant.price?.isActive ? variant.price : null;
+
+  const saleActive = saleCampaign?.active === true;
+  const saleListMinor = saleActive
+    ? Math.round(price.amountMinor * (10000 + Math.max(0, saleCampaign!.priceIncreaseBps)) / 10000)
+    : price.amountMinor;
+  const saleAmountMinor = saleActive
+    ? Math.round(saleListMinor * (10000 - Math.max(0, saleCampaign!.discountBps)) / 10000)
+    : price.amountMinor;
 
   return {
     id: variant.id,
@@ -180,9 +191,10 @@ function mapVariant(variant: CatalogVariant): StorefrontVariant | null {
     lowStockAt: variant.lowStockAt ?? 5,
     trackStock: variant.trackStock ?? false,
     allowBackorder: variant.allowBackorder ?? false,
-    price: price ? price.amountMinor / 100 : undefined,
-    oldPrice:
-      price?.compareAtMinor != null
+    price: saleAmountMinor / 100,
+    oldPrice: saleActive
+      ? saleListMinor / 100
+      : price?.compareAtMinor != null
         ? price.compareAtMinor / 100
         : undefined,
   };
@@ -287,6 +299,13 @@ function primaryModel(product: CatalogProduct): string {
 
 export function mapCatalogProduct(product: CatalogProduct): StorefrontProduct {
   const price = activePrice(product);
+  const saleActive = product.saleCampaign?.active === true;
+  const saleListMinor = price && saleActive
+    ? Math.round(price.amountMinor * (10000 + Math.max(0, product.saleCampaign!.priceIncreaseBps)) / 10000)
+    : price?.amountMinor ?? 0;
+  const saleAmountMinor = saleActive
+    ? Math.round(saleListMinor * (10000 - Math.max(0, product.saleCampaign!.discountBps)) / 10000)
+    : price?.amountMinor ?? 0;
   const variantPrices = (product.variants ?? [])
     .filter((variant) => variant.isActive)
     .map((variant) => {
@@ -294,8 +313,12 @@ export function mapCatalogProduct(product: CatalogProduct): StorefrontProduct {
       if (!variantPrice?.isActive) return null;
 
       return {
-        amountMinor: variantPrice.amountMinor,
-        compareAtMinor: variantPrice.compareAtMinor ?? undefined,
+        amountMinor: saleActive
+          ? Math.round(Math.round(variantPrice.amountMinor * (10000 + Math.max(0, product.saleCampaign!.priceIncreaseBps)) / 10000) * (10000 - Math.max(0, product.saleCampaign!.discountBps)) / 10000)
+          : variantPrice.amountMinor,
+        compareAtMinor: saleActive
+          ? Math.round(variantPrice.amountMinor * (10000 + Math.max(0, product.saleCampaign!.priceIncreaseBps)) / 10000)
+          : variantPrice.compareAtMinor ?? undefined,
         currency: variantPrice.currency,
       };
     })
@@ -315,9 +338,10 @@ export function mapCatalogProduct(product: CatalogProduct): StorefrontProduct {
     .sort((a, b) => a.amountMinor - b.amountMinor)[0]
     ?? variantPrices.sort((a, b) => a.amountMinor - b.amountMinor)[0];
 
-  const amount = lowestVariantPrice?.amountMinor ?? price?.amountMinor ?? 0;
-  const compareAt =
-    lowestVariantPrice?.compareAtMinor ?? price?.compareAtMinor ?? undefined;
+  const amount = lowestVariantPrice?.amountMinor ?? saleAmountMinor;
+  const compareAt = saleActive
+    ? (lowestVariantPrice?.compareAtMinor ?? saleListMinor)
+    : lowestVariantPrice?.compareAtMinor ?? price?.compareAtMinor ?? undefined;
   const currency = lowestVariantPrice?.currency ?? price?.currency ?? "INR";
 
   return {
@@ -340,6 +364,8 @@ export function mapCatalogProduct(product: CatalogProduct): StorefrontProduct {
     price: amount / 100,
     currency,
     oldPrice: compareAt !== undefined ? compareAt / 100 : undefined,
+    saleActive,
+    saleDiscountPercent: saleActive ? product.saleCampaign!.discountBps / 100 : undefined,
     rating: product.rating ?? 0,
     reviewCount: product.reviewCount ?? 0,
     image: resolveMediaUrl(primaryImage(product)) ?? "/placeholder-product.webp",
@@ -372,7 +398,7 @@ export function mapCatalogProduct(product: CatalogProduct): StorefrontProduct {
       unitsSold: product.metrics?.unitsSold ?? 0,
     },
     variants: (product.variants ?? [])
-      .map(mapVariant)
+      .map((variant) => mapVariant(variant, product.saleCampaign))
       .filter(
         (variant): variant is StorefrontVariant => Boolean(variant),
       ),
