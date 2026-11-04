@@ -547,7 +547,20 @@ export class ProductsService {
 
     const saleCampaign = await this.storefrontSaleCampaign();
     return products
-      .map((product) => ({ ...this.toHeroProduct(product), saleCampaign }))
+      .map((product) => {
+        const hero = this.toHeroProduct(product);
+        if (!saleCampaign.active || !hero.price) return { ...hero, saleCampaign };
+        const baseMinor = Math.round(hero.price * 100);
+        const listMinor = Math.round(baseMinor * (10000 + saleCampaign.priceIncreaseBps) / 10000);
+        const saleMinor = Math.round(listMinor * (10000 - saleCampaign.discountBps) / 10000);
+        return {
+          ...hero,
+          price: saleMinor / 100,
+          oldPrice: listMinor / 100,
+          discount: saleCampaign.discountBps > 0 ? `${saleCampaign.discountBps / 100}% OFF` : undefined,
+          saleCampaign,
+        };
+      })
       .filter((product) => product.model);
   }
 
