@@ -28,11 +28,15 @@ export class CartService {
 
     const product = await this.prisma.product.findFirst({
       where: { id: productId, status: 'ACTIVE' },
-      include: { inventory: true },
+      include: { inventory: true, category: { include: { parent: { select: { ordersEnabled: true } } } } },
     });
 
     if (!product) {
       throw new NotFoundException('Product is not available');
+    }
+
+    if (!product.ordersEnabled || product.category?.ordersEnabled === false || product.category?.parent?.ordersEnabled === false) {
+      throw new BadRequestException('This product is temporarily unavailable for ordering.');
     }
 
     const inventory = variant ?? product.inventory;
@@ -73,10 +77,14 @@ export class CartService {
     const cart = await this.getOrCreate(userId);
     const item = await this.prisma.cartItem.findUnique({
       where: { cartId_productId_variantKey: { cartId: cart.id, productId, variantKey: variantId ?? '__base__' } },
-      include: { product: { include: { inventory: true } }, variant: { include: { price: true } } },
+      include: { product: { include: { inventory: true, category: { include: { parent: { select: { ordersEnabled: true } } } } } }, variant: { include: { price: true } } },
     });
 
     if (!item) throw new NotFoundException('Cart item not found');
+
+    if (!item.product.ordersEnabled || item.product.category?.ordersEnabled === false || item.product.category?.parent?.ordersEnabled === false) {
+      throw new BadRequestException('This product is temporarily unavailable for ordering.');
+    }
 
     const inventory = item.variant ?? item.product.inventory;
     if (
