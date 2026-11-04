@@ -4,6 +4,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  Max,
   Matches,
   MaxLength,
   Min,
@@ -41,6 +42,12 @@ export class CreateCategoryDto {
   @IsInt()
   @Min(0)
   sortOrder?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(10000)
+  gstRateBps?: number | null;
 
   @IsOptional()
   @IsBoolean()

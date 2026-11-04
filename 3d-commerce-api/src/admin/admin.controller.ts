@@ -19,6 +19,18 @@ export class AdminController {
     return this.adminService.updateSettings(body);
   }
 
+  @Get('sale-campaign')
+  saleCampaign() { return this.adminService.saleCampaign(); }
+
+  @Post('sale-campaign')
+  updateSaleCampaign(@Body() body: {
+    enabled?: boolean;
+    priceIncreaseBps?: number;
+    discountBps?: number;
+    startsAt?: string | null;
+    endsAt?: string | null;
+  }) { return this.adminService.updateSaleCampaign(body); }
+
   @Get('promotions')
   promotions() { return this.adminService.promotions(); }
 
@@ -73,6 +85,38 @@ export class AdminController {
   setCustomerActive(@Param('id') id: string, @Body('isActive') isActive: boolean) {
     return this.adminService.setCustomerActive(id, isActive);
   }
+
+  @Get('material-pricing')
+  materialPricingRules() { return this.adminService.materialPricingRules(); }
+
+  @Post('material-pricing')
+  upsertMaterialPricingRule(@Body() body: {
+    material: string; sizeKey: string; currency?: string;
+    rawMaterialCostMinor: number; wastageRateBps: number;
+    electricityKwhMilli: number; machineHoursMilli: number; isActive?: boolean;
+  }) {
+    return this.adminService.upsertMaterialPricingRule(body);
+  }
+
+  @Get('product-costs')
+  productCostRules(@Query('productId') productId?: string) { return this.adminService.productCostRules(productId); }
+
+  @Post('product-costs')
+  upsertProductCostRule(@Body() body: {
+    productId: string; sizeKey: string; labourCostMinor?: number | null;
+    paintingCostMinor?: number; finishingCostMinor?: number;
+    machineSetupCostMinor?: number; packagingCostMinor?: number | null;
+  }) { return this.adminService.upsertProductCostRule(body); }
+
+  @Get('manufacturing-rates')
+  manufacturingRates() { return this.adminService.manufacturingRates(); }
+
+  @Post('manufacturing-rates')
+  upsertManufacturingRates(@Body() body: {
+    electricityRatePerKwhMinor: number; machineHourlyCostMinor: number;
+    generalOverheadBps: number; profitMarginBps: number; defaultLabourCostMinor: number;
+    standardPackagingCostMinor: number;
+  }) { return this.adminService.upsertManufacturingRates(body); }
 
   @Get('catalog')
   catalog() { return this.adminService.catalog(); }

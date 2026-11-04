@@ -43,7 +43,7 @@ const nav = [
   { href: "/admin/seo", label: "Product SEO", icon: IconSearch },
   { href: "/admin/reviews", label: "Reviews", icon: IconMessageCircle },
   { href: "/admin/returns", label: "Returns", icon: IconRotate2 },
-  { href: "/admin/commerce", label: "Promotions & tax", icon: IconTags },
+  { href: "/admin/commerce", label: "Pricing, promotions & tax", icon: IconTags },
   { href: "/admin/3d-conversion", label: "3D Conversion", icon: IconBox },
   { href: "/admin/audit", label: "Audit log", icon: IconHistory },
   { href: "/admin/analytics", label: "Analytics", icon: IconChartBar },

@@ -131,7 +131,7 @@ export function CartItem({ item }: CartItemProps) {
         <div className="mt-2 flex items-center gap-2 text-[11px] text-muted">
           <span>Size: {getSizeLabel(item.size)}</span>
           <span className="h-1 w-1 rounded-full bg-muted/35" />
-          <span>₹{item.product.price.toLocaleString("en-IN")} each</span>
+          <span>₹{item.product.price.toLocaleString("en-IN")} each · GST incl.</span>
         </div>
 
         <div className="mt-5 flex flex-wrap items-center justify-between gap-4">

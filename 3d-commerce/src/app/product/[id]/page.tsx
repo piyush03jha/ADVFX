@@ -62,12 +62,12 @@ async function fetchRelatedProducts(product: CatalogProduct): Promise<CatalogPro
 const fetchProduct = cache(async (idOrSlug: string): Promise<CatalogProduct | null> => {
   const encoded = encodeURIComponent(idOrSlug);
   try {
-    const response = await fetch(getBackendApiUrl("products/slug/" + encoded), { next: { revalidate: 60 } });
+    const response = await fetch(getBackendApiUrl("products/slug/" + encoded), { next: { revalidate: 60, tags: ["catalog-products"] } });
     if (response.ok) return (await response.json()) as CatalogProduct;
   } catch {}
 
   try {
-    const response = await fetch(getBackendApiUrl("products/" + encoded), { next: { revalidate: 60 } });
+    const response = await fetch(getBackendApiUrl("products/" + encoded), { next: { revalidate: 60, tags: ["catalog-products"] } });
     if (!response.ok) return null;
     return (await response.json()) as CatalogProduct;
   } catch {

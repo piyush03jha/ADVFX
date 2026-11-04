@@ -62,13 +62,10 @@ export class CheckoutService {
             estimatedMaxDays: null,
           },
       promotion: quote.promotion,
-      tax: quote.taxRule
-        ? {
-            ruleId: quote.taxRule.id,
-            name: quote.taxRule.name,
-            rateBps: quote.taxRule.rateBps,
-          }
-        : null,
+      tax: {
+        included: true,
+        amountMinor: quote.summary.taxMinor,
+      },
       summary: quote.summary,
       payment: {
         required: true,

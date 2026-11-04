@@ -17,6 +17,7 @@ import { CreateProductReviewDto } from './dto/create-product-review.dto';
 import { StorageService } from '../storage/storage.service';
 import sharp from 'sharp';
 import { createHmac } from 'node:crypto';
+import { calculateManufacturingPrice } from '../pricing/manufacturing-pricing';
 
 export interface ShopListQuery {
   page: number;
@@ -38,6 +39,9 @@ export class ProductsService {
 
   async create(dto: CreateProductDto) {
     await this.ensureSlugAvailable(dto.slug);
+    if (dto.status === 'ACTIVE' && !dto.material?.trim()) {
+      throw new BadRequestException('Select a material before activating a product so its size prices can be calculated.');
+    }
 
     const { stock, lowStockAt, ...productData } = dto;
     const baseAmount = 0;
@@ -55,27 +59,38 @@ export class ProductsService {
         },
       });
 
-      // Every physical product starts with the standard three size options.
-      // Admin can change these names, dimensions and prices from the catalog.
+      // Every variant price is derived from material + size pricing,
+      // product-specific cost rules, and global manufacturing rates.
       for (const item of [
         { name: 'Small', size: '15 cm' },
         { name: 'Medium', size: '20 cm' },
         { name: 'Large', size: '25 cm' },
       ]) {
-        await tx.productVariant.create({
+        const variant = await tx.productVariant.create({
           data: {
             productId: product.id,
             name: item.name,
             size: item.size,
-            price: {
-              create: {
-                currency: 'INR',
-                amountMinor: baseAmount,
-                isActive: true,
-              },
-            },
+            price: { create: { amountMinor: baseAmount, currency: 'INR', isActive: !dto.material?.trim() } },
           },
         });
+        if (dto.material?.trim()) {
+          const calculated = await calculateManufacturingPrice(tx, {
+            productId: product.id,
+            material: dto.material,
+            size: item.size,
+            variantName: item.name,
+          });
+          await tx.productVariantPrice.update({
+            where: { variantId: variant.id },
+            data: {
+              amountMinor: calculated.amountMinor,
+              currency: calculated.currency,
+              costBreakdown: calculated.costBreakdown,
+              isActive: true,
+            },
+          });
+        }
       }
 
       return tx.product.findUniqueOrThrow({
@@ -115,8 +130,8 @@ export class ProductsService {
     const sku = input.sku?.trim() || null;
 
     if (name === '') throw new BadRequestException('Variant name is required');
-    if (input.price !== undefined && (!Number.isFinite(input.price) || input.price < 0)) {
-      throw new BadRequestException('Variant price must be a valid non-negative number');
+    if (input.price !== undefined || input.compareAtPrice !== undefined) {
+      throw new BadRequestException('Variant prices are calculated from manufacturing pricing rules. Update costs under Admin > Promotions & tax.');
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -134,38 +149,26 @@ export class ProductsService {
         },
       });
 
-      if (
-        input.price !== undefined ||
-        input.compareAtPrice !== undefined
-      ) {
-        const amountMinor = Math.round((input.price ?? ((variant.price?.amountMinor ?? 0) / 100)) * 100);
-        const compareAtMinor =
-          input.compareAtPrice === null
-            ? null
-            : input.compareAtPrice !== undefined
-              ? Math.round(input.compareAtPrice * 100)
-              : variant.price?.compareAtMinor ?? null;
-
-        if (compareAtMinor !== null && compareAtMinor < amountMinor) {
-          throw new ConflictException('Compare-at price cannot be lower than variant price');
+      if (updated.name !== variant.name || updated.size !== variant.size) {
+        const product = await tx.product.findUnique({ where: { id: productId }, select: { material: true } });
+        if (product?.material?.trim()) {
+          const calculated = await calculateManufacturingPrice(tx, {
+            productId,
+            material: product.material,
+            size: updated.size,
+            variantName: updated.name,
+          });
+          await tx.productVariantPrice.update({
+            where: { variantId },
+            data: {
+              currency: calculated.currency,
+              amountMinor: calculated.amountMinor,
+              compareAtMinor: null,
+              costBreakdown: calculated.costBreakdown,
+              isActive: true,
+            },
+          });
         }
-
-        await tx.productVariantPrice.upsert({
-          where: { variantId },
-          create: {
-            variantId,
-            currency: 'INR',
-            amountMinor,
-            compareAtMinor,
-            isActive: true,
-          },
-          update: {
-            amountMinor,
-            compareAtMinor,
-            currency: 'INR',
-            isActive: true,
-          },
-        });
       }
 
       return tx.productVariant.findUniqueOrThrow({
@@ -181,51 +184,53 @@ export class ProductsService {
       name: string;
       size?: string | null;
       sku?: string | null;
-      price?: number;
-      compareAtPrice?: number | null;
       stock?: number;
       lowStockAt?: number;
       trackStock?: boolean;
       allowBackorder?: boolean;
     },
   ) {
-    await this.ensureProductExists(productId);
-
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+      select: { id: true, material: true },
+    });
+    if (!product) throw new NotFoundException('Product not found');
     const name = input.name.trim();
     if (!name) throw new BadRequestException('Variant name is required');
-    if (input.price !== undefined && (!Number.isFinite(input.price) || input.price < 0)) {
-      throw new BadRequestException('Variant price must be a valid non-negative number');
-    }
 
-    const amountMinor = Math.round((input.price ?? 0) * 100);
-    const compareAtMinor =
-      input.compareAtPrice == null ? null : Math.round(input.compareAtPrice * 100);
-
-    if (compareAtMinor !== null && compareAtMinor < amountMinor) {
-      throw new ConflictException('Compare-at price cannot be lower than variant price');
-    }
-
-    return this.prisma.productVariant.create({
-      data: {
-        productId,
-        name,
-        size: input.size?.trim() || null,
-        sku: input.sku?.trim() || null,
-        stock: input.stock ?? 0,
-        reserved: 0,
-        lowStockAt: input.lowStockAt ?? 5,
-        trackStock: input.trackStock ?? true,
-        allowBackorder: input.allowBackorder ?? false,
-        price: {
-          create: {
-            currency: 'INR',
-            amountMinor,
-            compareAtMinor,
+    return this.prisma.$transaction(async (tx) => {
+      const variant = await tx.productVariant.create({
+        data: {
+          productId,
+          name,
+          size: input.size?.trim() || null,
+          sku: input.sku?.trim() || null,
+          stock: input.stock ?? 0,
+          reserved: 0,
+          lowStockAt: input.lowStockAt ?? 5,
+          trackStock: input.trackStock ?? true,
+          allowBackorder: input.allowBackorder ?? false,
+          price: { create: { currency: 'INR', amountMinor: 0, isActive: !product.material?.trim() } },
+        },
+      });
+      if (product.material?.trim()) {
+        const calculated = await calculateManufacturingPrice(tx, {
+          productId,
+          material: product.material,
+          size: variant.size,
+          variantName: variant.name,
+        });
+        await tx.productVariantPrice.update({
+          where: { variantId: variant.id },
+          data: {
+            currency: calculated.currency,
+            amountMinor: calculated.amountMinor,
+            costBreakdown: calculated.costBreakdown,
             isActive: true,
           },
-        },
-      },
-      include: { price: true },
+        });
+      }
+      return tx.productVariant.findUniqueOrThrow({ where: { id: variant.id }, include: { price: true } });
     });
   }
 
@@ -269,9 +274,11 @@ export class ProductsService {
 
     const bestsellerIds = new Set(bestsellerScores.map((item) => item.id));
     const ratings = await this.reviewAggregates(products.map((product) => product.id));
+    const saleCampaign = await this.storefrontSaleCampaign();
 
     return products.map((product) => ({
       ...product,
+      saleCampaign,
       isBestseller: bestsellerIds.has(product.id),
       rating: ratings.get(product.id)?.rating ?? 0,
       reviewCount: ratings.get(product.id)?.reviewCount ?? 0,
@@ -461,12 +468,14 @@ export class ProductsService {
         })
       : [];
 
+    const saleCampaign = await this.storefrontSaleCampaign();
     const byId = new Map(products.map((product) => [product.id, product]));
     const items = pageIds
       .map((id) => byId.get(id))
       .filter((product): product is NonNullable<typeof product> => Boolean(product))
       .map((product) => ({
         ...product,
+        saleCampaign,
         tags: [],
         isBestseller: false,
         rating: ratingMap.get(product.id)?.rating ?? 0,
@@ -536,8 +545,22 @@ export class ProductsService {
       take: await this.heroLimit(),
     });
 
+    const saleCampaign = await this.storefrontSaleCampaign();
     return products
-      .map((product) => this.toHeroProduct(product))
+      .map((product) => {
+        const hero = this.toHeroProduct(product);
+        if (!saleCampaign.active || !hero.price) return { ...hero, saleCampaign };
+        const baseMinor = Math.round(hero.price * 100);
+        const listMinor = Math.round(baseMinor * (10000 + saleCampaign.priceIncreaseBps) / 10000);
+        const saleMinor = Math.round(listMinor * (10000 - saleCampaign.discountBps) / 10000);
+        return {
+          ...hero,
+          price: saleMinor / 100,
+          oldPrice: listMinor / 100,
+          discount: saleCampaign.discountBps > 0 ? `${saleCampaign.discountBps / 100}% OFF` : undefined,
+          saleCampaign,
+        };
+      })
       .filter((product) => product.model);
   }
 
@@ -862,7 +885,7 @@ export class ProductsService {
     });
 
     if (!product) throw new NotFoundException(`Product "${id}" not found`);
-    return this.ensurePublicModelMedia(product);
+    return this.withStorefrontSaleCampaign(this.ensurePublicModelMedia(product));
   }
 
   async findBySlug(slug: string) {
@@ -872,7 +895,33 @@ export class ProductsService {
     });
 
     if (!product) throw new NotFoundException(`Product "${slug}" not found`);
-    return this.ensurePublicModelMedia(product);
+    return this.withStorefrontSaleCampaign(this.ensurePublicModelMedia(product));
+  }
+
+  private async storefrontSaleCampaign() {
+    const row = await this.prisma.siteSetting.findUnique({ where: { key: 'saleCampaign' } });
+    if (!row) return { enabled: false, priceIncreaseBps: 2000, discountBps: 2000, startsAt: null, endsAt: null, active: false };
+    try {
+      const value = JSON.parse(row.value) as { enabled?: boolean; priceIncreaseBps?: number; discountBps?: number; startsAt?: string | null; endsAt?: string | null };
+      const now = Date.now();
+      const active = value.enabled === true
+        && (!value.startsAt || new Date(value.startsAt).getTime() <= now)
+        && (!value.endsAt || new Date(value.endsAt).getTime() > now);
+      return {
+        enabled: value.enabled === true,
+        priceIncreaseBps: Number(value.priceIncreaseBps) || 0,
+        discountBps: Number(value.discountBps) || 0,
+        startsAt: value.startsAt ?? null,
+        endsAt: value.endsAt ?? null,
+        active,
+      };
+    } catch {
+      return { enabled: false, priceIncreaseBps: 2000, discountBps: 2000, startsAt: null, endsAt: null, active: false };
+    }
+  }
+
+  private async withStorefrontSaleCampaign(product: any) {
+    return { ...product, saleCampaign: await this.storefrontSaleCampaign() };
   }
 
   private ensurePublicModelMedia(product: any) {
@@ -915,7 +964,53 @@ export class ProductsService {
     const { stock, lowStockAt, ...productData } = dto;
 
     return this.prisma.$transaction(async (tx) => {
+      const current = await tx.product.findUniqueOrThrow({
+        where: { id },
+        select: { material: true, status: true },
+      });
+      if ((dto.status ?? current.status) === 'ACTIVE' && !(dto.material ?? current.material)?.trim()) {
+        throw new BadRequestException('An active product must have a material for manufacturing price calculation.');
+      }
       await tx.product.update({ where: { id }, data: productData });
+
+      const nextMaterial = dto.material?.trim();
+      if (dto.material !== undefined && !nextMaterial) {
+        await tx.productVariantPrice.updateMany({
+          where: { variant: { is: { productId: id } } },
+          data: { isActive: false },
+        });
+      }
+      if (nextMaterial && nextMaterial.toLowerCase() !== (current.material ?? '').trim().toLowerCase()) {
+        const variants = await tx.productVariant.findMany({
+          where: { productId: id, isActive: true },
+          select: { id: true, name: true, size: true },
+        });
+        for (const variant of variants) {
+          const calculated = await calculateManufacturingPrice(tx, {
+            productId: id,
+            material: nextMaterial,
+            size: variant.size,
+            variantName: variant.name,
+          });
+          await tx.productVariantPrice.upsert({
+            where: { variantId: variant.id },
+            create: {
+              variantId: variant.id,
+              currency: calculated.currency,
+              amountMinor: calculated.amountMinor,
+              costBreakdown: calculated.costBreakdown,
+              isActive: true,
+            },
+            update: {
+              currency: calculated.currency,
+              amountMinor: calculated.amountMinor,
+              compareAtMinor: null,
+              costBreakdown: calculated.costBreakdown,
+              isActive: true,
+            },
+          });
+        }
+      }
 
       if (stock !== undefined || lowStockAt !== undefined) {
         await tx.productInventory.upsert({

@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { ADMIN_COOKIE } from "@/app/api/auth/admin/login/route";
 import { getBackendApiUrl, backendFetch } from "@/lib/backend-api";
+import { revalidateProductCatalog } from "@/lib/revalidate-catalog";
 
 async function proxy(request:Request,context:{params:Promise<{id:string}>},method:"PATCH"|"DELETE"){
   const token=(await cookies()).get(ADMIN_COOKIE)?.value;
@@ -10,6 +11,7 @@ async function proxy(request:Request,context:{params:Promise<{id:string}>},metho
   try{
     const response=await backendFetch(getBackendApiUrl("categories/"+encodeURIComponent(id)),{method,headers:{Authorization:"Bearer "+token,...(method==="PATCH"?{"Content-Type":"application/json"}:{})},body:method==="PATCH"?await request.text():undefined,cache:"no-store"});
     const data=await response.json().catch(()=>null);
+    if (method === "PATCH" && response.ok) revalidateProductCatalog();
     return NextResponse.json(data??{error:"Category operation failed."},{status:response.status});
   }catch{return NextResponse.json({error:"Category service is unavailable."},{status:503});}
 }

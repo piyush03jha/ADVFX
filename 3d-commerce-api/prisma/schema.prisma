@@ -218,6 +218,7 @@ model Category {
   children Category[] @relation("CategoryHierarchy")
 
   products Product[]
+  gstRateBps Int?
 
   @@index([isActive, sortOrder])
   @@index([parentId, isActive, sortOrder])
@@ -294,6 +295,7 @@ model Product {
   inventory  ProductInventory?
   variants   ProductVariant[]
   prices     ProductPrice[]
+  costRules  ProductCostRule[]
   media      ProductMedia[]
   files      ProductFile[]
   tags       ProductTag[]
@@ -659,6 +661,54 @@ model ProductVariant {
  * PRODUCT VARIANT PRICE
  * ============================================================
  */
+model MaterialPricingRule {
+  id String @id @default(cuid())
+  material String
+  sizeKey String
+  currency String @default("INR")
+  // Legacy inclusive selling-price column retained during migration; new pricing uses the cost inputs below.
+  amountMinor Int @default(0)
+  rawMaterialCostMinor Int @default(0)
+  wastageRateBps Int @default(0)
+  electricityKwhMilli Int @default(0)
+  machineHoursMilli Int @default(0)
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([material, sizeKey])
+  @@index([material, isActive])
+}
+
+model ProductCostRule {
+  id String @id @default(cuid())
+  productId String
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sizeKey String
+  // Null uses the global default labour or packaging rate.
+  labourCostMinor Int?
+  paintingCostMinor Int @default(0)
+  finishingCostMinor Int @default(0)
+  machineSetupCostMinor Int @default(0)
+  packagingCostMinor Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([productId, sizeKey])
+  @@index([productId])
+}
+
+model ManufacturingRate {
+  id String @id @default("default")
+  electricityRatePerKwhMinor Int @default(0)
+  machineHourlyCostMinor Int @default(0)
+  generalOverheadBps Int @default(0)
+  profitMarginBps Int @default(0)
+  defaultLabourCostMinor Int @default(0)
+  standardPackagingCostMinor Int @default(0)
+  updatedAt DateTime @updatedAt
+}
+
 model ProductVariantCountryPrice {
   id          String         @id @default(cuid())
   variantId   String
@@ -684,6 +734,7 @@ model ProductVariantPrice {
   currency       String @default("INR")
   amountMinor    Int
   compareAtMinor Int?
+  costBreakdown  Json?
 
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
@@ -714,6 +765,7 @@ model Order {
   discountMinor Int @default(0)
   shippingMinor Int @default(0)
   taxMinor      Int @default(0)
+  roundingMinor Int @default(0)
   totalMinor    Int
 
   shippingRuleId String?
@@ -779,6 +831,12 @@ model OrderItem {
   quantity        Int
   unitPriceMinor  Int
   totalPriceMinor Int
+  materialSnapshot String?
+  sizeSnapshot String?
+  taxRateBps Int @default(0)
+  taxMinor Int @default(0)
+  manufacturingCostSnapshot Json?
+  saleSnapshot Json?
 
   createdAt DateTime @default(now())
 

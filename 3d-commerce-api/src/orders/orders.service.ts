@@ -245,6 +245,12 @@ export class OrdersService {
           quantity: item.quantity,
           unitPriceMinor: item.unitPriceMinor,
           totalPriceMinor: item.lineTotalMinor,
+          materialSnapshot: item.material ?? null,
+          sizeSnapshot: item.size ?? item.variantName ?? null,
+          taxRateBps: item.taxRateBps ?? 0,
+          taxMinor: item.taxMinor ?? 0,
+          manufacturingCostSnapshot: item.manufacturingCostSnapshot ?? Prisma.JsonNull,
+          saleSnapshot: item.saleSnapshot ?? Prisma.JsonNull,
         }));
 
       const order = await tx.order.create({
@@ -259,6 +265,7 @@ export class OrdersService {
           discountMinor: quote.summary.discountMinor,
           shippingMinor: quote.summary.shippingMinor,
           taxMinor: quote.summary.taxMinor,
+          roundingMinor: quote.summary.roundingMinor ?? 0,
           totalMinor: quote.summary.totalMinor,
           shippingRule: quote.shippingRule
             ? { connect: { id: quote.shippingRule.id } }

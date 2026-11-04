@@ -13,7 +13,7 @@ type ProductFile={id:string;originalName:string;storageUrl:string;format:string;
 type Category={id:string;name:string;slug:string;parentId?:string|null;parent?:{id:string;name:string;slug:string}|null};
 
 export default function AdminProducts(){
-  const [data,setData]=useState<{products:Product[];categories:Category[]}>({products:[],categories:[]});
+  const [data,setData]=useState<{products:Product[];categories:Category[];materialPricingRules:Array<{material:string;sizeKey:string;amountMinor:number;currency:string}>}>({products:[],categories:[],materialPricingRules:[]});
   const [search,setSearch]=useState(""); const [mainCategoryFilter,setMainCategoryFilter]=useState("all"); const [subcategoryFilter,setSubcategoryFilter]=useState("all"); const [loading,setLoading]=useState(true); const [saving,setSaving]=useState(false); const [message,setMessage]=useState("");
   const [form,setForm]=useState({name:"",slug:"",description:"",categoryId:"",parentCategoryId:"",status:"ACTIVE",stock:"0",isFeatured:false,material:"",scale:"",dimensions:"",height:"",base:"",packaging:"",weight:""});
   const [editParentCategoryId,setEditParentCategoryId]=useState("");
@@ -27,7 +27,6 @@ export default function AdminProducts(){
   const [editingProduct,setEditingProduct]=useState<string|null>(null);
   const [uploadProgress,setUploadProgress]=useState<Record<string,number>>({});
   const [editForm,setEditForm]=useState<Record<string,string|boolean>>({});
-  const [createVariantPrices,setCreateVariantPrices]=useState({small:"",medium:"",large:""});
   const [createVariantStock,setCreateVariantStock]=useState({small:"",medium:"",large:""});
 
   async function load(){setLoading(true);try{const r=await fetch("/api/admin/catalog",{cache:"no-store"});if(!r.ok)throw new Error();setData(await r.json());setMessage("")}catch{setMessage("Unable to load catalog.")}finally{setLoading(false)}}
@@ -89,7 +88,7 @@ export default function AdminProducts(){
       const r=await fetch("/api/products/"+productId+"/variants/"+variantId,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
       const d=await r.json().catch(()=>null);
       if(!r.ok)throw new Error(d?.message||"Unable to update size.");
-      setMessage("Size and price updated.");
+      setMessage("Size and stock updated. Selling price is calculated automatically.");
       await load();
     }catch(e){setMessage(e instanceof Error?e.message:"Unable to update size.")}finally{setSaving(false)}
   }
@@ -98,7 +97,7 @@ export default function AdminProducts(){
     try{
       const defaults=[{name:"Small",size:"15 cm"},{name:"Medium",size:"20 cm"},{name:"Large",size:"25 cm"}];
       for(const variant of defaults){
-        const response=await fetch("/api/products/"+productId+"/variants",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...variant,price:0,stock:0})});
+        const response=await fetch("/api/products/"+productId+"/variants",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...variant,stock:0})});
         const result=await response.json().catch(()=>null);
         if(!response.ok)throw new Error(result?.message||("Unable to create "+variant.name+" size."));
       }
@@ -119,23 +118,18 @@ export default function AdminProducts(){
 
 
       const sizeOptions = [
-        { name: "Small", price: createVariantPrices.small, stock: createVariantStock.small },
-        { name: "Medium", price: createVariantPrices.medium, stock: createVariantStock.medium },
-        { name: "Large", price: createVariantPrices.large, stock: createVariantStock.large },
+        { name: "Small", stock: createVariantStock.small },
+        { name: "Medium", stock: createVariantStock.medium },
+        { name: "Large", stock: createVariantStock.large },
       ];
       for(const sizeOption of sizeOptions){
-        const hasPrice = sizeOption.price !== "";
-        const hasStock = sizeOption.stock !== "";
-        if(!hasPrice && !hasStock) continue;
-        const amount = hasPrice ? Number(sizeOption.price) : undefined;
-        const stock = hasStock ? Number(sizeOption.stock) : undefined;
-        if(amount !== undefined && (!Number.isFinite(amount) || amount < 0)) throw new Error(`${sizeOption.name} price must be a valid number.`);
-        if(stock !== undefined && (!Number.isInteger(stock) || stock < 0)) throw new Error(`${sizeOption.name} stock must be a whole number.`);
+        if(sizeOption.stock === "") continue;
+        const stock = Number(sizeOption.stock);
+        if(!Number.isInteger(stock) || stock < 0) throw new Error(`${sizeOption.name} stock must be a whole number.`);
         const variant = (p.variants || []).find((item: ProductVariant) => item.name === sizeOption.name);
         if(!variant) throw new Error(`${sizeOption.name} size variant was not created.`);
-        const payload = { ...(amount !== undefined ? { price: amount } : {}), ...(stock !== undefined ? { stock } : {}) };
-        const vr=await fetch("/api/products/"+p.id+"/variants/"+variant.id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
-        if(!vr.ok) throw new Error(`${sizeOption.name} settings could not be saved.`);
+        const vr=await fetch("/api/products/"+p.id+"/variants/"+variant.id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({stock})});
+        if(!vr.ok) throw new Error(`${sizeOption.name} stock could not be saved.`);
       }
 
       if(productImages.length){
@@ -155,7 +149,6 @@ export default function AdminProducts(){
       setForm({name:"",slug:"",description:"",categoryId:"",parentCategoryId:"",status:"ACTIVE",stock:"0",isFeatured:false,material:"",scale:"",dimensions:"",height:"",base:"",packaging:"",weight:""});
       setProductImages([]);
       setProductGlb(null);
-      setCreateVariantPrices({small:"",medium:"",large:""});
       setCreateVariantStock({small:"",medium:"",large:""});
       setMessage("Product created with assets.");
       await load();
@@ -270,13 +263,9 @@ export default function AdminProducts(){
       <input value={form.slug} onChange={e=>setForm({...form,slug:e.target.value})} placeholder="Slug (optional)" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
       <div className="sm:col-span-2 lg:col-span-4 rounded-xl border border-primary/15 bg-primary/5 p-3">
         <div className="flex items-center justify-between gap-3">
-          <div><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">Size-specific pricing</p><p className="mt-1 text-[9px] text-muted">Set the customer price for each physical size.</p></div>
+          <div><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">Size-specific pricing</p><p className="mt-1 text-[9px] text-muted">Customer prices are calculated automatically for each physical size.</p></div>
         </div>
-        <div className="mt-3 grid gap-2 sm:grid-cols-3">
-          <input value={createVariantPrices.small} onChange={e=>setCreateVariantPrices({...createVariantPrices,small:e.target.value})} type="number" min="0" step="1" placeholder="Small · 15 cm · ₹" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
-          <input value={createVariantPrices.medium} onChange={e=>setCreateVariantPrices({...createVariantPrices,medium:e.target.value})} type="number" min="0" step="1" placeholder="Medium · 20 cm · ₹" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
-          <input value={createVariantPrices.large} onChange={e=>setCreateVariantPrices({...createVariantPrices,large:e.target.value})} type="number" min="0" step="1" placeholder="Large · 25 cm · ₹" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
-        </div>
+        <p className="mt-3 rounded-xl border border-border bg-background/60 px-3 py-3 text-[10px] leading-5 text-muted">Size prices are generated automatically from the selected material and size using the manufacturing pricing rules. Configure those rules under Admin → Promotions & tax. Only stock quantities are entered here.</p>
         <div className="mt-3 grid gap-2 sm:grid-cols-3">
           <input value={createVariantStock.small} onChange={e=>setCreateVariantStock({...createVariantStock,small:e.target.value})} type="number" min="0" step="1" placeholder="Small stock · units" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
           <input value={createVariantStock.medium} onChange={e=>setCreateVariantStock({...createVariantStock,medium:e.target.value})} type="number" min="0" step="1" placeholder="Medium stock · units" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
@@ -290,7 +279,7 @@ export default function AdminProducts(){
         <select value={form.categoryId} disabled={!form.parentCategoryId || !subcategoriesFor(form.parentCategoryId).length} onChange={e=>setForm({...form,categoryId:e.target.value})} className="h-10 rounded-xl border border-border bg-background px-3 text-xs"><option value={form.parentCategoryId}>Use main category</option>{subcategoriesFor(form.parentCategoryId).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>
       </div>
       <select value={form.status} onChange={e=>setForm({...form,status:e.target.value})} className="h-10 rounded-xl border border-border bg-background px-3 text-xs"><option value="ACTIVE">Active</option><option value="DRAFT">Draft</option></select>
-      <textarea value={form.description} onChange={e=>setForm({...form,description:e.target.value})} placeholder="Description" className="min-h-10 rounded-xl border border-border bg-background px-3 py-2 text-xs sm:col-span-2"/><div className="sm:col-span-2 lg:col-span-4"><p className="mb-2 text-[9px] font-medium uppercase tracking-[0.14em] text-muted">Product specifications</p><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><input value={form.material} onChange={e=>setForm({...form,material:e.target.value})} placeholder="Material" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/><input value={form.scale} onChange={e=>setForm({...form,scale:e.target.value})} placeholder="Scale" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/><input value={form.dimensions} onChange={e=>setForm({...form,dimensions:e.target.value})} placeholder="Dimensions" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/><input value={form.height} onChange={e=>setForm({...form,height:e.target.value})} placeholder="Height" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/><input value={form.base} onChange={e=>setForm({...form,base:e.target.value})} placeholder="Base" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/><input value={form.packaging} onChange={e=>setForm({...form,packaging:e.target.value})} placeholder="Packaging" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/><input value={form.weight} onChange={e=>setForm({...form,weight:e.target.value})} placeholder="Weight" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/></div></div>
+      <textarea value={form.description} onChange={e=>setForm({...form,description:e.target.value})} placeholder="Description" className="min-h-10 rounded-xl border border-border bg-background px-3 py-2 text-xs sm:col-span-2"/><div className="sm:col-span-2 lg:col-span-4"><p className="mb-2 text-[9px] font-medium uppercase tracking-[0.14em] text-muted">Product specifications</p><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><select value={form.material} onChange={e=>setForm({...form,material:e.target.value})} className="h-10 rounded-xl border border-border bg-background px-3 text-xs"><option value="">Select material</option>{[...new Set((data.materialPricingRules??[]).map(rule=>rule.material))].map(material=><option key={material} value={material}>{material}</option>)}</select><input value={form.scale} onChange={e=>setForm({...form,scale:e.target.value})} placeholder="Scale" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/><input value={form.dimensions} onChange={e=>setForm({...form,dimensions:e.target.value})} placeholder="Dimensions" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/><input value={form.height} onChange={e=>setForm({...form,height:e.target.value})} placeholder="Height" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/><input value={form.base} onChange={e=>setForm({...form,base:e.target.value})} placeholder="Base" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/><input value={form.packaging} onChange={e=>setForm({...form,packaging:e.target.value})} placeholder="Packaging" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/><input value={form.weight} onChange={e=>setForm({...form,weight:e.target.value})} placeholder="Weight" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/></div></div>
       <label className="flex items-center gap-2 text-xs text-muted"><input type="checkbox" checked={form.isFeatured} onChange={e=>setForm({...form,isFeatured:e.target.checked})}/> Show in hero</label>
 
       <div className="rounded-xl border border-dashed border-border bg-background p-3 sm:col-span-2 lg:col-span-2">        <div className="flex items-center justify-between gap-3">
@@ -315,7 +304,7 @@ export default function AdminProducts(){
       </div>
     </div><Button type="submit" variant="primary" size="sm" disabled={saving} className="mt-4">{saving?"Creating product…":"Create product"}</Button></form>
     <div className="mt-6 grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(220px,280px)]"><div className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3"><IconSearch size={15} className="text-muted"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search products…" className="h-10 flex-1 bg-transparent text-xs outline-none"/></div><div className="grid gap-2 sm:grid-cols-2"><select aria-label="Filter products by main category" value={mainCategoryFilter} onChange={e=>{setMainCategoryFilter(e.target.value);setSubcategoryFilter("all")}} className="h-10 min-w-0 rounded-xl border border-border bg-surface px-3 text-xs"><option value="all">All main categories</option>{mainCategories.map(category=><option key={category.id} value={category.id}>{category.name}</option>)}</select><select aria-label="Filter products by subcategory" value={subcategoryFilter} disabled={mainCategoryFilter==="all" || filteredSubcategories.length===0} onChange={e=>setSubcategoryFilter(e.target.value)} className="h-10 min-w-0 rounded-xl border border-border bg-surface px-3 text-xs disabled:cursor-not-allowed disabled:opacity-50"><option value="all">{mainCategoryFilter==="all"?"Choose main category first":filteredSubcategories.length===0?"No subcategories":"All subcategories"}</option>{filteredSubcategories.map(category=><option key={category.id} value={category.id}>{category.name}</option>)}</select></div></div>
-    <div className="mt-5 space-y-3">{loading?[1,2,3].map(i=><div key={i} className="h-28 animate-pulse rounded-2xl bg-surface"/>):rows.map(p=><AdminProductCard key={p.id} product={p} categories={data.categories} parentCategoryId={editParentCategoryId} setParentCategoryId={setEditParentCategoryId} saving={saving} editingProduct={editingProduct} assetProductId={assetProductId} assetFiles={assetFiles} assetLoading={assetLoading} assetBusy={assetBusy} assetMessage={assetMessage} uploadProgress={uploadProgress} editForm={editForm} updateProduct={updateProduct} updateProductPrice={updateProductPrice} updateVariantCountryPrice={updateVariantCountryPrice} updateVariant={updateVariant} ensureStandardVariants={ensureStandardVariants} deleteProduct={deleteProduct} startProductEdit={startProductEdit} openAssets={openAssets} uploadImages={uploadImages} uploadGlb={uploadGlb} removeMedia={removeMedia} removeFile={removeFile} setEditingProduct={setEditingProduct} setEditForm={setEditForm} saveProductEdit={saveProductEdit}/>)}{!loading&&!rows.length&&<div className="rounded-2xl border border-dashed border-border p-10 text-sm text-muted">No products found.</div>}</div>
+    <div className="mt-5 space-y-3">{loading?[1,2,3].map(i=><div key={i} className="h-28 animate-pulse rounded-2xl bg-surface"/>):rows.map(p=><AdminProductCard key={p.id} product={p} categories={data.categories} materials={[...new Set((data.materialPricingRules??[]).map(rule=>rule.material))]} parentCategoryId={editParentCategoryId} setParentCategoryId={setEditParentCategoryId} saving={saving} editingProduct={editingProduct} assetProductId={assetProductId} assetFiles={assetFiles} assetLoading={assetLoading} assetBusy={assetBusy} assetMessage={assetMessage} uploadProgress={uploadProgress} editForm={editForm} updateProduct={updateProduct} updateProductPrice={updateProductPrice} updateVariantCountryPrice={updateVariantCountryPrice} updateVariant={updateVariant} ensureStandardVariants={ensureStandardVariants} deleteProduct={deleteProduct} startProductEdit={startProductEdit} openAssets={openAssets} uploadImages={uploadImages} uploadGlb={uploadGlb} removeMedia={removeMedia} removeFile={removeFile} setEditingProduct={setEditingProduct} setEditForm={setEditForm} saveProductEdit={saveProductEdit}/>)}{!loading&&!rows.length&&<div className="rounded-2xl border border-dashed border-border p-10 text-sm text-muted">No products found.</div>}</div>
     {message&&<p className="mt-4 text-xs text-muted">{message}</p>}
   </main>
 }

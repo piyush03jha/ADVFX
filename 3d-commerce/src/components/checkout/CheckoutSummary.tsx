@@ -67,6 +67,10 @@ export function CheckoutSummary({
       <div className="mt-5 max-h-[320px] space-y-3 overflow-auto pr-1">
         {items.map((item) => {
           const imageSrc = normalizeImagePath(item.product.image);
+          const quotedItem = quote?.items.find((quoted) =>
+            quoted.productId === item.product.id && quoted.variantId === item.variantId
+          );
+          const lineTotalMinor = quotedItem?.lineTotalMinor ?? Math.round(item.product.price * 100) * item.quantity;
           return (
             <div key={item.key} className={`flex min-w-0 gap-3 rounded-xl border border-border ${innerGradient} p-2.5`}>
               <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-border bg-background">
@@ -76,7 +80,7 @@ export function CheckoutSummary({
               <div className="min-w-0 flex-1">
                 <p className="truncate text-xs font-medium text-foreground">{item.product.name}</p>
                 <p className="mt-1 text-[11px] text-muted">{item.size}</p>
-                <p className="mt-1 text-xs text-foreground">₹{(item.product.price * item.quantity).toLocaleString("en-IN")}</p>
+                <p className="mt-1 text-xs text-foreground">{money(lineTotalMinor, quote?.currency ?? item.product.currency ?? "INR")}</p>
               </div>
             </div>
           );
@@ -100,17 +104,26 @@ export function CheckoutSummary({
           <p className="mt-2 text-xs leading-5 text-error">{quoteError}</p>
         ) : quote ? (
           <div className="mt-3 space-y-2.5 text-sm">
-            <SummaryRow label="Subtotal" value={money(quote.summary.subtotalMinor, quote.currency)} />
+            <SummaryRow label="Subtotal (GST inclusive)" value={money(quote.summary.subtotalMinor, quote.currency)} />
             <SummaryRow
               label="Shipping"
               value={quote.summary.shippingMinor === 0 ? "FREE" : money(quote.summary.shippingMinor, quote.currency)}
               positive={quote.summary.shippingMinor === 0}
             />
-            {quote.summary.discountMinor > 0 && (
+            {(quote.summary.saleDiscountMinor ?? 0) > 0 && (
+              <SummaryRow label="Sale discount" value={`-${money(quote.summary.saleDiscountMinor ?? 0, quote.currency)}`} positive />
+            )}
+            {(quote.summary.couponDiscountMinor ?? 0) > 0 && (
+              <SummaryRow label="Coupon discount" value={`-${money(quote.summary.couponDiscountMinor ?? 0, quote.currency)}`} positive />
+            )}
+            {quote.summary.discountMinor > 0 && (quote.summary.saleDiscountMinor === undefined || quote.summary.couponDiscountMinor === undefined) && (
               <SummaryRow label="Discount" value={`-${money(quote.summary.discountMinor, quote.currency)}`} positive />
             )}
             {quote.summary.taxMinor > 0 && (
-              <SummaryRow label="Tax" value={money(quote.summary.taxMinor, quote.currency)} />
+              <SummaryRow label="GST included" value={money(quote.summary.taxMinor, quote.currency)} />
+            )}
+            {quote.summary.roundingMinor !== undefined && quote.summary.roundingMinor !== 0 && (
+              <SummaryRow label="Rounding adjustment" value={money(quote.summary.roundingMinor, quote.currency)} />
             )}
             <div className="mt-3 flex items-end justify-between gap-4 border-t border-border pt-3">
               <span className="text-[11px] uppercase tracking-[0.15em] text-muted">Total</span>
