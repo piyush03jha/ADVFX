@@ -47,7 +47,8 @@ test("landing, shop and suggested-product images are requested right away, not l
 test("the hero loads every hero model once the visible one is ready", () => {
   const hero = read("../src/components/home/Hero.tsx");
   assert.match(hero, /heroProducts\.forEach\(\(_, index\) => \{\s*if \(index !== currentIndex\) void preloadModel\(index\)/);
-  assert.doesNotMatch(hero, /const keep = new Set/);
+  assert.match(hero, /const keep = new Set<string>\(\)/);
+  assert.match(hero, /if \(keep\.has\(modelUrl\)\) return;/, "retain active hero models and abort stale preloads");
 });
 
 test("admin product photos retry instead of staying broken after an upload", () => {
