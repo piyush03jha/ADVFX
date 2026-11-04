@@ -276,9 +276,23 @@ export class AdminService {
           });
       const products = await tx.product.findMany({
         where: { material: { equals: material, mode: 'insensitive' }, status: { not: 'ARCHIVED' } },
-        select: { id: true },
+        select: { id: true, variants: { where: { isActive: true }, select: { id: true, name: true, size: true } } },
       });
-      for (const product of products) await this.recalculateProductPrices(tx, product.id);
+      if (!rule.isActive) {
+        const affectedVariantIds = products.flatMap((product) =>
+          product.variants
+            .filter((variant) => normalizePricingSize(variant.name) === sizeKey || normalizePricingSize(variant.size) === sizeKey)
+            .map((variant) => variant.id),
+        );
+        if (affectedVariantIds.length) {
+          await tx.productVariantPrice.updateMany({
+            where: { variantId: { in: affectedVariantIds } },
+            data: { isActive: false },
+          });
+        }
+      } else {
+        for (const product of products) await this.recalculateProductPrices(tx, product.id);
+      }
       return rule;
     });
   }
