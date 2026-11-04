@@ -1001,14 +1001,21 @@ export class ProductsService {
       if (nextMaterial && nextMaterial.toLowerCase() !== (current.material ?? '').trim().toLowerCase()) {
         const variants = await tx.productVariant.findMany({
           where: { productId: id, isActive: true },
-          select: { id: true, name: true, size: true },
+          select: { id: true, name: true, size: true, weightGrams: true },
         });
         for (const variant of variants) {
+          const sizeKey = normalizePricingSize(variant.name) || normalizePricingSize(variant.size);
+          const perKgRule = await tx.materialPricingRule.findFirst({ where: { material: { equals: nextMaterial, mode: 'insensitive' }, sizeKey: { in: [sizeKey, 'all'] }, isActive: true, pricePerKgMinor: { gt: 0 } } });
+          if (perKgRule && variant.weightGrams == null) {
+            await tx.productVariantPrice.updateMany({ where: { variantId: variant.id }, data: { isActive: false } });
+            continue;
+          }
           const calculated = await calculateManufacturingPrice(tx, {
             productId: id,
             material: nextMaterial,
             size: variant.size,
             variantName: variant.name,
+            weightGrams: variant.weightGrams,
           });
           await tx.productVariantPrice.upsert({
             where: { variantId: variant.id },
