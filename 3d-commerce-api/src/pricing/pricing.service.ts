@@ -240,7 +240,7 @@ export class PricingService {
           saleUnitPriceMinor: unitPriceMinor,
           priceIncreaseBps,
           discountBps: saleDiscountBps,
-          discountMinor: itemSaleDiscountMinor,
+          discountMinor: saleListUnitPriceMinor - unitPriceMinor,
         } : null,
         quantity: item.quantity,
         unitPriceMinor,
