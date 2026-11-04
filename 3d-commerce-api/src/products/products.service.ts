@@ -123,7 +123,6 @@ export class ProductsService {
       price?: number;
       compareAtPrice?: number | null;
       isActive?: boolean;
-      weightGrams?: number | null;
       stock?: number;
       lowStockAt?: number;
       trackStock?: boolean;
@@ -200,6 +199,7 @@ export class ProductsService {
       name: string;
       size?: string | null;
       sku?: string | null;
+      weightGrams?: number | null;
       stock?: number;
       lowStockAt?: number;
       trackStock?: boolean;
