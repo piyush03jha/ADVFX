@@ -545,8 +545,9 @@ export class ProductsService {
       take: await this.heroLimit(),
     });
 
+    const saleCampaign = await this.storefrontSaleCampaign();
     return products
-      .map((product) => this.toHeroProduct(product))
+      .map((product) => ({ ...this.toHeroProduct(product), saleCampaign }))
       .filter((product) => product.model);
   }
 
