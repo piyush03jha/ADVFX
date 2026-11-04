@@ -969,15 +969,16 @@ export class ProductsService {
 
   private async storefrontSaleCampaign() {
     const row = await this.prisma.siteSetting.findUnique({ where: { key: 'saleCampaign' } });
-    if (!row) return { enabled: false, priceIncreaseBps: 2000, discountBps: 2000, startsAt: null, endsAt: null, active: false };
+    if (!row) return { enabled: false, categoryId: null, priceIncreaseBps: 2000, discountBps: 2000, startsAt: null, endsAt: null, active: false };
     try {
-      const value = JSON.parse(row.value) as { enabled?: boolean; priceIncreaseBps?: number; discountBps?: number; startsAt?: string | null; endsAt?: string | null };
+      const value = JSON.parse(row.value) as { enabled?: boolean; categoryId?: string | null; priceIncreaseBps?: number; discountBps?: number; startsAt?: string | null; endsAt?: string | null };
       const now = Date.now();
       const active = value.enabled === true
         && (!value.startsAt || new Date(value.startsAt).getTime() <= now)
         && (!value.endsAt || new Date(value.endsAt).getTime() > now);
       return {
         enabled: value.enabled === true,
+        categoryId: value.categoryId ?? null,
         priceIncreaseBps: Number(value.priceIncreaseBps) || 0,
         discountBps: Number(value.discountBps) || 0,
         startsAt: value.startsAt ?? null,
@@ -985,7 +986,7 @@ export class ProductsService {
         active,
       };
     } catch {
-      return { enabled: false, priceIncreaseBps: 2000, discountBps: 2000, startsAt: null, endsAt: null, active: false };
+      return { enabled: false, categoryId: null, priceIncreaseBps: 2000, discountBps: 2000, startsAt: null, endsAt: null, active: false };
     }
   }
 
