@@ -263,7 +263,7 @@ export default function AdminProducts(){
       <input value={form.slug} onChange={e=>setForm({...form,slug:e.target.value})} placeholder="Slug (optional)" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
       <div className="sm:col-span-2 lg:col-span-4 rounded-xl border border-primary/15 bg-primary/5 p-3">
         <div className="flex items-center justify-between gap-3">
-          <div><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">Size-specific pricing</p><p className="mt-1 text-[9px] text-muted">Set the customer price for each physical size.</p></div>
+          <div><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">Size-specific pricing</p><p className="mt-1 text-[9px] text-muted">Customer prices are calculated automatically for each physical size.</p></div>
         </div>
         <p className="mt-3 rounded-xl border border-border bg-background/60 px-3 py-3 text-[10px] leading-5 text-muted">Size prices are generated automatically from the selected material and size using the manufacturing pricing rules. Configure those rules under Admin → Promotions & tax. Only stock quantities are entered here.</p>
         <div className="mt-3 grid gap-2 sm:grid-cols-3">
