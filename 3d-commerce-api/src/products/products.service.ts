@@ -39,6 +39,9 @@ export class ProductsService {
 
   async create(dto: CreateProductDto) {
     await this.ensureSlugAvailable(dto.slug);
+    if (dto.status === 'ACTIVE' && !dto.material?.trim()) {
+      throw new BadRequestException('Select a material before activating a product so its size prices can be calculated.');
+    }
 
     const { stock, lowStockAt, ...productData } = dto;
     const baseAmount = 0;
@@ -919,8 +922,11 @@ export class ProductsService {
     return this.prisma.$transaction(async (tx) => {
       const current = await tx.product.findUniqueOrThrow({
         where: { id },
-        select: { material: true },
+        select: { material: true, status: true },
       });
+      if (dto.status === 'ACTIVE' && dto.material !== undefined && !dto.material.trim()) {
+        throw new BadRequestException('An active product must have a material for manufacturing price calculation.');
+      }
       await tx.product.update({ where: { id }, data: productData });
 
       const nextMaterial = dto.material?.trim();
