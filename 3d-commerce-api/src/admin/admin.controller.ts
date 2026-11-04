@@ -25,6 +25,7 @@ export class AdminController {
   @Post('sale-campaign')
   updateSaleCampaign(@Body() body: {
     enabled?: boolean;
+    categoryId?: string | null;
     priceIncreaseBps?: number;
     discountBps?: number;
     startsAt?: string | null;
