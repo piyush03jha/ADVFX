@@ -234,6 +234,48 @@ describe('PricingService', () => {
     expect(result.summary.subtotalMinor).toBe(12000);
   });
 
+  it('applies a sale campaign only to products in the selected category', async () => {
+    prisma.siteSetting.findUnique.mockResolvedValue({
+      key: 'saleCampaign',
+      value: JSON.stringify({
+        enabled: true,
+        categoryId: 'category-a',
+        priceIncreaseBps: 2000,
+        discountBps: 1000,
+        startsAt: null,
+        endsAt: null,
+      }),
+    });
+    prisma.product.findMany.mockResolvedValue([
+      {
+        id: 'p1', name: 'Category A model', status: 'ACTIVE', categoryId: 'category-a',
+        category: { id: 'category-a', parentId: null, gstRateBps: 0 },
+        weight: null, inventory: null,
+        prices: [{ amountMinor: 10000, currency: 'INR', isActive: true }],
+        variants: [],
+      },
+      {
+        id: 'p2', name: 'Category B model', status: 'ACTIVE', categoryId: 'category-b',
+        category: { id: 'category-b', parentId: null, gstRateBps: 0 },
+        weight: null, inventory: null,
+        prices: [{ amountMinor: 10000, currency: 'INR', isActive: true }],
+        variants: [],
+      },
+    ]);
+
+    const result = await service.calculate('user-1', {
+      shippingAddressId: 'addr-1',
+      items: [
+        { productId: 'p1', quantity: 1 },
+        { productId: 'p2', quantity: 1 },
+      ],
+    });
+
+    expect(result.items[0].unitPriceMinor).toBe(10800);
+    expect(result.items[1].unitPriceMinor).toBe(10000);
+    expect(result.summary.saleDiscountMinor).toBe(1200);
+  });
+
   it('rejects a cart containing prices in different currencies', async () => {
     prisma.cart.findUnique.mockResolvedValue({
       items: [
