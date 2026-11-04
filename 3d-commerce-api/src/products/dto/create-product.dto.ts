@@ -59,6 +59,10 @@ export class CreateProductDto {
 
   @IsOptional()
   @IsBoolean()
+  ordersEnabled?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
   isFeatured?: boolean;
 
   @IsOptional()
