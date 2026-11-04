@@ -132,7 +132,23 @@ export class PricingService {
       countryVariantPrices.map((price) => [price.variantId, price]),
     );
 
+    const saleSetting = await this.prisma.siteSetting.findUnique({ where: { key: "saleCampaign" } });
+    let saleCampaign: { enabled: boolean; priceIncreaseBps: number; discountBps: number; startsAt?: string | null; endsAt?: string | null } | null = null;
+    try {
+      saleCampaign = saleSetting ? JSON.parse(saleSetting.value) : null;
+    } catch {
+      saleCampaign = null;
+    }
+    const now = new Date();
+    const saleActive = saleCampaign?.enabled === true
+      && (!saleCampaign.startsAt || new Date(saleCampaign.startsAt) <= now)
+      && (!saleCampaign.endsAt || new Date(saleCampaign.endsAt) > now);
+    const priceIncreaseBps = saleActive ? Math.min(10000, Math.max(0, Number(saleCampaign?.priceIncreaseBps) || 0)) : 0;
+    const saleDiscountBps = saleActive ? Math.min(10000, Math.max(0, Number(saleCampaign?.discountBps) || 0)) : 0;
+
     let subtotalMinor = 0;
+    let saleDiscountMinor = 0;
+    let saleSubtotalMinor = 0;
     let totalWeightGrams = 0;
     let currency: string | null = null;
 
@@ -175,9 +191,19 @@ export class PricingService {
         );
       }
 
-      const lineTotalMinor = price.amountMinor * item.quantity;
+      const saleListUnitPriceMinor = saleActive
+        ? Math.round(price.amountMinor * (10000 + priceIncreaseBps) / 10000)
+        : price.amountMinor;
+      const unitPriceMinor = saleActive
+        ? Math.round(saleListUnitPriceMinor * (10000 - saleDiscountBps) / 10000)
+        : price.amountMinor;
+      const lineTotalMinor = unitPriceMinor * item.quantity;
+      const saleListLineTotalMinor = saleListUnitPriceMinor * item.quantity;
+      const itemSaleDiscountMinor = saleListLineTotalMinor - lineTotalMinor;
       const taxRateBps = product.category?.gstRateBps ?? 0;
-      subtotalMinor += lineTotalMinor;
+      subtotalMinor += saleListLineTotalMinor;
+      saleDiscountMinor += itemSaleDiscountMinor;
+      saleSubtotalMinor += lineTotalMinor;
       currency = price.currency;
       totalWeightGrams +=
         this.parseWeightGrams(product.weight) * item.quantity;
@@ -208,8 +234,16 @@ export class PricingService {
         taxRateBps,
         taxMinor: taxRateBps > 0 ? Math.round(lineTotalMinor * taxRateBps / (10000 + taxRateBps)) : 0,
         manufacturingCostSnapshot: variant?.price?.costBreakdown ?? null,
+        saleSnapshot: saleActive ? {
+          baseUnitPriceMinor: price.amountMinor,
+          saleListUnitPriceMinor,
+          saleUnitPriceMinor: unitPriceMinor,
+          priceIncreaseBps,
+          discountBps: saleDiscountBps,
+          discountMinor: itemSaleDiscountMinor,
+        } : null,
         quantity: item.quantity,
-        unitPriceMinor: price.amountMinor,
+        unitPriceMinor,
         lineTotalMinor,
       };
     });
@@ -261,7 +295,7 @@ export class PricingService {
           shipping.type,
           shipping.amountMinor,
           shipping.freeAboveMinor,
-          subtotalMinor,
+          saleSubtotalMinor,
         )
       : 0;
 
@@ -306,7 +340,7 @@ export class PricingService {
       }
       if (
         found.minSubtotalMinor !== null &&
-        subtotalMinor < found.minSubtotalMinor
+        saleSubtotalMinor < found.minSubtotalMinor
       ) {
         throw new BadRequestException(
           "Cart subtotal is too low for this coupon",
@@ -315,10 +349,10 @@ export class PricingService {
 
       discountMinor =
         found.type === "PERCENTAGE"
-          ? Math.floor((subtotalMinor * found.value) / 10000)
+          ? Math.floor((saleSubtotalMinor * found.value) / 10000)
           : found.value;
 
-      discountMinor = Math.min(discountMinor, subtotalMinor);
+      discountMinor = Math.min(discountMinor, saleSubtotalMinor);
 
       if (found.maxDiscountMinor !== null) {
         discountMinor = Math.min(discountMinor, found.maxDiscountMinor);
@@ -335,8 +369,8 @@ export class PricingService {
     // Product prices are tax-inclusive. Extract category GST from the
     // already displayed price; never add it a second time at checkout.
     const pricedItems = items.map((item) => {
-      const allocatedDiscount = subtotalMinor > 0
-        ? Math.floor(discountMinor * item.lineTotalMinor / subtotalMinor)
+      const allocatedDiscount = saleSubtotalMinor > 0
+        ? Math.floor(discountMinor * item.lineTotalMinor / saleSubtotalMinor)
         : 0;
       const discountedLineMinor = Math.max(0, item.lineTotalMinor - allocatedDiscount);
       const taxMinor = item.taxRateBps > 0
@@ -345,7 +379,8 @@ export class PricingService {
       return { ...item, taxMinor };
     });
     const taxMinor = pricedItems.reduce((sum, item) => sum + item.taxMinor, 0);
-    const unroundedTotalMinor = Math.max(0, subtotalMinor + shippingMinor - discountMinor);
+    const combinedDiscountMinor = saleDiscountMinor + discountMinor;
+    const unroundedTotalMinor = Math.max(0, subtotalMinor + shippingMinor - combinedDiscountMinor);
     const totalMinor = (currency ?? "INR") === "INR"
       ? Math.round(unroundedTotalMinor / 100) * 100
       : unroundedTotalMinor;
@@ -368,7 +403,9 @@ export class PricingService {
       summary: {
         subtotalMinor,
         shippingMinor,
-        discountMinor,
+        discountMinor: combinedDiscountMinor,
+        saleDiscountMinor,
+        couponDiscountMinor: discountMinor,
         taxMinor,
         roundingMinor,
         totalMinor,
