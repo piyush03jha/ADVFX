@@ -2,7 +2,7 @@ name: Frontend CI
 
 on:
   push:
-    branches: [new/changes, main]
+    branches: [new/changes, main, feature/dynamic-product-pricing]
     paths:
       - "3d-commerce/**"
       - ".github/workflows/frontend-ci.yml"
