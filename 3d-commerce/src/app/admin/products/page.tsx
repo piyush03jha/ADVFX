@@ -8,14 +8,14 @@ import { uploadModelDirect } from "@/lib/model-upload";
 import { filterProductsByCategory, getMainCategories, getSubcategories } from "@/lib/category-hierarchy.mjs";
 
 type ProductVariant={id:string;name:string;size?:string|null;sku?:string|null;isActive:boolean;stock?:number;reserved?:number;lowStockAt?:number;trackStock?:boolean;allowBackorder?:boolean;price?:{amountMinor:number;compareAtMinor?:number|null;isActive:boolean}|null};
-type Product={id:string;name:string;slug:string;description?:string|null;badge?:string|null;status:string;isFeatured:boolean;isTrending:boolean;isBestseller:boolean;category?:{id:string;name:string}|null;prices:any[];variants?:ProductVariant[];material?:string|null;scale?:string|null;dimensions?:string|null;height?:string|null;base?:string|null;packaging?:string|null;weight?:string|null;inventory?:{stock:number;reserved:number;lowStockAt:number}|null;media?:Array<{id:string;type:string;url:string;altText?:string|null;isPrimary:boolean;sortOrder:number}>};
+type Product={id:string;name:string;slug:string;description?:string|null;badge?:string|null;status:string;ordersEnabled:boolean;isFeatured:boolean;isTrending:boolean;isBestseller:boolean;category?:{id:string;name:string}|null;prices:any[];variants?:ProductVariant[];material?:string|null;scale?:string|null;dimensions?:string|null;height?:string|null;base?:string|null;packaging?:string|null;weight?:string|null;inventory?:{stock:number;reserved:number;lowStockAt:number}|null;media?:Array<{id:string;type:string;url:string;altText?:string|null;isPrimary:boolean;sortOrder:number}>};
 type ProductFile={id:string;originalName:string;storageUrl:string;format:string;fileType:string;mimeType:string;fileSize:string|number;processingStatus:string};
 type Category={id:string;name:string;slug:string;parentId?:string|null;parent?:{id:string;name:string;slug:string}|null};
 
 export default function AdminProducts(){
   const [data,setData]=useState<{products:Product[];categories:Category[];materialPricingRules:Array<{material:string;sizeKey:string;amountMinor:number;currency:string}>}>({products:[],categories:[],materialPricingRules:[]});
   const [search,setSearch]=useState(""); const [mainCategoryFilter,setMainCategoryFilter]=useState("all"); const [subcategoryFilter,setSubcategoryFilter]=useState("all"); const [loading,setLoading]=useState(true); const [saving,setSaving]=useState(false); const [message,setMessage]=useState("");
-  const [form,setForm]=useState({name:"",slug:"",description:"",categoryId:"",parentCategoryId:"",status:"ACTIVE",stock:"0",isFeatured:false,material:"",scale:"",dimensions:"",height:"",base:"",packaging:"",weight:""});
+  const [form,setForm]=useState({name:"",slug:"",description:"",categoryId:"",parentCategoryId:"",status:"ACTIVE",ordersEnabled:true,isFeatured:false,material:"",scale:"",dimensions:"",height:"",base:"",packaging:"",weight:""});
   const [editParentCategoryId,setEditParentCategoryId]=useState("");
   const [productImages,setProductImages]=useState<File[]>([]);
   const [productGlb,setProductGlb]=useState<File|null>(null);
@@ -27,7 +27,6 @@ export default function AdminProducts(){
   const [editingProduct,setEditingProduct]=useState<string|null>(null);
   const [uploadProgress,setUploadProgress]=useState<Record<string,number>>({});
   const [editForm,setEditForm]=useState<Record<string,string|boolean>>({});
-  const [createVariantStock,setCreateVariantStock]=useState({small:"",medium:"",large:""});
 
   async function load(){setLoading(true);try{const r=await fetch("/api/admin/catalog",{cache:"no-store"});if(!r.ok)throw new Error();setData(await r.json());setMessage("")}catch{setMessage("Unable to load catalog.")}finally{setLoading(false)}}
   useEffect(()=>{void load()},[]);
@@ -77,7 +76,7 @@ export default function AdminProducts(){
       const r=await fetch("/api/products/"+productId+"/variants/"+variantId,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
       const d=await r.json().catch(()=>null);
       if(!r.ok)throw new Error(d?.message||"Unable to update size.");
-      setMessage("Size and stock updated. Selling price is calculated automatically.");
+      setMessage("Size details updated. Selling price is calculated automatically.");
       await load();
     }catch(e){setMessage(e instanceof Error?e.message:"Unable to update size.")}finally{setSaving(false)}
   }
@@ -86,7 +85,7 @@ export default function AdminProducts(){
     try{
       const defaults=[{name:"Small",size:"15 cm"},{name:"Medium",size:"20 cm"},{name:"Large",size:"25 cm"}];
       for(const variant of defaults){
-        const response=await fetch("/api/products/"+productId+"/variants",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...variant,stock:0})});
+        const response=await fetch("/api/products/"+productId+"/variants",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(variant)});
         const result=await response.json().catch(()=>null);
         if(!response.ok)throw new Error(result?.message||("Unable to create "+variant.name+" size."));
       }
@@ -101,25 +100,12 @@ export default function AdminProducts(){
     e.preventDefault();setSaving(true);setMessage("");
     try{
       const slug=form.slug||form.name.toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
-      const r=await fetch("/api/products",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:form.name,slug,description:form.description||undefined,categoryId:form.categoryId||undefined,status:form.status,stock:Number(form.stock)||0,isFeatured:form.isFeatured,material:form.material||undefined,scale:form.scale||undefined,dimensions:form.dimensions||undefined,height:form.height||undefined,base:form.base||undefined,packaging:form.packaging||undefined,weight:form.weight||undefined})});
+      const r=await fetch("/api/products",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:form.name,slug,description:form.description||undefined,categoryId:form.categoryId||undefined,status:form.status,ordersEnabled:true,isFeatured:form.isFeatured,material:form.material||undefined,scale:form.scale||undefined,dimensions:form.dimensions||undefined,height:form.height||undefined,base:form.base||undefined,packaging:form.packaging||undefined,weight:form.weight||undefined})});
       if(!r.ok){const d=await r.json().catch(()=>null);throw new Error(d?.message||"Create failed")}
       const p=await r.json();
 
 
-      const sizeOptions = [
-        { name: "Small", stock: createVariantStock.small },
-        { name: "Medium", stock: createVariantStock.medium },
-        { name: "Large", stock: createVariantStock.large },
-      ];
-      for(const sizeOption of sizeOptions){
-        if(sizeOption.stock === "") continue;
-        const stock = Number(sizeOption.stock);
-        if(!Number.isInteger(stock) || stock < 0) throw new Error(`${sizeOption.name} stock must be a whole number.`);
-        const variant = (p.variants || []).find((item: ProductVariant) => item.name === sizeOption.name);
-        if(!variant) throw new Error(`${sizeOption.name} size variant was not created.`);
-        const vr=await fetch("/api/products/"+p.id+"/variants/"+variant.id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({stock})});
-        if(!vr.ok) throw new Error(`${sizeOption.name} stock could not be saved.`);
-      }
+
 
       if(productImages.length){
         for(const file of productImages){
@@ -135,21 +121,20 @@ export default function AdminProducts(){
           setUploadProgress((prev) => ({ ...prev, [p.id]: percent })),
         );
       }
-      setForm({name:"",slug:"",description:"",categoryId:"",parentCategoryId:"",status:"ACTIVE",stock:"0",isFeatured:false,material:"",scale:"",dimensions:"",height:"",base:"",packaging:"",weight:""});
+      setForm({name:"",slug:"",description:"",categoryId:"",parentCategoryId:"",status:"ACTIVE",ordersEnabled:true,isFeatured:false,material:"",scale:"",dimensions:"",height:"",base:"",packaging:"",weight:""});
       setProductImages([]);
       setProductGlb(null);
-      setCreateVariantStock({small:"",medium:"",large:""});
       setMessage("Product created with assets.");
       await load();
     }catch(e){setMessage(e instanceof Error?e.message:"Unable to create product.")}finally{setSaving(false)}
   }
 
   function startProductEdit(p:Product){
-    setEditingProduct(p.id);const productCategory=data.categories.find(category=>category.id===p.category?.id);const parentId=productCategory?.parentId||productCategory?.id||"";setEditParentCategoryId(parentId);setEditForm({name:p.name,slug:p.slug,description:p.description||"",categoryId:p.category?.id||"",status:p.status,isFeatured:p.isFeatured,isTrending:p.isTrending,isBestseller:p.isBestseller,badge:p.badge||"",material:p.material||"",scale:p.scale||"",dimensions:p.dimensions||"",height:p.height||"",base:p.base||"",packaging:p.packaging||"",weight:p.weight||""});
+    setEditingProduct(p.id);const productCategory=data.categories.find(category=>category.id===p.category?.id);const parentId=productCategory?.parentId||productCategory?.id||"";setEditParentCategoryId(parentId);setEditForm({name:p.name,slug:p.slug,description:p.description||"",categoryId:p.category?.id||"",status:p.status,ordersEnabled:p.ordersEnabled,isFeatured:p.isFeatured,isTrending:p.isTrending,isBestseller:p.isBestseller,badge:p.badge||"",material:p.material||"",scale:p.scale||"",dimensions:p.dimensions||"",height:p.height||"",base:p.base||"",packaging:p.packaging||"",weight:p.weight||""});
   }
   async function saveProductEdit(id:string){
     setSaving(true);setMessage("");
-    try{const payload={...editForm,name:String(editForm.name).trim(),slug:String(editForm.slug).trim(),description:String(editForm.description||""),categoryId:String(editForm.categoryId||"")||undefined,status:String(editForm.status),isFeatured:Boolean(editForm.isFeatured),isTrending:Boolean(editForm.isTrending),isBestseller:Boolean(editForm.isBestseller),badge:String(editForm.badge||"")||undefined,material:String(editForm.material||"")||undefined,scale:String(editForm.scale||"")||undefined,dimensions:String(editForm.dimensions||"")||undefined,height:String(editForm.height||"")||undefined,base:String(editForm.base||"")||undefined,packaging:String(editForm.packaging||"")||undefined,weight:String(editForm.weight||"")||undefined};const r=await fetch("/api/products/"+id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});const d=await r.json().catch(()=>null);if(!r.ok)throw new Error(d?.message||"Unable to update product");setMessage("Product updated.");setEditingProduct(null);await load()}catch(e){setMessage(e instanceof Error?e.message:"Unable to update product")}finally{setSaving(false)}
+    try{const payload={...editForm,name:String(editForm.name).trim(),slug:String(editForm.slug).trim(),description:String(editForm.description||""),categoryId:String(editForm.categoryId||"")||undefined,status:String(editForm.status),ordersEnabled:Boolean(editForm.ordersEnabled),isFeatured:Boolean(editForm.isFeatured),isTrending:Boolean(editForm.isTrending),isBestseller:Boolean(editForm.isBestseller),badge:String(editForm.badge||"")||undefined,material:String(editForm.material||"")||undefined,scale:String(editForm.scale||"")||undefined,dimensions:String(editForm.dimensions||"")||undefined,height:String(editForm.height||"")||undefined,base:String(editForm.base||"")||undefined,packaging:String(editForm.packaging||"")||undefined,weight:String(editForm.weight||"")||undefined};const r=await fetch("/api/products/"+id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});const d=await r.json().catch(()=>null);if(!r.ok)throw new Error(d?.message||"Unable to update product");setMessage("Product updated.");setEditingProduct(null);await load()}catch(e){setMessage(e instanceof Error?e.message:"Unable to update product")}finally{setSaving(false)}
   }
 
   async function openAssets(id:string){
@@ -245,24 +230,21 @@ export default function AdminProducts(){
   }
 
   return <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-    <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-[9px] uppercase tracking-[0.2em] text-primary">Catalog</p><h1 className="mt-2 font-serif text-4xl">Products</h1><p className="mt-2 text-sm text-muted">Create, archive or permanently delete products, feature hero items, change prices and review stock.</p></div><button onClick={()=>void load()} className="rounded-xl border border-border p-2 text-muted"><IconRefresh size={16}/></button></div>
+    <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-[9px] uppercase tracking-[0.2em] text-primary">Catalog</p><h1 className="mt-2 font-serif text-4xl">Products</h1><p className="mt-2 text-sm text-muted">Create products, manage order availability, prices and product assets.</p></div><button onClick={()=>void load()} className="rounded-xl border border-border p-2 text-muted"><IconRefresh size={16}/></button></div>
     <form onSubmit={createProduct} className="mt-7 rounded-2xl border border-border bg-surface p-5"><div className="flex items-center gap-2 text-xs font-semibold"><IconPlus size={16} className="text-primary"/> Add product</div>
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <input required value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Product name" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
       <input value={form.slug} onChange={e=>setForm({...form,slug:e.target.value})} placeholder="Slug (optional)" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
-      <div className="sm:col-span-2 lg:col-span-4 rounded-xl border border-primary/15 bg-primary/5 p-3">
-        <div className="flex items-center justify-between gap-3">
-          <div><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">Size-specific pricing</p><p className="mt-1 text-[9px] text-muted">Customer prices are calculated automatically for each physical size.</p></div>
+      <div className="sm:col-span-2 lg:col-span-4 rounded-xl border border-border bg-background/45 p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary">Made to order · size pricing</p>
+            <p className="mt-1 max-w-2xl text-[10px] leading-5 text-muted">Every order is produced after purchase. Set each size's measured or estimated weight in the variant editor; material and manufacturing rates calculate its selling price automatically.</p>
+          </div>
+          <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-[9px] font-medium text-emerald-300">No stock tracking</span>
         </div>
-        <p className="mt-3 rounded-xl border border-border bg-background/60 px-3 py-3 text-[10px] leading-5 text-muted">After creating the product, enter the measured or estimated weight (grams) for each size in its variant editor. Per-kg material pricing stays inactive until each variant has a weight. Configure material rates and fixed size costs under Admin → Promotions & tax.</p>
-        <div className="mt-3 grid gap-2 sm:grid-cols-3">
-          <input value={createVariantStock.small} onChange={e=>setCreateVariantStock({...createVariantStock,small:e.target.value})} type="number" min="0" step="1" placeholder="Small stock · units" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
-          <input value={createVariantStock.medium} onChange={e=>setCreateVariantStock({...createVariantStock,medium:e.target.value})} type="number" min="0" step="1" placeholder="Medium stock · units" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
-          <input value={createVariantStock.large} onChange={e=>setCreateVariantStock({...createVariantStock,large:e.target.value})} type="number" min="0" step="1" placeholder="Large stock · units" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
-
-        </div>
+        <p className="mt-3 text-[10px] text-muted">Manage material rates and fixed size costs in Admin → Promotions & tax.</p>
       </div>
-      <input value={form.stock} onChange={e=>setForm({...form,stock:e.target.value})} type="number" min="0" placeholder="Stock" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
       <div className="grid gap-2">
         <select value={form.parentCategoryId} onChange={e=>setForm({...form,parentCategoryId:e.target.value,categoryId:e.target.value})} className="h-10 rounded-xl border border-border bg-background px-3 text-xs"><option value="">Choose main category</option>{mainCategories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>
         <select value={form.categoryId} disabled={!form.parentCategoryId || !subcategoriesFor(form.parentCategoryId).length} onChange={e=>setForm({...form,categoryId:e.target.value})} className="h-10 rounded-xl border border-border bg-background px-3 text-xs"><option value={form.parentCategoryId}>Use main category</option>{subcategoriesFor(form.parentCategoryId).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>
