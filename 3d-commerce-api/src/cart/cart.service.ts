@@ -35,7 +35,7 @@ export class CartService {
       throw new NotFoundException('Product is not available');
     }
 
-    if (!product.ordersEnabled || product.category?.ordersEnabled === false || product.category?.parent?.ordersEnabled === false) {
+    if (product.ordersEnabled === false || product.category?.ordersEnabled === false || product.category?.parent?.ordersEnabled === false) {
       throw new BadRequestException('This product is temporarily unavailable for ordering.');
     }
 
@@ -75,7 +75,7 @@ export class CartService {
 
     if (!item) throw new NotFoundException('Cart item not found');
 
-    if (!item.product.ordersEnabled || item.product.category?.ordersEnabled === false || item.product.category?.parent?.ordersEnabled === false) {
+    if (item.product.ordersEnabled === false || item.product.category?.ordersEnabled === false || item.product.category?.parent?.ordersEnabled === false) {
       throw new BadRequestException('This product is temporarily unavailable for ordering.');
     }
 
