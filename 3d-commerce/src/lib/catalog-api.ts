@@ -172,6 +172,7 @@ function mapVariant(variant: CatalogVariant, saleCampaign?: CatalogProduct["sale
   if (!variant.isActive) return null;
 
   const price = variant.price?.isActive ? variant.price : null;
+  if (!price) return null;
 
   const saleActive = saleCampaign?.active === true;
   const saleListMinor = saleActive
