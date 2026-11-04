@@ -177,19 +177,19 @@ export default function AdminCommerceRulesPage() {
     await fetch("/api/admin/"+kind+"/"+encodeURIComponent(id)+"/status",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({isActive:!isActive})});await load();
   }
 
-  const inputClass="h-10 w-full rounded-xl border border-border bg-background px-3 text-xs";
+  const inputClass="h-11 w-full rounded-xl border border-border bg-background px-4 text-sm outline-none transition-colors focus:border-primary/50 focus:ring-2 focus:ring-primary/10";
   const selectedProduct=products.find(product=>product.id===productCost.productId);
 
-  return <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
+  return <main className="mx-auto max-w-7xl px-4 py-10 sm:px-8 sm:py-12">
     <div className="flex flex-wrap items-end justify-between gap-4">
       <div><p className="text-[9px] uppercase tracking-[0.2em] text-primary">Commerce</p><h1 className="mt-2 font-serif text-4xl">Promotions, tax & pricing</h1><p className="mt-2 max-w-2xl text-xs leading-5 text-muted">Configure manufacturing costs in one place. Product variant selling prices are recalculated from material, product and global rules.</p></div>
       <button type="button" onClick={()=>void load()} className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-xs text-muted"><IconRefresh size={14}/> Refresh</button>
     </div>
     {message&&<p className="mt-5 rounded-xl border border-border bg-surface px-4 py-3 text-xs text-muted">{message}</p>}
     {loading?<div className="mt-6 h-72 animate-pulse rounded-2xl bg-surface"/>:<>
-      <section className="mt-6 rounded-2xl border border-border bg-surface p-5">
-        <div><p className="text-[9px] uppercase tracking-[0.16em] text-primary">Layer 01 · Material defaults</p><h2 className="mt-1 text-xl font-semibold">Material-based pricing</h2><p className="mt-1 text-xs leading-5 text-muted">Configure raw material, wastage and per-size electricity / machine consumption once for each material.</p></div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <section className="mt-8 rounded-3xl border border-border bg-surface p-6 sm:p-7">
+        <div><p className="text-[9px] uppercase tracking-[0.16em] text-primary">Layer 01 · Material defaults</p><h2 className="mt-1 text-xl font-semibold">Material-based pricing</h2><p className="mt-2 text-sm leading-6 text-muted">Configure raw material, wastage and per-size electricity / machine consumption once for each material.</p></div>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <input value={materialRule.material} onChange={e=>setMaterialRule({...materialRule,material:e.target.value})} placeholder="Material (e.g. Resin)" className={inputClass}/>
           <select value={materialRule.sizeKey} onChange={e=>setMaterialRule({...materialRule,sizeKey:e.target.value})} className={inputClass}><option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option></select>
           <input value={materialRule.rawMaterialCost} onChange={e=>setMaterialRule({...materialRule,rawMaterialCost:e.target.value})} type="number" min="0" step="0.01" placeholder="Raw material cost (₹)" className={inputClass}/>
@@ -197,13 +197,13 @@ export default function AdminCommerceRulesPage() {
           <input value={materialRule.electricityKwh} onChange={e=>setMaterialRule({...materialRule,electricityKwh:e.target.value})} type="number" min="0" step="0.001" placeholder="Electricity consumption (kWh)" className={inputClass}/>
           <input value={materialRule.machineHours} onChange={e=>setMaterialRule({...materialRule,machineHours:e.target.value})} type="number" min="0" step="0.001" placeholder="Machine time (hours)" className={inputClass}/>
         </div>
-        <button disabled={saving} type="button" onClick={()=>void saveMaterialRule()} className="mt-3 h-10 rounded-full bg-primary px-5 text-xs font-semibold text-white disabled:opacity-50">Save material rule</button>
-        <div className="mt-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">{materialRules.map(rule=><div key={rule.id} className="rounded-xl border border-border p-3"><div className="flex justify-between gap-2"><p className="text-xs font-medium">{rule.material} · {rule.sizeKey}</p><span className="text-[10px] text-muted">{rule.isActive?"Active":"Inactive"}</span></div><p className="mt-1 text-[10px] text-muted">Raw {money(rule.rawMaterialCostMinor)} · Waste {(rule.wastageRateBps/100).toFixed(2)}%</p><p className="mt-1 text-[10px] text-muted">{(rule.electricityKwhMilli/1000).toFixed(3)} kWh · {(rule.machineHoursMilli/1000).toFixed(3)} machine hours</p></div>)}</div>
+        <button disabled={saving} type="button" onClick={()=>void saveMaterialRule()} className="mt-4 min-h-11 rounded-full bg-primary px-5 text-xs font-semibold text-white disabled:opacity-50">Save material rule</button>
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{materialRules.map(rule=><div key={rule.id} className="rounded-2xl border border-border p-4"><div className="flex justify-between gap-2"><p className="text-xs font-medium">{rule.material} · {rule.sizeKey}</p><span className="text-[10px] text-muted">{rule.isActive?"Active":"Inactive"}</span></div><p className="mt-1 text-[10px] text-muted">Raw {money(rule.rawMaterialCostMinor)} · Waste {(rule.wastageRateBps/100).toFixed(2)}%</p><p className="mt-1 text-[10px] text-muted">{(rule.electricityKwhMilli/1000).toFixed(3)} kWh · {(rule.machineHoursMilli/1000).toFixed(3)} machine hours</p></div>)}</div>
       </section>
 
-      <section className="mt-6 rounded-2xl border border-border bg-surface p-5">
-        <p className="text-[9px] uppercase tracking-[0.16em] text-primary">Layer 02 · Product overrides</p><h2 className="mt-1 text-xl font-semibold">Product-based pricing</h2><p className="mt-1 text-xs leading-5 text-muted">Set product-specific labour, painting, finishing, machine setup and packaging costs for each size. Leave labour or packaging blank to use the global default.</p>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <section className="mt-8 rounded-3xl border border-border bg-surface p-6 sm:p-7">
+        <p className="text-[9px] uppercase tracking-[0.16em] text-primary">Layer 02 · Product overrides</p><h2 className="mt-1 text-xl font-semibold">Product-based pricing</h2><p className="mt-2 text-sm leading-6 text-muted">Set product-specific labour, painting, finishing, machine setup and packaging costs for each size. Leave labour or packaging blank to use the global default.</p>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <select value={productCost.productId} onChange={e=>setProductCost({...productCost,productId:e.target.value})} className={inputClass}><option value="">Select product</option>{products.map(product=><option key={product.id} value={product.id}>{product.name}{product.material?" · "+product.material:""}</option>)}</select>
           <select value={productCost.sizeKey} onChange={e=>setProductCost({...productCost,sizeKey:e.target.value})} className={inputClass}><option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option></select>
           <input value={productCost.labour} onChange={e=>setProductCost({...productCost,labour:e.target.value})} type="number" min="0" step="0.01" placeholder="Labour override (₹, blank = default)" className={inputClass}/>
@@ -212,14 +212,14 @@ export default function AdminCommerceRulesPage() {
           <input value={productCost.machineSetup} onChange={e=>setProductCost({...productCost,machineSetup:e.target.value})} type="number" min="0" step="0.01" placeholder="Machine setup cost (₹)" className={inputClass}/>
           <input value={productCost.packaging} onChange={e=>setProductCost({...productCost,packaging:e.target.value})} type="number" min="0" step="0.01" placeholder="Packaging override (₹, blank = default)" className={inputClass}/>
         </div>
-        <button disabled={saving} type="button" onClick={()=>void saveProductCost()} className="mt-3 h-10 rounded-full bg-primary px-5 text-xs font-semibold text-white disabled:opacity-50">Save product costs</button>
-        <div className="mt-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">{productCostRules.map(rule=><div key={rule.id} className="rounded-xl border border-border p-3"><p className="text-xs font-medium">{rule.product?.name??products.find(p=>p.id===rule.productId)?.name??"Product"} · {rule.sizeKey}</p><p className="mt-1 text-[10px] text-muted">Labour {money(rule.labourCostMinor)} · Painting {money(rule.paintingCostMinor)} · Finishing {money(rule.finishingCostMinor)}</p><p className="mt-1 text-[10px] text-muted">Setup {money(rule.machineSetupCostMinor)} · Packaging {money(rule.packagingCostMinor)}</p></div>)}</div>
+        <button disabled={saving} type="button" onClick={()=>void saveProductCost()} className="mt-4 min-h-11 rounded-full bg-primary px-5 text-xs font-semibold text-white disabled:opacity-50">Save product costs</button>
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{productCostRules.map(rule=><div key={rule.id} className="rounded-2xl border border-border p-4"><p className="text-xs font-medium">{rule.product?.name??products.find(p=>p.id===rule.productId)?.name??"Product"} · {rule.sizeKey}</p><p className="mt-1 text-[10px] text-muted">Labour {money(rule.labourCostMinor)} · Painting {money(rule.paintingCostMinor)} · Finishing {money(rule.finishingCostMinor)}</p><p className="mt-1 text-[10px] text-muted">Setup {money(rule.machineSetupCostMinor)} · Packaging {money(rule.packagingCostMinor)}</p></div>)}</div>
         {selectedProduct&&<p className="mt-3 text-[10px] text-muted">Selected: {selectedProduct.name} · material {selectedProduct.material??"not set"}</p>}
       </section>
 
-      <section className="mt-6 rounded-2xl border border-border bg-surface p-5">
-        <p className="text-[9px] uppercase tracking-[0.16em] text-primary">Layer 03 · Shared rates</p><h2 className="mt-1 text-xl font-semibold">Global manufacturing pricing</h2><p className="mt-1 text-xs leading-5 text-muted">Shared rates are applied across products unless a product-level override is configured. Electricity and machine charges use the consumption values in the material matrix. Profit margin is calculated on the final selling price, after manufacturing costs and overhead.</p>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <section className="mt-8 rounded-3xl border border-border bg-surface p-6 sm:p-7">
+        <p className="text-[9px] uppercase tracking-[0.16em] text-primary">Layer 03 · Shared rates</p><h2 className="mt-1 text-xl font-semibold">Global manufacturing pricing</h2><p className="mt-2 text-sm leading-6 text-muted">Shared rates are applied across products unless a product-level override is configured. Electricity and machine charges use the consumption values in the material matrix. Profit margin is calculated on the final selling price, after manufacturing costs and overhead.</p>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <input value={globalForm.electricityRatePerKwh} onChange={e=>setGlobalForm({...globalForm,electricityRatePerKwh:e.target.value})} type="number" min="0" step="0.01" placeholder="Electricity rate per kWh (₹)" className={inputClass}/>
           <input value={globalForm.machineHourlyCost} onChange={e=>setGlobalForm({...globalForm,machineHourlyCost:e.target.value})} type="number" min="0" step="0.01" placeholder="Machine hourly cost (₹)" className={inputClass}/>
           <input value={globalForm.generalOverheadPercent} onChange={e=>setGlobalForm({...globalForm,generalOverheadPercent:e.target.value})} type="number" min="0" max="100" step="0.01" placeholder="General overhead (%)" className={inputClass}/>
@@ -227,16 +227,16 @@ export default function AdminCommerceRulesPage() {
           <input value={globalForm.defaultLabourCost} onChange={e=>setGlobalForm({...globalForm,defaultLabourCost:e.target.value})} type="number" min="0" step="0.01" placeholder="Default labour cost per unit (₹)" className={inputClass}/>
           <input value={globalForm.standardPackagingCost} onChange={e=>setGlobalForm({...globalForm,standardPackagingCost:e.target.value})} type="number" min="0" step="0.01" placeholder="Standard packaging cost (₹)" className={inputClass}/>
         </div>
-        <button disabled={saving} type="button" onClick={()=>void saveGlobalRates()} className="mt-3 h-10 rounded-full bg-primary px-5 text-xs font-semibold text-white disabled:opacity-50">Save global rates & recalculate catalog</button>
-        <p className="mt-2 text-[10px] text-muted">Current global defaults: electricity {money(rates.electricityRatePerKwhMinor)}/kWh · machine {money(rates.machineHourlyCostMinor)}/hour · overhead {(rates.generalOverheadBps/100).toFixed(2)}% · profit margin {(rates.profitMarginBps/100).toFixed(2)}%.</p>
+        <button disabled={saving} type="button" onClick={()=>void saveGlobalRates()} className="mt-4 min-h-11 rounded-full bg-primary px-5 text-xs font-semibold text-white disabled:opacity-50">Save global rates & recalculate catalog</button>
+        <p className="mt-3 text-[11px] leading-5 text-muted">Current global defaults: electricity {money(rates.electricityRatePerKwhMinor)}/kWh · machine {money(rates.machineHourlyCostMinor)}/hour · overhead {(rates.generalOverheadBps/100).toFixed(2)}% · profit margin {(rates.profitMarginBps/100).toFixed(2)}%.</p>
       </section>
 
-      <section className="mt-6 rounded-2xl border border-border bg-surface p-5">
+      <section className="mt-8 rounded-3xl border border-border bg-surface p-6 sm:p-7">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div><p className="text-[9px] uppercase tracking-[0.16em] text-primary">Layer 04 · Storefront promotion</p><h2 className="mt-1 text-xl font-semibold">Sale campaign</h2><p className="mt-1 max-w-2xl text-xs leading-5 text-muted">Temporarily increase every active product's list price, then apply a sale discount. Manufacturing prices are never overwritten. Customers can still apply eligible coupon codes on top of the sale.</p></div>
           <label className="flex items-center gap-2 rounded-full border border-border px-3 py-2 text-xs"><input type="checkbox" checked={saleCampaign.enabled} onChange={e=>setSaleCampaign({...saleCampaign,enabled:e.target.checked})}/> Enable sale</label>
         </div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <label className="text-[10px] text-muted">List price increase (%)
             <input value={saleForm.priceIncreasePercent} onChange={e=>setSaleForm({...saleForm,priceIncreasePercent:e.target.value})} type="number" min="0" max="100" step="0.01" className={inputClass}/>
           </label>
@@ -250,33 +250,33 @@ export default function AdminCommerceRulesPage() {
             <input value={saleForm.endsAt} onChange={e=>setSaleForm({...saleForm,endsAt:e.target.value})} type="datetime-local" className={inputClass}/>
           </label>
         </div>
-        <div className="mt-4 rounded-xl border border-border p-3 text-xs">
+        <div className="mt-4 rounded-2xl border border-border p-4 text-xs">
           <p className="font-medium">Price preview · ₹1,000 base price</p>
           <p className="mt-1 text-muted">List price: ₹{(1000*(1+Math.max(0,Number(saleForm.priceIncreasePercent)||0)/100)).toLocaleString("en-IN",{maximumFractionDigits:2})} · After sale discount: ₹{(1000*(1+Math.max(0,Number(saleForm.priceIncreasePercent)||0)/100)*(1-Math.min(100,Math.max(0,Number(saleForm.discountPercent)||0))/100)).toLocaleString("en-IN",{maximumFractionDigits:2})}</p>
           <p className="mt-1 text-[10px] text-muted">The campaign runs only when enabled and inside its optional date window. A coupon is then applied to the discounted sale subtotal.</p>
         </div>
-        <button disabled={saving} type="button" onClick={()=>void saveSaleCampaign()} className="mt-3 h-10 rounded-full bg-primary px-5 text-xs font-semibold text-white disabled:opacity-50">Save sale campaign</button>
-        <p className="mt-2 text-[10px] text-muted">Current status: {saleCampaign.enabled?"Enabled (date window still applies)":"Disabled"} · {saleCampaign.priceIncreaseBps/100}% list increase · {saleCampaign.discountBps/100}% discount.</p>
+        <button disabled={saving} type="button" onClick={()=>void saveSaleCampaign()} className="mt-4 min-h-11 rounded-full bg-primary px-5 text-xs font-semibold text-white disabled:opacity-50">Save sale campaign</button>
+        <p className="mt-3 text-[11px] leading-5 text-muted">Current status: {saleCampaign.enabled?"Enabled (date window still applies)":"Disabled"} · {saleCampaign.priceIncreaseBps/100}% list increase · {saleCampaign.discountBps/100}% discount.</p>
       </section>
 
-      <div className="mt-6 grid gap-6 xl:grid-cols-2">
-        <section className="rounded-2xl border border-border bg-surface p-5">
+      <div className="mt-8 grid gap-6 xl:grid-cols-2">
+        <section className="rounded-3xl border border-border bg-surface p-6 sm:p-7">
           <h2 className="text-xl font-semibold">Promotions</h2>
-          <div className="mt-4 grid gap-3">
+          <div className="mt-5 grid gap-4">
             {["name","code","value","minSubtotalMinor","maxDiscountMinor","usageLimit"].map(field=><input key={field} value={promo[field as keyof typeof promo]} onChange={e=>setPromo({...promo,[field]:e.target.value})} placeholder={field} className={inputClass}/>)}
             <select value={promo.type} onChange={e=>setPromo({...promo,type:e.target.value})} className={inputClass}><option value="PERCENTAGE">Percentage</option><option value="FIXED">Fixed amount</option></select>
             <button type="button" onClick={()=>void createPromotion()} className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-primary px-5 text-xs font-semibold text-white"><IconPlus size={14}/> Add promotion</button>
           </div>
-          <div className="mt-5 space-y-2">{promotions.map(p=><div key={p.id} className="flex items-center justify-between gap-3 rounded-xl border border-border p-3"><div><p className="text-xs font-medium">{p.name}{p.code?" · "+p.code:""}</p><p className="mt-1 text-[10px] text-muted">{p.type} · {p.value} · used {p.usageCount}{p.usageLimit!=null?"/"+p.usageLimit:""}</p></div><button type="button" onClick={()=>void toggle("promotions",p.id,p.isActive)} className="text-[10px] text-muted">{p.isActive?"Disable":"Enable"}</button></div>)}</div>
+          <div className="mt-6 space-y-3">{promotions.map(p=><div key={p.id} className="flex items-center justify-between gap-3 rounded-2xl border border-border p-4"><div><p className="text-xs font-medium">{p.name}{p.code?" · "+p.code:""}</p><p className="mt-1 text-[10px] text-muted">{p.type} · {p.value} · used {p.usageCount}{p.usageLimit!=null?"/"+p.usageLimit:""}</p></div><button type="button" onClick={()=>void toggle("promotions",p.id,p.isActive)} className="text-[10px] text-muted">{p.isActive?"Disable":"Enable"}</button></div>)}</div>
         </section>
-        <section className="rounded-2xl border border-border bg-surface p-5">
-          <h2 className="text-xl font-semibold">Legacy country tax rules</h2><p className="mt-1 text-xs leading-5 text-muted">Product GST is configured on each category in Admin → Categories. These legacy rules do not change product prices.</p>
-          <div className="mt-4 grid gap-3">
+        <section className="rounded-3xl border border-border bg-surface p-6 sm:p-7">
+          <h2 className="text-xl font-semibold">Legacy country tax rules</h2><p className="mt-2 text-sm leading-6 text-muted">Product GST is configured on each category in Admin → Categories. These legacy rules do not change product prices.</p>
+          <div className="mt-5 grid gap-4">
             {["name","countryCode","stateCode","rate","priority"].map(field=><input key={field} value={tax[field as keyof typeof tax] as string} onChange={e=>setTax({...tax,[field]:e.target.value})} placeholder={field} className={inputClass}/>)}
             <label className="flex items-center gap-2 text-xs text-muted"><input type="checkbox" checked={tax.applyToShipping} onChange={e=>setTax({...tax,applyToShipping:e.target.checked})}/> Apply tax to shipping</label>
             <button type="button" onClick={()=>void createTax()} className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-primary px-5 text-xs font-semibold text-white"><IconPlus size={14}/> Add tax rule</button>
           </div>
-          <div className="mt-5 space-y-2">{taxRules.map(t=><div key={t.id} className="flex items-center justify-between gap-3 rounded-xl border border-border p-3"><div><p className="text-xs font-medium">{t.name}</p><p className="mt-1 text-[10px] text-muted">{t.countryCode}{t.stateCode?" / "+t.stateCode:""} · {(t.rateBps/100).toFixed(2)}% · priority {t.priority}</p></div><button type="button" onClick={()=>void toggle("tax-rules",t.id,t.isActive)} className="text-[10px] text-muted">{t.isActive?"Disable":"Enable"}</button></div>)}</div>
+          <div className="mt-6 space-y-3">{taxRules.map(t=><div key={t.id} className="flex items-center justify-between gap-3 rounded-2xl border border-border p-4"><div><p className="text-xs font-medium">{t.name}</p><p className="mt-1 text-[10px] text-muted">{t.countryCode}{t.stateCode?" / "+t.stateCode:""} · {(t.rateBps/100).toFixed(2)}% · priority {t.priority}</p></div><button type="button" onClick={()=>void toggle("tax-rules",t.id,t.isActive)} className="text-[10px] text-muted">{t.isActive?"Disable":"Enable"}</button></div>)}</div>
         </section>
       </div>
     </>}
