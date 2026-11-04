@@ -27,7 +27,7 @@ export class PricingService {
       const products = await this.prisma.product.findMany({
         where: { id: { in: productIds } },
         include: {
-          category: { select: { id: true, name: true, parentId: true, gstRateBps: true } },
+          category: { select: { id: true, name: true, parentId: true, gstRateBps: true, ordersEnabled: true, parent: { select: { ordersEnabled: true } } } },
           inventory: true,
           prices: {
             where: {
@@ -77,7 +77,7 @@ export class PricingService {
               variant: { include: { price: true } },
               product: {
                 include: {
-                  category: { select: { id: true, name: true, gstRateBps: true } },
+                  category: { select: { id: true, name: true, gstRateBps: true, ordersEnabled: true, parent: { select: { ordersEnabled: true } } } },
                   inventory: true,
                   prices: {
                     where: {
@@ -137,6 +137,10 @@ export class PricingService {
         variant?.isActive && variant.price?.isActive ? variant.price : null;
       const price = variantPrice ?? basePrice;
 
+      if (!product.ordersEnabled || product.category?.ordersEnabled === false || product.category?.parent?.ordersEnabled === false) {
+        throw new BadRequestException('Product "' + product.name + '" is currently not accepting orders.');
+      }
+
       if (product.status !== "ACTIVE" || !price) {
         throw new BadRequestException(
           'Product "' + product.name + '" is unavailable',
@@ -192,22 +196,6 @@ export class PricingService {
       currency = price.currency;
       totalWeightGrams +=
         this.parseWeightGrams(product.weight) * item.quantity;
-
-      const inventory = variant ?? product.inventory;
-      const available =
-        inventory?.trackStock && !inventory.allowBackorder
-          ? Math.max(0, inventory.stock - inventory.reserved)
-          : null;
-
-      if (available !== null && item.quantity > available) {
-        throw new BadRequestException(
-          "Only " +
-            available +
-            ' unit(s) of "' +
-            product.name +
-            '" are currently available',
-        );
-      }
 
       return {
         productId: product.id,
