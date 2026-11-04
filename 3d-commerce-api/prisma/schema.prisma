@@ -460,7 +460,7 @@ model ProductInventory {
   stock          Int     @default(0)
   reserved       Int     @default(0)
   lowStockAt     Int     @default(5)
-  trackStock     Boolean @default(true)
+  trackStock     Boolean @default(false)
   allowBackorder Boolean @default(false)
 
   createdAt DateTime @default(now())
