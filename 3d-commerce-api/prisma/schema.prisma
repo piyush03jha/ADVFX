@@ -703,6 +703,7 @@ model ManufacturingRate {
   electricityRatePerKwhMinor Int @default(0)
   machineHourlyCostMinor Int @default(0)
   generalOverheadBps Int @default(0)
+  profitMarginBps Int @default(0)
   defaultLabourCostMinor Int @default(0)
   standardPackagingCostMinor Int @default(0)
   updatedAt DateTime @updatedAt
