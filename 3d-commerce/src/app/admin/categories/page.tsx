@@ -23,6 +23,7 @@ type Category = {
   sortOrder: number;
   gstRateBps?: number | null;
   isActive: boolean;
+  ordersEnabled: boolean;
   parentId?: string | null;
   parent?: { id: string; name: string; slug: string } | null;
   children?: Category[];
@@ -37,6 +38,7 @@ const empty = {
   gstRate: "",
   parentId: "",
   isActive: true,
+  ordersEnabled: true,
 };
 
 export default function AdminCategories() {
@@ -88,6 +90,7 @@ export default function AdminCategories() {
       gstRate: c.gstRateBps != null ? String(c.gstRateBps / 100) : "",
       parentId: c.parentId ?? "",
       isActive: c.isActive,
+      ordersEnabled: c.ordersEnabled !== false,
     });
   }
 
@@ -110,6 +113,7 @@ export default function AdminCategories() {
         gstRateBps: form.gstRate.trim() === "" ? null : Math.round(Number(form.gstRate) * 100),
         parentId: form.parentId || null,
         isActive: form.isActive,
+        ordersEnabled: form.ordersEnabled,
       };
 
       const r = await fetch(
@@ -638,6 +642,10 @@ export default function AdminCategories() {
         </div>
 
         <label className="mt-3 flex items-center gap-2 text-xs text-muted">
+          <label className="flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-xs">
+            <input type="checkbox" checked={form.ordersEnabled} onChange={(e)=>setForm({...form,ordersEnabled:e.target.checked})}/>
+            Accept orders in this category
+          </label>
           <input
             type="checkbox"
             checked={form.isActive}
@@ -714,7 +722,7 @@ export default function AdminCategories() {
                           : "rounded-full bg-muted/10 px-2 py-1 text-[9px] text-muted"
                       }
                     >
-                      {c.isActive ? "ACTIVE" : "INACTIVE"}
+                      {c.isActive ? "ACTIVE" : "INACTIVE"} · {c.ordersEnabled === false ? "ORDERS PAUSED" : "ACCEPTING ORDERS"}
                     </span>
                   </div>
                   <p className="mt-1 text-[10px] text-muted">
