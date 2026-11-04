@@ -52,9 +52,11 @@ export class ProductsService {
           ...productData,
           inventory: {
             create: {
-              stock: stock ?? 0,
+              stock: 0,
+              reserved: 0,
               lowStockAt: lowStockAt ?? 5,
               trackStock: false,
+              allowBackorder: false,
             },
           },
         },
@@ -157,7 +159,8 @@ export class ProductsService {
           ...(input.sku !== undefined ? { sku } : {}),
           ...(input.weightGrams !== undefined ? { weightGrams: input.weightGrams } : {}),
           ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
-          ...(input.stock !== undefined ? { stock: input.stock } : {}),
+          stock: 0,
+          reserved: 0,
           ...(input.lowStockAt !== undefined ? { lowStockAt: input.lowStockAt } : {}),
           trackStock: false,
           ...(input.allowBackorder !== undefined ? { allowBackorder: input.allowBackorder } : {}),
@@ -1164,16 +1167,17 @@ export class ProductsService {
       where: { productId: id },
       create: {
         productId: id,
-        stock: dto.stock ?? 0,
+        stock: 0,
+        reserved: 0,
         lowStockAt: dto.lowStockAt ?? 5,
         trackStock: false,
-        allowBackorder: dto.allowBackorder ?? false,
+        allowBackorder: false,
       },
       update: {
-        ...(dto.stock !== undefined ? { stock: dto.stock } : {}),
-        ...(dto.lowStockAt !== undefined ? { lowStockAt: dto.lowStockAt } : {}),
-        ...(dto.trackStock !== undefined ? { trackStock: dto.trackStock } : {}),
-        ...(dto.allowBackorder !== undefined ? { allowBackorder: dto.allowBackorder } : {}),
+        stock: 0,
+        reserved: 0,
+        trackStock: false,
+        allowBackorder: false,
       },
     });
   }
