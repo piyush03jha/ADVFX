@@ -39,7 +39,6 @@ export class CartService {
       throw new BadRequestException('This product is temporarily unavailable for ordering.');
     }
 
-    const inventory = variant ?? product.inventory;
     const cart = await this.getOrCreate(userId);
     const existing = await this.prisma.cartItem.findUnique({
       where: { cartId_productId_variantKey: { cartId: cart.id, productId, variantKey: variantId ?? '__base__' } },
@@ -49,12 +48,6 @@ export class CartService {
       throw new BadRequestException('A cart line cannot exceed 99 units');
     }
 
-    if (inventory?.trackStock && !inventory.allowBackorder) {
-      const available = Math.max(0, inventory.stock - inventory.reserved);
-      if (nextQuantity > available) {
-        throw new BadRequestException('Requested quantity exceeds available stock');
-      }
-    }
     await this.prisma.cartItem.upsert({
       where: { cartId_productId_variantKey: { cartId: cart.id, productId, variantKey: variantId ?? '__base__' } },
       create: { cartId: cart.id, productId, variantId: variantId ?? null, variantKey: variantId ?? '__base__', quantity },
@@ -77,22 +70,13 @@ export class CartService {
     const cart = await this.getOrCreate(userId);
     const item = await this.prisma.cartItem.findUnique({
       where: { cartId_productId_variantKey: { cartId: cart.id, productId, variantKey: variantId ?? '__base__' } },
-      include: { product: { include: { inventory: true, category: { include: { parent: { select: { ordersEnabled: true } } } } } }, variant: { include: { price: true } } },
+      include: { product: { include: { category: { include: { parent: { select: { ordersEnabled: true } } } } } }, variant: { include: { price: true } } },
     });
 
     if (!item) throw new NotFoundException('Cart item not found');
 
     if (!item.product.ordersEnabled || item.product.category?.ordersEnabled === false || item.product.category?.parent?.ordersEnabled === false) {
       throw new BadRequestException('This product is temporarily unavailable for ordering.');
-    }
-
-    const inventory = item.variant ?? item.product.inventory;
-    if (
-      inventory?.trackStock &&
-      !inventory.allowBackorder &&
-      quantity > Math.max(0, inventory.stock - inventory.reserved)
-    ) {
-      throw new BadRequestException('Requested quantity exceeds available stock');
     }
 
     if (quantity <= 0) {
