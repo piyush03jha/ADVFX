@@ -27,7 +27,7 @@ export class PricingService {
       const products = await this.prisma.product.findMany({
         where: { id: { in: productIds } },
         include: {
-          category: { select: { id: true, name: true, gstRateBps: true } },
+          category: { select: { id: true, name: true, parentId: true, gstRateBps: true } },
           inventory: true,
           prices: {
             where: {
@@ -170,7 +170,7 @@ export class PricingService {
         );
       }
 
-      const saleApplies = saleActive && (!saleCampaign?.categoryId || saleCampaign.categoryId === product.categoryId);
+      const saleApplies = saleActive && (!saleCampaign?.categoryId || saleCampaign.categoryId === product.categoryId || saleCampaign.categoryId === product.category?.parentId);
       const priceIncreaseBps = saleApplies ? Math.min(10000, Math.max(0, Number(saleCampaign?.priceIncreaseBps) || 0)) : 0;
       const saleDiscountBps = saleApplies ? Math.min(10000, Math.max(0, Number(saleCampaign?.discountBps) || 0)) : 0;
       const saleListUnitPriceMinor = saleApplies
