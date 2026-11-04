@@ -151,7 +151,7 @@ export class ProductsService {
         },
       });
 
-      if (updated.name !== variant.name || updated.size !== variant.size) {
+      if (updated.name !== variant.name || updated.size !== variant.size || updated.weightGrams !== variant.weightGrams) {
         const product = await tx.product.findUnique({ where: { id: productId }, select: { material: true } });
         if (product?.material?.trim()) {
           const calculated = await calculateManufacturingPrice(tx, {
