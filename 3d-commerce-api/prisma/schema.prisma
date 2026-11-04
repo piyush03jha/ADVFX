@@ -295,6 +295,7 @@ model Product {
   inventory  ProductInventory?
   variants   ProductVariant[]
   prices     ProductPrice[]
+  costRules  ProductCostRule[]
   media      ProductMedia[]
   files      ProductFile[]
   tags       ProductTag[]
