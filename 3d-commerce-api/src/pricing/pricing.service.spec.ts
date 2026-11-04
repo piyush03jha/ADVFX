@@ -5,6 +5,7 @@ describe('PricingService', () => {
     cart: { findUnique: jest.fn() },
     product: { findMany: jest.fn() },
     productVariantCountryPrice: { findMany: jest.fn() },
+    siteSetting: { findUnique: jest.fn() },
     address: { findFirst: jest.fn() },
     shippingRule: { findFirst: jest.fn() },
     promotion: { findFirst: jest.fn() },
@@ -39,6 +40,7 @@ describe('PricingService', () => {
       isActive: true,
     });
     prisma.taxRule.findFirst.mockResolvedValue(null);
+    prisma.siteSetting.findUnique.mockResolvedValue(null);
     prisma.deliveryZone = { findUnique: jest.fn().mockResolvedValue(null) };
   });
 
