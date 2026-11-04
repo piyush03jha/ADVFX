@@ -10,7 +10,7 @@ type Product = {id:string;name:string;material?:string|null;variants:Array<{id:s
 type SizeRule = {id:string;sizeKey:string;electricityCostMinor:number;machineCostMinor:number;labourCostMinor:number;finishingCostMinor:number;platformCostMinor:number;packagingCostMinor:number};
 type ProductCostRule = {id:string;productId:string;sizeKey:string;labourCostMinor:number|null;paintingCostMinor:number;finishingCostMinor:number;machineSetupCostMinor:number;packagingCostMinor:number|null;product?:{name:string}};
 type ManufacturingRates = {electricityRatePerKwhMinor:number;machineHourlyCostMinor:number;generalOverheadBps:number;profitMarginBps:number;defaultLabourCostMinor:number;standardPackagingCostMinor:number};
-type SaleCampaign = {enabled:boolean;priceIncreaseBps:number;discountBps:number;startsAt:string|null;endsAt:string|null};
+type SaleCampaign = {enabled:boolean;categoryId:string|null;priceIncreaseBps:number;discountBps:number;startsAt:string|null;endsAt:string|null};
 
 const money = (minor:number|null|undefined) => minor == null ? "Use global default" : "₹" + (minor/100).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2});
 const toMinor = (value:string) => value.trim()==="" ? null : Math.round(Number(value)*100);
@@ -20,11 +20,12 @@ export default function AdminCommerceRulesPage() {
   const [taxRules,setTaxRules]=useState<TaxRule[]>([]);
   const [materialRules,setMaterialRules]=useState<MaterialRule[]>([]);
   const [products,setProducts]=useState<Product[]>([]);
+  const [categories,setCategories]=useState<Array<{id:string;name:string;parentId?:string|null}>>([]);
   const [productCostRules,setProductCostRules]=useState<ProductCostRule[]>([]);
   const [sizeRules,setSizeRules]=useState<SizeRule[]>([]);
   const [sizeForm,setSizeForm]=useState({sizeKey:"small",electricity:"",machine:"",labour:"",finishing:"",platform:"",packaging:""});
   const [rates,setRates]=useState<ManufacturingRates>({electricityRatePerKwhMinor:0,machineHourlyCostMinor:0,generalOverheadBps:0,profitMarginBps:0,defaultLabourCostMinor:0,standardPackagingCostMinor:0});
-  const [saleCampaign,setSaleCampaign]=useState<SaleCampaign>({enabled:false,priceIncreaseBps:2000,discountBps:2000,startsAt:null,endsAt:null});
+  const [saleCampaign,setSaleCampaign]=useState<SaleCampaign>({enabled:false,categoryId:null,priceIncreaseBps:2000,discountBps:2000,startsAt:null,endsAt:null});
   const [saleForm,setSaleForm]=useState({priceIncreasePercent:"20",discountPercent:"20",startsAt:"",endsAt:""});
   const [materialRule,setMaterialRule]=useState({material:"",sizeKey:"all",pricePerKg:"",rawMaterialCost:"",wastagePercent:"",electricityKwh:"",machineHours:""});
   const [productCost,setProductCost]=useState({productId:"",sizeKey:"small",labour:"",painting:"",finishing:"",machineSetup:"",packaging:""});
@@ -50,7 +51,7 @@ export default function AdminCommerceRulesPage() {
       ]);
       if(!p.ok||!t.ok||!m.ok||!c.ok||!pc.ok||!g.ok||!sc.ok||!sizes.ok) throw new Error();
       const [promos,taxes,materials,catalog,costs,global,sale,sizeRows]=await Promise.all([p.json(),t.json(),m.json(),c.json(),pc.json(),g.json(),sc.json(),sizes.json()]);
-      setPromotions(promos);setTaxRules(taxes);setMaterialRules(materials);setProducts(catalog.products||[]);setProductCostRules(costs);setSizeRules(sizeRows);
+      setPromotions(promos);setTaxRules(taxes);setMaterialRules(materials);setProducts(catalog.products||[]);setCategories(catalog.categories||[]);setProductCostRules(costs);setSizeRules(sizeRows);
       setRates(global);
       setSaleCampaign(sale);
       setSaleForm({
@@ -139,6 +140,7 @@ export default function AdminCommerceRulesPage() {
     try{
       const response=await fetch("/api/admin/sale-campaign",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
         enabled:saleCampaign.enabled,
+        categoryId:saleCampaign.categoryId,
         priceIncreaseBps:Math.round(increase*100),
         discountBps:Math.round(discount*100),
         startsAt:saleForm.startsAt?new Date(saleForm.startsAt).toISOString():null,
@@ -262,10 +264,20 @@ export default function AdminCommerceRulesPage() {
 
       <section className="mt-8 rounded-3xl border border-border bg-surface p-6 sm:p-7">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div><p className="text-[9px] uppercase tracking-[0.16em] text-primary">Layer 05 · Storefront promotion</p><h2 className="mt-1 text-xl font-semibold">Sale campaign</h2><p className="mt-1 max-w-2xl text-xs leading-5 text-muted">Temporarily increase every active product's list price, then apply a sale discount. Manufacturing prices are never overwritten. Customers can still apply eligible coupon codes on top of the sale.</p></div>
+          <div><p className="text-[9px] uppercase tracking-[0.16em] text-primary">Layer 05 · Storefront promotion</p><h2 className="mt-1 text-xl font-semibold">Sale campaign</h2><p className="mt-1 max-w-2xl text-xs leading-5 text-muted">Choose a category, increase its list prices by a percentage, then apply a sale discount. Leave the category unselected to target all categories. Manufacturing prices are never overwritten; eligible coupons still apply on top.</p></div>
           <label className="flex items-center gap-2 rounded-full border border-border px-3 py-2 text-xs"><input type="checkbox" checked={saleCampaign.enabled} onChange={e=>setSaleCampaign({...saleCampaign,enabled:e.target.checked})}/> Enable sale</label>
         </div>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <label className="text-[10px] text-muted">Apply to category
+            <select value={saleCampaign.categoryId??""} onChange={e=>setSaleCampaign({...saleCampaign,categoryId:e.target.value||null})} className={inputClass}>
+              <option value="">All categories</option>
+              {categories.filter(category=>!category.parentId).map(category=><optgroup key={category.id} label={category.name}>
+                <option value={category.id}>{category.name} · all products</option>
+                {categories.filter(child=>child.parentId===category.id).map(child=><option key={child.id} value={child.id}>{child.name}</option>)}
+              </optgroup>)}
+              {categories.filter(category=>category.parentId && !categories.some(parent=>parent.id===category.parentId)).map(category=><option key={category.id} value={category.id}>{category.name}</option>)}
+            </select>
+          </label>
           <label className="text-[10px] text-muted">List price increase (%)
             <input value={saleForm.priceIncreasePercent} onChange={e=>setSaleForm({...saleForm,priceIncreasePercent:e.target.value})} type="number" min="0" max="100" step="0.01" className={inputClass}/>
           </label>
@@ -285,7 +297,7 @@ export default function AdminCommerceRulesPage() {
           <p className="mt-1 text-[10px] text-muted">The campaign runs only when enabled and inside its optional date window. A coupon is then applied to the discounted sale subtotal.</p>
         </div>
         <button disabled={saving} type="button" onClick={()=>void saveSaleCampaign()} className="mt-4 min-h-11 rounded-full bg-primary px-5 text-xs font-semibold text-white disabled:opacity-50">Save sale campaign</button>
-        <p className="mt-3 text-[11px] leading-5 text-muted">Current status: {saleCampaign.enabled?"Enabled (date window still applies)":"Disabled"} · {saleCampaign.priceIncreaseBps/100}% list increase · {saleCampaign.discountBps/100}% discount.</p>
+        <p className="mt-3 text-[11px] leading-5 text-muted">Current status: {saleCampaign.enabled?"Enabled (date window still applies)":"Disabled"} · Scope: {categories.find(category=>category.id===saleCampaign.categoryId)?.name??"All categories"} · {saleCampaign.priceIncreaseBps/100}% list increase · {saleCampaign.discountBps/100}% discount.</p>
       </section>
 
       <div className="mt-8 grid gap-6 xl:grid-cols-2">
