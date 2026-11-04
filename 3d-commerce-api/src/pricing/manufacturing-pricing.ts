@@ -27,6 +27,7 @@ export type ManufacturingPriceResult = {
     paintingCostMinor: number;
     finishingCostMinor: number;
     machineSetupCostMinor: number;
+    platformCostMinor: number;
     packagingCostMinor: number;
     directCostMinor: number;
     overheadRateBps: number;
@@ -53,7 +54,7 @@ export async function calculateManufacturingPrice(
     throw new BadRequestException('Product material and variant size are required for manufacturing pricing');
   }
 
-  const [materialRule, productRule, globalRate] = await Promise.all([
+  const [materialRule, productRule, globalRate, sizeRule] = await Promise.all([
     tx.materialPricingRule.findFirst({
       where: { material: { equals: material, mode: 'insensitive' }, sizeKey, isActive: true },
     }),
@@ -61,6 +62,7 @@ export async function calculateManufacturingPrice(
       where: { productId_sizeKey: { productId: input.productId, sizeKey } },
     }),
     tx.manufacturingRate.findUnique({ where: { id: 'default' } }),
+    tx.sizeManufacturingRule.findUnique({ where: { sizeKey } }),
   ]);
 
   if (!materialRule) {
@@ -80,22 +82,23 @@ export async function calculateManufacturingPrice(
       })()
     : materialRule.rawMaterialCostMinor;
   const wastageCostMinor = Math.round(rawMaterialCostMinor * materialRule.wastageRateBps / 10000);
-  const electricityCostMinor = Math.round(
+  const electricityCostMinor = sizeRule?.electricityCostMinor ?? Math.round(
     materialRule.electricityKwhMilli * (globalRate?.electricityRatePerKwhMinor ?? 0) / 1000,
   );
-  const machineCostMinor = Math.round(
+  const machineCostMinor = sizeRule?.machineCostMinor ?? Math.round(
     materialRule.machineHoursMilli * (globalRate?.machineHourlyCostMinor ?? 0) / 1000,
   );
-  const labourCostMinor = productRule?.labourCostMinor ?? globalRate?.defaultLabourCostMinor ?? 0;
+  const labourCostMinor = productRule?.labourCostMinor ?? sizeRule?.labourCostMinor ?? globalRate?.defaultLabourCostMinor ?? 0;
   const paintingCostMinor = productRule?.paintingCostMinor ?? 0;
-  const finishingCostMinor = productRule?.finishingCostMinor ?? 0;
+  const finishingCostMinor = productRule?.finishingCostMinor ?? sizeRule?.finishingCostMinor ?? 0;
   const machineSetupCostMinor = productRule?.machineSetupCostMinor ?? 0;
-  const packagingCostMinor = productRule?.packagingCostMinor ?? globalRate?.standardPackagingCostMinor ?? 0;
+  const platformCostMinor = sizeRule?.platformCostMinor ?? 0;
+  const packagingCostMinor = productRule?.packagingCostMinor ?? sizeRule?.packagingCostMinor ?? globalRate?.standardPackagingCostMinor ?? 0;
 
   const directCostMinor =
     rawMaterialCostMinor + wastageCostMinor + electricityCostMinor + machineCostMinor +
     labourCostMinor + paintingCostMinor + finishingCostMinor + machineSetupCostMinor +
-    packagingCostMinor;
+    platformCostMinor + packagingCostMinor;
   const overheadRateBps = globalRate?.generalOverheadBps ?? 0;
   const overheadCostMinor = Math.round(directCostMinor * overheadRateBps / 10000);
   const preMarginCostMinor = directCostMinor + overheadCostMinor;
@@ -128,6 +131,7 @@ export async function calculateManufacturingPrice(
       paintingCostMinor,
       finishingCostMinor,
       machineSetupCostMinor,
+      platformCostMinor,
       packagingCostMinor,
       directCostMinor,
       overheadRateBps,
