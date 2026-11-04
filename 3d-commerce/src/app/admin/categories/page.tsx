@@ -641,20 +641,20 @@ export default function AdminCategories() {
           )}
         </div>
 
-        <label className="mt-3 flex items-center gap-2 text-xs text-muted">
-          <label className="flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-xs">
+        <div className="mt-3 flex flex-wrap gap-3">
+          <label className="flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-xs text-muted">
             <input type="checkbox" checked={form.ordersEnabled} onChange={(e)=>setForm({...form,ordersEnabled:e.target.checked})}/>
             Accept orders in this category
           </label>
-          <input
-            type="checkbox"
-            checked={form.isActive}
-            onChange={(e) =>
-              setForm({ ...form, isActive: e.target.checked })
-            }
-          />
-          Active category
-        </label>
+          <label className="flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-xs text-muted">
+            <input
+              type="checkbox"
+              checked={form.isActive}
+              onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
+            />
+            Active category
+          </label>
+        </div>
 
         <button
           disabled={saving}
