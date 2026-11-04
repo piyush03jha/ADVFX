@@ -45,7 +45,7 @@ export type ManufacturingPriceResult = {
  */
 export async function calculateManufacturingPrice(
   tx: Prisma.TransactionClient,
-  input: { productId: string; material: string; size: string | null; variantName: string },
+  input: { productId: string; material: string; size: string | null; variantName: string; weightGrams?: number | null },
 ): Promise<ManufacturingPriceResult> {
   const sizeKey = normalizePricingSize(input.variantName) || normalizePricingSize(input.size);
   const material = input.material.trim();
@@ -70,7 +70,15 @@ export async function calculateManufacturingPrice(
     );
   }
 
-  const rawMaterialCostMinor = materialRule.rawMaterialCostMinor;
+  const rawMaterialCostMinor = materialRule.pricePerKgMinor > 0
+    ? (() => {
+        if (input.weightGrams == null || !Number.isFinite(input.weightGrams) || input.weightGrams <= 0) {
+          throw new BadRequestException('Set a positive model weight in grams for this variant before calculating its material price');
+        }
+        // pricePerKgMinor is stored in paise; grams / 1000 converts the rate to the model's material cost.
+        return Math.ceil((input.weightGrams / 1000) * materialRule.pricePerKgMinor);
+      })()
+    : materialRule.rawMaterialCostMinor;
   const wastageCostMinor = Math.round(rawMaterialCostMinor * materialRule.wastageRateBps / 10000);
   const electricityCostMinor = Math.round(
     materialRule.electricityKwhMilli * (globalRate?.electricityRatePerKwhMinor ?? 0) / 1000,
