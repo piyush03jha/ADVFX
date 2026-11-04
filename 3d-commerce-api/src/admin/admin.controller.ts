@@ -98,7 +98,7 @@ export class AdminController {
   @Post('manufacturing-rates')
   upsertManufacturingRates(@Body() body: {
     electricityRatePerKwhMinor: number; machineHourlyCostMinor: number;
-    generalOverheadBps: number; defaultLabourCostMinor: number;
+    generalOverheadBps: number; profitMarginBps: number; defaultLabourCostMinor: number;
     standardPackagingCostMinor: number;
   }) { return this.adminService.upsertManufacturingRates(body); }
 
