@@ -31,6 +31,9 @@ export type ManufacturingPriceResult = {
     directCostMinor: number;
     overheadRateBps: number;
     overheadCostMinor: number;
+    profitMarginBps: number;
+    profitMarginMinor: number;
+    preMarginCostMinor: number;
     sellingPriceMinor: number;
   };
 };
@@ -87,7 +90,13 @@ export async function calculateManufacturingPrice(
     packagingCostMinor;
   const overheadRateBps = globalRate?.generalOverheadBps ?? 0;
   const overheadCostMinor = Math.round(directCostMinor * overheadRateBps / 10000);
-  const amountMinor = directCostMinor + overheadCostMinor;
+  const preMarginCostMinor = directCostMinor + overheadCostMinor;
+  const profitMarginBps = globalRate?.profitMarginBps ?? 0;
+  // Treat margin as a percentage of the final selling price (gross margin), not a markup on cost.
+  const amountMinor = profitMarginBps > 0
+    ? Math.ceil(preMarginCostMinor * 10000 / (10000 - profitMarginBps))
+    : preMarginCostMinor;
+  const profitMarginMinor = amountMinor - preMarginCostMinor;
 
   if (!Number.isSafeInteger(amountMinor) || amountMinor <= 0) {
     throw new BadRequestException('Manufacturing pricing must produce a positive selling price');
@@ -115,6 +124,9 @@ export async function calculateManufacturingPrice(
       directCostMinor,
       overheadRateBps,
       overheadCostMinor,
+      preMarginCostMinor,
+      profitMarginBps,
+      profitMarginMinor,
       sellingPriceMinor: amountMinor,
     },
   };
