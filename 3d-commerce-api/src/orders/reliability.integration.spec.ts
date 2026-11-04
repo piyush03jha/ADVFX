@@ -65,46 +65,6 @@ integrationDescribe("PostgreSQL reliability invariants", () => {
     }
   });
 
-  it("prevents concurrent inventory reservations from overselling the last unit", async () => {
-    const product = await db.product.create({
-      data: {
-        name: "Inventory race integration fixture",
-        slug: `inventory-race-${randomUUID()}`,
-        status: "ACTIVE",
-      },
-    });
-
-    try {
-      const inventory = await db.productInventory.create({
-        data: {
-          productId: product.id,
-          stock: 1,
-          reserved: 0,
-          trackStock: true,
-          allowBackorder: false,
-        },
-      });
-
-      const results = await Promise.all([1, 2].map(() =>
-        db.$transaction((tx) => tx.$executeRaw(Prisma.sql`
-          UPDATE "ProductInventory"
-          SET "reserved" = "reserved" + 1
-          WHERE "id" = ${inventory.id}
-            AND "trackStock" = true
-            AND "allowBackorder" = false
-            AND ("stock" - "reserved") >= 1
-        `)),
-      ));
-
-      expect(results.map(Number).reduce((sum, count) => sum + count, 0)).toBe(1);
-      const finalInventory = await db.productInventory.findUnique({ where: { id: inventory.id } });
-      expect(finalInventory?.stock).toBe(1);
-      expect(finalInventory?.reserved).toBe(1);
-    } finally {
-      await db.product.deleteMany({ where: { id: product.id } });
-    }
-  });
-
   it("deduplicates concurrent product-view events by the database unique key", async () => {
     const product = await db.product.create({
       data: {

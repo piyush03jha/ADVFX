@@ -170,18 +170,16 @@ describeDb("AUDIT: checkout -> payment behaviour (real DB)", () => {
 
   async function product(
     name: string,
-    stock: number,
     price: number,
     tag: string,
+    extra: Record<string, unknown> = {},
   ) {
     return prisma.product.create({
       data: {
         name,
         slug: `${name}-${tag}`,
         status: "ACTIVE",
-        inventory: {
-          create: { stock, reserved: 0, trackStock: true },
-        },
+        ...extra,
         prices: {
           create: { amountMinor: price, currency: "INR", isActive: true },
         },
@@ -189,7 +187,7 @@ describeDb("AUDIT: checkout -> payment behaviour (real DB)", () => {
     });
   }
 
-  async function shop(stockA = 10) {
+  async function shop() {
     const tag = `${Date.now()}-${++n}`;
     const { u, a } = await user(tag);
 
@@ -197,8 +195,8 @@ describeDb("AUDIT: checkout -> payment behaviour (real DB)", () => {
       tag,
       u,
       a,
-      A: await product("a", stockA, 10000, tag),
-      B: await product("b", 10, 20000, tag),
+      A: await product("a", 10000, tag),
+      B: await product("b", 20000, tag),
     };
   }
 
@@ -229,9 +227,6 @@ describeDb("AUDIT: checkout -> payment behaviour (real DB)", () => {
         where: { cart: { userId } },
       })
     ).map((i) => ({ p: i.productId, q: i.quantity }));
-
-  const inv = (productId: string) =>
-    prisma.productInventory.findUniqueOrThrow({ where: { productId } });
 
   const ord = (id: string) =>
     prisma.order.findUniqueOrThrow({
@@ -277,7 +272,7 @@ describeDb("AUDIT: checkout -> payment behaviour (real DB)", () => {
       "sig",
     );
 
-  it("1 HAPPY PATH: pay -> order confirmed, purchased line leaves the cart, stock consumed", async () => {
+  it("1 HAPPY PATH: pay -> order confirmed, purchased line leaves the cart", async () => {
     const { u, a, A, B } = await shop();
 
     await fillCart(u.id, [
@@ -292,10 +287,9 @@ describeDb("AUDIT: checkout -> payment behaviour (real DB)", () => {
 
     expect((await ord(o.id)).status).toBe("CONFIRMED");
     expect(await cart(u.id)).toEqual([]);
-    expect((await inv(A.id)).stock).toBe(8);
   });
 
-  it("2 ABANDON: order created keeps the cart; closing Razorpay (nothing paid) releases stock, cart intact", async () => {
+  it("2 ABANDON: order created keeps the cart; closing Razorpay (nothing paid) cancels the order, cart intact", async () => {
     const { u, a, A } = await shop();
 
     await fillCart(u.id, [{ productId: A.id, quantity: 2 }]);
@@ -305,7 +299,6 @@ describeDb("AUDIT: checkout -> payment behaviour (real DB)", () => {
     await payments.cancelRazorpayPayment(u.id, o.id);
 
     expect((await ord(o.id)).status).toBe("CANCELLED");
-    expect((await inv(A.id)).reserved).toBe(0);
     expect(await cart(u.id)).toEqual([{ p: A.id, q: 2 }]);
   });
 
@@ -383,7 +376,7 @@ describeDb("AUDIT: checkout -> payment behaviour (real DB)", () => {
     expect(razorpay.refunds).toHaveLength(0);
   });
 
-  it("7 LATE PAYMENT after the checkout expired: captured money must be refunded, never silently kept", async () => {
+  it("7 PAID but slow: an unpaid-looking order past the payment window that Razorpay shows as captured is confirmed, not cancelled", async () => {
     const { u, a, A } = await shop();
 
     await fillCart(u.id, [{ productId: A.id, quantity: 1 }]);
@@ -393,16 +386,35 @@ describeDb("AUDIT: checkout -> payment behaviour (real DB)", () => {
 
     razorpay.markPaid(rz.razorpayOrderId!);
 
-    await prisma.inventoryReservation.updateMany({
-      where: { orderId: o.id },
-      data: { expiresAt: new Date(Date.now() - 1000) },
+    // Age the order past the payment window without the browser/webhook having confirmed it.
+    await prisma.order.update({
+      where: { id: o.id },
+      data: { createdAt: new Date(Date.now() - 11 * 60_000) },
     });
 
-    await orders.expireReservations();
+    await orders.expireUnpaidOrders();
+
+    // Made to order: money was received, so the order is confirmed and gets printed/shipped.
+    expect((await ord(o.id)).status).toBe("CONFIRMED");
+    expect(razorpay.refunds).toHaveLength(0);
+  });
+
+  it("7b UNPAID past the payment window is cancelled by the expiry sweep", async () => {
+    const { u, a, A } = await shop();
+
+    await fillCart(u.id, [{ productId: A.id, quantity: 1 }]);
+
+    const o = await checkout(u.id, a.id);
+    await payments.createRazorpayOrder(u.id, o.id);
+
+    await prisma.order.update({
+      where: { id: o.id },
+      data: { createdAt: new Date(Date.now() - 11 * 60_000) },
+    });
+
+    await orders.expireUnpaidOrders();
 
     expect((await ord(o.id)).status).toBe("CANCELLED");
-    expect(razorpay.refunds.map((r) => r.paymentId)).toContain("pay_real");
-    expect((await ord(o.id)).payment?.status).toBe("REFUNDED");
   });
 
   it("8 LATE WEBHOOK after cancellation: captured money is refunded and persisted as REFUNDED", async () => {
@@ -455,23 +467,44 @@ describeDb("AUDIT: checkout -> payment behaviour (real DB)", () => {
     expect(razorpay.refunds.map((r) => r.paymentId)).toContain("pay_second");
   });
 
-  it("9 LAST UNIT RACE: two customers, one unit -> exactly one wins", async () => {
-    const { u, a, A } = await shop(1);
-    const other = await user(`race-${Date.now()}-${++n}`);
+  it("9 MADE TO ORDER: there is no stock limit, two customers can order the same product", async () => {
+    const { u, a, A } = await shop();
+    const other = await user(`mto-${Date.now()}-${++n}`);
 
-    await fillCart(u.id, [{ productId: A.id, quantity: 1 }]);
-    await fillCart(other.u.id, [{ productId: A.id, quantity: 1 }]);
+    await fillCart(u.id, [{ productId: A.id, quantity: 5 }]);
+    await fillCart(other.u.id, [{ productId: A.id, quantity: 5 }]);
 
     const r = await Promise.allSettled([
       checkout(u.id, a.id),
       checkout(other.u.id, other.a.id),
     ]);
 
-    expect(r.filter((x) => x.status === "fulfilled")).toHaveLength(1);
-    expect((await inv(A.id)).reserved).toBe(1);
+    expect(r.filter((x) => x.status === "fulfilled")).toHaveLength(2);
   });
 
-  it("10 CONCURRENT confirm (browser verify + webhook at once): stock consumed exactly once", async () => {
+  it("9b PAUSED PRODUCT: admin pauses one product -> checkout is refused", async () => {
+    const { u, a, A } = await shop();
+
+    await fillCart(u.id, [{ productId: A.id, quantity: 1 }]);
+    await prisma.product.update({ where: { id: A.id }, data: { ordersEnabled: false } });
+
+    await expect(checkout(u.id, a.id)).rejects.toThrow(/not accepting orders/);
+  });
+
+  it("9c PAUSED CATEGORY: pausing a category refuses every product inside it", async () => {
+    const tag = `${Date.now()}-${++n}`;
+    const { u, a } = await user(tag);
+    const category = await prisma.category.create({
+      data: { name: `Paused ${tag}`, slug: `paused-${tag}`, ordersEnabled: false },
+    });
+    const P = await product("p", 10000, tag, { categoryId: category.id });
+
+    await fillCart(u.id, [{ productId: P.id, quantity: 1 }]);
+
+    await expect(checkout(u.id, a.id)).rejects.toThrow(/not accepting orders/);
+  });
+
+  it("10 CONCURRENT confirm (browser verify + webhook at once): order is confirmed exactly once", async () => {
     const { u, a, A } = await shop();
 
     await fillCart(u.id, [{ productId: A.id, quantity: 2 }]);
@@ -489,8 +522,6 @@ describeDb("AUDIT: checkout -> payment behaviour (real DB)", () => {
       }),
     ]);
 
-    const i = await inv(A.id);
-    expect([i.stock, i.reserved]).toEqual([8, 0]);
     expect((await ord(o.id)).status).toBe("CONFIRMED");
   });
 

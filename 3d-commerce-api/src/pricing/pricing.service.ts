@@ -28,7 +28,6 @@ export class PricingService {
         where: { id: { in: productIds } },
         include: {
           category: { select: { id: true, name: true, parentId: true, gstRateBps: true, ordersEnabled: true, parent: { select: { ordersEnabled: true } } } },
-          inventory: true,
           prices: {
             where: {
               isActive: true,
@@ -78,7 +77,6 @@ export class PricingService {
               product: {
                 include: {
                   category: { select: { id: true, name: true, gstRateBps: true, ordersEnabled: true, parent: { select: { ordersEnabled: true } } } },
-                  inventory: true,
                   prices: {
                     where: {
                       isActive: true,

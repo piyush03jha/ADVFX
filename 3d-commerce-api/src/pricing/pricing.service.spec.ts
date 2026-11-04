@@ -54,7 +54,6 @@ describe('PricingService', () => {
             status: 'ACTIVE',
             category: { gstRateBps: 1800 },
             weight: '1kg',
-            inventory: { stock: 5, reserved: 1, trackStock: true, allowBackorder: false },
             prices: [{ amountMinor: 10000, currency: 'INR' }],
           },
         },
@@ -100,7 +99,6 @@ describe('PricingService', () => {
             name: 'Model',
             status: 'ACTIVE',
             weight: null,
-            inventory: { stock: 5, reserved: 0, trackStock: true, allowBackorder: false },
             prices: [{ amountMinor: 10000, currency: 'INR' }],
           },
         },
@@ -147,7 +145,6 @@ describe('PricingService', () => {
             name: 'Model',
             status: 'ACTIVE',
             weight: null,
-            inventory: { stock: 5, reserved: 0, trackStock: true, allowBackorder: false },
             prices: [{ amountMinor: 10000, currency: 'INR' }],
           },
         },
@@ -170,7 +167,6 @@ describe('PricingService', () => {
         name: 'Global-priced model',
         status: 'ACTIVE',
         weight: null,
-        inventory: { stock: 5, reserved: 0, trackStock: true, allowBackorder: false },
         prices: [{ amountMinor: 15000, currency: 'INR', countryCode: null, isActive: true }],
         variants: [],
       },
@@ -209,17 +205,12 @@ describe('PricingService', () => {
         name: 'Variant-priced model',
         status: 'ACTIVE',
         weight: null,
-        inventory: { stock: 5, reserved: 0, trackStock: true, allowBackorder: false },
         prices: [{ amountMinor: 10000, currency: 'INR', countryCode: null, isActive: true }],
         variants: [{
           id: 'v1',
           productId: 'p1',
           name: 'Large',
           isActive: true,
-          stock: 5,
-          reserved: 0,
-          trackStock: true,
-          allowBackorder: false,
           price: { amountMinor: 12000, currency: 'INR', isActive: true },
         }],
       },
@@ -250,14 +241,14 @@ describe('PricingService', () => {
       {
         id: 'p1', name: 'Category A model', status: 'ACTIVE', categoryId: 'category-a',
         category: { id: 'category-a', parentId: null, gstRateBps: 0 },
-        weight: null, inventory: null,
+        weight: null,
         prices: [{ amountMinor: 10000, currency: 'INR', isActive: true }],
         variants: [],
       },
       {
         id: 'p2', name: 'Category B model', status: 'ACTIVE', categoryId: 'category-b',
         category: { id: 'category-b', parentId: null, gstRateBps: 0 },
-        weight: null, inventory: null,
+        weight: null,
         prices: [{ amountMinor: 10000, currency: 'INR', isActive: true }],
         variants: [],
       },
@@ -286,7 +277,6 @@ describe('PricingService', () => {
             name: 'INR Model',
             status: 'ACTIVE',
             weight: null,
-            inventory: { stock: 5, reserved: 0, trackStock: true, allowBackorder: false },
             prices: [{ amountMinor: 10000, currency: 'INR' }],
           },
         },
@@ -297,7 +287,6 @@ describe('PricingService', () => {
             name: 'USD Model',
             status: 'ACTIVE',
             weight: null,
-            inventory: { stock: 5, reserved: 0, trackStock: true, allowBackorder: false },
             prices: [{ amountMinor: 1000, currency: 'USD' }],
           },
         },
@@ -328,7 +317,6 @@ describe('PricingService', () => {
             name: 'Model',
             status: 'ACTIVE',
             weight: null,
-            inventory: { stock: 5, reserved: 0, trackStock: true, allowBackorder: false },
             prices: [{ amountMinor: 10000, currency: 'INR' }],
           },
         },
@@ -340,4 +328,38 @@ describe('PricingService', () => {
     ).rejects.toThrow('has no active price');
   });
 
+  describe('order availability (admin pause on product / category)', () => {
+    const quoteFor = (overrides: Record<string, unknown>) => {
+      prisma.product.findMany.mockResolvedValue([
+        {
+          id: 'p1', name: 'Dragon', status: 'ACTIVE', weight: null,
+          prices: [{ amountMinor: 10000, currency: 'INR', countryCode: null, isActive: true }],
+          variants: [],
+          ...overrides,
+        },
+      ]);
+      return service.calculate('user-1', {
+        shippingAddressId: 'addr-1',
+        items: [{ productId: 'p1', quantity: 1 }],
+      });
+    };
+
+    it('accepts a product that has no pause flags (made to order, no stock check)', async () => {
+      await expect(quoteFor({ ordersEnabled: true, category: { ordersEnabled: true, parent: null } })).resolves.toBeDefined();
+    });
+
+    it('rejects a product the admin has paused', async () => {
+      await expect(quoteFor({ ordersEnabled: false, category: null })).rejects.toThrow(/not accepting orders/);
+    });
+
+    it('rejects every product in a paused category', async () => {
+      await expect(quoteFor({ ordersEnabled: true, category: { ordersEnabled: false, parent: null } })).rejects.toThrow(/not accepting orders/);
+    });
+
+    it('rejects products in a subcategory whose parent category is paused', async () => {
+      await expect(
+        quoteFor({ ordersEnabled: true, category: { ordersEnabled: true, parent: { ordersEnabled: false } } }),
+      ).rejects.toThrow(/not accepting orders/);
+    });
+  });
 });

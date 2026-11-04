@@ -54,6 +54,7 @@ export function CartItem({ item }: CartItemProps) {
     isSyncing: isWishlistSyncing,
   } = useWishlist();
   const [isMoving, setIsMoving] = useState(false);
+  const unavailable = item.product.ordersEnabled === false;
   const total = item.product.price * item.quantity;
   const imageSrc = normalizeImagePath(item.product.image);
 
@@ -96,7 +97,7 @@ export function CartItem({ item }: CartItemProps) {
 
   return (
     <article className="group relative my-2 grid min-w-0 grid-cols-[88px_minmax(0,1fr)] gap-4 overflow-hidden rounded-2xl border border-border bg-[linear-gradient(135deg,rgb(from var(--foreground) r g b / 0.045),rgb(from var(--background) r g b / 0.018)_55%,rgb(from var(--primary) r g b / 0.055))] px-3 py-4 shadow-[0_14px_45px_rgba(0,0,0,0.1)] transition-all hover:border-primary/20 hover:shadow-[0_18px_55px_rgba(0,0,0,0.15)] sm:grid-cols-[116px_minmax(0,1fr)_auto] sm:gap-5 sm:px-4 sm:py-5">
-      <div className="relative aspect-square overflow-hidden rounded-xl border border-border bg-[linear-gradient(145deg,rgb(from var(--foreground) r g b / 0.06),rgb(from var(--background) r g b / 0.02))]">
+      <div className={`relative aspect-square overflow-hidden rounded-xl border border-border bg-[linear-gradient(145deg,rgb(from var(--foreground) r g b / 0.06),rgb(from var(--background) r g b / 0.02))] ${unavailable ? "opacity-50 grayscale" : ""}`}>
         <Image
           src={imageSrc}
           alt={item.product.name}
@@ -134,6 +135,16 @@ export function CartItem({ item }: CartItemProps) {
           <span>₹{item.product.price.toLocaleString("en-IN")} each · GST incl.</span>
         </div>
 
+        {unavailable && (
+          <p
+            role="status"
+            className="mt-3 rounded-lg border border-red-400/25 bg-red-400/[0.07] px-3 py-2 text-[11px] leading-4 text-red-300"
+          >
+            Out of stock — we are not taking orders for this item right now.
+            Remove it to continue to checkout.
+          </p>
+        )}
+
         <div className="mt-5 flex flex-wrap items-center justify-between gap-4">
           <div className="flex h-9 items-center rounded-full border border-border bg-surface">
             <button
@@ -150,7 +161,7 @@ export function CartItem({ item }: CartItemProps) {
             </span>
             <button
               type="button"
-              disabled={isSyncing || isMoving || isWishlistSyncing}
+              disabled={isSyncing || isMoving || isWishlistSyncing || unavailable}
               aria-label="Increase quantity"
               onClick={() => void incrementItem(item.key)}
               className="flex h-full w-8 items-center justify-center text-muted transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-50"

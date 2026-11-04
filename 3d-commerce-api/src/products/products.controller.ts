@@ -19,7 +19,6 @@ import { AdminGuard } from '../auth/guards/admin.guard';
 import { CreateMediaDto } from './dto/create-media.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { CreateProductReviewDto } from './dto/create-product-review.dto';
-import { UpdateInventoryDto } from './dto/update-inventory.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { UpsertPriceDto } from './dto/upsert-price.dto';
 import { UpsertVariantDto } from './dto/upsert-variant.dto';
@@ -194,12 +193,6 @@ export class ProductsController {
   @Delete(':id/variants/:variantId')
   removeVariant(@Param('id') id: string, @Param('variantId') variantId: string) {
     return this.productsService.removeVariant(id, variantId);
-  }
-
-  @UseGuards(AuthGuard, AdminGuard)
-  @Patch(':id/inventory')
-  updateInventory(@Param('id') id: string, @Body() dto: UpdateInventoryDto) {
-    return this.productsService.updateInventory(id, dto);
   }
 
   @UseGuards(AuthGuard, AdminGuard)

@@ -49,11 +49,6 @@ export interface CatalogVariant {
   weightGrams?: number | null;
   sku?: string | null;
   isActive: boolean;
-  stock?: number;
-  reserved?: number;
-  lowStockAt?: number;
-  trackStock?: boolean;
-  allowBackorder?: boolean;
   price?: CatalogVariantPrice | null;
 }
 
@@ -100,13 +95,6 @@ export interface CatalogProduct {
     purchaseCount: number;
     unitsSold: number;
   } | null;
-  inventory?: {
-    stock: number;
-    reserved: number;
-    lowStockAt: number;
-    trackStock: boolean;
-    allowBackorder: boolean;
-  } | null;
 }
 
 export interface StorefrontVariant {
@@ -115,11 +103,6 @@ export interface StorefrontVariant {
   size?: string | null;
   weightGrams?: number | null;
   sku?: string | null;
-  stock?: number;
-  reserved?: number;
-  lowStockAt?: number;
-  trackStock?: boolean;
-  allowBackorder?: boolean;
   price?: number;
   oldPrice?: number;
 }
@@ -161,11 +144,6 @@ export interface StorefrontProduct {
   isFeatured: boolean;
   isTrending: boolean;
   isBestseller: boolean;
-  stock: number;
-  reserved: number;
-  lowStockAt: number;
-  trackStock: boolean;
-  allowBackorder: boolean;
   createdAt?: string;
   metrics: {
     views: number;
@@ -195,11 +173,6 @@ function mapVariant(variant: CatalogVariant, saleCampaign?: CatalogProduct["sale
     size: variant.size,
     weightGrams: variant.weightGrams ?? undefined,
     sku: variant.sku,
-    stock: variant.stock ?? 0,
-    reserved: variant.reserved ?? 0,
-    lowStockAt: variant.lowStockAt ?? 5,
-    trackStock: variant.trackStock ?? false,
-    allowBackorder: variant.allowBackorder ?? false,
     price: saleAmountMinor / 100,
     oldPrice: saleActive
       ? saleListMinor / 100
@@ -360,11 +333,6 @@ export function mapCatalogProduct(product: CatalogProduct): StorefrontProduct {
     isFeatured: product.isFeatured,
     isTrending: product.isTrending,
     isBestseller: product.isBestseller,
-    stock: product.inventory?.stock ?? 0,
-    reserved: product.inventory?.reserved ?? 0,
-    lowStockAt: product.inventory?.lowStockAt ?? 5,
-    trackStock: product.inventory?.trackStock ?? false,
-    allowBackorder: product.inventory?.allowBackorder ?? false,
     createdAt: product.createdAt,
     category: product.category?.name ?? "Uncategorized",
     categorySlug: product.category?.slug,

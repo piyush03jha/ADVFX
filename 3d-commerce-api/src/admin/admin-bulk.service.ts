@@ -15,14 +15,14 @@ export class AdminBulkService {
   }
 
   async duplicate(actorId: string|undefined, productId: string) {
-    const source = await this.prisma.product.findUnique({ where:{id:productId}, include:{inventory:true,variants:{include:{price:true}}, prices:{where:{isActive:true,countryCode:null}}, media:{orderBy:{sortOrder:'asc'}}} });
+    const source = await this.prisma.product.findUnique({ where:{id:productId}, include:{variants:{include:{price:true}}, prices:{where:{isActive:true,countryCode:null}}, media:{orderBy:{sortOrder:'asc'}}} });
     if (!source) throw new NotFoundException('Product not found');
     const baseSlug = source.slug+'-copy';
     let slug=baseSlug; let suffix=2;
     while(await this.prisma.product.findUnique({where:{slug},select:{id:true}})){ slug=`${baseSlug}-${suffix++}`; }
     const created = await this.prisma.$transaction(async tx=>{
-      const product=await tx.product.create({data:{name:`${source.name} Copy`,slug,description:source.description,categoryId:source.categoryId,status:'DRAFT',isFeatured:false,isTrending:false,isBestseller:false,badge:source.badge,material:source.material,scale:source.scale,dimensions:source.dimensions,height:source.height,base:source.base,packaging:source.packaging,weight:source.weight,inventory:{create:{stock:0,reserved:0,lowStockAt:source.inventory?.lowStockAt??5,trackStock:source.inventory?.trackStock??true,allowBackorder:source.inventory?.allowBackorder??false}}}});
-      for(const v of source.variants){await tx.productVariant.create({data:{productId:product.id,name:v.name,size:v.size,sku:null,isActive:v.isActive,stock:0,reserved:0,lowStockAt:v.lowStockAt,trackStock:v.trackStock,allowBackorder:v.allowBackorder,price:v.price?{create:{currency:v.price.currency,amountMinor:v.price.amountMinor,compareAtMinor:v.price.compareAtMinor,isActive:true}}:undefined}})}
+      const product=await tx.product.create({data:{name:`${source.name} Copy`,slug,description:source.description,categoryId:source.categoryId,status:'DRAFT',isFeatured:false,isTrending:false,isBestseller:false,badge:source.badge,material:source.material,scale:source.scale,dimensions:source.dimensions,height:source.height,base:source.base,packaging:source.packaging,weight:source.weight,ordersEnabled:source.ordersEnabled}});
+      for(const v of source.variants){await tx.productVariant.create({data:{productId:product.id,name:v.name,size:v.size,sku:null,isActive:v.isActive,price:v.price?{create:{currency:v.price.currency,amountMinor:v.price.amountMinor,compareAtMinor:v.price.compareAtMinor,isActive:true}}:undefined}})}
       for(const p of source.prices){await tx.productPrice.create({data:{productId:product.id,currency:p.currency,amountMinor:p.amountMinor,compareAtMinor:p.compareAtMinor,isActive:p.isActive,startsAt:p.startsAt,endsAt:p.endsAt}})}
       for(const m of source.media){await tx.productMedia.create({data:{productId:product.id,type:m.type,url:m.url,altText:m.altText,sortOrder:m.sortOrder,isPrimary:m.isPrimary}})}
       return product;
@@ -88,8 +88,8 @@ export class AdminBulkService {
         };
         const status = textValue(row.status)?.toUpperCase();
         if (status && !['DRAFT', 'ACTIVE', 'ARCHIVED'].includes(status)) throw new Error('status must be DRAFT, ACTIVE, or ARCHIVED');
-        const stock = row.stock === undefined || row.stock === '' ? undefined : Number(row.stock);
-        if (stock !== undefined && (!Number.isInteger(stock) || stock < 0)) throw new Error('stock must be a non-negative whole number');
+        // Made to order: there is no stock column. Optionally pause/resume ordering per product.
+        const ordersEnabled = row.ordersenabled === undefined || row.ordersenabled.trim() === '' ? undefined : parseBoolean(row.ordersenabled);
         const basePrice = parseMoney(row.price, 'price');
         const variantPrices = variants.map((variant) => ({ ...variant, amountMinor: parseMoney(row[variant.header], variant.name + ' price') ?? basePrice }));
         const imageValue = textValue(row.image || row.imageurl);
@@ -114,12 +114,10 @@ export class AdminBulkService {
               ...(textValue(row.packaging) ? { packaging: textValue(row.packaging) } : {}),
               ...(textValue(row.weight) ? { weight: textValue(row.weight) } : {}),
               ...(categoryId ? { categoryId } : {}),
+              ...(ordersEnabled !== undefined ? { ordersEnabled } : {}),
             };
             await tx.product.update({ where: { id: existing.id }, data });
             productId = existing.id;
-            if (stock !== undefined) {
-              await tx.productInventory.upsert({ where: { productId }, create: { productId, stock }, update: { stock } });
-            }
           } else {
             const product = await tx.product.create({
               data: {
@@ -127,7 +125,7 @@ export class AdminBulkService {
                 isFeatured: parseBoolean(row.isfeatured), isTrending: parseBoolean(row.istrending), isBestseller: parseBoolean(row.isbestseller),
                 badge: textValue(row.badge), material: textValue(row.material), scale: textValue(row.scale), dimensions: textValue(row.dimensions),
                 height: textValue(row.height), base: textValue(row.base), packaging: textValue(row.packaging), weight: textValue(row.weight), categoryId,
-                inventory: { create: { stock: stock ?? 0 } },
+                ordersEnabled: ordersEnabled ?? true,
               },
             });
             productId = product.id;
@@ -139,8 +137,7 @@ export class AdminBulkService {
             if (!current) {
               await tx.productVariant.create({
                 data: {
-                  productId, name: variant.name, size: variant.size, stock: stock ?? 0, reserved: 0,
-                  lowStockAt: 5, trackStock: true, allowBackorder: false,
+                  productId, name: variant.name, size: variant.size,
                   price: { create: { currency: 'INR', amountMinor: variant.amountMinor ?? 0, isActive: true } },
                 },
               });

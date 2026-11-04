@@ -28,7 +28,7 @@ export class CartService {
 
     const product = await this.prisma.product.findFirst({
       where: { id: productId, status: 'ACTIVE' },
-      include: { inventory: true, category: { include: { parent: { select: { ordersEnabled: true } } } } },
+      include: { category: { include: { parent: { select: { ordersEnabled: true } } } } },
     });
 
     if (!product) {
@@ -75,7 +75,9 @@ export class CartService {
 
     if (!item) throw new NotFoundException('Cart item not found');
 
-    if (item.product.ordersEnabled === false || item.product.category?.ordersEnabled === false || item.product.category?.parent?.ordersEnabled === false) {
+    // A paused product may be reduced or removed, but its quantity cannot grow.
+    const paused = item.product.ordersEnabled === false || item.product.category?.ordersEnabled === false || item.product.category?.parent?.ordersEnabled === false;
+    if (paused && quantity > item.quantity) {
       throw new BadRequestException('This product is temporarily unavailable for ordering.');
     }
 
@@ -120,8 +122,9 @@ export class CartService {
           },
           product: {
             include: {
-              category: true,
-              inventory: true,
+              // parent.ordersEnabled lets the storefront flag items whose whole
+              // top-level category has been paused by the admin.
+              category: { include: { parent: { select: { ordersEnabled: true } } } },
               prices: {
                 where: { isActive: true, countryCode: null },
                 orderBy: { createdAt: 'desc' as const },

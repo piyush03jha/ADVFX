@@ -48,7 +48,6 @@ describe('PricingService sale campaign integration', () => {
         weight: '250g',
         material: 'Resin',
         category: { id: 'category-1', name: 'Sculptures', gstRateBps: 1800 },
-        inventory: { stock: 10, reserved: 0, trackStock: true, allowBackorder: false },
         prices: [{ amountMinor: 10000, currency: 'INR', isActive: true }],
         variants: [],
       },

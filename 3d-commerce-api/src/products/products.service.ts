@@ -10,7 +10,6 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMediaDto } from './dto/create-media.dto';
 import { CreateProductDto } from './dto/create-product.dto';
-import { UpdateInventoryDto } from './dto/update-inventory.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { UpsertPriceDto } from './dto/upsert-price.dto';
 import { CreateProductReviewDto } from './dto/create-product-review.dto';
@@ -43,22 +42,13 @@ export class ProductsService {
       throw new BadRequestException('Select a material before activating a product so its size prices can be calculated.');
     }
 
-    const { stock, lowStockAt, ...productData } = dto;
+    const productData = dto;
     const baseAmount = 0;
 
     return this.prisma.$transaction(async (tx) => {
       const product = await tx.product.create({
         data: {
           ...productData,
-          inventory: {
-            create: {
-              stock: 0,
-              reserved: 0,
-              lowStockAt: lowStockAt ?? 5,
-              trackStock: false,
-              allowBackorder: false,
-            },
-          },
         },
       });
 
@@ -126,10 +116,6 @@ export class ProductsService {
       price?: number;
       compareAtPrice?: number | null;
       isActive?: boolean;
-      stock?: number;
-      lowStockAt?: number;
-      trackStock?: boolean;
-      allowBackorder?: boolean;
     },
   ) {
     await this.ensureProductExists(productId);
@@ -159,11 +145,6 @@ export class ProductsService {
           ...(input.sku !== undefined ? { sku } : {}),
           ...(input.weightGrams !== undefined ? { weightGrams: input.weightGrams } : {}),
           ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
-          stock: 0,
-          reserved: 0,
-          ...(input.lowStockAt !== undefined ? { lowStockAt: input.lowStockAt } : {}),
-          trackStock: false,
-          ...(input.allowBackorder !== undefined ? { allowBackorder: input.allowBackorder } : {}),
         },
       });
 
@@ -210,10 +191,6 @@ export class ProductsService {
       size?: string | null;
       sku?: string | null;
       weightGrams?: number | null;
-      stock?: number;
-      lowStockAt?: number;
-      trackStock?: boolean;
-      allowBackorder?: boolean;
     },
   ) {
     const product = await this.prisma.product.findUnique({
@@ -232,11 +209,6 @@ export class ProductsService {
           size: input.size?.trim() || null,
           weightGrams: input.weightGrams ?? null,
           sku: input.sku?.trim() || null,
-          stock: input.stock ?? 0,
-          reserved: 0,
-          lowStockAt: input.lowStockAt ?? 5,
-          trackStock: false,
-          allowBackorder: false,
           price: { create: { currency: 'INR', amountMinor: 0, isActive: false } },
         },
       });
@@ -327,7 +299,7 @@ export class ProductsService {
    * Paginated, filterable storefront listing.
    *
    * Unlike findAll(), this returns one page of lightweight rows (primary image,
-   * active price, first variant, inventory, metrics) so payload size and query
+   * active price, first variant, metrics) so payload size and query
    * cost stay constant as the catalog grows.
    */
   async findShopPage(query: ShopListQuery) {
@@ -525,7 +497,6 @@ export class ProductsService {
               include: { price: true },
               orderBy: { createdAt: 'asc' },
             },
-            inventory: true,
             metrics: true,
           },
         })
@@ -1036,7 +1007,7 @@ export class ProductsService {
 
     if (dto.slug) await this.ensureSlugAvailable(dto.slug, id);
 
-    const { stock, lowStockAt, ...productData } = dto;
+    const productData = dto;
 
     return this.prisma.$transaction(async (tx) => {
       const current = await tx.product.findUniqueOrThrow({
@@ -1094,21 +1065,6 @@ export class ProductsService {
         }
       }
 
-      if (stock !== undefined || lowStockAt !== undefined) {
-        await tx.productInventory.upsert({
-          where: { productId: id },
-          create: {
-            productId: id,
-            stock: stock ?? 0,
-            lowStockAt: lowStockAt ?? 5,
-          },
-          update: {
-            ...(stock !== undefined ? { stock } : {}),
-            ...(lowStockAt !== undefined ? { lowStockAt } : {}),
-          },
-        });
-      }
-
       return tx.product.findUniqueOrThrow({
         where: { id },
         include: this.productInclude(),
@@ -1157,28 +1113,6 @@ export class ProductsService {
           isActive: true,
         },
       });
-    });
-  }
-
-  async updateInventory(id: string, dto: UpdateInventoryDto) {
-    await this.ensureProductExists(id);
-
-    return this.prisma.productInventory.upsert({
-      where: { productId: id },
-      create: {
-        productId: id,
-        stock: 0,
-        reserved: 0,
-        lowStockAt: dto.lowStockAt ?? 5,
-        trackStock: false,
-        allowBackorder: false,
-      },
-      update: {
-        stock: 0,
-        reserved: 0,
-        trackStock: false,
-        allowBackorder: false,
-      },
     });
   }
 
@@ -1461,9 +1395,9 @@ export class ProductsService {
         amountMinor: variant.price!.amountMinor,
       }));
 
-    // Made-to-order products are not filtered by inventory counts.
-    const smallInStock = pricedVariants.find((item) => /small/i.test(item.variant.name));
-    const selectedVariant = smallInStock ?? [...pricedVariants].sort((a, b) => a.amountMinor - b.amountMinor)[0];
+    // Made-to-order: prefer the Small variant, otherwise the cheapest.
+    const smallVariant = pricedVariants.find((item) => /small/i.test(item.variant.name));
+    const selectedVariant = smallVariant ?? [...pricedVariants].sort((a, b) => a.amountMinor - b.amountMinor)[0];
 
     const priceMinor = selectedVariant?.amountMinor ?? activePrice?.amountMinor;
     const currency =
@@ -1526,7 +1460,6 @@ export class ProductsService {
   private productInclude(): Prisma.ProductInclude {
     return {
       category: { include: { parent: { select: { id: true, ordersEnabled: true } } } },
-      inventory: true,
       prices: {
         where: { isActive: true, countryCode: null },
         orderBy: { createdAt: 'desc' },

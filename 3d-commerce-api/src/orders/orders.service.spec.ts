@@ -82,14 +82,12 @@ describe('OrdersService', () => {
         findUnique: jest.fn().mockResolvedValue({ status: 'PENDING_PAYMENT' }),
         update: jest.fn().mockResolvedValue({ id: 'order-1', status: 'CONFIRMED' }),
       },
-      inventoryReservation: { findMany: jest.fn().mockResolvedValue([]) },
-      productInventory: { findUnique: jest.fn(), updateMany: jest.fn() },
     } as any;
     prisma.$transaction.mockImplementation((callback: any) => callback(tx));
     await expect(service.updateStatus('order-1', 'CONFIRMED' as any)).resolves.toEqual({ id: 'order-1', status: 'CONFIRMED' });
   });
 
-  it('releases active reservations when an order is cancelled', async () => {
+  it('cancels an unpaid order without touching any stock tables (made to order)', async () => {
     prisma.order.findUnique.mockResolvedValue({ id: 'order-1', status: 'PENDING_PAYMENT', userId: 'user-1' });
     const tx = {
       $queryRaw: jest.fn().mockResolvedValue([{ id: 'order-1' }]),
@@ -97,16 +95,10 @@ describe('OrdersService', () => {
         findUnique: jest.fn().mockResolvedValue({ status: 'PENDING_PAYMENT' }),
         update: jest.fn().mockResolvedValue({ id: 'order-1', status: 'CANCELLED', userId: 'user-1' }),
       },
-      inventoryReservation: {
-        findMany: jest.fn().mockResolvedValue([{ id: 'r1', productId: 'p1', productInventoryId: 'inventory-1', quantity: 2, status: 'ACTIVE' }]),
-        update: jest.fn(),
-      },
-      productInventory: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
     } as any;
     prisma.$transaction.mockImplementation((callback: any) => callback(tx));
-    await service.updateStatus('order-1', 'CANCELLED' as any);
-    expect(tx.productInventory.updateMany).toHaveBeenCalledWith({ where: { id: 'inventory-1', reserved: { gte: 2 } }, data: { reserved: { decrement: 2 } } });
-    expect(tx.inventoryReservation.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'r1' }, data: expect.objectContaining({ status: 'RELEASED' }) }));
+    await expect(service.updateStatus('order-1', 'CANCELLED' as any)).resolves.toMatchObject({ status: 'CANCELLED' });
+    expect(tx.order.update).toHaveBeenCalled();
   });
 
   it('requests a provider refund before marking an order refunded', async () => {
@@ -121,7 +113,6 @@ describe('OrdersService', () => {
         findUnique: jest.fn().mockResolvedValue({ status: 'DELIVERED' }),
         update: jest.fn().mockResolvedValue({ id: 'order-1', status: 'REFUNDED', userId: 'user-1' }),
       },
-      inventoryReservation: { findMany: jest.fn().mockResolvedValue([]) },
       payment: {
         findUnique: jest.fn().mockResolvedValue({
           orderId: 'order-1', status: 'CAPTURED', providerPaymentId: 'pay_1', amountMinor: 249900,

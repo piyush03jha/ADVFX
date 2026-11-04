@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { useCart } from "@/context/CartContext";
 
 export function CartSummary() {
-  const { subtotal, error } = useCart();
+  const { subtotal, error, hasUnavailableItems } = useCart();
 
   return (
     <aside className="relative overflow-hidden rounded-2xl border border-border bg-[linear-gradient(145deg,rgb(from var(--foreground) r g b / 0.07),rgb(from var(--background) r g b / 0.02)_52%,rgb(from var(--primary) r g b / 0.1))] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.22)] sm:p-6 desk:sticky desk:top-24">
@@ -45,7 +45,17 @@ export function CartSummary() {
 
       {error && <p className="mt-4 rounded-xl border border-red-400/20 bg-red-400/[0.06] p-3 text-xs leading-5 text-error">{error}</p>}
 
-      <Button href="/checkout" size="lg" className="relative mt-6 w-full">Proceed to Checkout <IconArrowRight size={16} /></Button>
+      {hasUnavailableItems && (
+        <p className="mt-4 rounded-xl border border-red-400/20 bg-red-400/[0.06] p-3 text-xs leading-5 text-error">
+          Some items in your cart are out of stock and are not included in the total. Remove them to continue.
+        </p>
+      )}
+
+      {hasUnavailableItems ? (
+        <Button type="button" size="lg" disabled className="relative mt-6 w-full">Proceed to Checkout <IconArrowRight size={16} /></Button>
+      ) : (
+        <Button href="/checkout" size="lg" className="relative mt-6 w-full">Proceed to Checkout <IconArrowRight size={16} /></Button>
+      )}
 
       <div className="relative mt-5 grid grid-cols-2 gap-3 border-t border-border pt-5">
         <TrustItem icon={<IconLock size={14} />} text="Secure checkout" />

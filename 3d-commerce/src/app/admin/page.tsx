@@ -18,8 +18,7 @@ import { Button } from "@/components/ui/Button";
 type Dashboard = {
   products: { total: number; active: number; archived: number };
   categories: number;
-  lowStockProducts: number;
-  inventory: { availableUnits: number; reservedUnits: number };
+  ordersPaused: { products: number; categories: number };
   orders: {
     total: number;
     pendingPayment: number;
@@ -113,8 +112,8 @@ export default function AdminDashboard() {
           href: "/admin/shipping",
         },
         {
-          label: "Low stock",
-          value: String(dashboard.lowStockProducts),
+          label: "Orders paused",
+          value: `${dashboard.ordersPaused.products} products · ${dashboard.ordersPaused.categories} categories`,
           Icon: IconTruck,
           href: "/admin/products",
         },

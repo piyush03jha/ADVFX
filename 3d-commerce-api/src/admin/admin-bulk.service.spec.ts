@@ -6,7 +6,6 @@ describe('AdminBulkService CSV import', () => {
     productVariant: { findFirst: jest.fn(), create: jest.fn() },
     productVariantPrice: { upsert: jest.fn() },
     productPrice: { updateMany: jest.fn(), create: jest.fn() },
-    productInventory: { upsert: jest.fn() },
     productMedia: { findFirst: jest.fn(), create: jest.fn() },
   };
   const prisma = {

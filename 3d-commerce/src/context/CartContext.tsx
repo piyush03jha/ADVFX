@@ -28,6 +28,8 @@ export interface CartProduct {
   badge?: string;
   discount?: string;
   model?: string;
+  /** false when the admin has paused orders for this product or its category. Undefined = orderable. */
+  ordersEnabled?: boolean;
 }
 
 export interface CartItem {
@@ -44,7 +46,14 @@ interface BackendCartProduct {
   id: string;
   name: string;
   slug?: string;
-  category?: { id: string; name: string; slug: string } | null;
+  ordersEnabled?: boolean;
+  category?: {
+    id: string;
+    name: string;
+    slug: string;
+    ordersEnabled?: boolean;
+    parent?: { ordersEnabled?: boolean } | null;
+  } | null;
   prices?: Array<{
     id: string;
     currency: string;
@@ -93,7 +102,10 @@ interface BackendCart {
 interface CartContextValue {
   items: CartItem[];
   itemCount: number;
+  /** Total of items that can currently be ordered (paused items are excluded). */
   subtotal: number;
+  /** True when the cart holds at least one product the admin has paused orders for. */
+  hasUnavailableItems: boolean;
   addItem: (
     product: Product | CartProduct,
     variantOrSize?: StorefrontVariant | CartSize | null,
@@ -240,6 +252,10 @@ function mapBackendCartItem(item: BackendCartItem): CartItem {
     rating: 0,
     reviewCount: 0,
     model: normalizeBackendModel(item.product),
+    ordersEnabled:
+      item.product.ordersEnabled !== false &&
+      item.product.category?.ordersEnabled !== false &&
+      item.product.category?.parent?.ordersEnabled !== false,
     discount:
       compareAt !== undefined && compareAt > amount
         ? Math.round(((compareAt - amount) / compareAt) * 100) + "% OFF"
@@ -726,9 +742,17 @@ export function CartProvider({
   const subtotal = useMemo(
     () =>
       items.reduce(
-        (total, item) => total + item.product.price * item.quantity,
+        (total, item) =>
+          item.product.ordersEnabled === false
+            ? total
+            : total + item.product.price * item.quantity,
         0,
       ),
+    [items],
+  );
+
+  const hasUnavailableItems = useMemo(
+    () => items.some((item) => item.product.ordersEnabled === false),
     [items],
   );
 
@@ -737,6 +761,7 @@ export function CartProvider({
       items,
       itemCount,
       subtotal,
+      hasUnavailableItems,
       addItem,
       removeItem,
       incrementItem,
@@ -753,6 +778,7 @@ export function CartProvider({
       items,
       itemCount,
       subtotal,
+      hasUnavailableItems,
       addItem,
       removeItem,
       incrementItem,

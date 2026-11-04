@@ -108,13 +108,4 @@ export class UpdateProductDto {
   @IsString()
   weight?: string;
 
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  stock?: number;
-
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  lowStockAt?: number;
 }

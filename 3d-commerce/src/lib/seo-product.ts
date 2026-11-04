@@ -30,18 +30,14 @@ export function productImageUrls(product: CatalogProduct): string[] {
     .map((url) => absoluteUrl(url));
 }
 
+// Everything is made to order, so a product is only "out of stock" when the
+// admin has paused orders for it, its category, or its parent category.
 function isAvailable(product: CatalogProduct): boolean {
-  const variants = (product.variants ?? []).filter((variant) => variant.isActive);
-  if (variants.length) {
-    return variants.some((variant) =>
-      !variant.trackStock ||
-      variant.allowBackorder ||
-      (variant.stock ?? 0) - (variant.reserved ?? 0) > 0,
-    );
-  }
-  const inventory = product.inventory;
-  if (!inventory) return true;
-  return !inventory.trackStock || inventory.allowBackorder || inventory.stock - inventory.reserved > 0;
+  return (
+    product.ordersEnabled !== false &&
+    product.category?.ordersEnabled !== false &&
+    product.category?.parent?.ordersEnabled !== false
+  );
 }
 
 export function buildProductJsonLd(

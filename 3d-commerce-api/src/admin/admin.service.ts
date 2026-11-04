@@ -10,22 +10,25 @@ export class AdminService {
   constructor(private readonly prisma: PrismaService) {}
 
   async dashboard() {
-    const [products, activeProducts, archivedProducts, categories, inventories, orders, pendingOrders, processingOrders, readyToShip, customRequests, pendingCustomRequests, customers, deliveryRules, settings] =
+    const [products, activeProducts, archivedProducts, categories, pausedProducts, pausedCategories, orders, pendingOrders, processingOrders, readyToShip, customRequests, pendingCustomRequests, customers, deliveryRules, settings] =
       await Promise.all([
         this.prisma.product.count(),
         this.prisma.product.count({ where: { status: 'ACTIVE' } }),
         this.prisma.product.count({ where: { status: 'ARCHIVED' } }),
         this.prisma.category.count({ where: { isActive: true } }),
-        this.prisma.product.findMany({
-          where: { status: 'ACTIVE' },
-          select: {
-            inventory: { select: { stock: true, reserved: true, lowStockAt: true, trackStock: true, allowBackorder: true } },
-            variants: {
-              where: { isActive: true, trackStock: true },
-              select: { stock: true, reserved: true, lowStockAt: true, trackStock: true, allowBackorder: true },
-            },
+        // Products that cannot currently be ordered: paused directly, or because
+        // their category (or parent category) has orders paused.
+        this.prisma.product.count({
+          where: {
+            status: 'ACTIVE',
+            OR: [
+              { ordersEnabled: false },
+              { category: { ordersEnabled: false } },
+              { category: { parent: { ordersEnabled: false } } },
+            ],
           },
         }),
+        this.prisma.category.count({ where: { isActive: true, ordersEnabled: false } }),
         this.prisma.order.count(),
         this.prisma.order.count({ where: { status: 'PENDING_PAYMENT' } }),
         this.prisma.order.count({ where: { status: 'PROCESSING' } }),
@@ -37,30 +40,10 @@ export class AdminService {
         this.prisma.siteSetting.count(),
       ]);
 
-    const inventoryRows = inventories.flatMap((product) =>
-      product.variants.length > 0
-        ? product.variants
-        : product.inventory?.trackStock
-          ? [product.inventory]
-          : [],
-    );
-
-    const lowStockProducts = inventories.filter((product) => {
-      const rows = product.variants.length > 0
-        ? product.variants
-        : product.inventory?.trackStock
-          ? [product.inventory]
-          : [];
-      return rows.some((item) => item.stock - item.reserved <= item.lowStockAt);
-    }).length;
-
     return {
       products: { total: products, active: activeProducts, archived: archivedProducts },
-      categories, lowStockProducts,
-      inventory: {
-        availableUnits: inventoryRows.reduce((t, i) => t + Math.max(0, i.stock - i.reserved), 0),
-        reservedUnits: inventoryRows.reduce((t, i) => t + i.reserved, 0),
-      },
+      categories,
+      ordersPaused: { products: pausedProducts, categories: pausedCategories },
       orders: { total: orders, pendingPayment: pendingOrders, processing: processingOrders, readyToShip },
       customBuilds: { total: customRequests, needsAttention: pendingCustomRequests },
       customers, deliveryRules, settings,
@@ -488,7 +471,7 @@ export class AdminService {
     const [products, categories, materialPricingRules, productCostRules, manufacturingRates] = await Promise.all([
       this.prisma.product.findMany({
         where: { status: { not: 'ARCHIVED' } },
-        include: { category: true, prices: { where: { isActive: true, countryCode: null }, orderBy: { createdAt: 'desc' }, take: 1 }, inventory: true, variants: { include: { price: true }, orderBy: { createdAt: 'asc' } }, media: { orderBy: { sortOrder: 'asc' } }, metrics: true },
+        include: { category: { include: { parent: { select: { id: true, name: true, ordersEnabled: true } } } }, prices: { where: { isActive: true, countryCode: null }, orderBy: { createdAt: 'desc' }, take: 1 }, variants: { include: { price: true }, orderBy: { createdAt: 'asc' } }, media: { orderBy: { sortOrder: 'asc' } }, metrics: true },
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.category.findMany({ where: { isActive: true }, orderBy: [{ parentId: 'asc' }, { sortOrder: 'asc' }, { name: 'asc' }] }),
@@ -644,16 +627,15 @@ export class AdminService {
   async analytics(days = 30) {
     const safeDays = Math.min(90, Math.max(7, Math.floor(days)));
     const since = new Date(Date.now() - safeDays * 24 * 60 * 60 * 1000);
-    const [orders, topProducts, lowStock] = await Promise.all([
+    const [orders, topProducts] = await Promise.all([
       this.prisma.order.findMany({ where: { createdAt: { gte: since }, payment: { status: 'CAPTURED' } }, select: { createdAt: true, totalMinor: true, status: true } }),
       this.prisma.orderItem.groupBy({ by: ['productId'], where: { order: { createdAt: { gte: since }, payment: { status: 'CAPTURED' } } }, _sum: { quantity: true, totalPriceMinor: true }, orderBy: { _sum: { totalPriceMinor: 'desc' } }, take: 10 }),
-      this.prisma.product.findMany({ where: { status: 'ACTIVE' }, select: { id: true, name: true, variants: { where: { isActive: true, trackStock: true }, select: { id: true, name: true, size: true, stock: true, reserved: true, lowStockAt: true } } } }),
     ]);
     const byDay = new Map<string,{orders:number;revenueMinor:number}>();
     for(let i=0;i<safeDays;i++){const d=new Date(Date.now()-(safeDays-1-i)*86400000);byDay.set(d.toISOString().slice(0,10),{orders:0,revenueMinor:0});}
     for(const order of orders){const key=order.createdAt.toISOString().slice(0,10);const row=byDay.get(key);if(row){row.orders++;row.revenueMinor+=order.totalMinor;}}
     const ids=topProducts.map(x=>x.productId);const products=await this.prisma.product.findMany({where:{id:{in:ids}},select:{id:true,name:true,slug:true}});const productMap=new Map(products.map(p=>[p.id,p]));
-    return { days:safeDays, summary:{orders:orders.length,revenueMinor:orders.reduce((t,o)=>t+o.totalMinor,0),averageOrderMinor:orders.length?Math.round(orders.reduce((t,o)=>t+o.totalMinor,0)/orders.length):0}, daily:[...byDay.entries()].map(([date,v])=>({date,...v})), topProducts:topProducts.map(x=>({...productMap.get(x.productId),quantity:x._sum.quantity??0,revenueMinor:x._sum.totalPriceMinor??0})), lowStock:lowStock.flatMap(p=>p.variants.map(v=>({...v,productId:p.id,productName:p.name,available:v.stock-v.reserved}))).filter(v=>v.available<=v.lowStockAt).sort((a,b)=>a.available-b.available).slice(0,25) };
+    return { days:safeDays, summary:{orders:orders.length,revenueMinor:orders.reduce((t,o)=>t+o.totalMinor,0),averageOrderMinor:orders.length?Math.round(orders.reduce((t,o)=>t+o.totalMinor,0)/orders.length):0}, daily:[...byDay.entries()].map(([date,v])=>({date,...v})), topProducts:topProducts.map(x=>({...productMap.get(x.productId),quantity:x._sum.quantity??0,revenueMinor:x._sum.totalPriceMinor??0})) };
   }
 
   async notificationAudience(search?: string) {

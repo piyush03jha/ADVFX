@@ -109,78 +109,6 @@ describe('PaymentsService', () => {
     expect(tx.payment.update).not.toHaveBeenCalled();
   });
 
-  it('consumes variant reservations as well as base-product inventory', async () => {
-    const tx = {
-      inventoryReservation: {
-        findMany: jest.fn().mockResolvedValue([
-          { id: 'rv1', productId: 'p1', productVariantId: 'v1', productInventoryId: null, quantity: 2 },
-        ]),
-        update: jest.fn(),
-      },
-      productVariant: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
-      productInventory: { updateMany: jest.fn() },
-    };
-    const service = new PaymentsService(prisma, razorpay, notifications);
-
-    await (service as any).consumeReservationsInTransaction(tx, 'ord1');
-
-    expect(tx.productVariant.updateMany).toHaveBeenCalledWith({
-      where: { id: 'v1', stock: { gte: 2 }, reserved: { gte: 2 } },
-      data: { stock: { decrement: 2 }, reserved: { decrement: 2 } },
-    });
-    expect(tx.inventoryReservation.update).toHaveBeenCalledWith(expect.objectContaining({
-      where: { id: 'rv1' },
-      data: expect.objectContaining({ status: 'CONSUMED' }),
-    }));
-    expect(tx.productInventory.updateMany).not.toHaveBeenCalled();
-  });
-
-  it('does not consume a reservation if the atomic stock guard fails', async () => {
-    const tx = {
-      inventoryReservation: {
-        findMany: jest.fn().mockResolvedValue([
-          { id: 'rv1', productId: 'p1', productVariantId: 'v1', productInventoryId: null, quantity: 2 },
-        ]),
-        update: jest.fn(),
-      },
-      productVariant: { updateMany: jest.fn().mockResolvedValue({ count: 0 }) },
-      productInventory: { updateMany: jest.fn() },
-    };
-    const service = new PaymentsService(prisma, razorpay, notifications);
-
-    await expect((service as any).consumeReservationsInTransaction(tx, 'ord1'))
-      .rejects.toThrow(BadRequestException);
-
-    expect(tx.inventoryReservation.update).not.toHaveBeenCalled();
-    expect(tx.productInventory.updateMany).not.toHaveBeenCalled();
-  });
-
-  it('releases variant reservations when payment is cancelled', async () => {
-    const tx = {
-      inventoryReservation: {
-        findMany: jest.fn().mockResolvedValue([
-          { id: 'rv1', productId: 'p1', productVariantId: 'v1', productInventoryId: null, quantity: 2 },
-        ]),
-        update: jest.fn(),
-      },
-      productVariant: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
-      productInventory: { updateMany: jest.fn() },
-    };
-    const service = new PaymentsService(prisma, razorpay, notifications);
-
-    await (service as any).releaseReservationsInTransaction(tx, 'ord1');
-
-    expect(tx.productVariant.updateMany).toHaveBeenCalledWith({
-      where: { id: 'v1', reserved: { gte: 2 } },
-      data: { reserved: { decrement: 2 } },
-    });
-    expect(tx.inventoryReservation.update).toHaveBeenCalledWith(expect.objectContaining({
-      where: { id: 'rv1' },
-      data: expect.objectContaining({ status: 'RELEASED' }),
-    }));
-    expect(tx.productInventory.updateMany).not.toHaveBeenCalled();
-  });
-
   it('treats a duplicate captured webhook as idempotent', async () => {
     razorpay.verifyWebhookSignature.mockReturnValue(true);
     prisma.paymentAttempt = {
@@ -306,12 +234,12 @@ describe('PaymentsService', () => {
       status: 'PENDING_PAYMENT',
       totalMinor: 2500,
       currency: 'INR',
+      createdAt: new Date(),
       payment,
     };
     const tx = {
       order: { findFirst: jest.fn().mockResolvedValueOnce({ id: 'order1', payment: { id: 'pay1' } }).mockResolvedValueOnce(order) },
       $queryRaw: jest.fn().mockResolvedValue([{ id: 'pay1' }]),
-      inventoryReservation: { findFirst: jest.fn().mockResolvedValue({ id: 'reservation1', status: 'ACTIVE' }) },
       paymentAttempt: { create: jest.fn() },
       payment: { update: jest.fn() },
     };
@@ -327,6 +255,27 @@ describe('PaymentsService', () => {
 
     expect(razorpay.createOrder).not.toHaveBeenCalled();
     expect(tx.paymentAttempt.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects starting a payment once the 10 minute payment window has passed', async () => {
+    const order = {
+      id: 'order1', userId: 'user1', orderNumber: 'VXL-1', status: 'PENDING_PAYMENT',
+      totalMinor: 2500, currency: 'INR', createdAt: new Date(Date.now() - 11 * 60_000),
+      payment: { id: 'pay1', provider: 'RAZORPAY', providerOrderId: 'order_provider_1', status: 'PENDING', amountMinor: 2500, currency: 'INR' },
+    };
+    const tx = {
+      order: { findFirst: jest.fn().mockResolvedValueOnce({ id: 'order1', payment: { id: 'pay1' } }).mockResolvedValueOnce(order) },
+      $queryRaw: jest.fn().mockResolvedValue([{ id: 'pay1' }]),
+      paymentAttempt: { create: jest.fn() },
+      payment: { update: jest.fn() },
+    };
+    prisma.$transaction.mockImplementation(async (callback: any) => callback(tx));
+    razorpay.createOrder = jest.fn();
+    razorpay.getPublicKeyId = jest.fn().mockReturnValue('rzp_test_key');
+
+    const service = new PaymentsService(prisma, razorpay, notifications);
+    await expect(service.createRazorpayOrder('user1', 'order1')).rejects.toThrow('expired');
+    expect(razorpay.createOrder).not.toHaveBeenCalled();
   });
 
 });

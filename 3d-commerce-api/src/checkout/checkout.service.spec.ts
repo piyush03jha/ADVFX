@@ -81,9 +81,9 @@ describe('CheckoutService', () => {
     });
   });
 
-  it('rejects a checkout when requested quantity exceeds available inventory', async () => {
+  it('rejects a checkout containing a product that is not accepting orders', async () => {
     pricing.calculate.mockRejectedValue(
-      new BadRequestException('Only 4 unit(s) of "Limited Model" are currently available'),
+      new BadRequestException('Product "Limited Model" is currently not accepting orders.'),
     );
 
     prisma.cart.findUnique.mockResolvedValue({

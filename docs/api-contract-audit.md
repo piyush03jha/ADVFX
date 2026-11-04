@@ -55,7 +55,7 @@ Important route-order caveat: in `OrdersController` and `CustomBuildController`,
 | --- | --- | --- |
 | App | `GET /` | public health greeting |
 | Auth | `POST /auth/{register,login,customer/logout,verify-email,resend-verification,forgot-password,reset-password,admin/login,logout}`, `GET /auth/session` | customer BFF uses first eight; `/auth/logout` is admin-guarded |
-| Products | `GET /products`, `GET /products/slug/:slug`, `GET /products/:id`; `POST /products`; `PATCH/DELETE /products/:id`; `POST /products/:id/pricing`, `PATCH /products/:id/inventory`, `POST /products/:id/media`, `DELETE /products/:id/media/:mediaId` | reads public; writes admin guard |
+| Products | `GET /products`, `GET /products/slug/:slug`, `GET /products/:id`; `POST /products`; `PATCH/DELETE /products/:id`; `POST /products/:id/pricing`, `POST /products/:id/media`, `DELETE /products/:id/media/:mediaId` | reads public; writes admin guard |
 | Categories | `GET /categories`, `GET /categories/:id`; `POST`, `PATCH`, `DELETE /categories/:id` | reads public; writes admin guard |
 | Users | `GET/PATCH /users/me`; `GET/POST /addresses`; `PATCH/DELETE /addresses/:id` | customer guard; ownership enforced in service |
 | Cart | `GET/DELETE /cart`; `POST /cart/items`; `PATCH/DELETE /cart/items/:productId` | customer guard; per-user cart |

@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { InventoryReservationStatus, OrderStatus, Prisma, NotificationType, PaymentStatus } from '@prisma/client';
+import { OrderStatus, Prisma, NotificationType, PaymentStatus } from '@prisma/client';
 import { randomBytes } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -7,6 +7,7 @@ import { PricingService } from '../pricing/pricing.service';
 import { RazorpayService } from '../payments/razorpay.service';
 import { PaymentsService } from '../payments/payments.service';
 import { ObservabilityService } from '../observability/observability.service';
+import { paymentWindowCutoff } from './payment-window';
 
 const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   PENDING_PAYMENT: ['CONFIRMED', 'CANCELLED'],
@@ -19,19 +20,15 @@ const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   REFUNDED: [],
 };
 
-// Orders in these statuses have already had stock *consumed* (decremented
-// via consumeReservations), not just reserved. Cancelling/refunding from
-// here must put that stock back - releaseReservations only finds
-// still-ACTIVE reservations and is a no-op for these.
-const STOCK_CONSUMED_STATUSES: OrderStatus[] = [
+// Orders in these statuses have a captured payment behind them. Products are
+// made to order, so there is no stock to put back on cancel/refund.
+const PAID_STATUSES: OrderStatus[] = [
   OrderStatus.CONFIRMED,
   OrderStatus.PROCESSING,
   OrderStatus.READY_TO_SHIP,
   OrderStatus.SHIPPED,
   OrderStatus.DELIVERED,
 ];
-
-const RESERVATION_MINUTES = 10;
 // findAllAdmin was previously fully unbounded (no take/skip at all), which
 // fetches every order with deep includes on every admin page load - a
 // growing perf/DoS risk. This caps it instead of paginating so the
@@ -80,7 +77,6 @@ export class OrdersService {
           shippingAddress: true,
           payment: true,
           shipment: true,
-          inventoryReservations: true,
           promotion: true,
           shippingRule: true,
         },
@@ -120,8 +116,6 @@ export class OrdersService {
       }
     }
 
-    const expiresAt = new Date(Date.now() + RESERVATION_MINUTES * 60_000);
-
     const result = await this.prisma.$transaction(async (tx) => {
       const cart = checkoutItems
         ? null
@@ -133,7 +127,6 @@ export class OrdersService {
                   variant: { include: { price: true } },
                   product: {
                     include: {
-                      inventory: true,
                       prices: {
                         where: { isActive: true, countryCode: null },
                         orderBy: { createdAt: "desc" },
@@ -190,7 +183,6 @@ export class OrdersService {
             shippingAddress: true,
             payment: true,
             shipment: true,
-            inventoryReservations: true,
             promotion: true,
             shippingRule: true,
           },
@@ -299,66 +291,6 @@ export class OrdersService {
         include: { items: true, shippingAddress: true },
       });
 
-      for (const item of [...quote.items].sort((a, b) => {
-        const keyA = a.variantId ? "variant:" + a.variantId : "inventory:" + a.productId;
-        const keyB = b.variantId ? "variant:" + b.variantId : "inventory:" + b.productId;
-        return keyA.localeCompare(keyB);
-      })) {
-        const inventory = item.variantId
-          ? await tx.productVariant.findFirst({
-              where: { id: item.variantId, productId: item.productId, isActive: true },
-              select: { id: true, stock: true, reserved: true, trackStock: true, allowBackorder: true },
-            })
-          : await tx.productInventory.findFirst({
-              where: { productId: item.productId },
-            });
-
-        if (!inventory || !inventory.trackStock || inventory.allowBackorder) {
-          continue;
-        }
-
-        const updated = item.variantId
-          ? await tx.$executeRaw(
-              Prisma.sql`
-                UPDATE "ProductVariant"
-                SET "reserved" = "reserved" + ${item.quantity}
-                WHERE "id" = ${item.variantId}
-                  AND "isActive" = true
-                  AND "trackStock" = true
-                  AND "allowBackorder" = false
-                  AND ("stock" - "reserved") >= ${item.quantity}
-              `,
-            )
-          : await tx.$executeRaw(
-              Prisma.sql`
-                UPDATE "ProductInventory"
-                SET "reserved" = "reserved" + ${item.quantity}
-                WHERE "id" = ${inventory.id}
-                  AND "trackStock" = true
-                  AND "allowBackorder" = false
-                  AND ("stock" - "reserved") >= ${item.quantity}
-              `,
-            );
-
-        if (Number(updated) !== 1) {
-          throw new BadRequestException(
-            `Stock changed for "${item.productName}"; please try again`,
-          );
-        }
-
-        await tx.inventoryReservation.create({
-          data: {
-            productId: item.productId,
-            productVariantId: item.variantId ?? null,
-            productInventoryId: item.variantId ? null : inventory.id,
-            orderId: order.id,
-            quantity: item.quantity,
-            status: "ACTIVE",
-            expiresAt,
-          },
-        });
-      }
-
       // Cart contents remain available until payment is actually captured.
       // Successful payment clears only the purchased cart lines.
       return this.findOneForTransaction(tx, order.id);
@@ -378,7 +310,6 @@ export class OrdersService {
             shippingAddress: true,
             payment: true,
             shipment: true,
-            inventoryReservations: true,
             promotion: true,
             shippingRule: true,
           },
@@ -404,7 +335,7 @@ export class OrdersService {
   async findMine(userId: string) {
     const orders = await this.prisma.order.findMany({
       where: { userId },
-      include: { items: true, shippingAddress: true, payment: true, shipment: true, inventoryReservations: true, promotion: true, shippingRule: true },
+      include: { items: true, shippingAddress: true, payment: true, shipment: true, promotion: true, shippingRule: true },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -440,7 +371,7 @@ export class OrdersService {
   async findOne(userId: string, id: string) {
     const order = await this.prisma.order.findFirst({
       where: { id, userId },
-      include: { items: true, shippingAddress: true, payment: true, shipment: true, inventoryReservations: true, promotion: true, shippingRule: true },
+      include: { items: true, shippingAddress: true, payment: true, shipment: true, promotion: true, shippingRule: true },
     });
     if (!order) throw new NotFoundException('Order not found');
 
@@ -491,7 +422,6 @@ export class OrdersService {
           shippingAddress: true,
           payment: true,
           shipment: true,
-          inventoryReservations: true,
           user: {
             select: {
               id: true,
@@ -519,7 +449,7 @@ export class OrdersService {
   }
 
   async findOneAdmin(id: string) {
-    const order = await this.prisma.order.findUnique({ where: { id }, include: { items: true, shippingAddress: true, payment: true, shipment: true, inventoryReservations: true, user: true, promotion: true, shippingRule: true } });
+    const order = await this.prisma.order.findUnique({ where: { id }, include: { items: true, shippingAddress: true, payment: true, shipment: true, user: true, promotion: true, shippingRule: true } });
     if (!order) throw new NotFoundException('Order not found');
     return {
       ...order,
@@ -532,13 +462,13 @@ export class OrdersService {
     const allowed = ORDER_TRANSITIONS[order.status];
     if (!allowed.includes(status)) throw new BadRequestException(`Cannot change order from ${order.status} to ${status}`);
 
-    const wasStockConsumed = STOCK_CONSUMED_STATUSES.includes(order.status);
+    const wasPaid = PAID_STATUSES.includes(order.status);
     const hasCapturedPayment = order.payment?.status === 'CAPTURED';
 
-    if (status === 'CANCELLED' && wasStockConsumed && hasCapturedPayment) {
+    if (status === 'CANCELLED' && wasPaid && hasCapturedPayment) {
       // Cancelling here would leave a paid customer with no refund and no
       // order. Route through REFUNDED instead, which actually returns the
-      // money (below) as well as restocking.
+      // money (below).
       throw new BadRequestException(
         'This order has a captured payment. Use REFUNDED to cancel and refund it.',
       );
@@ -559,7 +489,7 @@ export class OrdersService {
     const updated = await this.prisma.$transaction(async (tx) => {
       // Serialize admin state transitions. The initial read is intentionally
       // outside the transaction for fast validation, so re-check after locking
-      // before mutating inventory or shipment state.
+      // before mutating order, payment or shipment state.
       // Capture reconciliation locks Payment before Order. Refund transitions
       // follow the same lock order so they cannot deadlock with a capture webhook.
       if (status === 'REFUNDED') {
@@ -608,13 +538,8 @@ export class OrdersService {
       }
 
       if (status === 'CANCELLED') {
-        if (order.status === OrderStatus.PENDING_PAYMENT) {
-          await this.releaseReservations(tx, id, InventoryReservationStatus.RELEASED);
-          if (order.promotionId) {
-            await this.releasePromotionUsage(tx, order.promotionId);
-          }
-        } else if (wasStockConsumed) {
-          await this.restockConsumedReservations(tx, id);
+        if (order.status === OrderStatus.PENDING_PAYMENT && order.promotionId) {
+          await this.releasePromotionUsage(tx, order.promotionId);
         }
       }
 
@@ -623,12 +548,7 @@ export class OrdersService {
           where: { orderId: id },
           data: { status: 'REFUNDED' },
         });
-
-        if (wasStockConsumed) {
-          await this.restockConsumedReservations(tx, id);
-        }
       }
-      if (status === 'CONFIRMED' && order.status === 'PENDING_PAYMENT') await this.consumeReservations(tx, id);
 
       return tx.order.update({
         where: { id },
@@ -637,7 +557,7 @@ export class OrdersService {
           ...(status === 'SHIPPED' ? { shipment: { upsert: { create: { status: 'SHIPPED', shippedAt: new Date() }, update: { status: 'SHIPPED', shippedAt: new Date() } } } } : {}),
           ...(status === 'DELIVERED' ? { shipment: { upsert: { create: { status: 'DELIVERED', deliveredAt: new Date() }, update: { status: 'DELIVERED', deliveredAt: new Date() } } } } : {}),
         },
-        include: { items: true, shippingAddress: true, payment: true, shipment: true, inventoryReservations: true, user: true, promotion: true, shippingRule: true },
+        include: { items: true, shippingAddress: true, payment: true, shipment: true, user: true, promotion: true, shippingRule: true },
       });
     }, { timeout: 15_000, maxWait: 5_000 });
 
@@ -656,16 +576,22 @@ export class OrdersService {
     return updated;
   }
 
-  async expireReservations() {
-    const expired = await this.prisma.inventoryReservation.findMany({
-      where: { status: 'ACTIVE', expiresAt: { lte: new Date() } },
-      select: { orderId: true },
-      distinct: ['orderId'],
+  async expireUnpaidOrders() {
+    // Made-to-order products reserve nothing, so expiry is driven purely by
+    // order age. Custom-build orders follow the same window.
+    const expired = await this.prisma.order.findMany({
+      where: {
+        status: OrderStatus.PENDING_PAYMENT,
+        createdAt: { lt: paymentWindowCutoff() },
+      },
+      select: { id: true },
+      take: 200,
+      orderBy: { createdAt: 'asc' },
     });
 
-    for (const reservation of expired) {
+    for (const { id: expiredOrderId } of expired) {
       const order = await this.prisma.order.findUnique({
-        where: { id: reservation.orderId },
+        where: { id: expiredOrderId },
         include: { payment: true },
       });
 
@@ -682,7 +608,7 @@ export class OrdersService {
           );
         } catch {
           await this.observability.captureMessage(
-            'Unable to reconcile Razorpay payment before reservation expiry',
+            'Unable to reconcile Razorpay payment before order expiry',
             { alert: 'payment_reconciliation_pending', orderId: order.id },
           );
           continue;
@@ -725,14 +651,10 @@ export class OrdersService {
       }
 
       await this.prisma.$transaction(async (tx) => {
-        await this.releaseReservations(
-          tx,
-          reservation.orderId,
-          InventoryReservationStatus.EXPIRED,
-        );
+        await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "Order" WHERE "id" = ${expiredOrderId} FOR UPDATE`);
 
         const current = await tx.order.findUnique({
-          where: { id: reservation.orderId },
+          where: { id: expiredOrderId },
           select: {
             status: true,
             promotionId: true,
@@ -743,7 +665,7 @@ export class OrdersService {
         if (current?.status !== OrderStatus.PENDING_PAYMENT) return;
 
         await tx.order.update({
-          where: { id: reservation.orderId },
+          where: { id: expiredOrderId },
           data: { status: OrderStatus.CANCELLED },
         });
 
@@ -759,77 +681,7 @@ export class OrdersService {
           current.payment?.status === PaymentStatus.AUTHORIZED
         ) {
           await tx.payment.update({
-            where: { orderId: reservation.orderId },
-            data: { status: PaymentStatus.FAILED },
-          });
-        }
-      });
-    }
-
-    // Custom orders have no inventory reservations, so they were invisible to
-    // the reservation expiry query above and could remain PENDING_PAYMENT forever.
-    const staleCustomOrders = await this.prisma.order.findMany({
-      where: {
-        checkoutSource: "CUSTOM",
-        status: OrderStatus.PENDING_PAYMENT,
-        createdAt: { lt: new Date(Date.now() - RESERVATION_MINUTES * 60_000) },
-      },
-      include: { payment: true },
-      take: 100,
-      orderBy: { createdAt: "asc" },
-    });
-
-    for (const order of staleCustomOrders) {
-      if (order.payment?.provider === "RAZORPAY" && order.payment.providerOrderId) {
-        let providerPayments;
-        try {
-          providerPayments = await this.razorpay.fetchPayments(order.payment.providerOrderId);
-        } catch {
-          await this.observability.captureMessage(
-            "Unable to reconcile stale custom-order payment",
-            { alert: "payment_reconciliation_pending", orderId: order.id },
-          );
-          continue;
-        }
-
-        const captured = providerPayments.find(
-          (payment) =>
-            payment.status === "captured" &&
-            payment.amount === order.payment!.amountMinor &&
-            payment.currency === order.payment!.currency,
-        );
-        if (captured) {
-          const result = await this.payments.reconcileCapturedPayment({
-            orderId: order.id,
-            providerPaymentId: captured.id,
-            providerOrderId: order.payment.providerOrderId,
-            amount: captured.amount,
-            currency: captured.currency,
-          });
-          if (result.kind === "CAPTURED" || result.kind === "ALREADY_CAPTURED" || (result.kind === "REFUND_REQUIRED" && result.refunded)) {
-            continue;
-          }
-          await this.observability.captureMessage(
-            "Stale custom order has a captured payment requiring reconciliation",
-            { alert: "refund_reconciliation_pending", orderId: order.id },
-          );
-          continue;
-        }
-        if (providerPayments.some((payment) => payment.status === "authorized")) continue;
-      }
-
-      await this.prisma.$transaction(async (tx) => {
-        await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "Order" WHERE "id" = ${order.id} FOR UPDATE`);
-        const current = await tx.order.findUnique({
-          where: { id: order.id },
-          select: { status: true, promotionId: true, payment: { select: { status: true } } },
-        });
-        if (current?.status !== OrderStatus.PENDING_PAYMENT) return;
-        await tx.order.update({ where: { id: order.id }, data: { status: OrderStatus.CANCELLED } });
-        if (current.promotionId) await this.releasePromotionUsage(tx, current.promotionId);
-        if (current.payment?.status !== PaymentStatus.CAPTURED && current.payment?.status !== PaymentStatus.REFUND_PENDING) {
-          await tx.payment.updateMany({
-            where: { orderId: order.id, status: { in: [PaymentStatus.PENDING, PaymentStatus.FAILED, PaymentStatus.AUTHORIZED] } },
+            where: { orderId: expiredOrderId },
             data: { status: PaymentStatus.FAILED },
           });
         }
@@ -839,13 +691,13 @@ export class OrdersService {
     const stuckPending = await this.prisma.order.count({
       where: {
         status: OrderStatus.PENDING_PAYMENT,
-        createdAt: { lt: new Date(Date.now() - 35 * 60_000) },
+        createdAt: { lt: paymentWindowCutoff(Date.now() - 25 * 60_000) },
       },
     });
 
     if (stuckPending > 0) {
       await this.observability.captureMessage(
-        'Pending payment orders exceeded the expected reservation window',
+        'Pending payment orders exceeded the expected payment window',
         {
           alert: 'stuck_pending_orders',
           count: stuckPending,
@@ -854,48 +706,6 @@ export class OrdersService {
     }
 
     return { expiredOrders: expired.length, stuckPending };
-  }
-
-  private async releaseReservations(tx: Prisma.TransactionClient, orderId: string, status: InventoryReservationStatus) {
-    const reservations = await tx.inventoryReservation.findMany({ where: { orderId, status: 'ACTIVE' } });
-    for (const reservation of reservations) {
-      if (reservation.productVariantId) {
-        const updated = await tx.productVariant.updateMany({ where: { id: reservation.productVariantId, reserved: { gte: reservation.quantity } }, data: { reserved: { decrement: reservation.quantity } } });
-        if (updated.count !== 1) throw new BadRequestException(`Unable to release inventory reservation for product ${reservation.productId}`);
-      } else if (reservation.productInventoryId) {
-        const updated = await tx.productInventory.updateMany({ where: { id: reservation.productInventoryId, reserved: { gte: reservation.quantity } }, data: { reserved: { decrement: reservation.quantity } } });
-        if (updated.count !== 1) throw new BadRequestException(`Unable to release inventory reservation for product ${reservation.productId}`);
-      } else continue;
-      await tx.inventoryReservation.update({ where: { id: reservation.id }, data: { status, releasedAt: new Date() } });
-    }
-  }
-
-  /**
-   * Puts stock back for an order that had already reached a
-   * STOCK_CONSUMED_STATUSES status (its reservations are CONSUMED, not
-   * ACTIVE, so releaseReservations is a no-op for it) and is now being
-   * cancelled or refunded. Without this, stock decremented at CONFIRMED
-   * time was never returned on cancel/refund.
-   */
-  private async restockConsumedReservations(tx: Prisma.TransactionClient, orderId: string) {
-    const reservations = await tx.inventoryReservation.findMany({ where: { orderId, status: 'CONSUMED' } });
-    for (const reservation of reservations) {
-      if (reservation.productVariantId) {
-        await tx.productVariant.update({
-          where: { id: reservation.productVariantId },
-          data: { stock: { increment: reservation.quantity } },
-        });
-      } else if (reservation.productInventoryId) {
-        await tx.productInventory.update({
-          where: { id: reservation.productInventoryId },
-          data: { stock: { increment: reservation.quantity } },
-        });
-      } else continue;
-      await tx.inventoryReservation.update({
-        where: { id: reservation.id },
-        data: { status: InventoryReservationStatus.RELEASED, releasedAt: new Date() },
-      });
-    }
   }
 
   private async releasePromotionUsage(tx: Prisma.TransactionClient, promotionId: string | null) {
@@ -916,22 +726,8 @@ export class OrdersService {
     }
   }
 
-  private async consumeReservations(tx: Prisma.TransactionClient, orderId: string) {
-    const reservations = await tx.inventoryReservation.findMany({ where: { orderId, status: 'ACTIVE' } });
-    for (const reservation of reservations) {
-      if (reservation.productVariantId) {
-        const updated = await tx.productVariant.updateMany({ where: { id: reservation.productVariantId, stock: { gte: reservation.quantity }, reserved: { gte: reservation.quantity } }, data: { stock: { decrement: reservation.quantity }, reserved: { decrement: reservation.quantity } } });
-        if (updated.count !== 1) throw new BadRequestException(`Unable to finalize inventory for product ${reservation.productId}`);
-      } else if (reservation.productInventoryId) {
-        const updated = await tx.productInventory.updateMany({ where: { id: reservation.productInventoryId, stock: { gte: reservation.quantity }, reserved: { gte: reservation.quantity } }, data: { stock: { decrement: reservation.quantity }, reserved: { decrement: reservation.quantity } } });
-        if (updated.count !== 1) throw new BadRequestException(`Unable to finalize inventory for product ${reservation.productId}`);
-      } else continue;
-      await tx.inventoryReservation.update({ where: { id: reservation.id }, data: { status: 'CONSUMED', consumedAt: new Date(), releasedAt: null } });
-    }
-  }
-
   private findOneForTransaction(tx: Prisma.TransactionClient, orderId: string) {
-    return tx.order.findUniqueOrThrow({ where: { id: orderId }, include: { items: true, shippingAddress: true, payment: true, shipment: true, inventoryReservations: true, promotion: true, shippingRule: true } });
+    return tx.order.findUniqueOrThrow({ where: { id: orderId }, include: { items: true, shippingAddress: true, payment: true, shipment: true, promotion: true, shippingRule: true } });
   }
 
   private generateOrderNumber() {

@@ -13,6 +13,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { RazorpayService } from './razorpay.service';
+import { isPaymentWindowOpen } from '../orders/payment-window';
 
 type PayableOrder = Prisma.OrderGetPayload<{ include: { payment: true } }> & {
   payment: NonNullable<Prisma.OrderGetPayload<{ include: { payment: true } }>['payment']>;
@@ -58,16 +59,7 @@ export class PaymentsService {
         throw new ConflictException('Razorpay payment is not configured');
       }
 
-      const activeReservation = order.checkoutSource === 'CUSTOM'
-        ? true
-        : await tx.inventoryReservation.findFirst({
-            where: {
-              orderId: order.id,
-              status: 'ACTIVE',
-              expiresAt: { gt: new Date() },
-            },
-          });
-      if (!activeReservation) {
+      if (!isPaymentWindowOpen(order.createdAt)) {
         throw new ConflictException(
           'This payment session has expired. Please create a new order from your cart.',
         );
@@ -296,7 +288,6 @@ export class PaymentsService {
             await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "Order" WHERE "id" = ${order.id} FOR UPDATE`);
             const current = await tx.order.findUnique({ where: { id: order.id }, select: { status: true, promotionId: true } });
             if (current?.status !== OrderStatus.PENDING_PAYMENT) return current;
-            await this.releaseReservationsInTransaction(tx, order.id);
             if (current.promotionId) {
               await tx.$executeRaw(Prisma.sql`UPDATE "Promotion" SET "usageCount" = GREATEST("usageCount" - 1, 0), "updatedAt" = CURRENT_TIMESTAMP WHERE "id" = ${current.promotionId} AND "usageCount" > 0`);
             }
@@ -334,7 +325,6 @@ export class PaymentsService {
         return current;
       }
 
-      await this.releaseReservationsInTransaction(tx, current.id);
       if (current.promotionId) {
         const count = await tx.$executeRaw(
           Prisma.sql`UPDATE "Promotion" SET "usageCount" = GREATEST("usageCount" - 1, 0), "updatedAt" = CURRENT_TIMESTAMP WHERE "id" = ${current.promotionId} AND "usageCount" > 0`,
@@ -358,7 +348,7 @@ export class PaymentsService {
 
       return tx.order.findUniqueOrThrow({
         where: { id: current.id },
-        include: { payment: true, shipment: true, inventoryReservations: true },
+        include: { payment: true, shipment: true },
       });
     });
 
@@ -890,24 +880,8 @@ export class PaymentsService {
         };
       }
 
-      const reservation = await tx.inventoryReservation.findFirst({
-        where: {
-          orderId,
-          status: "ACTIVE",
-        },
-      });
-
-      if (!reservation && order.checkoutSource !== "CUSTOM") {
-        return {
-          kind: "REFUND_REQUIRED" as const,
-          duplicatePayment: false as const,
-          orderStatus: order.status,
-          providerPaymentId,
-        };
-      }
-
+      // Made-to-order: no stock to consume. Capture simply confirms the order.
       if (order.checkoutSource !== "CUSTOM") {
-        await this.consumeReservationsInTransaction(tx, orderId);
         await this.recordPurchaseMetricsInTransaction(tx, orderId);
       }
 
@@ -1109,117 +1083,6 @@ export class PaymentsService {
     }
   }
 
-  private async consumeReservationsInTransaction(
-    tx: Prisma.TransactionClient,
-    orderId: string,
-  ) {
-    const reservations = await tx.inventoryReservation.findMany({
-      where: { orderId, status: "ACTIVE" },
-    });
-
-    for (const reservation of reservations) {
-      let updated: { count: number };
-
-      if (reservation.productVariantId) {
-        updated = await tx.productVariant.updateMany({
-          where: {
-            id: reservation.productVariantId,
-            stock: { gte: reservation.quantity },
-            reserved: { gte: reservation.quantity },
-          },
-          data: {
-            stock: { decrement: reservation.quantity },
-            reserved: { decrement: reservation.quantity },
-          },
-        });
-      } else if (reservation.productInventoryId) {
-        updated = await tx.productInventory.updateMany({
-          where: {
-            id: reservation.productInventoryId,
-            stock: { gte: reservation.quantity },
-            reserved: { gte: reservation.quantity },
-          },
-          data: {
-            stock: { decrement: reservation.quantity },
-            reserved: { decrement: reservation.quantity },
-          },
-        });
-      } else {
-        throw new BadRequestException(
-          "Inventory reservation has no inventory target for product " +
-            reservation.productId,
-        );
-      }
-
-      if (updated.count !== 1) {
-        throw new BadRequestException(
-          "Unable to finalize inventory for product " +
-            reservation.productId,
-        );
-      }
-
-      await tx.inventoryReservation.update({
-        where: { id: reservation.id },
-        data: {
-          status: "CONSUMED",
-          consumedAt: new Date(),
-          releasedAt: null,
-        },
-      });
-    }
-  }
-
-  private async releaseReservationsInTransaction(
-    tx: Prisma.TransactionClient,
-    orderId: string,
-  ) {
-    const reservations = await tx.inventoryReservation.findMany({
-      where: { orderId, status: "ACTIVE" },
-    });
-
-    for (const reservation of reservations) {
-      let updated: { count: number };
-
-      if (reservation.productVariantId) {
-        updated = await tx.productVariant.updateMany({
-          where: {
-            id: reservation.productVariantId,
-            reserved: { gte: reservation.quantity },
-          },
-          data: { reserved: { decrement: reservation.quantity } },
-        });
-      } else if (reservation.productInventoryId) {
-        updated = await tx.productInventory.updateMany({
-          where: {
-            id: reservation.productInventoryId,
-            reserved: { gte: reservation.quantity },
-          },
-          data: { reserved: { decrement: reservation.quantity } },
-        });
-      } else {
-        throw new BadRequestException(
-          "Inventory reservation has no inventory target for product " +
-            reservation.productId,
-        );
-      }
-
-      if (updated.count !== 1) {
-        throw new BadRequestException(
-          "Unable to release inventory for product " +
-            reservation.productId,
-        );
-      }
-
-      await tx.inventoryReservation.update({
-        where: { id: reservation.id },
-        data: {
-          status: "RELEASED",
-          releasedAt: new Date(),
-        },
-      });
-    }
-  }
-
   private async getPayableOrder(userId: string, orderId: string): Promise<PayableOrder> {
     const order = await this.prisma.order.findFirst({
       where: { id: orderId, userId },
@@ -1234,17 +1097,7 @@ export class PaymentsService {
       throw new ConflictException('Razorpay payment is not configured');
     }
 
-    const activeReservation = order.checkoutSource === "CUSTOM"
-      ? true
-      : await this.prisma.inventoryReservation.findFirst({
-          where: {
-            orderId: order.id,
-            status: 'ACTIVE',
-            expiresAt: { gt: new Date() },
-          },
-        });
-
-    if (!activeReservation) {
+    if (!isPaymentWindowOpen(order.createdAt)) {
       throw new ConflictException(
         'This payment session has expired. Please create a new order from your cart.',
       );
