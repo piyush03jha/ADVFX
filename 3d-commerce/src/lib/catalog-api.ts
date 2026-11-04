@@ -20,6 +20,8 @@ export interface CatalogCategory {
   slug: string;
   parentId?: string | null;
   gstRateBps?: number | null;
+  ordersEnabled?: boolean;
+  parent?: { ordersEnabled?: boolean } | null;
 }
 
 export interface CatalogPrice {
@@ -68,6 +70,7 @@ export interface CatalogProduct {
   canonicalUrl?: string | null;
   category?: CatalogCategory | null;
   status: "DRAFT" | "ACTIVE" | "ARCHIVED";
+  ordersEnabled?: boolean;
   isFeatured: boolean;
   isTrending: boolean;
   isBestseller: boolean;
@@ -133,6 +136,7 @@ export interface StorefrontProduct {
   currency: string;
   oldPrice?: number;
   saleActive?: boolean;
+  ordersEnabled: boolean;
   saleDiscountPercent?: number;
   rating: number;
   reviewCount: number;
@@ -370,6 +374,7 @@ export function mapCatalogProduct(product: CatalogProduct): StorefrontProduct {
     currency,
     oldPrice: compareAt !== undefined ? compareAt / 100 : undefined,
     saleActive,
+    ordersEnabled: product.ordersEnabled !== false && product.category?.ordersEnabled !== false && product.category?.parent?.ordersEnabled !== false,
     saleDiscountPercent: saleActive ? product.saleCampaign!.discountBps / 100 : undefined,
     rating: product.rating ?? 0,
     reviewCount: product.reviewCount ?? 0,
