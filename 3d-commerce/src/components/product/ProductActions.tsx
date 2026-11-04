@@ -40,13 +40,7 @@ export function ProductActions({ product, selectedVariantId, quantity, onVariant
     [selectedVariantId, variants],
   );
 
-  const selectedAvailable = selectedVariant
-    ? selectedVariant.trackStock && !selectedVariant.allowBackorder
-      ? Math.max(0, (selectedVariant.stock ?? 0) - (selectedVariant.reserved ?? 0))
-      : null
-    : product.trackStock && !product.allowBackorder
-      ? Math.max(0, product.stock - product.reserved)
-      : null;
+  // Products are manufactured after an order; there is no inventory quantity to enforce.
 
   const displayPrice = selectedVariant?.price ?? product.price;
 
@@ -56,11 +50,6 @@ export function ProductActions({ product, selectedVariantId, quantity, onVariant
       router.push("/login?returnTo=" + encodeURIComponent(window.location.pathname + window.location.search));
       return;
     }
-    if (selectedAvailable !== null && selectedAvailable < quantity) {
-      setError("The selected size does not have enough stock.");
-      return;
-    }
-
     setPending(true);
     setError(null);
 
@@ -137,11 +126,6 @@ export function ProductActions({ product, selectedVariantId, quantity, onVariant
             {variants.map((variant) => {
               const selected = variant.id === selectedVariantId;
               const label = variant.name + (variant.size ? " · " + variant.size : "");
-              const available =
-                variant.trackStock && !variant.allowBackorder
-                  ? Math.max(0, (variant.stock ?? 0) - (variant.reserved ?? 0))
-                  : null;
-
               return (
                 <Button
                   key={variant.id}
@@ -151,7 +135,6 @@ export function ProductActions({ product, selectedVariantId, quantity, onVariant
                   ariaLabel={`Select ${label}`}
                   ariaPressed={selected}
                   onClick={() => onVariantChange(variant.id)}
-                  disabled={available !== null && available <= 0}
                   className="min-h-12 w-full justify-center rounded-xl px-3 text-center"
                 >
                   <span className="text-xs font-semibold">{label}</span>
@@ -190,8 +173,7 @@ export function ProductActions({ product, selectedVariantId, quantity, onVariant
           <button
             type="button"
             aria-label="Increase quantity"
-            onClick={() => onQuantityChange(selectedAvailable === null ? quantity + 1 : Math.min(selectedAvailable, quantity + 1))}
-            disabled={selectedAvailable !== null && quantity >= selectedAvailable}
+            onClick={() => onQuantityChange(quantity + 1)}
             className="flex h-full w-9 items-center justify-center text-muted transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
           >
             <IconPlus size={13} />
@@ -221,7 +203,7 @@ export function ProductActions({ product, selectedVariantId, quantity, onVariant
         <Button
           type="button"
           onClick={() => void addToCart()}
-          disabled={!product.ordersEnabled || pending || (selectedAvailable !== null && selectedAvailable <= 0)}
+          disabled={!product.ordersEnabled || pending}
           className="min-h-12 bg-primary text-white shadow-[0_0_30px_var(--glow-primary)] hover:bg-primary-hover"
         >
           {added ? (
@@ -240,7 +222,7 @@ export function ProductActions({ product, selectedVariantId, quantity, onVariant
         <button
           type="button"
           onClick={() => void buyNow()}
-          disabled={!product.ordersEnabled || pending || buying || (selectedAvailable !== null && selectedAvailable <= 0)}
+          disabled={!product.ordersEnabled || pending || buying}
           className="flex min-h-12 items-center justify-center gap-2 rounded-full border border-primary/60 bg-transparent px-5 text-xs font-medium uppercase tracking-[0.14em] text-primary transition-all hover:bg-primary/8"
         >
           <IconSparkles size={15} />
