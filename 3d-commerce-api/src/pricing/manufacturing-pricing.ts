@@ -45,7 +45,7 @@ export type ManufacturingPriceResult = {
  */
 export async function calculateManufacturingPrice(
   tx: Prisma.TransactionClient,
-  input: { productId: string; material: string; size: string | null; variantName: string; weightGrams: number | null },
+  input: { productId: string; material: string; size: string | null; variantName: string },
 ): Promise<ManufacturingPriceResult> {
   const sizeKey = normalizePricingSize(input.variantName) || normalizePricingSize(input.size);
   const material = input.material.trim();
@@ -53,7 +53,7 @@ export async function calculateManufacturingPrice(
     throw new BadRequestException('Product material and variant size are required for manufacturing pricing');
   }
 
-  const [materialRule, productRule, globalRate, sizeRule] = await Promise.all([
+  const [materialRule, productRule, globalRate] = await Promise.all([
     tx.materialPricingRule.findFirst({
       where: { material: { equals: material, mode: 'insensitive' }, sizeKey, isActive: true },
     }),
@@ -70,20 +70,19 @@ export async function calculateManufacturingPrice(
     );
   }
 
-  const weightGrams = input.weightGrams;
-  if (weightGrams == null || !Number.isFinite(weightGrams) || weightGrams <= 0) {
-    throw new BadRequestException('Enter a valid weight in grams for this product size before calculating its price');
-  }
-  const pricePerKgMinor = materialRule.pricePerKgMinor || materialRule.rawMaterialCostMinor;
-  const rawMaterialCostMinor = Math.ceil(weightGrams * pricePerKgMinor / 1000);
-  const wastageCostMinor = Math.ceil(rawMaterialCostMinor * materialRule.wastageRateBps / 10000);
-  const electricityCostMinor = sizeRule?.electricityCostMinor ?? 0;
-  const machineCostMinor = sizeRule?.machineCostMinor ?? 0;
-  const labourCostMinor = productRule?.labourCostMinor ?? sizeRule?.labourCostMinor ?? globalRate?.defaultLabourCostMinor ?? 0;
+  const rawMaterialCostMinor = materialRule.rawMaterialCostMinor;
+  const wastageCostMinor = Math.round(rawMaterialCostMinor * materialRule.wastageRateBps / 10000);
+  const electricityCostMinor = Math.round(
+    materialRule.electricityKwhMilli * (globalRate?.electricityRatePerKwhMinor ?? 0) / 1000,
+  );
+  const machineCostMinor = Math.round(
+    materialRule.machineHoursMilli * (globalRate?.machineHourlyCostMinor ?? 0) / 1000,
+  );
+  const labourCostMinor = productRule?.labourCostMinor ?? globalRate?.defaultLabourCostMinor ?? 0;
   const paintingCostMinor = productRule?.paintingCostMinor ?? 0;
-  const finishingCostMinor = (productRule?.finishingCostMinor ?? 0) + (sizeRule?.finishingCostMinor ?? 0);
+  const finishingCostMinor = productRule?.finishingCostMinor ?? 0;
   const machineSetupCostMinor = productRule?.machineSetupCostMinor ?? 0;
-  const packagingCostMinor = productRule?.packagingCostMinor ?? sizeRule?.packagingCostMinor ?? globalRate?.standardPackagingCostMinor ?? 0;
+  const packagingCostMinor = productRule?.packagingCostMinor ?? globalRate?.standardPackagingCostMinor ?? 0;
 
   const directCostMinor =
     rawMaterialCostMinor + wastageCostMinor + electricityCostMinor + machineCostMinor +
@@ -110,14 +109,12 @@ export async function calculateManufacturingPrice(
       material,
       sizeKey,
       currency: materialRule.currency,
-      weightGrams,
-      pricePerKgMinor,
       rawMaterialCostMinor,
       wastageRateBps: materialRule.wastageRateBps,
       wastageCostMinor,
-      electricityKwhMilli: 0,
+      electricityKwhMilli: materialRule.electricityKwhMilli,
       electricityCostMinor,
-      machineHoursMilli: 0,
+      machineHoursMilli: materialRule.machineHoursMilli,
       machineCostMinor,
       labourCostMinor,
       paintingCostMinor,
