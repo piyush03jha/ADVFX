@@ -230,6 +230,7 @@ export class AdminService {
     sizeKey: string;
     currency?: string;
     rawMaterialCostMinor: number;
+    pricePerKgMinor?: number;
     wastageRateBps: number;
     electricityKwhMilli: number;
     machineHoursMilli: number;
@@ -242,6 +243,7 @@ export class AdminService {
     if (!/^[A-Z]{3}$/.test(currency)) throw new BadRequestException('Currency must be a three-letter ISO code');
     const numericValues = [
       input.rawMaterialCostMinor,
+      input.pricePerKgMinor ?? 0,
       input.wastageRateBps,
       input.electricityKwhMilli,
       input.machineHoursMilli,
@@ -263,6 +265,7 @@ export class AdminService {
             data: {
               currency,
               rawMaterialCostMinor: input.rawMaterialCostMinor,
+              pricePerKgMinor: input.pricePerKgMinor ?? 0,
               wastageRateBps: input.wastageRateBps,
               electricityKwhMilli: input.electricityKwhMilli,
               machineHoursMilli: input.machineHoursMilli,
@@ -273,6 +276,7 @@ export class AdminService {
             data: {
               material, sizeKey, currency, amountMinor: 0,
               rawMaterialCostMinor: input.rawMaterialCostMinor,
+              pricePerKgMinor: input.pricePerKgMinor ?? 0,
               wastageRateBps: input.wastageRateBps,
               electricityKwhMilli: input.electricityKwhMilli,
               machineHoursMilli: input.machineHoursMilli,
