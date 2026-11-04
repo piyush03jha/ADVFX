@@ -369,6 +369,7 @@ export class AdminService {
     electricityRatePerKwhMinor: number;
     machineHourlyCostMinor: number;
     generalOverheadBps: number;
+    profitMarginBps: number;
     defaultLabourCostMinor: number;
     standardPackagingCostMinor: number;
   }) {
@@ -378,6 +379,9 @@ export class AdminService {
     }
     if (input.generalOverheadBps > 10000) {
       throw new BadRequestException('General overhead cannot exceed 100%');
+    }
+    if (input.profitMarginBps > 8000) {
+      throw new BadRequestException('Profit margin cannot exceed 80%');
     }
     return this.prisma.$transaction(async (tx) => {
       const rates = await tx.manufacturingRate.upsert({
