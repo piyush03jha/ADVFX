@@ -22,6 +22,7 @@ describe('calculateManufacturingPrice', () => {
     materialPricingRule: { findFirst: jest.fn() },
     productCostRule: { findUnique: jest.fn() },
     manufacturingRate: { findUnique: jest.fn() },
+    sizeManufacturingRule: { findUnique: jest.fn() },
   } as any;
 
   beforeEach(() => {
@@ -37,6 +38,7 @@ describe('calculateManufacturingPrice', () => {
       isActive: true,
     });
     tx.productCostRule.findUnique.mockResolvedValue(null);
+    tx.sizeManufacturingRule.findUnique.mockResolvedValue(null);
     tx.manufacturingRate.findUnique.mockResolvedValue({
       id: 'default',
       electricityRatePerKwhMinor: 2000,
@@ -81,6 +83,59 @@ describe('calculateManufacturingPrice', () => {
       profitMarginBps: 2500,
       profitMarginMinor: 7334,
       sellingPriceMinor: 29334,
+    });
+  });
+
+  it('calculates material cost from variant grams and the per-kilogram material rate', async () => {
+    tx.materialPricingRule.findFirst.mockResolvedValue({
+      material: 'Resin',
+      sizeKey: 'large',
+      currency: 'INR',
+      rawMaterialCostMinor: 0,
+      pricePerKgMinor: 120000,
+      wastageRateBps: 1000,
+      electricityKwhMilli: 0,
+      machineHoursMilli: 0,
+      isActive: true,
+    });
+
+    const result = await calculateManufacturingPrice(tx, {
+      productId: 'product-1',
+      material: 'Resin',
+      size: 'Large',
+      variantName: 'Large',
+      weightGrams: 50,
+    });
+
+    expect(result.costBreakdown.rawMaterialCostMinor).toBe(6000);
+    expect(result.costBreakdown.wastageCostMinor).toBe(600);
+  });
+
+  it('includes the fixed per-size manufacturing costs including platform cost', async () => {
+    tx.sizeManufacturingRule.findUnique.mockResolvedValue({
+      sizeKey: 'large',
+      electricityCostMinor: 1000,
+      machineCostMinor: 1500,
+      labourCostMinor: 2000,
+      finishingCostMinor: 1000,
+      platformCostMinor: 500,
+      packagingCostMinor: 700,
+    });
+
+    const result = await calculateManufacturingPrice(tx, {
+      productId: 'product-1',
+      material: 'Resin',
+      size: 'Large',
+      variantName: 'Large',
+    });
+
+    expect(result.costBreakdown).toMatchObject({
+      electricityCostMinor: 1000,
+      machineCostMinor: 1500,
+      labourCostMinor: 2000,
+      finishingCostMinor: 1000,
+      platformCostMinor: 500,
+      packagingCostMinor: 700,
     });
   });
 
