@@ -11,10 +11,10 @@ import { createIntroTimeline } from "./introTimeline";
 // localStorage (survives closing the tab) with sessionStorage as a fallback.
 // Open the site with ?intro=1 to force a replay while testing.
 const PLAYED_KEY = "voxel-intro-played";
-const TEXTURE_TIMEOUT_MS = 2500;
+const TEXTURE_TIMEOUT_MS = 2000;
 // Absolute upper bound: whatever goes wrong (tab throttled, WebGL stall), the overlay is
 // gone by now so it can never leave the site unusable.
-const HARD_STOP_MS = 9000;
+const HARD_STOP_MS = 5000;
 const FALLBACK_HOLD_MS = 850;
 
 function hasPlayed(): boolean {

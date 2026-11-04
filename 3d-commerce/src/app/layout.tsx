@@ -159,7 +159,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             a safety net so the page can never stay covered. The cover never blocks clicks. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var d=document.documentElement,p=false;for(var i=0;i<2;i++){try{if((i?sessionStorage:localStorage).getItem("voxel-intro-played")==="1")p=true}catch(e){}}if((location.pathname==="/"&&!p)||/[?&]intro(=|&|$)/.test(location.search)){d.setAttribute("data-intro","pending");setTimeout(function(){d.removeAttribute("data-intro")},8000)}}catch(e){}`,
+            __html: `try{var d=document.documentElement,p=false;for(var i=0;i<2;i++){try{if((i?sessionStorage:localStorage).getItem("voxel-intro-played")==="1")p=true}catch(e){}}if((location.pathname==="/"&&!p)||/[?&]intro(=|&|$)/.test(location.search)){d.setAttribute("data-intro","pending");setTimeout(function(){d.removeAttribute("data-intro")},6000)}}catch(e){}`,
           }}
         />
         <link
