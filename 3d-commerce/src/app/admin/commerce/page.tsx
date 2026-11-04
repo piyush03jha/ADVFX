@@ -216,7 +216,7 @@ export default function AdminCommerceRulesPage() {
  
         </div>
         <button disabled={saving} type="button" onClick={()=>void saveMaterialRule()} className="mt-4 min-h-11 rounded-full bg-primary px-5 text-xs font-semibold text-white disabled:opacity-50">Save material rule</button>
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{materialRules.map(rule=><div key={rule.id} className="rounded-2xl border border-border p-4"><div className="flex justify-between gap-2"><p className="text-xs font-medium">{rule.material} · {rule.sizeKey}</p><span className="text-[10px] text-muted">{rule.isActive?"Active":"Inactive"}</span></div><p className="mt-1 text-[10px] text-muted">Rate {money(rule.pricePerKgMinor)} / kg · Waste {(rule.wastageRateBps/100).toFixed(2)}%</p><p className="mt-1 text-[10px] text-muted">{(rule.electricityKwhMilli/1000).toFixed(3)} kWh · {(rule.machineHoursMilli/1000).toFixed(3)} machine hours</p></div>)}</div>
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{materialRules.map(rule=><div key={rule.id} className="rounded-2xl border border-border p-4"><div className="flex justify-between gap-2"><p className="text-xs font-medium">{rule.material} · {rule.sizeKey}</p><span className="text-[10px] text-muted">{rule.isActive?"Active":"Inactive"}</span></div><p className="mt-1 text-[10px] text-muted">Rate {money(rule.pricePerKgMinor)} / kg · Waste {(rule.wastageRateBps/100).toFixed(2)}%</p></div>)}</div>
       </section>
 
       <section className="mt-8 rounded-3xl border border-border bg-surface p-6 sm:p-7">
@@ -237,7 +237,7 @@ export default function AdminCommerceRulesPage() {
       </section>
 
       <section className="mt-8 rounded-3xl border border-border bg-surface p-6 sm:p-7">
-        <p className="text-[9px] uppercase tracking-[0.16em] text-primary">Layer 02 · Product overrides</p><h2 className="mt-1 text-xl font-semibold">Product-based pricing</h2><p className="mt-2 text-sm leading-6 text-muted">Set product-specific labour, painting, finishing, machine setup and packaging costs for each size. Leave labour or packaging blank to use the global default.</p>
+        <p className="text-[9px] uppercase tracking-[0.16em] text-primary">Layer 03 · Product overrides</p><h2 className="mt-1 text-xl font-semibold">Product-based pricing</h2><p className="mt-2 text-sm leading-6 text-muted">Set product-specific labour, painting, finishing, machine setup and packaging costs for each size. Leave labour or packaging blank to use the global default.</p>
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <select value={productCost.productId} onChange={e=>setProductCost({...productCost,productId:e.target.value})} className={inputClass}><option value="">Select product</option>{products.map(product=><option key={product.id} value={product.id}>{product.name}{product.material?" · "+product.material:""}</option>)}</select>
           <select value={productCost.sizeKey} onChange={e=>setProductCost({...productCost,sizeKey:e.target.value})} className={inputClass}><option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option></select>
@@ -253,7 +253,7 @@ export default function AdminCommerceRulesPage() {
       </section>
 
       <section className="mt-8 rounded-3xl border border-border bg-surface p-6 sm:p-7">
-        <p className="text-[9px] uppercase tracking-[0.16em] text-primary">Layer 03 · Shared rates</p><h2 className="mt-1 text-xl font-semibold">Global manufacturing pricing</h2><p className="mt-2 text-sm leading-6 text-muted">Shared rates are applied across products unless a product-level override is configured. Electricity and machine charges use the consumption values in the material matrix. Profit margin is calculated on the final selling price, after manufacturing costs and overhead.</p>
+        <p className="text-[9px] uppercase tracking-[0.16em] text-primary">Layer 04 · Shared rates</p><h2 className="mt-1 text-xl font-semibold">Global manufacturing pricing</h2><p className="mt-2 text-sm leading-6 text-muted">Overhead and gross profit margin apply globally. Electricity, machine, labour, finishing, platform and packaging use the fixed size costs above; these legacy global rates remain fallbacks where a size-specific cost is not configured.</p>
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <input value={globalForm.electricityRatePerKwh} onChange={e=>setGlobalForm({...globalForm,electricityRatePerKwh:e.target.value})} type="number" min="0" step="0.01" placeholder="Electricity rate per kWh (₹)" className={inputClass}/>
           <input value={globalForm.machineHourlyCost} onChange={e=>setGlobalForm({...globalForm,machineHourlyCost:e.target.value})} type="number" min="0" step="0.01" placeholder="Machine hourly cost (₹)" className={inputClass}/>
@@ -268,7 +268,7 @@ export default function AdminCommerceRulesPage() {
 
       <section className="mt-8 rounded-3xl border border-border bg-surface p-6 sm:p-7">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div><p className="text-[9px] uppercase tracking-[0.16em] text-primary">Layer 04 · Storefront promotion</p><h2 className="mt-1 text-xl font-semibold">Sale campaign</h2><p className="mt-1 max-w-2xl text-xs leading-5 text-muted">Temporarily increase every active product's list price, then apply a sale discount. Manufacturing prices are never overwritten. Customers can still apply eligible coupon codes on top of the sale.</p></div>
+          <div><p className="text-[9px] uppercase tracking-[0.16em] text-primary">Layer 05 · Storefront promotion</p><h2 className="mt-1 text-xl font-semibold">Sale campaign</h2><p className="mt-1 max-w-2xl text-xs leading-5 text-muted">Temporarily increase every active product's list price, then apply a sale discount. Manufacturing prices are never overwritten. Customers can still apply eligible coupon codes on top of the sale.</p></div>
           <label className="flex items-center gap-2 rounded-full border border-border px-3 py-2 text-xs"><input type="checkbox" checked={saleCampaign.enabled} onChange={e=>setSaleCampaign({...saleCampaign,enabled:e.target.checked})}/> Enable sale</label>
         </div>
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
