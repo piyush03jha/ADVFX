@@ -189,6 +189,23 @@ export class AdminService {
     });
     if (!product?.material?.trim()) return;
     for (const variant of product.variants) {
+      if (variant.weightGrams == null) {
+        const perKgRule = await tx.materialPricingRule.findFirst({
+          where: {
+            material: { equals: product.material, mode: 'insensitive' },
+            sizeKey: { in: [normalizePricingSize(variant.name) || normalizePricingSize(variant.size), 'all'] },
+            isActive: true,
+            pricePerKgMinor: { gt: 0 },
+          },
+        });
+        if (perKgRule) {
+          await tx.productVariantPrice.updateMany({
+            where: { variantId: variant.id },
+            data: { isActive: false },
+          });
+          continue;
+        }
+      }
       try {
         const calculated = await calculateManufacturingPrice(tx, {
           productId: product.id,
