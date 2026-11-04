@@ -181,7 +181,7 @@ export function ProductInfo({
               </Badge>
             );
           }
-          return <Badge variant="success">{available} in stock</Badge>;
+          return <Badge variant="success">In stock</Badge>;
         })()}
       </div>
 
