@@ -14,7 +14,6 @@ export function ProductSpecs({
     { label: "Height", value: product.height ?? "Not specified" },
     { label: "Base", value: product.base ?? "Not specified" },
     { label: "Packaging", value: product.packaging ?? "Not specified" },
-    { label: "Weight", value: product.weight ?? "Not specified" },
   ];
 
   return (

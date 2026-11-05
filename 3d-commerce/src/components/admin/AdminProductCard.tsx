@@ -52,6 +52,7 @@ export default function AdminProductCard({product:p,...props}:Props){const {cate
         <div><p className="text-[9px] uppercase tracking-[0.12em] text-muted">Hero</p><button onClick={()=>void updateProduct(p.id,{isFeatured:!p.isFeatured})} disabled={saving} className="mt-1 rounded-lg border border-border px-2.5 py-1.5 text-[9px]">{p.isFeatured?"Remove from hero":"Feature in hero"}</button></div>
         <div className="flex items-end justify-end gap-2"><button onClick={()=>startProductEdit(p)} disabled={saving} title="Edit product" className="rounded-lg border border-border p-2 text-muted"><IconEdit size={14}/></button><button onClick={()=>void updateProduct(p.id,{status:"ARCHIVED"})} disabled={saving||p.status==="ARCHIVED"} title="Archive product" className="rounded-lg border border-border p-2 text-muted"><IconArchive size={14}/></button><button onClick={()=>void deleteProduct(p.id,p.name)} disabled={saving} title="Permanently delete product" className="rounded-lg border border-red-400/20 p-2 text-red-300"><IconTrash size={14}/></button></div>
       </div>
+      {(p.variants||[]).length===0&&(
       <div className="mt-4 border-t border-border pt-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -67,6 +68,7 @@ export default function AdminProductCard({product:p,...props}:Props){const {cate
           <button disabled={saving} className="rounded-lg bg-foreground px-3 py-2 text-[10px] font-semibold text-background">{saving?"Saving…":"Save price"}</button>
         </form>
       </div>
+      )}
       <div className="mt-4 border-t border-border pt-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div><p className="text-[9px] uppercase tracking-[0.12em] text-muted">Size-specific pricing</p><p className="mt-1 text-[10px] text-muted">Material selection fills every size from the pricing matrix. Manually edit a size only for a product-specific price override.</p></div>
