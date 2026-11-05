@@ -592,9 +592,12 @@ export function CustomForm({
             <SummaryRow label="Category" value={selectedCategory.name} />
             <SummaryRow label="Height" value={heightLabel} />
             <SummaryRow
-              label={pricingLoading ? "Calculating price" : "Price"}
+              label={pricingLoading ? "Calculating price" : "Estimated build price"}
               value={`₹${price.toLocaleString("en-IN")}`}
             />
+            <p className="pt-2 text-[11px] leading-5 text-muted">
+              This submits a custom request only. No payment is collected here; our team will review the request and confirm the physical order and payment details with you.
+            </p>
           </div>
 
           <button
