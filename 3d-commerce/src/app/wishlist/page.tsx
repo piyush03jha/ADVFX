@@ -93,7 +93,7 @@ export default function WishlistPage() {
                       ) : null}
 
                       <div className="mt-2 flex items-center justify-start gap-2">
-                        <Price value={product.price} size="sm" />
+                        {product.price > 0 ? <Price value={product.price} size="sm" /> : <span className="text-xs text-muted">Price unavailable</span>}
                       </div>
                     </div>
                   </article>
