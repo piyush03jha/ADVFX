@@ -154,7 +154,7 @@ export function CheckoutForm({
       addressId: selectedAddress.id,
       address: selectedAddress,
       country,
-      couponCode: couponCode.trim() || undefined,
+      couponCode: appliedCouponCode.trim() || undefined,
       checkoutItems: selectedItems,
       checkoutDisplayItems,
     };
