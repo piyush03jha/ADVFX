@@ -122,6 +122,9 @@ export default function WishlistPage() {
                     <div className="p-3 sm:p-4">
                       <p className="text-[8px] uppercase tracking-[0.14em] text-muted">{product.category}</p>
                       <Link href={`/product/${product.id}`} className="mt-1 block text-xs font-medium text-foreground hover:text-primary sm:text-sm">{product.name}</Link>
+                      {product.size ? (
+                        <p className="mt-1 text-[10px] text-muted">Selected size: {product.size}</p>
+                      ) : null}
 
                       <div className="mt-2 flex items-center justify-between gap-2">
                         <Price value={product.price} size="sm" />
