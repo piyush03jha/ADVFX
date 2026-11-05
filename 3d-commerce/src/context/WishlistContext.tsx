@@ -431,6 +431,7 @@ export function WishlistProvider({
       const failedProducts: WishlistProduct[] = [];
       for (const product of guestItems) {
         try {
+          writeWishlistSelection(product);
           await addBackendWishlistItem(product.id);
         } catch {
           skipped += 1;
@@ -483,13 +484,12 @@ export function WishlistProvider({
       if (!isAuthenticated) {
         const current = readGuestWishlist();
 
-        if (!current.some((item) => item.id === normalized.id)) {
-          const next = [...current, normalized];
-          writeWishlistSelection(normalized);
-          writeGuestWishlist(next);
-          setItems(next);
-        }
-
+        const next = current.some((item) => item.id === normalized.id)
+          ? current.map((item) => item.id === normalized.id ? normalized : item)
+          : [...current, normalized];
+        writeWishlistSelection(normalized);
+        writeGuestWishlist(next);
+        setItems(next);
         return true;
       }
 
@@ -586,6 +586,7 @@ export function WishlistProvider({
 
     try {
       await clearBackendWishlist();
+      clearWishlistSelections();
       setItems([]);
     } catch (cause) {
       setItems(previous);
