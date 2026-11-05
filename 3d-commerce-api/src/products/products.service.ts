@@ -599,6 +599,12 @@ export class ProductsService {
       where: {
         status: 'ACTIVE',
         isFeatured: true,
+        // Only products that actually have a model may take a hero slot,
+        // otherwise model-less featured products use up the limit.
+        OR: [
+          { media: { some: { type: 'MODEL_PREVIEW' } } },
+          { files: { some: { fileType: 'MODEL', format: 'GLB', processingStatus: 'COMPLETED' } } },
+        ],
       },
       include: this.heroProductInclude(),
       orderBy: { createdAt: 'desc' },
@@ -1030,7 +1036,10 @@ export class ProductsService {
         where: { id },
         select: { material: true, status: true },
       });
-      if ((dto.status ?? current.status) === 'ACTIVE' && !(dto.material ?? current.material)?.trim()) {
+      // Only enforce when status or material is actually being changed, so
+      // unrelated edits (hero toggle, badges, pausing orders) are never blocked.
+      const touchesPricingInputs = dto.status !== undefined || dto.material !== undefined;
+      if (touchesPricingInputs && (dto.status ?? current.status) === 'ACTIVE' && !(dto.material ?? current.material)?.trim()) {
         throw new BadRequestException('An active product must have a material for manufacturing price calculation.');
       }
       await tx.product.update({ where: { id }, data: productData });
@@ -1382,6 +1391,12 @@ export class ProductsService {
         where: { type: 'MODEL_PREVIEW' },
         orderBy: { sortOrder: 'asc' },
       },
+      // GLBs that exist only as product files (no MODEL_PREVIEW media row).
+      files: {
+        where: { fileType: 'MODEL', format: 'GLB', processingStatus: 'COMPLETED' },
+        orderBy: { createdAt: 'desc' },
+        take: 1,
+      },
       variants: {
         where: { isActive: true },
         include: { price: true },
@@ -1427,6 +1442,7 @@ export class ProductsService {
     const model =
       models.find((media) => media.isPrimary)?.url ??
       models[0]?.url ??
+      product.files.find((file) => file.storageUrl?.trim())?.storageUrl ??
       null;
 
     return {

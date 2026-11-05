@@ -58,7 +58,7 @@ export default function AdminProducts(){
   const filteredSubcategories=useMemo(()=>getSubcategories(data.categories,mainCategoryFilter),[data.categories,mainCategoryFilter]);
   const subcategoriesFor=(parentId:string)=>data.categories.filter(category=>category.parentId===parentId);
 
-  async function updateProduct(id:string,patch:Record<string,unknown>){setSaving(true);try{const r=await fetch("/api/products/"+id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(patch)});if(!r.ok)throw new Error();setMessage("Product updated.");await load()}catch{setMessage("Unable to update product.")}finally{setSaving(false)}}
+  async function updateProduct(id:string,patch:Record<string,unknown>){setSaving(true);try{const r=await fetch("/api/products/"+id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(patch)});if(!r.ok){const d=await r.json().catch(()=>null);throw new Error(Array.isArray(d?.message)?d.message.join(", "):d?.message||"Unable to update product.")}setMessage("Product updated.");await load()}catch(e){setMessage(e instanceof Error?e.message:"Unable to update product.")}finally{setSaving(false)}}
   async function updateProductPrice(productId:string,payload:{currency:string;amountMinor:number;compareAtMinor:number|null}){
     setSaving(true);setMessage("");
     try{

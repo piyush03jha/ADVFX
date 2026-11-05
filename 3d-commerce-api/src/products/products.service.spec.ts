@@ -145,4 +145,49 @@ describe('ProductsService', () => {
       });
     });
   });
+
+  describe('home hero', () => {
+    const heroRow = (over: Record<string, unknown>) => ({
+      id: 'p1', slug: 'dragon', name: 'Dragon', description: '', categoryId: null,
+      status: 'ACTIVE', isFeatured: true, ordersEnabled: true, category: null,
+      prices: [{ amountMinor: 10000, currency: 'INR' }], variants: [], tags: [],
+      media: [], files: [], ...over,
+    });
+
+    it('uses a completed GLB product file when there is no MODEL_PREVIEW media row', async () => {
+      prisma.siteSetting.findUnique.mockResolvedValue(null);
+      prisma.product.findMany.mockResolvedValue([heroRow({ files: [{ storageUrl: 'https://cdn.example/dragon.glb' }] })]);
+
+      const result = await service.findHeroProducts();
+
+      expect(result).toHaveLength(1);
+      expect(result[0].model).toBe('https://cdn.example/dragon.glb');
+      const query = prisma.product.findMany.mock.calls[0][0];
+      expect(query.where.OR).toHaveLength(2);
+    });
+
+    it('drops featured products that have no model at all', async () => {
+      prisma.siteSetting.findUnique.mockResolvedValue(null);
+      prisma.product.findMany.mockResolvedValue([heroRow({})]);
+      await expect(service.findHeroProducts()).resolves.toEqual([]);
+    });
+  });
+
+  describe('product update validation', () => {
+    it('allows toggling the hero flag on an active product that has no material', async () => {
+      prisma.product.findUnique.mockResolvedValue({ id: 'p1' });
+      const tx = {
+        product: {
+          findUniqueOrThrow: jest.fn().mockResolvedValue({ material: null, status: 'ACTIVE' }),
+          update: jest.fn(),
+        },
+        productVariantPrice: { updateMany: jest.fn() },
+      } as any;
+      prisma.$transaction.mockImplementation(async (cb: any) => cb(tx));
+
+      await service.update('p1', { isFeatured: false } as any);
+
+      expect(tx.product.update).toHaveBeenCalledWith({ where: { id: 'p1' }, data: { isFeatured: false } });
+    });
+  });
 });
