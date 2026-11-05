@@ -123,6 +123,7 @@ export class OrdersService {
             where: { userId },
             include: {
               items: {
+                where: { product: { status: "ACTIVE" } },
                 include: {
                   variant: { include: { price: true } },
                   product: {
