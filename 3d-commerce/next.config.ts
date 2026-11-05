@@ -32,18 +32,20 @@ const nextConfig: NextConfig = {
                 ...(isDevelopment ? ["'unsafe-eval'"] : []),
                 "'wasm-unsafe-eval'",
                 "https://checkout.razorpay.com",
+                "https://api.razorpay.com",
+                "https://*.razorpay.com",
                 "https://challenges.cloudflare.com",
                 "https://static.cloudflareinsights.com",
               ].join(" "),
               "style-src 'self' 'unsafe-inline'",
               // Draco/Meshopt decoders run in blob: workers.
               "worker-src 'self' blob:",
-              "img-src 'self' data: blob: https:",
+              "img-src 'self' data: blob: https: https://*.razorpay.com",
               "font-src 'self' data:",
-              "connect-src 'self' blob: https://*.backblazeb2.com https://api.voxel3d.org https://api.razorpay.com https://challenges.cloudflare.com https://checkout.razorpay.com https://cloudflareinsights.com https://static.cloudflareinsights.com",
+              "connect-src 'self' blob: https://*.backblazeb2.com https://api.voxel3d.org https://api.razorpay.com https://checkout.razorpay.com https://*.razorpay.com https://challenges.cloudflare.com https://cloudflareinsights.com https://static.cloudflareinsights.com",
               // Razorpay loads its checkout frame from api.razorpay.com after
               // checkout.js is initialized from checkout.razorpay.com.
-              "frame-src https://api.razorpay.com https://checkout.razorpay.com https://challenges.cloudflare.com",
+              "frame-src https://api.razorpay.com https://checkout.razorpay.com https://*.razorpay.com https://challenges.cloudflare.com",
               "upgrade-insecure-requests",
             ].join("; "),
           },
