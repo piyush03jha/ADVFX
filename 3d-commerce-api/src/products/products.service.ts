@@ -55,9 +55,9 @@ export class ProductsService {
       // Every variant price is derived from material + size pricing,
       // product-specific cost rules, and global manufacturing rates.
       for (const item of [
-        { name: 'Small', size: '15 cm' },
-        { name: 'Medium', size: '20 cm' },
-        { name: 'Large', size: '25 cm' },
+        { name: 'Small', size: '20 cm' },
+        { name: 'Medium', size: '25 cm' },
+        { name: 'Large', size: '30 cm' },
       ]) {
         const variant = await tx.productVariant.create({
           data: {
@@ -115,6 +115,7 @@ export class ProductsService {
       weightGrams?: number | null;
       price?: number;
       compareAtPrice?: number | null;
+      priceOverride?: number | null;
       isActive?: boolean;
     },
   ) {
@@ -149,17 +150,31 @@ export class ProductsService {
       });
 
       const reactivated = updated.isActive && !variant.isActive;
-      if (
-        reactivated ||
-        updated.name !== variant.name ||
-        updated.size !== variant.size ||
-        updated.weightGrams !== variant.weightGrams
-      ) {
-        const product = await tx.product.findUnique({ where: { id: productId }, select: { material: true } });
-        if (product?.material?.trim()) {
+      const hadOverride = variant.price?.priceOverrideMinor != null;
+      const material = (await tx.product.findUnique({ where: { id: productId }, select: { material: true } }))?.material?.trim();
+
+      if (typeof input.priceOverride === 'number') {
+        // Manual price for this size; automatic recalculation will leave it alone.
+        const amountMinor = Math.round(input.priceOverride * 100);
+        await tx.productVariantPrice.upsert({
+          where: { variantId },
+          create: { variantId, currency: 'INR', amountMinor, priceOverrideMinor: amountMinor, isActive: true },
+          update: { currency: 'INR', amountMinor, compareAtMinor: null, priceOverrideMinor: amountMinor, isActive: true },
+        });
+      } else {
+        const clearing = input.priceOverride === null && hadOverride;
+        const changed =
+          reactivated ||
+          updated.name !== variant.name ||
+          updated.size !== variant.size ||
+          updated.weightGrams !== variant.weightGrams;
+
+        if (clearing && !material) {
+          await tx.productVariantPrice.update({ where: { variantId }, data: { priceOverrideMinor: null, isActive: false } });
+        } else if (material && (clearing || (changed && !hadOverride))) {
           const calculated = await calculateManufacturingPrice(tx, {
             productId,
-            material: product.material,
+            material,
             size: updated.size,
             variantName: updated.name,
             weightGrams: updated.weightGrams,
@@ -171,6 +186,7 @@ export class ProductsService {
               amountMinor: calculated.amountMinor,
               compareAtMinor: null,
               costBreakdown: calculated.costBreakdown,
+              priceOverrideMinor: null,
               isActive: true,
             },
           });
@@ -1029,9 +1045,11 @@ export class ProductsService {
       if (nextMaterial && nextMaterial.toLowerCase() !== (current.material ?? '').trim().toLowerCase()) {
         const variants = await tx.productVariant.findMany({
           where: { productId: id, isActive: true },
-          select: { id: true, name: true, size: true, weightGrams: true },
+          select: { id: true, name: true, size: true, weightGrams: true, price: { select: { priceOverrideMinor: true } } },
         });
         for (const variant of variants) {
+          // A manually set size price stays as the admin entered it.
+          if (variant.price?.priceOverrideMinor != null) continue;
           const sizeKey = normalizePricingSize(variant.name) || normalizePricingSize(variant.size);
           const perKgRule = await tx.materialPricingRule.findFirst({ where: { material: { equals: nextMaterial, mode: 'insensitive' }, sizeKey: { in: [sizeKey, 'all'] }, isActive: true, pricePerKgMinor: { gt: 0 } } });
           if (perKgRule && variant.weightGrams == null) {

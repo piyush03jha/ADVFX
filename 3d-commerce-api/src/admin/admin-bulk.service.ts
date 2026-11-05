@@ -43,9 +43,9 @@ export class AdminBulkService {
     let updated = 0;
     const errors: string[] = [];
     const variants = [
-      { name: 'Small', size: '15 cm', header: 'smallprice' },
-      { name: 'Medium', size: '20 cm', header: 'mediumprice' },
-      { name: 'Large', size: '25 cm', header: 'largeprice' },
+      { name: 'Small', size: '20 cm', header: 'smallprice' },
+      { name: 'Medium', size: '25 cm', header: 'mediumprice' },
+      { name: 'Large', size: '30 cm', header: 'largeprice' },
     ];
 
     for (let i = 1; i < lines.length; i++) {

@@ -6,9 +6,12 @@ import { WishlistButton } from "@/components/ui/WishlistButton";
 
 import type { StorefrontProduct } from "@/lib/catalog-api";
 
-import { ProductActions } from "./ProductActions";
+import { describeForSize } from "@/lib/size-description";
 
-import { useMemo, useState } from "react";
+import { ProductActions } from "./ProductActions";
+import { useSelectedVariant } from "./SelectedVariantContext";
+
+import { useState } from "react";
 
 interface ProductInfoProps {
   product: StorefrontProduct;
@@ -17,21 +20,8 @@ interface ProductInfoProps {
 export function ProductInfo({
   product,
 }: ProductInfoProps) {
-  const variants = product.variants ?? [];
-  const lowestPricedVariant = useMemo(
-    () =>
-      variants
-        .filter((variant) => variant.price !== undefined)
-        .sort((a, b) => (a.price ?? Infinity) - (b.price ?? Infinity))[0] ??
-      variants[0] ??
-      null,
-    [variants],
-  );
-  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(
-    lowestPricedVariant?.id ?? null,
-  );
+  const { selectedVariantId, selectedVariant, setSelectedVariantId } = useSelectedVariant();
   const [quantity, setQuantity] = useState(1);
-  const selectedVariant = useMemo(() => variants.find((variant) => variant.id === selectedVariantId) ?? null, [variants, selectedVariantId]);
   const selectedPrice = selectedVariant?.price ?? product.price;
   const selectedOldPrice = selectedVariant?.oldPrice ?? product.oldPrice;
   return (
@@ -172,7 +162,7 @@ export function ProductInfo({
           text-muted
         "
       >
-        {product.description}
+        {describeForSize(product.description, selectedVariant)}
       </p>
 
       {/* ==================================================

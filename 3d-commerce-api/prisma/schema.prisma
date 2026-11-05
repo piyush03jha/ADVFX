@@ -752,6 +752,10 @@ model ProductVariantPrice {
   compareAtMinor Int?
   costBreakdown  Json?
 
+  // Manual per-size price set by the admin. While set, automatic
+  // recalculation leaves this variant's price alone.
+  priceOverrideMinor Int?
+
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

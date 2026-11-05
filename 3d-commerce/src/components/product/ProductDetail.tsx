@@ -7,6 +7,7 @@ import { ProductBreadcrumb } from "./ProductBreadcrumb";
 import { ProductDetailsTabs } from "./ProductDetailsTabs";
 import { ProductGallery } from "./ProductGallery";
 import { ProductInfo } from "./ProductInfo";
+import { SelectedVariantProvider } from "./SelectedVariantContext";
 import { RelatedProducts } from "./RelatedProducts";
 import { ProductViewTracker } from "./ProductViewTracker";
 
@@ -26,6 +27,7 @@ export function ProductDetail({
   relatedProducts,
 }: ProductDetailProps) {
   return (
+    <SelectedVariantProvider variants={product.variants ?? []}>
     <main id="main-content" className="w-full overflow-hidden">
       <ProductViewTracker productId={product.id} />
       {/* =====================================================
@@ -206,6 +208,7 @@ export function ProductDetail({
         </Container>
       </Section>
     </main>
+    </SelectedVariantProvider>
   );
 }
 

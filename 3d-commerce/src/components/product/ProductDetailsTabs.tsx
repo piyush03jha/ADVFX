@@ -6,7 +6,10 @@ import type { StorefrontProduct } from "@/lib/catalog-api";
 import { Badge } from "@/components/ui/Badge";
 
 import { ProductReviews } from "./ProductReviews";
+import { describeForSize } from "@/lib/size-description";
+
 import { ProductSpecs } from "./ProductSpecs";
+import { useSelectedVariant } from "./SelectedVariantContext";
 
 interface ProductDetailsTabsProps {
   product: StorefrontProduct;
@@ -144,6 +147,8 @@ function Description({
 }: {
   product: StorefrontProduct;
 }) {
+  const { selectedVariant } = useSelectedVariant();
+
   return (
     <div className="max-w-4xl">
       {/* ==================================================
@@ -159,7 +164,7 @@ function Description({
           sm:text-[15px]
         "
       >
-        {product.description}
+        {describeForSize(product.description, selectedVariant)}
       </p>
 
 

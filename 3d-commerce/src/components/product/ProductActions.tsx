@@ -147,7 +147,7 @@ export function ProductActions({ product, selectedVariantId, quantity, onVariant
       ) : (
         <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-[10px] uppercase tracking-[0.12em] text-muted">
           <span className="text-foreground">Size</span>
-          <span className="ml-2">Small · 15 cm · Medium · 20 cm · Large · 25 cm</span>
+          <span className="ml-2">Made to order</span>
         </div>
       )}
 

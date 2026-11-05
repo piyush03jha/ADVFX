@@ -38,7 +38,7 @@ function AdminThumb({ src, alt }: { src: string; alt: string }) {
   );
 }
 
-type ProductVariant={id:string;name:string;size?:string|null;weightGrams?:number|null;sku?:string|null;isActive:boolean;price?:{amountMinor:number;compareAtMinor?:number|null;isActive:boolean}|null};
+type ProductVariant={id:string;name:string;size?:string|null;weightGrams?:number|null;sku?:string|null;isActive:boolean;price?:{amountMinor:number;compareAtMinor?:number|null;priceOverrideMinor?:number|null;isActive:boolean}|null};
 type Product={id:string;name:string;slug:string;status:string;ordersEnabled:boolean;isFeatured:boolean;isTrending:boolean;isBestseller:boolean;category?:{id:string;name:string;ordersEnabled?:boolean;gstRateBps?:number|null;parentId?:string|null;parent?:{id:string;name:string;slug?:string;ordersEnabled?:boolean}|null}|null;prices:Array<{amountMinor:number;currency?:string;compareAtMinor?:number|null;isActive:boolean}>;variants?:ProductVariant[];material?:string|null;scale?:string|null;dimensions?:string|null;height?:string|null;base?:string|null;packaging?:string|null;weight?:string|null;media?:Array<{id:string;type:string;url:string;altText?:string|null;isPrimary:boolean;sortOrder:number}>};
 type ProductFile={id:string;originalName:string;storageUrl:string;format:string;fileType:string;mimeType:string;fileSize:string|number;processingStatus:string};
 type CategoryOption={id:string;name:string;slug:string;parentId?:string|null;parent?:{id:string;name:string;slug:string}|null};
@@ -71,19 +71,23 @@ export default function AdminProductCard({product:p,...props}:Props){const {cate
       )}
       <div className="mt-4 border-t border-border pt-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div><p className="text-[9px] uppercase tracking-[0.12em] text-muted">Size-specific pricing</p><p className="mt-1 text-[10px] text-muted">Material selection fills every size from the pricing matrix. Manually edit a size only for a product-specific price override.</p></div>
+          <div><p className="text-[9px] uppercase tracking-[0.12em] text-muted">Size-specific pricing</p><p className="mt-1 text-[10px] text-muted">Prices are calculated from material and weight. To set your own price for a size, enter it in the Override price box for that size; clear the box to go back to the calculated price.</p></div>
         </div>
-        {(p.variants||[]).length===0 ? <div className="mt-3 rounded-xl border border-dashed border-border p-4"><p className="text-xs text-muted">This product has no size variants yet, so there are no price fields to edit. Add standard sizes to enable size-specific pricing.</p><button type="button" onClick={()=>void ensureStandardVariants(p.id)} disabled={saving} className="mt-3 rounded-lg bg-foreground px-3 py-2 text-[10px] font-semibold text-background">{saving?"Adding sizes…":"Add standard sizes & enable pricing"}</button></div> : <form key={(p.variants||[]).map(v=>v.id+":"+(v.weightGrams??"")+":"+(v.price?.amountMinor??"")).join("|")} onSubmit={e=>{e.preventDefault();const fd=new FormData(e.currentTarget);void updateVariants(p.id,(p.variants||[]).map(v=>({variantId:v.id,payload:{name:String(fd.get("name_"+v.id)||""),size:String(fd.get("size_"+v.id)||""),weightGrams:fd.get("weightGrams_"+v.id)===""?null:Number(fd.get("weightGrams_"+v.id))}})))}} className="mt-3">
+        {(p.variants||[]).length===0 ? <div className="mt-3 rounded-xl border border-dashed border-border p-4"><p className="text-xs text-muted">This product has no size variants yet, so there are no price fields to edit. Add standard sizes to enable size-specific pricing.</p><button type="button" onClick={()=>void ensureStandardVariants(p.id)} disabled={saving} className="mt-3 rounded-lg bg-foreground px-3 py-2 text-[10px] font-semibold text-background">{saving?"Adding sizes…":"Add standard sizes & enable pricing"}</button></div> : <form key={(p.variants||[]).map(v=>v.id+":"+(v.size??"")+":"+(v.weightGrams??"")+":"+(v.price?.amountMinor??"")+":"+(v.price?.priceOverrideMinor??"")).join("|")} onSubmit={e=>{e.preventDefault();const fd=new FormData(e.currentTarget);void updateVariants(p.id,(p.variants||[]).map(v=>({variantId:v.id,payload:{name:String(fd.get("name_"+v.id)||""),size:fd.get("sizeCm_"+v.id)===""?"":Number(fd.get("sizeCm_"+v.id))+" cm",weightGrams:fd.get("weightGrams_"+v.id)===""?null:Number(fd.get("weightGrams_"+v.id)),priceOverride:fd.get("override_"+v.id)===""?null:Number(fd.get("override_"+v.id))}})))}} className="mt-3">
         <div className="grid gap-2 lg:grid-cols-3">
           {(p.variants||[]).map(v=><div key={v.id} className="rounded-xl border border-border bg-background/50 p-3">
             <div className="grid grid-cols-2 gap-2">
               <input name={"name_"+v.id} defaultValue={v.name} placeholder="Name" className="h-8 rounded-lg border border-border bg-background px-2 text-[10px]"/>
-              <input name={"size_"+v.id} defaultValue={v.size||""} placeholder="Size e.g. 15 cm" className="h-8 rounded-lg border border-border bg-background px-2 text-[10px]"/>
+              <label className="flex h-8 items-center gap-1 rounded-lg border border-border bg-background px-2 text-[10px]"><input name={"sizeCm_"+v.id} defaultValue={Number.isFinite(parseFloat(v.size||""))?String(parseFloat(v.size||"")):""} type="number" min="1" step="0.1" placeholder="Size" aria-label={v.name+" size in cm"} className="w-full min-w-0 bg-transparent outline-none"/><span className="text-muted">cm</span></label>
               <input name={"weightGrams_"+v.id} defaultValue={v.weightGrams==null?"":String(v.weightGrams)} type="number" min="0.01" step="0.01" placeholder="Model weight · grams" className="col-span-2 h-8 rounded-lg border border-border bg-background px-2 text-[10px]"/>
               <div className="col-span-2 rounded-lg border border-border bg-surface px-2 py-2">
-                <p className="text-[9px] text-muted">Calculated selling price · GST inclusive</p>
+                <p className="text-[9px] text-muted">{v.price?.priceOverrideMinor!=null?"Custom selling price (manual)":"Calculated selling price"} · GST inclusive</p>
                 <p className="mt-0.5 text-xs font-semibold">{v.price?.isActive?new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",maximumFractionDigits:2}).format((v.price.amountMinor||0)/100):"Configure manufacturing pricing"}</p>
               </div>
+              <label className="col-span-2 block">
+                <span className="text-[9px] text-muted">Override price (₹, GST incl.) · leave blank to use the calculated price</span>
+                <input name={"override_"+v.id} defaultValue={v.price?.priceOverrideMinor==null?"":String(v.price.priceOverrideMinor/100)} type="number" min="0" step="0.01" placeholder="Auto" className="mt-1 h-8 w-full rounded-lg border border-border bg-background px-2 text-[10px]"/>
+              </label>
             </div>
             <div className="mt-2">
               <span className="text-[9px] text-muted">{v.isActive?"Active":"Inactive"} · Made to order</span>

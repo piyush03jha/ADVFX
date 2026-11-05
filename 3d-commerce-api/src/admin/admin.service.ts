@@ -176,10 +176,12 @@ export class AdminService {
   ) {
     const product = await tx.product.findUnique({
       where: { id: productId },
-      select: { id: true, material: true, variants: { where: { isActive: true }, select: { id: true, name: true, size: true, weightGrams: true } } },
+      select: { id: true, material: true, variants: { where: { isActive: true }, select: { id: true, name: true, size: true, weightGrams: true, price: { select: { priceOverrideMinor: true } } } } },
     });
     if (!product?.material?.trim()) return;
     for (const variant of product.variants) {
+      // A manually set size price stays as the admin entered it.
+      if (variant.price?.priceOverrideMinor != null) continue;
       if (variant.weightGrams == null) {
         const perKgRule = await tx.materialPricingRule.findFirst({
           where: {

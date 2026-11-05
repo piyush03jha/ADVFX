@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { uploadModelDirect } from "@/lib/model-upload";
 import { filterProductsByCategory, getMainCategories, getSubcategories } from "@/lib/category-hierarchy.mjs";
 
-type ProductVariant={id:string;name:string;size?:string|null;sku?:string|null;isActive:boolean;price?:{amountMinor:number;compareAtMinor?:number|null;isActive:boolean}|null};
+type ProductVariant={id:string;name:string;size?:string|null;sku?:string|null;isActive:boolean;price?:{amountMinor:number;compareAtMinor?:number|null;priceOverrideMinor?:number|null;isActive:boolean}|null};
 type Product={id:string;name:string;slug:string;description?:string|null;badge?:string|null;status:string;ordersEnabled:boolean;isFeatured:boolean;isTrending:boolean;isBestseller:boolean;category?:{id:string;name:string}|null;prices:any[];variants?:ProductVariant[];material?:string|null;scale?:string|null;dimensions?:string|null;height?:string|null;base?:string|null;packaging?:string|null;weight?:string|null;media?:Array<{id:string;type:string;url:string;altText?:string|null;isPrimary:boolean;sortOrder:number}>};
 type ProductFile={id:string;originalName:string;storageUrl:string;format:string;fileType:string;mimeType:string;fileSize:string|number;processingStatus:string};
 type Category={id:string;name:string;slug:string;parentId?:string|null;parent?:{id:string;name:string;slug:string}|null};
@@ -86,7 +86,7 @@ export default function AdminProducts(){
   async function ensureStandardVariants(productId:string){
     setSaving(true);setMessage("");
     try{
-      const defaults=[{name:"Small",size:"15 cm"},{name:"Medium",size:"20 cm"},{name:"Large",size:"25 cm"}];
+      const defaults=[{name:"Small",size:"20 cm"},{name:"Medium",size:"25 cm"},{name:"Large",size:"30 cm"}];
       for(const variant of defaults){
         const response=await fetch("/api/products/"+productId+"/variants",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(variant)});
         const result=await response.json().catch(()=>null);
@@ -242,7 +242,7 @@ export default function AdminProducts(){
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary">Made to order · size pricing</p>
-            <p className="mt-1 max-w-2xl text-[10px] leading-5 text-muted">Every order is produced after purchase. Set each size's measured or estimated weight in the variant editor; material and manufacturing rates calculate its selling price automatically.</p>
+            <p className="mt-1 max-w-2xl text-[10px] leading-5 text-muted">Every order is produced after purchase. Set each size&apos;s measured or estimated weight in the variant editor; material and manufacturing rates calculate its selling price automatically.</p>
           </div>
           <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-[9px] font-medium text-emerald-300">No stock limits · pause per product or category</span>
         </div>

@@ -4,7 +4,7 @@ import { ProductsService } from './products.service';
 describe('ProductsService', () => {
   const storage = { saveProductFile: jest.fn(), delete: jest.fn(), getAbsolutePath: jest.fn() } as any;
   const prisma = {
-    product: { findFirst: jest.fn(), findMany: jest.fn(), count: jest.fn() },
+    product: { findFirst: jest.fn(), findMany: jest.fn(), findUnique: jest.fn(), count: jest.fn() },
     category: { findMany: jest.fn() },
     siteSetting: { findUnique: jest.fn() },
     productVariant: { findFirst: jest.fn() },
@@ -105,5 +105,44 @@ describe('ProductsService', () => {
 
     expect(prisma.productMetrics.upsert).not.toHaveBeenCalled();
     expect(prisma.productMetrics.findUnique).toHaveBeenCalledWith({ where: { productId: 'p1' } });
+  });
+
+  describe('per-size price override', () => {
+    const baseVariant = { id: 'v1', productId: 'p1', name: 'Medium', size: '25 cm', weightGrams: 100, isActive: true };
+    const run = (variant: any, input: any, material: string | null) => {
+      prisma.product.findUnique.mockResolvedValue({ id: 'p1' });
+      prisma.productVariant.findFirst.mockResolvedValue(variant);
+      const tx = {
+        productVariant: {
+          update: jest.fn().mockImplementation(async ({ data }: any) => ({ ...variant, ...data })),
+          findUniqueOrThrow: jest.fn().mockResolvedValue(variant),
+        },
+        product: { findUnique: jest.fn().mockResolvedValue({ material }) },
+        productVariantPrice: { upsert: jest.fn(), update: jest.fn() },
+      } as any;
+      prisma.$transaction.mockImplementation(async (cb: any) => cb(tx));
+      return service.updateVariant('p1', 'v1', input).then(() => tx);
+    };
+
+    it('stores a manual price in minor units and flags it as an override', async () => {
+      const tx = await run({ ...baseVariant, price: { priceOverrideMinor: null } }, { priceOverride: 1234.5 }, 'Resin');
+      expect(tx.productVariantPrice.upsert).toHaveBeenCalledWith(expect.objectContaining({
+        update: expect.objectContaining({ amountMinor: 123450, priceOverrideMinor: 123450, isActive: true }),
+      }));
+    });
+
+    it('does not recalculate an overridden size when its weight changes', async () => {
+      const tx = await run({ ...baseVariant, price: { priceOverrideMinor: 99900 } }, { weightGrams: 250 }, 'Resin');
+      expect(tx.productVariantPrice.update).not.toHaveBeenCalled();
+      expect(tx.productVariantPrice.upsert).not.toHaveBeenCalled();
+    });
+
+    it('clearing an override with no material leaves the size unpriced instead of keeping the manual price', async () => {
+      const tx = await run({ ...baseVariant, price: { priceOverrideMinor: 99900 } }, { priceOverride: null }, null);
+      expect(tx.productVariantPrice.update).toHaveBeenCalledWith({
+        where: { variantId: 'v1' },
+        data: { priceOverrideMinor: null, isActive: false },
+      });
+    });
   });
 });

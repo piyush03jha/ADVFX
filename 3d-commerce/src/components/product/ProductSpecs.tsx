@@ -1,4 +1,8 @@
+"use client";
+
 import type { StorefrontProduct } from "@/lib/catalog-api";
+
+import { useSelectedVariant } from "./SelectedVariantContext";
 
 interface ProductSpecsProps {
   product: StorefrontProduct;
@@ -7,11 +11,12 @@ interface ProductSpecsProps {
 export function ProductSpecs({
   product,
 }: ProductSpecsProps) {
+  const { selectedVariant } = useSelectedVariant();
   const specs = [
     { label: "Material", value: product.material ?? "Not specified" },
     { label: "Scale", value: product.scale ?? "Not specified" },
     { label: "Dimensions", value: product.dimensions ?? "Not specified" },
-    { label: "Height", value: product.height ?? "Not specified" },
+    { label: "Height", value: selectedVariant?.size?.trim() || product.height || "Not specified" },
     { label: "Base", value: product.base ?? "Not specified" },
     { label: "Packaging", value: product.packaging ?? "Not specified" },
   ];
