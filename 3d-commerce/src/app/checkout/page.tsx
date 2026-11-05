@@ -22,7 +22,7 @@ import type { CartItem } from "@/context/CartContext";
 export default function CheckoutPage() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
-  const { items, isLoaded, isRefreshing, refreshCart } = useCart();
+  const { items, isLoaded, isRefreshing } = useCart();
   const [country, setCountry] = useState<CountryCode>("IN");
   const [quote, setQuote] = useState<CheckoutQuote | null>(null);
   const [quoteError, setQuoteError] = useState<string | null>(null);
@@ -73,8 +73,7 @@ export default function CheckoutPage() {
       return;
     }
 
-    void refreshCart();
-  }, [isAuthenticated, refreshCart, router]);
+  }, [isAuthenticated, router]);
 
   useEffect(() => {
     if (!isAuthLoading && !isAuthenticated) {
