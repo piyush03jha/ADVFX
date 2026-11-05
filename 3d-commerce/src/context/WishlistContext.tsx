@@ -26,6 +26,11 @@ export interface WishlistProduct {
   badge?: string;
   discount?: string;
   model?: string;
+  /** The customer's selected cart configuration; wishlist API stores products only. */
+  variantId?: string | null;
+  variantName?: string | null;
+  variantSize?: string | null;
+  size?: string;
 }
 
 interface WishlistContextValue {
@@ -43,6 +48,67 @@ interface WishlistContextValue {
 }
 
 const STORAGE_KEY = "forma-wishlist";
+const SELECTION_STORAGE_KEY = "forma-wishlist-selections";
+
+type WishlistSelection = Pick<WishlistProduct, "variantId" | "variantName" | "variantSize" | "size" | "price" | "oldPrice">;
+
+function readWishlistSelections(): Record<string, WishlistSelection> {
+  try {
+    const raw = window.localStorage.getItem(SELECTION_STORAGE_KEY);
+    if (!raw) return {};
+    const value: unknown = JSON.parse(raw);
+    return value && typeof value === "object" && !Array.isArray(value)
+      ? value as Record<string, WishlistSelection>
+      : {};
+  } catch {
+    window.localStorage.removeItem(SELECTION_STORAGE_KEY);
+    return {};
+  }
+}
+
+function writeWishlistSelection(product: WishlistProduct) {
+  try {
+    const selections = readWishlistSelections();
+    selections[product.id] = {
+      variantId: product.variantId ?? null,
+      variantName: product.variantName ?? null,
+      variantSize: product.variantSize ?? null,
+      size: product.size ?? "Standard",
+      price: product.price,
+      oldPrice: product.oldPrice,
+    };
+    window.localStorage.setItem(SELECTION_STORAGE_KEY, JSON.stringify(selections));
+  } catch {
+    // Selection metadata is best-effort when browser storage is unavailable.
+  }
+}
+
+function removeWishlistSelection(productId: string) {
+  try {
+    const selections = readWishlistSelections();
+    delete selections[productId];
+    if (Object.keys(selections).length) {
+      window.localStorage.setItem(SELECTION_STORAGE_KEY, JSON.stringify(selections));
+    } else {
+      window.localStorage.removeItem(SELECTION_STORAGE_KEY);
+    }
+  } catch {
+    // Ignore local storage failures.
+  }
+}
+
+function clearWishlistSelections() {
+  try {
+    window.localStorage.removeItem(SELECTION_STORAGE_KEY);
+  } catch {
+    // Ignore local storage failures.
+  }
+}
+
+function mergeWishlistSelection(product: WishlistProduct): WishlistProduct {
+  const selection = readWishlistSelections()[product.id];
+  return selection ? { ...product, ...selection } : product;
+}
 
 const WishlistContext = createContext<WishlistContextValue | null>(null);
 
@@ -224,6 +290,10 @@ function toWishlistProduct(
     badge: product.badge,
     discount: product.discount,
     model: product.model,
+    variantId: product.variantId ?? null,
+    variantName: product.variantName ?? null,
+    variantSize: product.variantSize ?? null,
+    size: product.size ?? "Standard",
   };
 }
 
@@ -247,7 +317,7 @@ async function readBackendWishlist(): Promise<WishlistProduct[]> {
   }
 
   const wishlist = data as BackendWishlistResponse;
-  return wishlist.items.map((item) => mapBackendProduct(item.product));
+  return wishlist.items.map((item) => mergeWishlistSelection(mapBackendProduct(item.product)));
 }
 
 async function addBackendWishlistItem(productId: string) {
@@ -272,7 +342,7 @@ async function addBackendWishlistItem(productId: string) {
   }
 
   return (data as BackendWishlistResponse).items.map((item) =>
-    mapBackendProduct(item.product),
+    mergeWishlistSelection(mapBackendProduct(item.product)),
   );
 }
 
@@ -415,6 +485,7 @@ export function WishlistProvider({
 
         if (!current.some((item) => item.id === normalized.id)) {
           const next = [...current, normalized];
+          writeWishlistSelection(normalized);
           writeGuestWishlist(next);
           setItems(next);
         }
@@ -430,7 +501,8 @@ export function WishlistProvider({
 
       try {
         const next = await addBackendWishlistItem(normalized.id);
-        setItems(next);
+        writeWishlistSelection(normalized);
+        setItems(next.map((item) => item.id === normalized.id ? normalized : mergeWishlistSelection(item)));
       } catch (cause) {
         setItems(previous);
         setError(
@@ -456,6 +528,7 @@ export function WishlistProvider({
         const next = readGuestWishlist().filter(
           (item) => item.id !== productId,
         );
+        removeWishlistSelection(productId);
         writeGuestWishlist(next);
         setItems(next);
         return true;
@@ -467,6 +540,7 @@ export function WishlistProvider({
 
       try {
         const next = await removeBackendWishlistItem(productId);
+        removeWishlistSelection(productId);
         setItems(next);
       } catch (cause) {
         setItems(previous);
@@ -501,6 +575,7 @@ export function WishlistProvider({
 
     if (!isAuthenticated) {
       clearGuestWishlist();
+      clearWishlistSelections();
       setItems([]);
       return;
     }
