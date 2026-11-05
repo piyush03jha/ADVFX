@@ -290,10 +290,10 @@ function toWishlistProduct(
     badge: product.badge,
     discount: product.discount,
     model: product.model,
-    variantId: product.variantId ?? null,
-    variantName: product.variantName ?? null,
-    variantSize: product.variantSize ?? null,
-    size: product.size ?? "Standard",
+    variantId: "variantId" in product ? product.variantId ?? null : null,
+    variantName: "variantName" in product ? product.variantName ?? null : null,
+    variantSize: "variantSize" in product ? product.variantSize ?? null : null,
+    size: "size" in product ? product.size ?? "Standard" : "Standard",
   };
 }
 
