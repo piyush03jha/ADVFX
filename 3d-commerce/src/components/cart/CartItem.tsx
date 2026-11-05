@@ -65,26 +65,24 @@ export function CartItem({ item }: CartItemProps) {
     try {
       const alreadySaved = isInWishlist(item.product.id);
 
-      if (!alreadySaved) {
-        const added = await addToWishlist({
-          id: item.product.id,
-          name: item.product.name,
-          category: item.product.category,
-          price: item.product.price,
-          image: item.product.image,
-          oldPrice: item.product.oldPrice,
-          rating: item.product.rating,
-          reviewCount: item.product.reviewCount,
-          badge: item.product.badge,
-          discount: item.product.discount,
-          model: item.product.model,
-          variantId: item.variantId,
-          variantName: item.variantName,
-          variantSize: item.variantSize,
-          size: item.size,
-        });
-        if (!added) return;
-      }
+      const added = await addToWishlist({
+        id: item.product.id,
+        name: item.product.name,
+        category: item.product.category,
+        price: item.product.price,
+        image: item.product.image,
+        oldPrice: item.product.oldPrice,
+        rating: item.product.rating,
+        reviewCount: item.product.reviewCount,
+        badge: item.product.badge,
+        discount: item.product.discount,
+        model: item.product.model,
+        variantId: item.variantId,
+        variantName: item.variantName,
+        variantSize: item.variantSize,
+        size: item.size,
+      });
+      if (!added) return;
 
       const removed = await removeItem(item.key);
       if (!removed) {
