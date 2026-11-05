@@ -271,8 +271,34 @@ export default function PaymentPage() {
         checkout.open();
       });
     } catch (cause) {
-      setPaymentState("failed");
-      setQuoteError(cause instanceof Error ? cause.message : "Unable to start secure payment.");
+      const message = cause instanceof Error ? cause.message : "Unable to start secure payment.";
+      if (message.includes("Cart changed while checkout was loading")) {
+        // The cart can change after the payment page quote was loaded. Refresh
+        // the server quote, but never silently charge the newly calculated amount.
+        try {
+          const refreshedQuote = await getCheckoutQuote(
+            draft.addressId,
+            draft.couponCode,
+            selectedItems,
+          );
+          setQuote(refreshedQuote);
+          setPaymentState("idle");
+          setQuoteError(
+            "Your cart changed during checkout. We refreshed the total; review it and select Pay again to continue.",
+          );
+        } catch (refreshCause) {
+          setPaymentState("failed");
+          setQuote(null);
+          setQuoteError(
+            refreshCause instanceof Error
+              ? refreshCause.message
+              : "Your cart changed and the updated total could not be loaded. Please return to checkout.",
+          );
+        }
+      } else {
+        setPaymentState("failed");
+        setQuoteError(message);
+      }
     } finally {
       setProcessing(false);
     }
