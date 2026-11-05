@@ -521,7 +521,7 @@ export function CustomForm({
             <div className="flex items-end justify-between gap-4 border-t border-border pt-5">
               <div>
                 <p className="text-[10px] uppercase tracking-[0.16em] text-muted">
-                  Estimated configuration
+                  Estimated build price configuration
                 </p>
                 <p className="mt-1 text-3xl font-semibold tracking-[-0.04em]">
                   ₹{price.toLocaleString("en-IN")}
@@ -603,18 +603,18 @@ export function CustomForm({
             className="mt-6 hidden h-12 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45 desk:flex"
           >
             {submitting
-              ? "Preparing payment…"
+              ? "Submitting request…"
               : pricingLoading
                 ? "Calculating price…"
-                : "Continue to payment"}
+                : "Submit custom request"}
           </button>
         </aside>
       </div>
 
       <div className="sticky bottom-0 z-30 -mx-4 mt-4 border-t border-border bg-surface/95 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl sm:-mx-6 sm:px-6 desk:hidden">
         <div className="mx-auto flex max-w-xl items-center gap-3">
-          <div className="min-w-0 shrink-0"><p className="text-[11px] uppercase tracking-[0.14em] text-muted">{pricingLoading ? "Calculating…" : "Estimated"}</p><p className="text-xl font-semibold tracking-[-0.03em]">₹{price.toLocaleString("en-IN")}</p></div>
-          <button type="submit" disabled={submitting || !priceReady} className="flex h-12 min-w-0 flex-1 items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45">{submitting ? "Preparing payment…" : hasReference ? "Continue to payment" : "Add a photo to continue"}</button>
+          <div className="min-w-0 shrink-0"><p className="text-[11px] uppercase tracking-[0.14em] text-muted">{pricingLoading ? "Calculating…" : "Estimated build price"}</p><p className="text-xl font-semibold tracking-[-0.03em]">₹{price.toLocaleString("en-IN")}</p></div>
+          <button type="submit" disabled={submitting || !priceReady} className="flex h-12 min-w-0 flex-1 items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45">{submitting ? "Submitting request…" : hasReference ? "Submit custom request" : "Add a photo to continue"}</button>
         </div>
       </div>
 
