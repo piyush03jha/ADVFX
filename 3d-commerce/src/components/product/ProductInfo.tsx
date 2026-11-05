@@ -179,12 +179,6 @@ export function ProductInfo({
           PURCHASE ACTIONS
       ================================================== */}
 
-      {selectedVariant && (
-        <div className="mt-4 rounded-xl border border-border bg-background/50 p-3" aria-live="polite">
-          <div><p className="text-[9px] uppercase tracking-[0.12em] text-muted">Selected size</p><p className="mt-1 text-xs font-medium">{selectedVariant.size || selectedVariant.name}</p></div>
-        </div>
-      )}
-
       <ProductActions product={product} selectedVariantId={selectedVariantId} quantity={quantity} onVariantChange={setSelectedVariantId} onQuantityChange={setQuantity} />
     </div>
   );
