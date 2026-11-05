@@ -25,11 +25,22 @@ export default function WishlistPage() {
     if (isSyncing || isCartSyncing) return;
 
     const existing = cartItems.find(
-      (item) => item.product.id === product.id && item.variantId === null,
+      (item) => item.product.id === product.id && item.variantId === (product.variantId ?? null),
     );
     const previousQuantity = existing?.quantity ?? 0;
 
-    const added = await addItem(product, null, 1);
+    const selectedVariant = product.variantId
+      ? {
+          id: product.variantId,
+          name: product.variantName ?? product.size ?? "Standard",
+          size: product.variantSize ?? product.size ?? null,
+          price: product.price,
+          oldPrice: product.oldPrice,
+        }
+      : product.size && product.size !== "Standard"
+        ? product.size
+        : null;
+    const added = await addItem(product, selectedVariant, 1);
     if (!added) return;
 
     const removed = await removeFromWishlist(product.id);
@@ -38,7 +49,7 @@ export default function WishlistPage() {
     if (existing) {
       await updateQuantity(existing.key, previousQuantity);
     } else {
-      await removeItem(`${product.id}:base`);
+      await removeItem(`${product.id}:${product.variantId ?? "base"}`);
     }
   }
 
