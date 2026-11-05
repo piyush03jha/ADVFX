@@ -107,7 +107,30 @@ function clearWishlistSelections() {
 
 function mergeWishlistSelection(product: WishlistProduct): WishlistProduct {
   const selection = readWishlistSelections()[product.id];
-  return selection ? { ...product, ...selection } : product;
+  if (!selection) return product;
+
+  // Older wishlist entries can contain a stale zero price. Never let that
+  // local snapshot overwrite the current catalog price returned by the API.
+  const selectedPrice =
+    typeof selection.price === "number" &&
+    Number.isFinite(selection.price) &&
+    selection.price > 0
+      ? selection.price
+      : product.price;
+
+  const selectedOldPrice =
+    typeof selection.oldPrice === "number" &&
+    Number.isFinite(selection.oldPrice) &&
+    selection.oldPrice > 0
+      ? selection.oldPrice
+      : product.oldPrice;
+
+  return {
+    ...product,
+    ...selection,
+    price: selectedPrice,
+    oldPrice: selectedOldPrice,
+  };
 }
 
 const WishlistContext = createContext<WishlistContextValue | null>(null);
@@ -369,7 +392,7 @@ async function removeBackendWishlistItem(productId: string) {
   }
 
   return (data as BackendWishlistResponse).items.map((item) =>
-    mapBackendProduct(item.product),
+    mergeWishlistSelection(mapBackendProduct(item.product)),
   );
 }
 
@@ -393,7 +416,7 @@ async function clearBackendWishlist() {
   }
 
   return (data as BackendWishlistResponse).items.map((item) =>
-    mapBackendProduct(item.product),
+    mergeWishlistSelection(mapBackendProduct(item.product)),
   );
 }
 
