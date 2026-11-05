@@ -18,7 +18,8 @@ import { Button } from "@/components/ui/Button";
 type Dashboard = {
   products: { total: number; active: number; archived: number };
   categories: number;
-  ordersPaused: { products: number; categories: number };
+  // Optional: older backend deployments don't return it yet.
+  ordersPaused?: { products: number; categories: number };
   orders: {
     total: number;
     pendingPayment: number;
@@ -113,7 +114,7 @@ export default function AdminDashboard() {
         },
         {
           label: "Orders paused",
-          value: `${dashboard.ordersPaused.products} products · ${dashboard.ordersPaused.categories} categories`,
+          value: `${dashboard.ordersPaused?.products ?? 0} products · ${dashboard.ordersPaused?.categories ?? 0} categories`,
           Icon: IconTruck,
           href: "/admin/products",
         },
