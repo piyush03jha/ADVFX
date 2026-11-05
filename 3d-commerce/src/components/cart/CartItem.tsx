@@ -78,6 +78,10 @@ export function CartItem({ item }: CartItemProps) {
           badge: item.product.badge,
           discount: item.product.discount,
           model: item.product.model,
+          variantId: item.variantId,
+          variantName: item.variantName,
+          variantSize: item.variantSize,
+          size: item.size,
         });
         if (!added) return;
       }
