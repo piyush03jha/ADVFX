@@ -1,12 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { IconArrowLeft, IconHeart, IconShoppingCart, IconTrash } from "@tabler/icons-react";
+import { IconArrowLeft, IconHeart, IconTrash } from "@tabler/icons-react";
 
 import { Navbar } from "@/components/layout/SiteNavbar";
 import { Button } from "@/components/ui/Button";
 import { Price } from "@/components/ui/Price";
-import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 
 export default function WishlistPage() {
@@ -19,39 +18,6 @@ export default function WishlistPage() {
     error,
     refreshWishlist,
   } = useWishlist();
-  const { items: cartItems, addItem, removeItem, updateQuantity, isSyncing: isCartSyncing } = useCart();
-
-  async function moveToCart(product: (typeof items)[number]) {
-    if (isSyncing || isCartSyncing) return;
-
-    const existing = cartItems.find(
-      (item) => item.product.id === product.id && item.variantId === (product.variantId ?? null),
-    );
-    const previousQuantity = existing?.quantity ?? 0;
-
-    const selectedVariant = product.variantId
-      ? {
-          id: product.variantId,
-          name: product.variantName ?? product.size ?? "Standard",
-          size: product.variantSize ?? product.size ?? null,
-          price: product.price,
-          oldPrice: product.oldPrice,
-        }
-      : product.size && product.size !== "Standard"
-        ? product.size
-        : null;
-    const added = await addItem(product, selectedVariant, 1);
-    if (!added) return;
-
-    const removed = await removeFromWishlist(product.id);
-    if (removed) return;
-
-    if (existing) {
-      await updateQuantity(existing.key, previousQuantity);
-    } else {
-      await removeItem(`${product.id}:${product.variantId ?? "base"}`);
-    }
-  }
 
   if (!isLoaded) {
     return (
@@ -87,7 +53,7 @@ export default function WishlistPage() {
             </div>
 
             {items.length > 0 && (
-              <button type="button" onClick={() => void clearWishlist()} disabled={isSyncing || isCartSyncing} className="text-[10px] uppercase tracking-[0.12em] text-muted hover:text-primary disabled:opacity-50">
+              <button type="button" onClick={() => void clearWishlist()} disabled={isSyncing} className="text-[10px] uppercase tracking-[0.12em] text-muted hover:text-primary disabled:opacity-50">
                 Clear all
               </button>
             )}
@@ -114,7 +80,7 @@ export default function WishlistPage() {
                         <img src={product.image} alt={product.name} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.035]" />
                       </Link>
 
-                      <button type="button" aria-label={`Remove ${product.name} from wishlist`} onClick={() => void removeFromWishlist(product.id)} disabled={isSyncing || isCartSyncing} className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-black/45 text-white/80 backdrop-blur-md transition hover:border-primary/40 hover:text-primary sm:right-3 sm:top-3">
+                      <button type="button" aria-label={`Remove ${product.name} from wishlist`} onClick={() => void removeFromWishlist(product.id)} disabled={isSyncing} className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-black/45 text-white/80 backdrop-blur-md transition hover:border-primary/40 hover:text-primary sm:right-3 sm:top-3">
                         <IconTrash size={14} stroke={1.5} />
                       </button>
                     </div>
@@ -126,12 +92,8 @@ export default function WishlistPage() {
                         <p className="mt-1 text-[10px] text-muted">Selected size: {product.size}</p>
                       ) : null}
 
-                      <div className="mt-2 flex items-center justify-between gap-2">
+                      <div className="mt-2 flex items-center justify-start gap-2">
                         <Price value={product.price} size="sm" />
-                        <button type="button" aria-label={`Move ${product.name} to cart`} onClick={() => void moveToCart(product)} disabled={isSyncing || isCartSyncing} className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border px-3 text-[9px] font-medium uppercase tracking-[0.1em] text-muted transition hover:border-primary/50 hover:bg-primary/10 hover:text-primary disabled:opacity-50 sm:h-9 sm:px-3.5">
-                          <IconShoppingCart size={14} />
-                          Move to cart
-                        </button>
                       </div>
                     </div>
                   </article>
