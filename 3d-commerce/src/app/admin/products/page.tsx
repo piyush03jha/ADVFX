@@ -70,15 +70,18 @@ export default function AdminProducts(){
     }catch(e){setMessage(e instanceof Error?e.message:"Unable to save product price.")}finally{setSaving(false)}
   }
 
-  async function updateVariant(productId:string,variantId:string,payload:Record<string,unknown>){
+  async function updateVariants(productId:string,items:Array<{variantId:string;payload:Record<string,unknown>}>){
     setSaving(true);setMessage("");
     try{
-      const r=await fetch("/api/products/"+productId+"/variants/"+variantId,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
-      const d=await r.json().catch(()=>null);
-      if(!r.ok)throw new Error(d?.message||"Unable to update size.");
-      setMessage("Size details updated. Selling price is calculated automatically.");
+      // Save every size, then reload once so all three calculated prices appear together.
+      for(const item of items){
+        const r=await fetch("/api/products/"+productId+"/variants/"+item.variantId,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(item.payload)});
+        const d=await r.json().catch(()=>null);
+        if(!r.ok)throw new Error(d?.message||"Unable to update sizes.");
+      }
+      setMessage("All sizes saved. Selling prices recalculated from weights.");
       await load();
-    }catch(e){setMessage(e instanceof Error?e.message:"Unable to update size.")}finally{setSaving(false)}
+    }catch(e){setMessage(e instanceof Error?e.message:"Unable to update sizes.");await load()}finally{setSaving(false)}
   }
   async function ensureStandardVariants(productId:string){
     setSaving(true);setMessage("");
@@ -275,7 +278,7 @@ export default function AdminProducts(){
       </div>
     </div><Button type="submit" variant="primary" size="sm" disabled={saving} className="mt-4">{saving?"Creating product…":"Create product"}</Button></form>
     <div className="mt-6 grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(220px,280px)]"><div className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3"><IconSearch size={15} className="text-muted"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search products…" className="h-10 flex-1 bg-transparent text-xs outline-none"/></div><div className="grid gap-2 sm:grid-cols-2"><select aria-label="Filter products by main category" value={mainCategoryFilter} onChange={e=>{setMainCategoryFilter(e.target.value);setSubcategoryFilter("all")}} className="h-10 min-w-0 rounded-xl border border-border bg-surface px-3 text-xs"><option value="all">All main categories</option>{mainCategories.map(category=><option key={category.id} value={category.id}>{category.name}</option>)}</select><select aria-label="Filter products by subcategory" value={subcategoryFilter} disabled={mainCategoryFilter==="all" || filteredSubcategories.length===0} onChange={e=>setSubcategoryFilter(e.target.value)} className="h-10 min-w-0 rounded-xl border border-border bg-surface px-3 text-xs disabled:cursor-not-allowed disabled:opacity-50"><option value="all">{mainCategoryFilter==="all"?"Choose main category first":filteredSubcategories.length===0?"No subcategories":"All subcategories"}</option>{filteredSubcategories.map(category=><option key={category.id} value={category.id}>{category.name}</option>)}</select></div></div>
-    <div className="mt-5 space-y-3">{loading?[1,2,3].map(i=><div key={i} className="h-28 animate-pulse rounded-2xl bg-surface"/>):rows.map(p=><AdminProductCard key={p.id} product={p} categories={data.categories} materials={[...new Set((data.materialPricingRules??[]).map(rule=>rule.material))]} parentCategoryId={editParentCategoryId} setParentCategoryId={setEditParentCategoryId} saving={saving} editingProduct={editingProduct} assetProductId={assetProductId} assetFiles={assetFiles} assetLoading={assetLoading} assetBusy={assetBusy} assetMessage={assetMessage} uploadProgress={uploadProgress} editForm={editForm} updateProduct={updateProduct} updateProductPrice={updateProductPrice} updateVariant={updateVariant} ensureStandardVariants={ensureStandardVariants} deleteProduct={deleteProduct} startProductEdit={startProductEdit} openAssets={openAssets} uploadImages={uploadImages} uploadGlb={uploadGlb} removeMedia={removeMedia} removeFile={removeFile} setEditingProduct={setEditingProduct} setEditForm={setEditForm} saveProductEdit={saveProductEdit}/>)}{!loading&&!rows.length&&<div className="rounded-2xl border border-dashed border-border p-10 text-sm text-muted">No products found.</div>}</div>
+    <div className="mt-5 space-y-3">{loading?[1,2,3].map(i=><div key={i} className="h-28 animate-pulse rounded-2xl bg-surface"/>):rows.map(p=><AdminProductCard key={p.id} product={p} categories={data.categories} materials={[...new Set((data.materialPricingRules??[]).map(rule=>rule.material))]} parentCategoryId={editParentCategoryId} setParentCategoryId={setEditParentCategoryId} saving={saving} editingProduct={editingProduct} assetProductId={assetProductId} assetFiles={assetFiles} assetLoading={assetLoading} assetBusy={assetBusy} assetMessage={assetMessage} uploadProgress={uploadProgress} editForm={editForm} updateProduct={updateProduct} updateProductPrice={updateProductPrice} updateVariants={updateVariants} ensureStandardVariants={ensureStandardVariants} deleteProduct={deleteProduct} startProductEdit={startProductEdit} openAssets={openAssets} uploadImages={uploadImages} uploadGlb={uploadGlb} removeMedia={removeMedia} removeFile={removeFile} setEditingProduct={setEditingProduct} setEditForm={setEditForm} saveProductEdit={saveProductEdit}/>)}{!loading&&!rows.length&&<div className="rounded-2xl border border-dashed border-border p-10 text-sm text-muted">No products found.</div>}</div>
     {message&&<p className="mt-4 text-xs text-muted">{message}</p>}
   </main>
 }
