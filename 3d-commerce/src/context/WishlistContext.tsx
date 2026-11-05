@@ -524,8 +524,18 @@ export function WishlistProvider({
 
       try {
         const next = await addBackendWishlistItem(normalized.id);
-        writeWishlistSelection(normalized);
-        setItems(next.map((item) => item.id === normalized.id ? normalized : mergeWishlistSelection(item)));
+        const backendProduct = next.find((item) => item.id === normalized.id);
+        const resolvedProduct = backendProduct
+          ? {
+              ...normalized,
+              price: normalized.price > 0 ? normalized.price : backendProduct.price,
+              oldPrice: normalized.oldPrice ?? backendProduct.oldPrice,
+            }
+          : normalized;
+        writeWishlistSelection(resolvedProduct);
+        setItems(next.map((item) =>
+          item.id === normalized.id ? resolvedProduct : mergeWishlistSelection(item),
+        ));
       } catch (cause) {
         setItems(previous);
         setError(
