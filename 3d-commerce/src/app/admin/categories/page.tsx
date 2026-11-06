@@ -644,7 +644,7 @@ export default function AdminCategories() {
         <div className="mt-3 flex flex-wrap gap-3">
           <label className="flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-xs text-muted">
             <input type="checkbox" checked={form.ordersEnabled} onChange={(e)=>setForm({...form,ordersEnabled:e.target.checked})}/>
-            Accept orders in this category (untick = every product here, and in its subcategories, shows Out of stock)
+            Accept orders in this category (untick = every product here, and in its subcategories, shows Not accepting orders)
           </label>
           <label className="flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-xs text-muted">
             <input

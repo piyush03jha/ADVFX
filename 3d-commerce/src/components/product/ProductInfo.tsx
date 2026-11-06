@@ -150,7 +150,7 @@ export function ProductInfo({
       <div className="mt-5 flex flex-wrap items-center gap-2">
         {product.ordersEnabled
           ? <Badge variant="success">Made to order</Badge>
-          : <Badge className="border-red-700/30 bg-red-50 text-red-800 dark:border-red-400/30 dark:bg-red-400/10 dark:text-red-200">Out of stock</Badge>}
+          : <Badge className="border-red-700/30 bg-red-50 text-red-800 dark:border-red-400/30 dark:bg-red-400/10 dark:text-red-200">Not accepting orders</Badge>}
       </div>
 
       <p

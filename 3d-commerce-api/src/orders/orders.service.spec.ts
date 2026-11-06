@@ -9,7 +9,7 @@ describe('OrdersService', () => {
   } as any;
   const notifications = { create: jest.fn() } as any;
   const pricing = { calculate: jest.fn() } as any;
-  const razorpay = { refundPayment: jest.fn() } as any;
+  const razorpay = { refundPayment: jest.fn(), fetchPayment: jest.fn() } as any;
   const observability = { captureException: jest.fn() } as any;
   const payments = { reconcileCapturedPayment: jest.fn() } as any;
   let service: OrdersService;
@@ -107,6 +107,7 @@ describe('OrdersService', () => {
       payment: { status: 'CAPTURED', providerPaymentId: 'pay_1', amountMinor: 249900 }, userId: 'user-1',
     });
     razorpay.refundPayment.mockResolvedValue({ id: 'rfnd_1', status: 'processed' });
+    razorpay.fetchPayment.mockResolvedValue({ id: 'pay_1', status: 'captured', amount: 249900, currency: 'INR', amount_refunded: 0 });
     const tx = {
       $queryRaw: jest.fn().mockResolvedValue([{ id: 'order-1' }]),
       order: {
@@ -124,5 +125,44 @@ describe('OrdersService', () => {
     await service.updateStatus('order-1', 'REFUNDED' as any);
     expect(razorpay.refundPayment).toHaveBeenCalledWith('pay_1', 249900);
     expect(tx.payment.update).toHaveBeenCalledWith({ where: { orderId: 'order-1' }, data: { status: 'REFUNDED' } });
+  });
+
+  const refundScenario = (amountRefunded: number) => {
+    prisma.order.findUnique.mockResolvedValue({
+      id: 'order-1', status: 'DELIVERED',
+      payment: { status: 'CAPTURED', providerPaymentId: 'pay_1', amountMinor: 249900 }, userId: 'user-1',
+    });
+    razorpay.refundPayment.mockResolvedValue({ id: 'rfnd_1', status: 'processed' });
+    razorpay.fetchPayment.mockResolvedValue({ id: 'pay_1', status: 'captured', amount: 249900, currency: 'INR', amount_refunded: amountRefunded });
+    const tx = {
+      $queryRaw: jest.fn().mockResolvedValue([{ id: 'order-1' }]),
+      order: {
+        findUnique: jest.fn().mockResolvedValue({ status: 'DELIVERED' }),
+        update: jest.fn().mockResolvedValue({ id: 'order-1', status: 'REFUNDED', userId: 'user-1' }),
+      },
+      payment: {
+        findUnique: jest.fn().mockResolvedValue({
+          orderId: 'order-1', status: 'CAPTURED', providerPaymentId: 'pay_1', amountMinor: 249900,
+        }),
+        update: jest.fn(),
+      },
+    } as any;
+    prisma.$transaction.mockImplementation((callback: any) => callback(tx));
+    return tx;
+  };
+
+  it('refunds only the remaining amount when part of the payment was already refunded', async () => {
+    const tx = refundScenario(100000);
+    await service.updateStatus('order-1', 'REFUNDED' as any);
+    expect(razorpay.refundPayment).toHaveBeenCalledWith('pay_1', 149900);
+    expect(tx.payment.update).toHaveBeenCalledWith({ where: { orderId: 'order-1' }, data: { status: 'REFUNDED' } });
+  });
+
+  it('finishes the bookkeeping without a second refund when Razorpay already refunded it in full', async () => {
+    const tx = refundScenario(249900);
+    await expect(service.updateStatus('order-1', 'REFUNDED' as any)).resolves.toMatchObject({ status: 'REFUNDED' });
+    expect(razorpay.refundPayment).not.toHaveBeenCalled();
+    expect(tx.payment.update).toHaveBeenCalledWith({ where: { orderId: 'order-1' }, data: { status: 'REFUNDED' } });
+    expect(tx.order.update).toHaveBeenCalled();
   });
 });

@@ -47,7 +47,7 @@ export function CartSummary() {
 
       {hasUnavailableItems && (
         <p className="mt-4 rounded-xl border border-red-400/20 bg-red-400/[0.06] p-3 text-xs leading-5 text-error">
-          Some items in your cart are out of stock and are not included in the total. Remove them to continue.
+          Some items in your cart are not accepting orders right now and are not included in the total. Remove them to continue.
         </p>
       )}
 
