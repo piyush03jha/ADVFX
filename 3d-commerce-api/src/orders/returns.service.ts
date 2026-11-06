@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateReturnRequestDto } from './dto/create-return-request.dto';
 import { RazorpayService } from '../payments/razorpay.service';
+import { canTransitionReturn, isReturnStatus } from './return-transitions';
 
 @Injectable()
 export class ReturnsService {
@@ -87,12 +88,24 @@ export class ReturnsService {
     id: string,
     status: 'APPROVED' | 'REJECTED' | 'RECEIVED' | 'REFUNDED',
   ) {
+    // The controller passes the raw body value through, so reject anything
+    // that is not a real return status instead of letting Prisma 500 on it.
+    if (!isReturnStatus(status)) {
+      throw new BadRequestException('Invalid return status');
+    }
+
     const request = await this.prisma.returnRequest.findUnique({
       where: { id },
     });
 
     if (!request) {
       throw new NotFoundException('Return request not found');
+    }
+
+    if (!canTransitionReturn(request.status, status)) {
+      throw new BadRequestException(
+        `Cannot change a return from ${request.status} to ${status}`,
+      );
     }
 
     if (status === 'REFUNDED') {
@@ -112,12 +125,34 @@ export class ReturnsService {
         );
       }
 
-      await this.razorpay.refundPayment(
+      // Refund only what Razorpay has not already refunded. If an earlier
+      // attempt reached Razorpay but failed before the database was updated
+      // (or the admin double-clicked), refunding the full amount again would
+      // be rejected and leave the return stuck. The money is already back, so
+      // just finish the bookkeeping.
+      const providerPayment = await this.razorpay.fetchPayment(
         payment.providerPaymentId,
-        payment.amountMinor,
       );
+      const remainingMinor =
+        payment.amountMinor - (providerPayment.amount_refunded ?? 0);
+      if (remainingMinor > 0) {
+        await this.razorpay.refundPayment(
+          payment.providerPaymentId,
+          remainingMinor,
+        );
+      }
 
       await this.prisma.$transaction(async (tx) => {
+        // Claim the request only if nobody changed it since we read it.
+        const claimed = await tx.returnRequest.updateMany({
+          where: { id, status: request.status },
+          data: { status },
+        });
+        if (claimed.count !== 1) {
+          throw new ConflictException(
+            'This return request was changed by someone else. Refresh and try again.',
+          );
+        }
         await tx.payment.update({
           where: { id: payment.id },
           data: { status: 'REFUNDED' },
@@ -126,18 +161,21 @@ export class ReturnsService {
           where: { id: request.orderId },
           data: { status: 'REFUNDED' },
         });
-        await tx.returnRequest.update({
-          where: { id },
-          data: { status },
-        });
       });
 
       return this.prisma.returnRequest.findUniqueOrThrow({ where: { id } });
     }
 
-    return this.prisma.returnRequest.update({
-      where: { id },
+    const claimed = await this.prisma.returnRequest.updateMany({
+      where: { id, status: request.status },
       data: { status },
     });
+    if (claimed.count !== 1) {
+      throw new ConflictException(
+        'This return request was changed by someone else. Refresh and try again.',
+      );
+    }
+
+    return this.prisma.returnRequest.findUniqueOrThrow({ where: { id } });
   }
 }
