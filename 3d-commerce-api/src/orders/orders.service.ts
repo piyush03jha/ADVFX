@@ -8,6 +8,7 @@ import { RazorpayService } from '../payments/razorpay.service';
 import { PaymentsService } from '../payments/payments.service';
 import { ObservabilityService } from '../observability/observability.service';
 import { paymentWindowCutoff } from './payment-window';
+import { remainingRefundMinor } from '../payments/refund-amount';
 
 const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   PENDING_PAYMENT: ['CONFIRMED', 'CANCELLED'],
@@ -523,10 +524,22 @@ export class OrdersService {
           throw new BadRequestException('Only captured Razorpay payments can be refunded.');
         }
         try {
-          await this.razorpay.refundPayment(
+          // Refund only what Razorpay has not already refunded, so a retry
+          // after a half-finished attempt (refund sent, database update lost)
+          // completes instead of failing on an over-refund.
+          const providerPayment = await this.razorpay.fetchPayment(
             currentPayment.providerPaymentId,
-            currentPayment.amountMinor,
           );
+          const remainingMinor = remainingRefundMinor(
+            currentPayment.amountMinor,
+            providerPayment.amount_refunded,
+          );
+          if (remainingMinor > 0) {
+            await this.razorpay.refundPayment(
+              currentPayment.providerPaymentId,
+              remainingMinor,
+            );
+          }
         } catch (error) {
           await this.observability.captureException(error, {
             alert: "refund_failure",
