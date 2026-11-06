@@ -65,7 +65,17 @@ type RazorpayCancelResult = {
   status: string;
   refunded?: boolean;
   released?: boolean;
+  reconciliationPending?: boolean;
 };
+
+/**
+ * True when the API says an order can no longer be paid (cancelled, expired or
+ * already settled). Retrying with the same idempotency key would just return
+ * that dead order again, so callers must start a fresh order instead.
+ */
+export function isUnpayableOrderError(message: string) {
+  return /no longer awaiting payment|payment session has expired/i.test(message);
+}
 
 export function cancelRazorpayPayment(orderId: string) {
   return request<RazorpayCancelResult>("/api/payments/razorpay/cancel", {

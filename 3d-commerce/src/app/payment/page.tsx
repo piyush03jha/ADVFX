@@ -30,6 +30,7 @@ import {
   verifyRazorpayPayment,
   getCheckoutOrderStatus,
   type RazorpayOrder,
+  isUnpayableOrderError,
 } from "@/lib/payment-api";
 import { getCountry, type CountryCode } from "@/config/countries";
 import { resolveMediaUrl } from "@/lib/media-url";
@@ -200,26 +201,52 @@ export default function PaymentPage() {
             ondismiss: () => {
               void cancelRazorpayPayment(order.id)
                 .then((result) => {
+                  if (result.status === "CONFIRMED") {
+                    // The payment was captured while the popup was closing, so
+                    // this order is paid. Never tell the customer it was cancelled.
+                    setPaymentState("confirmed");
+                    try {
+                      window.localStorage.removeItem(DRAFT_KEY);
+                      window.localStorage.removeItem("forma-buy-now");
+                    } catch {
+                      // Ignore local storage cleanup failures.
+                    }
+                    router.push(
+                      "/order/confirmation?order=" + encodeURIComponent(order.id),
+                    );
+                    return;
+                  }
+
+                  if (
+                    result.released ||
+                    result.status === "CANCELLED" ||
+                    result.status === "REFUNDED"
+                  ) {
+                    // The order is closed. Let the customer pay again, with a
+                    // fresh idempotency key so we don't get this dead order back.
+                    setIdempotencyKey(null);
+                    setPaymentState("idle");
+                    setQuoteError(
+                      result.refunded
+                        ? "Payment was cancelled and refunded."
+                        : "Payment was cancelled. Your items are available for checkout again.",
+                    );
+                    return;
+                  }
+
+                  // The server could not settle the payment yet; keep checking.
+                  setPaymentState("pending");
                   setQuoteError(
-                    result.refunded
-                      ? "Payment was cancelled and refunded."
-                      : "Payment was cancelled. Your items are available for checkout again.",
+                    "We are confirming your payment status. This page will update automatically.",
                   );
                 })
                 .catch(() => {
+                  setPaymentState("pending");
                   setQuoteError(
-                    "Payment was cancelled. We are reconciling the payment status in the background.",
+                    "We are reconciling the payment status in the background. This page will update automatically.",
                   );
                 })
-                .finally(() => {
-                  try {
-                    window.localStorage.removeItem(DRAFT_KEY);
-                    window.localStorage.removeItem("forma-buy-now");
-                  } catch {
-                    // Ignore local storage cleanup failures.
-                  }
-                  finish();
-                });
+                .finally(finish);
             },
           },
           handler: (response) => {
@@ -296,6 +323,9 @@ export default function PaymentPage() {
           );
         }
       } else {
+        // A cancelled/expired order can never be paid; the next attempt needs
+        // a new order, so drop the old idempotency key.
+        if (isUnpayableOrderError(message)) setIdempotencyKey(null);
         setPaymentState("failed");
         setQuoteError(message);
       }
@@ -329,6 +359,7 @@ export default function PaymentPage() {
         }
 
         if (status.status === "CANCELLED" || status.status === "REFUNDED") {
+          setIdempotencyKey(null);
           setPaymentState("failed");
           setQuoteError("The payment could not be confirmed. Please start checkout again.");
           return;

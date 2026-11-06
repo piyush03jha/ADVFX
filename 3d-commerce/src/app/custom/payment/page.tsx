@@ -12,7 +12,7 @@ import { SavedAddressSelector } from "@/components/checkout/SavedAddressSelector
 import { Button } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import { useAddresses, type Address } from "@/context/AddressContext";
-import { createRazorpayOrder, verifyRazorpayPayment, getCheckoutOrderStatus } from "@/lib/payment-api";
+import { createRazorpayOrder, verifyRazorpayPayment, getCheckoutOrderStatus, isUnpayableOrderError } from "@/lib/payment-api";
 
 type CustomRequest = {
   id: string;
@@ -195,8 +195,12 @@ function CustomPaymentPageContent() {
         razorpay.open();
       });
     } catch (cause) {
+      const message = cause instanceof Error ? cause.message : "Unable to start payment.";
+      // An expired/cancelled order can't be paid; the next attempt needs a new
+      // order, so drop the old idempotency key.
+      if (isUnpayableOrderError(message)) setIdempotencyKey(null);
       setPaymentState("failed");
-      setError(cause instanceof Error ? cause.message : "Unable to start payment.");
+      setError(message);
     } finally {
       setProcessing(false);
     }
@@ -219,6 +223,7 @@ function CustomPaymentPageContent() {
           return;
         }
         if (status.status === "CANCELLED" || status.status === "REFUNDED") {
+          setIdempotencyKey(null);
           setPaymentState("failed");
           setError("Payment could not be confirmed. Your custom request remains saved.");
           return;
