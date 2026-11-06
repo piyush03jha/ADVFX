@@ -76,7 +76,10 @@ export class PricingService {
               variant: { include: { price: true } },
               product: {
                 include: {
-                  category: { select: { id: true, name: true, gstRateBps: true, ordersEnabled: true, parent: { select: { ordersEnabled: true } } } },
+                  // parentId is needed so a sale campaign scoped to a parent
+                  // category also applies to its subcategories (matches the
+                  // Buy Now path above and the storefront).
+                  category: { select: { id: true, name: true, parentId: true, gstRateBps: true, ordersEnabled: true, parent: { select: { ordersEnabled: true } } } },
                   prices: {
                     where: {
                       isActive: true,
