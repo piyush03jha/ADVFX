@@ -97,9 +97,19 @@ type CheckoutOrderStatus = {
   } | null;
 };
 
-export function getCheckoutOrderStatus(orderId: string) {
-  return request<CheckoutOrderStatus>(
+// The API's GET /checkout/orders/:id/status returns the order state as
+// `orderStatus`. Callers poll on `status`, so expose it under that name.
+type CheckoutOrderStatusResponse = Omit<CheckoutOrderStatus, "status"> & {
+  orderStatus?: string;
+  status?: string;
+};
+
+export async function getCheckoutOrderStatus(
+  orderId: string,
+): Promise<CheckoutOrderStatus> {
+  const data = await request<CheckoutOrderStatusResponse>(
     "/api/checkout/orders/" + encodeURIComponent(orderId) + "/status",
     { method: "GET" },
   );
+  return { ...data, status: data.orderStatus ?? data.status ?? "" };
 }
