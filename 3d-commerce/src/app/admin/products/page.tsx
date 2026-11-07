@@ -15,7 +15,7 @@ type Category={id:string;name:string;slug:string;parentId?:string|null;parent?:{
 export default function AdminProducts(){
   const [data,setData]=useState<{products:Product[];categories:Category[];materialPricingRules:Array<{material:string;sizeKey:string;amountMinor:number;currency:string}>}>({products:[],categories:[],materialPricingRules:[]});
   const [search,setSearch]=useState(""); const [mainCategoryFilter,setMainCategoryFilter]=useState("all"); const [subcategoryFilter,setSubcategoryFilter]=useState("all"); const [loading,setLoading]=useState(true); const [saving,setSaving]=useState(false); const [message,setMessage]=useState("");
-  const [form,setForm]=useState({name:"",slug:"",description:"",categoryId:"",parentCategoryId:"",status:"ACTIVE",ordersEnabled:true,isFeatured:false,hasSizes:true,manualPrice:"",material:"",scale:"",dimensions:"",height:"",base:"",packaging:"",weight:""});
+  const [form,setForm]=useState({name:"",slug:"",description:"",categoryId:"",parentCategoryId:"",status:"ACTIVE",ordersEnabled:true,isFeatured:false,hasSizes:true,fixedWeight:"",material:"",scale:"",dimensions:"",height:"",base:"",packaging:"",weight:""});
   const [editParentCategoryId,setEditParentCategoryId]=useState("");
   const [productImages,setProductImages]=useState<File[]>([]);
   const [productGlb,setProductGlb]=useState<File|null>(null);
@@ -102,13 +102,12 @@ export default function AdminProducts(){
   async function createProduct(e:React.FormEvent){
     e.preventDefault();setSaving(true);setMessage("");
     try{
-      const manualPriceMinor=form.hasSizes?null:Math.round(Number(form.manualPrice)*100);
-      if(!form.hasSizes&&(!Number.isFinite(manualPriceMinor)||(manualPriceMinor??0)<=0))throw new Error("Enter the selling price for a product without sizes.");
+      const fixedWeightGrams=form.hasSizes?undefined:Number(form.fixedWeight);
+      if(!form.hasSizes&&!(Number.isFinite(fixedWeightGrams)&&(fixedWeightGrams??0)>0))throw new Error("Enter the model weight in grams for a product without sizes.");
       const slug=form.slug||form.name.toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
-      const r=await fetch("/api/products",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:form.name,slug,description:form.description||undefined,categoryId:form.categoryId||undefined,status:form.status,ordersEnabled:true,hasSizes:form.hasSizes,isFeatured:form.isFeatured,material:form.material||undefined,scale:form.scale||undefined,dimensions:form.dimensions||undefined,height:form.height||undefined,base:form.base||undefined,packaging:form.packaging||undefined,weight:form.weight||undefined})});
+      const r=await fetch("/api/products",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:form.name,slug,description:form.description||undefined,categoryId:form.categoryId||undefined,status:form.status,ordersEnabled:true,hasSizes:form.hasSizes,fixedWeightGrams,isFeatured:form.isFeatured,material:form.material||undefined,scale:form.scale||undefined,dimensions:form.dimensions||undefined,height:form.height||undefined,base:form.base||undefined,packaging:form.packaging||undefined,weight:form.weight||undefined})});
       if(!r.ok){const d=await r.json().catch(()=>null);throw new Error(d?.message||"Create failed")}
       const p=await r.json();
-      if(manualPriceMinor!=null){const pr=await fetch("/api/products/"+p.id+"/pricing",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({currency:"INR",amountMinor:manualPriceMinor,compareAtMinor:null})});if(!pr.ok){const d=await pr.json().catch(()=>null);throw new Error("Product created, but the price was not saved: "+(d?.message||"set it from the product card"))}}
 
 
 
@@ -127,7 +126,7 @@ export default function AdminProducts(){
           setUploadProgress((prev) => ({ ...prev, [p.id]: percent })),
         );
       }
-      setForm({name:"",slug:"",description:"",categoryId:"",parentCategoryId:"",status:"ACTIVE",ordersEnabled:true,isFeatured:false,hasSizes:true,manualPrice:"",material:"",scale:"",dimensions:"",height:"",base:"",packaging:"",weight:""});
+      setForm({name:"",slug:"",description:"",categoryId:"",parentCategoryId:"",status:"ACTIVE",ordersEnabled:true,isFeatured:false,hasSizes:true,fixedWeight:"",material:"",scale:"",dimensions:"",height:"",base:"",packaging:"",weight:""});
       setProductImages([]);
       setProductGlb(null);
       setMessage("Product created with assets.");
@@ -249,8 +248,8 @@ export default function AdminProducts(){
           </div>
           <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-[9px] font-medium text-emerald-300">No stock limits · pause per product or category</span>
         </div>
-        <label className="mt-3 flex items-center gap-2 text-[11px]"><input type="checkbox" checked={form.hasSizes} onChange={e=>setForm({...form,hasSizes:e.target.checked})}/>Sell in sizes (Small / Medium / Large, price calculated automatically)</label>
-        {!form.hasSizes&&<label className="mt-2 block max-w-xs"><span className="text-[9px] text-muted">Selling price (₹, GST incl.) · set manually, nothing is calculated</span><input type="number" min="0" step="0.01" required value={form.manualPrice} onChange={e=>setForm({...form,manualPrice:e.target.value})} className="mt-1 h-9 w-full rounded-lg border border-border bg-background px-2 text-[10px]"/></label>}
+        <label className="mt-3 flex items-center gap-2 text-[11px]"><input type="checkbox" checked={form.hasSizes} onChange={e=>setForm({...form,hasSizes:e.target.checked})}/>Sell in sizes (Small / Medium / Large). Untick for one fixed size priced like Medium</label>
+        {!form.hasSizes&&<label className="mt-2 block max-w-xs"><span className="text-[9px] text-muted">Model weight (grams) · price = filament from weight + Medium charges + global charges, calculated automatically</span><input type="number" min="0.01" step="0.01" required value={form.fixedWeight} onChange={e=>setForm({...form,fixedWeight:e.target.value})} className="mt-1 h-9 w-full rounded-lg border border-border bg-background px-2 text-[10px]"/></label>}
         <p className="mt-3 text-[10px] text-muted">Manage material rates and fixed size costs in Admin → Promotions & tax.</p>
       </div>
       <div className="grid gap-2">

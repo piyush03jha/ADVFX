@@ -2,7 +2,9 @@ import {
   IsBoolean,
   IsInt,
   IsNotEmpty,
+  IsNumber,
   IsOptional,
+  IsPositive,
   IsString,
   Matches,
   MaxLength,
@@ -61,10 +63,16 @@ export class CreateProductDto {
   @IsBoolean()
   ordersEnabled?: boolean;
 
-  /** false = no sizes; the admin sets one manual price instead. Defaults to true. */
+  /** false = one fixed-size product priced from its weight (Medium charges). Defaults to true. */
   @IsOptional()
   @IsBoolean()
   hasSizes?: boolean;
+
+  /** Model weight in grams for a product without sizes; its price is calculated from it. */
+  @IsOptional()
+  @IsNumber()
+  @IsPositive()
+  fixedWeightGrams?: number;
 
   @IsOptional()
   @IsBoolean()

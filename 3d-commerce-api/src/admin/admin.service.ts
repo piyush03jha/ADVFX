@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationType, Prisma } from '@prisma/client';
+import { recalculateFixedSizePrice } from '../products/fixed-size-price';
 import { calculateManufacturingPrice, createPricingCache, normalizePricingSize, type PricingCache } from '../pricing/manufacturing-pricing';
 
 type ProductRank = { product: any; score: number };
@@ -176,10 +177,14 @@ export class AdminService {
   ) {
     const product = await tx.product.findUnique({
       where: { id: productId },
-      select: { id: true, material: true, hasSizes: true, variants: { where: { isActive: true }, select: { id: true, name: true, size: true, weightGrams: true, price: { select: { priceOverrideMinor: true } } } } },
+      select: { id: true, material: true, hasSizes: true, fixedWeightGrams: true, variants: { where: { isActive: true }, select: { id: true, name: true, size: true, weightGrams: true, price: { select: { priceOverrideMinor: true } } } } },
     });
-    // Products without sizes have one manual price; nothing is calculated.
-    if (!product?.material?.trim() || product.hasSizes === false) return;
+    // A product without sizes has one price, calculated like its Medium size.
+    if (product?.hasSizes === false) {
+      await recalculateFixedSizePrice(tx, product, { cache: options.cache });
+      return;
+    }
+    if (!product?.material?.trim()) return;
     for (const variant of product.variants) {
       // A manually set size price stays as the admin entered it.
       if (variant.price?.priceOverrideMinor != null) continue;

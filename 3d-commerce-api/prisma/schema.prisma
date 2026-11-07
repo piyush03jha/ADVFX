@@ -281,10 +281,12 @@ model Product {
   status ProductStatus @default(DRAFT)
   ordersEnabled Boolean @default(true)
 
-  // true: sold in Small/Medium/Large with prices calculated from material and
-  // weight. false: one product, one price set manually by the admin
-  // (ProductPrice); variants are ignored and nothing is auto-calculated.
+  // true: sold in Small/Medium/Large, each size priced from its own weight.
+  // false: a single fixed-size product. Its price (ProductPrice) is calculated
+  // from fixedWeightGrams and material, plus the Medium-size charges and the
+  // global charges. Variants are ignored and no size is shown to customers.
   hasSizes Boolean @default(true)
+  fixedWeightGrams Float?
 
   isFeatured   Boolean @default(false)
   isTrending   Boolean @default(false)

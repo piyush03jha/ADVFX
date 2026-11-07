@@ -18,6 +18,7 @@ import sharp from 'sharp';
 import { createHmac } from 'node:crypto';
 import { calculateManufacturingPrice, normalizePricingSize, requiresWeightForPricing } from '../pricing/manufacturing-pricing';
 import { sellsInSizes, sizeVariantsOf } from './product-sizes';
+import { recalculateFixedSizePrice } from './fixed-size-price';
 
 export interface ShopListQuery {
   page: number;
@@ -39,8 +40,11 @@ export class ProductsService {
 
   async create(dto: CreateProductDto) {
     await this.ensureSlugAvailable(dto.slug);
-    if (dto.status === 'ACTIVE' && dto.hasSizes !== false && !dto.material?.trim()) {
-      throw new BadRequestException('Select a material before activating a product so its size prices can be calculated.');
+    if (dto.status === 'ACTIVE' && dto.hasSizes === false && !(dto.fixedWeightGrams && dto.fixedWeightGrams > 0)) {
+      throw new BadRequestException('Enter the model weight in grams before activating a product without sizes so its price can be calculated.');
+    }
+    if (dto.status === 'ACTIVE' && !dto.material?.trim()) {
+      throw new BadRequestException('Select a material before activating a product so its price can be calculated.');
     }
 
     const productData = dto;
@@ -53,10 +57,12 @@ export class ProductsService {
         },
       });
 
-      // Sizes off: one product, one price set by the admin. No size variants
-      // are created and no price is calculated.
+      // Sizes off: one fixed-size product, priced like the Medium size from its
+      // weight. No size variants are created.
       if (sellsInSizes(product)) {
         await this.createDefaultSizeVariants(tx, product.id, dto.material);
+      } else {
+        await recalculateFixedSizePrice(tx, product, { strict: dto.status === 'ACTIVE' });
       }
 
       return tx.product.findUniqueOrThrow({
@@ -1099,23 +1105,25 @@ export class ProductsService {
     return this.prisma.$transaction(async (tx) => {
       const current = await tx.product.findUniqueOrThrow({
         where: { id },
-        select: { material: true, status: true, hasSizes: true },
+        select: { material: true, status: true, hasSizes: true, fixedWeightGrams: true },
       });
       const nextHasSizes = dto.hasSizes ?? current.hasSizes;
       const turnedOn = dto.hasSizes === true && !current.hasSizes;
       // Only enforce when status, material or the sizes switch is actually being
       // changed, so unrelated edits (hero toggle, badges, pausing orders) are
-      // never blocked. A product without sizes has no calculated price, so it
-      // does not need a material.
+      // never blocked.
+      const nextWeight = dto.fixedWeightGrams ?? current.fixedWeightGrams;
       const touchesPricingInputs =
-        dto.status !== undefined || dto.material !== undefined || dto.hasSizes !== undefined;
+        dto.status !== undefined || dto.material !== undefined || dto.hasSizes !== undefined || dto.fixedWeightGrams !== undefined;
       if (
         touchesPricingInputs &&
-        nextHasSizes &&
         (dto.status ?? current.status) === 'ACTIVE' &&
         !(dto.material ?? current.material)?.trim()
       ) {
         throw new BadRequestException('An active product must have a material for manufacturing price calculation.');
+      }
+      if (touchesPricingInputs && !nextHasSizes && (dto.status ?? current.status) === 'ACTIVE' && !(nextWeight && nextWeight > 0)) {
+        throw new BadRequestException('Enter the model weight in grams for a product without sizes so its price can be calculated.');
       }
       await tx.product.update({ where: { id }, data: productData });
 
@@ -1131,7 +1139,14 @@ export class ProductsService {
       const materialChanged =
         !!nextMaterial && nextMaterial.toLowerCase() !== (current.material ?? '').trim().toLowerCase();
 
-      if (turnedOn && (await tx.productVariant.count({ where: { productId: id } })) === 0) {
+      if (!nextHasSizes && touchesPricingInputs) {
+        // One fixed-size product: price = filament from weight + Medium charges + global charges.
+        const updatedProduct = await tx.product.findUniqueOrThrow({
+          where: { id },
+          select: { id: true, material: true, fixedWeightGrams: true, status: true },
+        });
+        await recalculateFixedSizePrice(tx, updatedProduct, { strict: updatedProduct.status === 'ACTIVE' });
+      } else if (turnedOn && (await tx.productVariant.count({ where: { productId: id } })) === 0) {
         // Sizes switched on for a product that never had any: add the defaults.
         await this.createDefaultSizeVariants(tx, id, effectiveMaterial);
       } else if (nextHasSizes && effectiveMaterial && (materialChanged || turnedOn)) {
@@ -1158,6 +1173,10 @@ export class ProductsService {
 
   async setPrice(id: string, dto: UpsertPriceDto) {
     await this.ensureProductExists(id);
+    const sized = await this.prisma.product.findUnique({ where: { id }, select: { hasSizes: true } });
+    if (sized?.hasSizes === false) {
+      throw new BadRequestException('This product has no sizes, so its price is calculated from its weight. Set the weight instead.');
+    }
 
     const amountMinor = dto.amountMinor;
     const compareAtMinor = dto.compareAtMinor;
