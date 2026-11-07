@@ -50,6 +50,11 @@ export class PricingService {
         if (!product) {
           throw new BadRequestException("Product is unavailable");
         }
+        if (item.variantId && product.hasSizes === false) {
+          throw new BadRequestException(
+            '"' + product.name + '" is no longer sold in sizes. Remove it from your cart and add it again.',
+          );
+        }
         const variant = item.variantId
           ? product.variants.find((candidate) => candidate.id === item.variantId)
           : null;
@@ -132,6 +137,11 @@ export class PricingService {
 
     const items = sourceItems.map((item) => {
       const product = item.product;
+      if (variant0Blocked(item, product)) {
+        throw new BadRequestException(
+          '"' + product.name + '" is no longer sold in sizes. Remove it from your cart and add it again.',
+        );
+      }
       const variant = item.variant;
       const basePrice = product.prices[0];
       const variantPrice =
@@ -422,4 +432,12 @@ export class PricingService {
       ? Math.round(amount * 1000)
       : Math.round(amount);
   }
+}
+
+/** A line still pointing at a size of a product that has sizes switched off. */
+function variant0Blocked(
+  item: { variant?: unknown },
+  product: { hasSizes?: boolean | null },
+): boolean {
+  return !!item.variant && product.hasSizes === false;
 }

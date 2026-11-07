@@ -61,6 +61,11 @@ export class CreateProductDto {
   @IsBoolean()
   ordersEnabled?: boolean;
 
+  /** false = no sizes; the admin sets one manual price instead. Defaults to true. */
+  @IsOptional()
+  @IsBoolean()
+  hasSizes?: boolean;
+
   @IsOptional()
   @IsBoolean()
   isFeatured?: boolean;

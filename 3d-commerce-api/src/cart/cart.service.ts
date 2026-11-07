@@ -39,6 +39,10 @@ export class CartService {
       throw new BadRequestException('This product is temporarily unavailable for ordering.');
     }
 
+    if (variantId && product.hasSizes === false) {
+      throw new BadRequestException('This product is not sold in sizes.');
+    }
+
     const cart = await this.getOrCreate(userId);
     const existing = await this.prisma.cartItem.findUnique({
       where: { cartId_productId_variantKey: { cartId: cart.id, productId, variantKey: variantId ?? '__base__' } },

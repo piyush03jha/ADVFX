@@ -176,9 +176,10 @@ export class AdminService {
   ) {
     const product = await tx.product.findUnique({
       where: { id: productId },
-      select: { id: true, material: true, variants: { where: { isActive: true }, select: { id: true, name: true, size: true, weightGrams: true, price: { select: { priceOverrideMinor: true } } } } },
+      select: { id: true, material: true, hasSizes: true, variants: { where: { isActive: true }, select: { id: true, name: true, size: true, weightGrams: true, price: { select: { priceOverrideMinor: true } } } } },
     });
-    if (!product?.material?.trim()) return;
+    // Products without sizes have one manual price; nothing is calculated.
+    if (!product?.material?.trim() || product.hasSizes === false) return;
     for (const variant of product.variants) {
       // A manually set size price stays as the admin entered it.
       if (variant.price?.priceOverrideMinor != null) continue;

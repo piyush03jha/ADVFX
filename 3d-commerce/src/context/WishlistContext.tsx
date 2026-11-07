@@ -215,6 +215,7 @@ type BackendWishlistProduct = {
     isPrimary: boolean;
   }>;
   badge?: string | null;
+  hasSizes?: boolean;
   variants?: Array<{
     id: string;
     name: string;
@@ -239,7 +240,7 @@ type BackendWishlistResponse = {
 };
 
 function mapBackendProduct(product: BackendWishlistProduct): WishlistProduct {
-  const variantPrices = (product.variants ?? [])
+  const variantPrices = (product.hasSizes === false ? [] : product.variants ?? [])
     .filter((variant) => variant.isActive && variant.price?.isActive)
     .map((variant) => ({
       amountMinor: variant.price!.amountMinor,

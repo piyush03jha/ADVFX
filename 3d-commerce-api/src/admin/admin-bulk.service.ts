@@ -21,7 +21,7 @@ export class AdminBulkService {
     let slug=baseSlug; let suffix=2;
     while(await this.prisma.product.findUnique({where:{slug},select:{id:true}})){ slug=`${baseSlug}-${suffix++}`; }
     const created = await this.prisma.$transaction(async tx=>{
-      const product=await tx.product.create({data:{name:`${source.name} Copy`,slug,description:source.description,categoryId:source.categoryId,status:'DRAFT',isFeatured:false,isTrending:false,isBestseller:false,badge:source.badge,material:source.material,scale:source.scale,dimensions:source.dimensions,height:source.height,base:source.base,packaging:source.packaging,weight:source.weight,ordersEnabled:source.ordersEnabled}});
+      const product=await tx.product.create({data:{name:`${source.name} Copy`,slug,description:source.description,categoryId:source.categoryId,status:'DRAFT',isFeatured:false,isTrending:false,isBestseller:false,badge:source.badge,material:source.material,scale:source.scale,dimensions:source.dimensions,height:source.height,base:source.base,packaging:source.packaging,weight:source.weight,ordersEnabled:source.ordersEnabled,hasSizes:source.hasSizes}});
       for(const v of source.variants){await tx.productVariant.create({data:{productId:product.id,name:v.name,size:v.size,sku:null,isActive:v.isActive,price:v.price?{create:{currency:v.price.currency,amountMinor:v.price.amountMinor,compareAtMinor:v.price.compareAtMinor,isActive:true}}:undefined}})}
       for(const p of source.prices){await tx.productPrice.create({data:{productId:product.id,currency:p.currency,amountMinor:p.amountMinor,compareAtMinor:p.compareAtMinor,isActive:p.isActive,startsAt:p.startsAt,endsAt:p.endsAt}})}
       for(const m of source.media){await tx.productMedia.create({data:{productId:product.id,type:m.type,url:m.url,altText:m.altText,sortOrder:m.sortOrder,isPrimary:m.isPrimary}})}
@@ -90,6 +90,9 @@ export class AdminBulkService {
         if (status && !['DRAFT', 'ACTIVE', 'ARCHIVED'].includes(status)) throw new Error('status must be DRAFT, ACTIVE, or ARCHIVED');
         // Made to order: there is no stock column. Optionally pause/resume ordering per product.
         const ordersEnabled = row.ordersenabled === undefined || row.ordersenabled.trim() === '' ? undefined : parseBoolean(row.ordersenabled);
+        // Optional: false = sold without sizes at the one manual price. Blank keeps
+        // the current setting (sizes on for new products).
+        const hasSizes = row.hassizes === undefined || row.hassizes.trim() === '' ? undefined : parseBoolean(row.hassizes);
         const basePrice = parseMoney(row.price, 'price');
         const variantPrices = variants.map((variant) => ({ ...variant, amountMinor: parseMoney(row[variant.header], variant.name + ' price') ?? basePrice }));
         const imageValue = textValue(row.image || row.imageurl);
@@ -115,6 +118,7 @@ export class AdminBulkService {
               ...(textValue(row.weight) ? { weight: textValue(row.weight) } : {}),
               ...(categoryId ? { categoryId } : {}),
               ...(ordersEnabled !== undefined ? { ordersEnabled } : {}),
+              ...(hasSizes !== undefined ? { hasSizes } : {}),
             };
             await tx.product.update({ where: { id: existing.id }, data });
             productId = existing.id;
@@ -126,13 +130,15 @@ export class AdminBulkService {
                 badge: textValue(row.badge), material: textValue(row.material), scale: textValue(row.scale), dimensions: textValue(row.dimensions),
                 height: textValue(row.height), base: textValue(row.base), packaging: textValue(row.packaging), weight: textValue(row.weight), categoryId,
                 ordersEnabled: ordersEnabled ?? true,
+                hasSizes: hasSizes ?? true,
               },
             });
             productId = product.id;
           }
 
           // Ensure imported products have the same editable size variants as manually created products.
-          for (const variant of variantPrices) {
+          const sold = await tx.product.findUnique({ where: { id: productId }, select: { hasSizes: true } });
+          for (const variant of sold?.hasSizes === false ? [] : variantPrices) {
             const current = await tx.productVariant.findFirst({ where: { productId, name: variant.name }, select: { id: true } });
             if (!current) {
               await tx.productVariant.create({

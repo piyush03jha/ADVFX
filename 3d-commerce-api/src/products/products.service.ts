@@ -17,6 +17,7 @@ import { StorageService } from '../storage/storage.service';
 import sharp from 'sharp';
 import { createHmac } from 'node:crypto';
 import { calculateManufacturingPrice, normalizePricingSize, requiresWeightForPricing } from '../pricing/manufacturing-pricing';
+import { sellsInSizes, sizeVariantsOf } from './product-sizes';
 
 export interface ShopListQuery {
   page: number;
@@ -38,7 +39,7 @@ export class ProductsService {
 
   async create(dto: CreateProductDto) {
     await this.ensureSlugAvailable(dto.slug);
-    if (dto.status === 'ACTIVE' && !dto.material?.trim()) {
+    if (dto.status === 'ACTIVE' && dto.hasSizes !== false && !dto.material?.trim()) {
       throw new BadRequestException('Select a material before activating a product so its size prices can be calculated.');
     }
 
@@ -52,50 +53,10 @@ export class ProductsService {
         },
       });
 
-      // Every variant price is derived from material + size pricing,
-      // product-specific cost rules, and global manufacturing rates.
-      for (const item of [
-        { name: 'Small', size: '20 cm' },
-        { name: 'Medium', size: '25 cm' },
-        { name: 'Large', size: '30 cm' },
-      ]) {
-        const variant = await tx.productVariant.create({
-          data: {
-            productId: product.id,
-            name: item.name,
-            size: item.size,
-            price: { create: { amountMinor: baseAmount, currency: 'INR', isActive: false } },
-          },
-        });
-        if (dto.material?.trim()) {
-          const sizeKey = normalizePricingSize(item.name) || normalizePricingSize(item.size);
-          const perKgRule = await tx.materialPricingRule.findFirst({
-            where: {
-              material: { equals: dto.material, mode: 'insensitive' },
-              sizeKey: { in: [sizeKey, 'all'] },
-              isActive: true,
-              pricePerKgMinor: { gt: 0 },
-            },
-          });
-          // Per-kg pricing requires an admin-entered weight for each size.
-          // Keep the initial variant price inactive until that weight is saved.
-          if (perKgRule) continue;
-          const calculated = await calculateManufacturingPrice(tx, {
-            productId: product.id,
-            material: dto.material,
-            size: item.size,
-            variantName: item.name,
-          });
-          await tx.productVariantPrice.update({
-            where: { variantId: variant.id },
-            data: {
-              amountMinor: calculated.amountMinor,
-              currency: calculated.currency,
-              costBreakdown: calculated.costBreakdown,
-              isActive: true,
-            },
-          });
-        }
+      // Sizes off: one product, one price set by the admin. No size variants
+      // are created and no price is calculated.
+      if (sellsInSizes(product)) {
+        await this.createDefaultSizeVariants(tx, product.id, dto.material);
       }
 
       return tx.product.findUniqueOrThrow({
@@ -103,6 +64,109 @@ export class ProductsService {
         include: this.productInclude(),
       });
     });
+  }
+
+  /**
+   * Adds the default Small / Medium / Large sizes. Every variant price is
+   * derived from material + size pricing, product-specific cost rules, and
+   * global manufacturing rates.
+   */
+  private async createDefaultSizeVariants(
+    tx: Prisma.TransactionClient,
+    productId: string,
+    material?: string | null,
+  ) {
+    for (const item of [
+      { name: 'Small', size: '20 cm' },
+      { name: 'Medium', size: '25 cm' },
+      { name: 'Large', size: '30 cm' },
+    ]) {
+      const variant = await tx.productVariant.create({
+        data: {
+          productId,
+          name: item.name,
+          size: item.size,
+          price: { create: { amountMinor: 0, currency: 'INR', isActive: false } },
+        },
+      });
+      if (!material?.trim()) continue;
+      const sizeKey = normalizePricingSize(item.name) || normalizePricingSize(item.size);
+      const perKgRule = await tx.materialPricingRule.findFirst({
+        where: {
+          material: { equals: material, mode: 'insensitive' },
+          sizeKey: { in: [sizeKey, 'all'] },
+          isActive: true,
+          pricePerKgMinor: { gt: 0 },
+        },
+      });
+      // Per-kg pricing requires an admin-entered weight for each size.
+      // Keep the initial variant price inactive until that weight is saved.
+      if (perKgRule) continue;
+      const calculated = await calculateManufacturingPrice(tx, {
+        productId,
+        material,
+        size: item.size,
+        variantName: item.name,
+      });
+      await tx.productVariantPrice.update({
+        where: { variantId: variant.id },
+        data: {
+          amountMinor: calculated.amountMinor,
+          currency: calculated.currency,
+          costBreakdown: calculated.costBreakdown,
+          isActive: true,
+        },
+      });
+    }
+  }
+
+  /**
+   * Recalculates every active size price from the material rates. A size the
+   * admin priced by hand keeps that price. Only used for products sold in sizes.
+   */
+  private async recalculateSizePrices(
+    tx: Prisma.TransactionClient,
+    productId: string,
+    material: string,
+  ) {
+    const variants = await tx.productVariant.findMany({
+      where: { productId, isActive: true },
+      select: { id: true, name: true, size: true, weightGrams: true, price: { select: { priceOverrideMinor: true } } },
+    });
+    for (const variant of variants) {
+      // A manually set size price stays as the admin entered it.
+      if (variant.price?.priceOverrideMinor != null) continue;
+      const sizeKey = normalizePricingSize(variant.name) || normalizePricingSize(variant.size);
+      const perKgRule = await tx.materialPricingRule.findFirst({ where: { material: { equals: material, mode: 'insensitive' }, sizeKey: { in: [sizeKey, 'all'] }, isActive: true, pricePerKgMinor: { gt: 0 } } });
+      if (perKgRule && variant.weightGrams == null) {
+        await tx.productVariantPrice.updateMany({ where: { variantId: variant.id }, data: { isActive: false } });
+        continue;
+      }
+      const calculated = await calculateManufacturingPrice(tx, {
+        productId,
+        material,
+        size: variant.size,
+        variantName: variant.name,
+        weightGrams: variant.weightGrams,
+      });
+      await tx.productVariantPrice.upsert({
+        where: { variantId: variant.id },
+        create: {
+          variantId: variant.id,
+          currency: calculated.currency,
+          amountMinor: calculated.amountMinor,
+          costBreakdown: calculated.costBreakdown,
+          isActive: true,
+        },
+        update: {
+          currency: calculated.currency,
+          amountMinor: calculated.amountMinor,
+          compareAtMinor: null,
+          costBreakdown: calculated.costBreakdown,
+          isActive: true,
+        },
+      });
+    }
   }
 
   async updateVariant(
@@ -395,6 +459,7 @@ export class ProductsService {
           select: {
             id: true,
             createdAt: true,
+            hasSizes: true,
             prices: {
               where: {
                 isActive: true,
@@ -421,7 +486,7 @@ export class ProductsService {
 
       const rows = candidates
         .map((row) => {
-          const variantPrices = row.variants
+          const variantPrices = sizeVariantsOf(row, row.variants)
             .map((variant) => variant.price)
             .filter((price): price is NonNullable<typeof price> => Boolean(price?.isActive));
           const pool = variantPrices.length ? variantPrices : row.prices;
@@ -1034,12 +1099,22 @@ export class ProductsService {
     return this.prisma.$transaction(async (tx) => {
       const current = await tx.product.findUniqueOrThrow({
         where: { id },
-        select: { material: true, status: true },
+        select: { material: true, status: true, hasSizes: true },
       });
-      // Only enforce when status or material is actually being changed, so
-      // unrelated edits (hero toggle, badges, pausing orders) are never blocked.
-      const touchesPricingInputs = dto.status !== undefined || dto.material !== undefined;
-      if (touchesPricingInputs && (dto.status ?? current.status) === 'ACTIVE' && !(dto.material ?? current.material)?.trim()) {
+      const nextHasSizes = dto.hasSizes ?? current.hasSizes;
+      const turnedOn = dto.hasSizes === true && !current.hasSizes;
+      // Only enforce when status, material or the sizes switch is actually being
+      // changed, so unrelated edits (hero toggle, badges, pausing orders) are
+      // never blocked. A product without sizes has no calculated price, so it
+      // does not need a material.
+      const touchesPricingInputs =
+        dto.status !== undefined || dto.material !== undefined || dto.hasSizes !== undefined;
+      if (
+        touchesPricingInputs &&
+        nextHasSizes &&
+        (dto.status ?? current.status) === 'ACTIVE' &&
+        !(dto.material ?? current.material)?.trim()
+      ) {
         throw new BadRequestException('An active product must have a material for manufacturing price calculation.');
       }
       await tx.product.update({ where: { id }, data: productData });
@@ -1051,45 +1126,18 @@ export class ProductsService {
           data: { isActive: false },
         });
       }
-      if (nextMaterial && nextMaterial.toLowerCase() !== (current.material ?? '').trim().toLowerCase()) {
-        const variants = await tx.productVariant.findMany({
-          where: { productId: id, isActive: true },
-          select: { id: true, name: true, size: true, weightGrams: true, price: { select: { priceOverrideMinor: true } } },
-        });
-        for (const variant of variants) {
-          // A manually set size price stays as the admin entered it.
-          if (variant.price?.priceOverrideMinor != null) continue;
-          const sizeKey = normalizePricingSize(variant.name) || normalizePricingSize(variant.size);
-          const perKgRule = await tx.materialPricingRule.findFirst({ where: { material: { equals: nextMaterial, mode: 'insensitive' }, sizeKey: { in: [sizeKey, 'all'] }, isActive: true, pricePerKgMinor: { gt: 0 } } });
-          if (perKgRule && variant.weightGrams == null) {
-            await tx.productVariantPrice.updateMany({ where: { variantId: variant.id }, data: { isActive: false } });
-            continue;
-          }
-          const calculated = await calculateManufacturingPrice(tx, {
-            productId: id,
-            material: nextMaterial,
-            size: variant.size,
-            variantName: variant.name,
-            weightGrams: variant.weightGrams,
-          });
-          await tx.productVariantPrice.upsert({
-            where: { variantId: variant.id },
-            create: {
-              variantId: variant.id,
-              currency: calculated.currency,
-              amountMinor: calculated.amountMinor,
-              costBreakdown: calculated.costBreakdown,
-              isActive: true,
-            },
-            update: {
-              currency: calculated.currency,
-              amountMinor: calculated.amountMinor,
-              compareAtMinor: null,
-              costBreakdown: calculated.costBreakdown,
-              isActive: true,
-            },
-          });
-        }
+      const effectiveMaterial =
+        (dto.material !== undefined ? nextMaterial : current.material?.trim()) || undefined;
+      const materialChanged =
+        !!nextMaterial && nextMaterial.toLowerCase() !== (current.material ?? '').trim().toLowerCase();
+
+      if (turnedOn && (await tx.productVariant.count({ where: { productId: id } })) === 0) {
+        // Sizes switched on for a product that never had any: add the defaults.
+        await this.createDefaultSizeVariants(tx, id, effectiveMaterial);
+      } else if (nextHasSizes && effectiveMaterial && (materialChanged || turnedOn)) {
+        // Prices are only calculated for products sold in sizes. Switching sizes
+        // back on also refreshes them, since rates may have changed while off.
+        await this.recalculateSizePrices(tx, id, effectiveMaterial);
       }
 
       return tx.product.findUniqueOrThrow({
@@ -1415,7 +1463,7 @@ export class ProductsService {
       product.prices.find((price) => price.currency === 'INR') ??
       product.prices[0];
 
-    const pricedVariants = product.variants
+    const pricedVariants = sizeVariantsOf(product, product.variants)
       .filter(
         (variant) =>
           variant.price?.isActive &&

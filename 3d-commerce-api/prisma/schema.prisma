@@ -281,6 +281,11 @@ model Product {
   status ProductStatus @default(DRAFT)
   ordersEnabled Boolean @default(true)
 
+  // true: sold in Small/Medium/Large with prices calculated from material and
+  // weight. false: one product, one price set manually by the admin
+  // (ProductPrice); variants are ignored and nothing is auto-calculated.
+  hasSizes Boolean @default(true)
+
   isFeatured   Boolean @default(false)
   isTrending   Boolean @default(false)
   isBestseller Boolean @default(false)

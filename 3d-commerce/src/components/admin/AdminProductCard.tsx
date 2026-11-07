@@ -39,7 +39,7 @@ function AdminThumb({ src, alt }: { src: string; alt: string }) {
 }
 
 type ProductVariant={id:string;name:string;size?:string|null;weightGrams?:number|null;sku?:string|null;isActive:boolean;price?:{amountMinor:number;compareAtMinor?:number|null;priceOverrideMinor?:number|null;isActive:boolean}|null};
-type Product={id:string;name:string;slug:string;status:string;ordersEnabled:boolean;isFeatured:boolean;isTrending:boolean;isBestseller:boolean;category?:{id:string;name:string;ordersEnabled?:boolean;gstRateBps?:number|null;parentId?:string|null;parent?:{id:string;name:string;slug?:string;ordersEnabled?:boolean}|null}|null;prices:Array<{amountMinor:number;currency?:string;compareAtMinor?:number|null;isActive:boolean}>;variants?:ProductVariant[];material?:string|null;scale?:string|null;dimensions?:string|null;height?:string|null;base?:string|null;packaging?:string|null;weight?:string|null;media?:Array<{id:string;type:string;url:string;altText?:string|null;isPrimary:boolean;sortOrder:number}>};
+type Product={id:string;name:string;slug:string;status:string;ordersEnabled:boolean;hasSizes?:boolean;isFeatured:boolean;isTrending:boolean;isBestseller:boolean;category?:{id:string;name:string;ordersEnabled?:boolean;gstRateBps?:number|null;parentId?:string|null;parent?:{id:string;name:string;slug?:string;ordersEnabled?:boolean}|null}|null;prices:Array<{amountMinor:number;currency?:string;compareAtMinor?:number|null;isActive:boolean}>;variants?:ProductVariant[];material?:string|null;scale?:string|null;dimensions?:string|null;height?:string|null;base?:string|null;packaging?:string|null;weight?:string|null;media?:Array<{id:string;type:string;url:string;altText?:string|null;isPrimary:boolean;sortOrder:number}>};
 type ProductFile={id:string;originalName:string;storageUrl:string;format:string;fileType:string;mimeType:string;fileSize:string|number;processingStatus:string};
 type CategoryOption={id:string;name:string;slug:string;parentId?:string|null;parent?:{id:string;name:string;slug:string}|null};
 
@@ -49,10 +49,11 @@ export default function AdminProductCard({product:p,...props}:Props){const {cate
       <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-sm font-medium">{p.name}</p><p className="mt-1 text-[10px] text-muted">{p.slug} · {p.category?.name||"Uncategorized"}{p.category?.gstRateBps!=null?` · GST ${(p.category.gstRateBps/100).toFixed(2)}% included`:""}</p></div><span className="rounded-full bg-primary/10 px-2.5 py-1 text-[9px] text-primary">{p.status}</span></div>
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <div><p className="text-[9px] uppercase tracking-[0.12em] text-muted">Order availability</p><button onClick={()=>void updateProduct(p.id,{ordersEnabled:!p.ordersEnabled})} disabled={saving} className={`mt-1 rounded-lg border px-2.5 py-1.5 text-[9px] ${p.ordersEnabled?"border-emerald-500/25 text-emerald-300":"border-red-500/25 text-red-300"}`}>{p.ordersEnabled?"Accepting orders · Pause":"Orders paused · Resume"}</button>{(p.category?.ordersEnabled===false||p.category?.parent?.ordersEnabled===false)&&<p className="mt-1 text-[9px] text-red-300">Shown as not accepting orders: category &ldquo;{p.category?.ordersEnabled===false?p.category.name:p.category?.parent?.name}&rdquo; is paused. Resume it in Categories.</p>}</div>
+        <div><p className="text-[9px] uppercase tracking-[0.12em] text-muted">Sizes</p><button onClick={()=>{const on=p.hasSizes!==false;if(on&&!window.confirm("Turn sizes off for this product? It will be sold at one manual price and carts holding a size must be re-added. Size prices are kept if you turn sizes back on."))return;void updateProduct(p.id,{hasSizes:!on});}} disabled={saving} className={`mt-1 rounded-lg border px-2.5 py-1.5 text-[9px] ${p.hasSizes!==false?"border-emerald-500/25 text-emerald-300":"border-border text-muted"}`}>{p.hasSizes!==false?"Sizes on · Turn off":"Sizes off · Turn on"}</button></div>
         <div><p className="text-[9px] uppercase tracking-[0.12em] text-muted">Hero</p><button onClick={()=>void updateProduct(p.id,{isFeatured:!p.isFeatured})} disabled={saving} className="mt-1 rounded-lg border border-border px-2.5 py-1.5 text-[9px]">{p.isFeatured?"Remove from hero":"Feature in hero"}</button></div>
         <div className="flex items-end justify-end gap-2"><button onClick={()=>startProductEdit(p)} disabled={saving} title="Edit product" className="rounded-lg border border-border p-2 text-muted"><IconEdit size={14}/></button><button onClick={()=>void updateProduct(p.id,{status:"ARCHIVED"})} disabled={saving||p.status==="ARCHIVED"} title="Archive product" className="rounded-lg border border-border p-2 text-muted"><IconArchive size={14}/></button><button onClick={()=>void deleteProduct(p.id,p.name)} disabled={saving} title="Permanently delete product" className="rounded-lg border border-red-400/20 p-2 text-red-300"><IconTrash size={14}/></button></div>
       </div>
-      {(p.variants||[]).length===0&&(
+      {(p.hasSizes===false||(p.variants||[]).length===0)&&(
       <div className="mt-4 border-t border-border pt-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -69,6 +70,8 @@ export default function AdminProductCard({product:p,...props}:Props){const {cate
         </form>
       </div>
       )}
+      {p.hasSizes===false&&<div className="mt-4 border-t border-border pt-4"><p className="text-[9px] uppercase tracking-[0.12em] text-muted">Sizes</p><p className="mt-1 text-[10px] text-muted">Sizes are off. This product is sold as one item at the product-level price above, which you set manually. Nothing is calculated from material or weight. Turn Sizes back on to sell it in Small, Medium and Large.</p></div>}
+      {p.hasSizes!==false&&(
       <div className="mt-4 border-t border-border pt-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div><p className="text-[9px] uppercase tracking-[0.12em] text-muted">Size-specific pricing</p><p className="mt-1 text-[10px] text-muted">Prices are calculated from material and weight. To set your own price for a size, enter it in the Override price box for that size; clear the box to go back to the calculated price.</p></div>
@@ -99,6 +102,7 @@ export default function AdminProductCard({product:p,...props}:Props){const {cate
         </div>
         </form>}
       </div>
+      )}
       <div className="mt-4 border-t border-border pt-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div><p className="text-[9px] uppercase tracking-[0.12em] text-muted">Assets</p><p className="mt-1 text-[10px] text-muted">{p.media?.filter(m=>m.type==="IMAGE").length||0} images · {p.media?.filter(m=>m.type==="MODEL_PREVIEW").length||0} model previews</p></div>

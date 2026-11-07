@@ -83,6 +83,8 @@ export interface CatalogProduct {
   prices: CatalogPrice[];
   saleCampaign?: { enabled: boolean; active: boolean; categoryId?: string | null; priceIncreaseBps: number; discountBps: number; startsAt?: string | null; endsAt?: string | null };
   variants?: CatalogVariant[];
+  /** false = not sold in sizes; one manual price. Missing means true. */
+  hasSizes?: boolean;
   media: CatalogMedia[];
   /** Legacy API fields used by older product records. */
   image?: string | null;
@@ -120,6 +122,8 @@ export interface StorefrontProduct {
   oldPrice?: number;
   saleActive?: boolean;
   ordersEnabled: boolean;
+  /** false = not sold in sizes; the price is set manually by the admin. */
+  hasSizes: boolean;
   saleDiscountPercent?: number;
   rating: number;
   reviewCount: number;
@@ -288,7 +292,9 @@ export function mapCatalogProduct(product: CatalogProduct): StorefrontProduct {
   const saleAmountMinor = saleActive
     ? Math.round(saleListMinor * (10000 - Math.max(0, product.saleCampaign!.discountBps)) / 10000)
     : price?.amountMinor ?? 0;
-  const variantPrices = (product.variants ?? [])
+  // Sizes off: variants are ignored and the product-level price is the only price.
+  const sizedVariants = product.hasSizes === false ? [] : (product.variants ?? []);
+  const variantPrices = sizedVariants
     .filter((variant) => variant.isActive)
     .map((variant) => {
       const variantPrice = variant.price;
@@ -342,6 +348,7 @@ export function mapCatalogProduct(product: CatalogProduct): StorefrontProduct {
     currency,
     oldPrice: compareAt !== undefined ? compareAt / 100 : undefined,
     saleActive,
+    hasSizes: product.hasSizes !== false,
     ordersEnabled: product.ordersEnabled !== false && product.category?.ordersEnabled !== false && product.category?.parent?.ordersEnabled !== false,
     saleDiscountPercent: saleActive ? product.saleCampaign!.discountBps / 100 : undefined,
     rating: product.rating ?? 0,
@@ -375,7 +382,7 @@ export function mapCatalogProduct(product: CatalogProduct): StorefrontProduct {
       purchases: product.metrics?.purchaseCount ?? 0,
       unitsSold: product.metrics?.unitsSold ?? 0,
     },
-    variants: (product.variants ?? [])
+    variants: sizedVariants
       .map((variant) => mapVariant(variant, saleActive ? product.saleCampaign : (product.saleCampaign ? { ...product.saleCampaign, active: false } : undefined)))
       .filter(
         (variant): variant is StorefrontVariant => Boolean(variant),
