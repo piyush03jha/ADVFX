@@ -99,10 +99,6 @@ export class UpdateProductDto {
 
   @IsOptional()
   @IsString()
-  scale?: string;
-
-  @IsOptional()
-  @IsString()
   dimensions?: string;
 
   @IsOptional()

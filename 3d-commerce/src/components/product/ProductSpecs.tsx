@@ -14,7 +14,6 @@ export function ProductSpecs({
   const { selectedVariant } = useSelectedVariant();
   const specs = [
     { label: "Material", value: product.material ?? "Not specified" },
-    { label: "Scale", value: product.scale ?? "Not specified" },
     { label: "Dimensions", value: product.dimensions ?? "Not specified" },
     { label: "Height", value: selectedVariant?.size?.trim() || product.height || "Not specified" },
     { label: "Base", value: product.base ?? "Not specified" },

@@ -22,7 +22,7 @@ export class AdminBulkService {
     let slug=baseSlug; let suffix=2;
     while(await this.prisma.product.findUnique({where:{slug},select:{id:true}})){ slug=`${baseSlug}-${suffix++}`; }
     const created = await this.prisma.$transaction(async tx=>{
-      const product=await tx.product.create({data:{name:`${source.name} Copy`,slug,description:source.description,categoryId:source.categoryId,status:'DRAFT',isFeatured:false,isTrending:false,isBestseller:false,badge:source.badge,material:source.material,scale:source.scale,dimensions:source.dimensions,height:source.height,base:source.base,packaging:source.packaging,weight:source.weight,ordersEnabled:source.ordersEnabled,hasSizes:source.hasSizes,fixedWeightGrams:source.fixedWeightGrams}});
+      const product=await tx.product.create({data:{name:`${source.name} Copy`,slug,description:source.description,categoryId:source.categoryId,status:'DRAFT',isFeatured:false,isTrending:false,isBestseller:false,badge:source.badge,material:source.material,dimensions:source.dimensions,height:source.height,base:source.base,packaging:source.packaging,weight:source.weight,ordersEnabled:source.ordersEnabled,hasSizes:source.hasSizes,fixedWeightGrams:source.fixedWeightGrams}});
       for(const v of source.variants){await tx.productVariant.create({data:{productId:product.id,name:v.name,size:v.size,sku:null,isActive:v.isActive,price:v.price?{create:{currency:v.price.currency,amountMinor:v.price.amountMinor,compareAtMinor:v.price.compareAtMinor,isActive:true}}:undefined}})}
       for(const p of source.prices){await tx.productPrice.create({data:{productId:product.id,currency:p.currency,amountMinor:p.amountMinor,compareAtMinor:p.compareAtMinor,isActive:p.isActive,startsAt:p.startsAt,endsAt:p.endsAt}})}
       for(const m of source.media){await tx.productMedia.create({data:{productId:product.id,type:m.type,url:m.url,altText:m.altText,sortOrder:m.sortOrder,isPrimary:m.isPrimary}})}
@@ -113,7 +113,6 @@ export class AdminBulkService {
               ...(row.isbestseller !== undefined && row.isbestseller !== '' ? { isBestseller: parseBoolean(row.isbestseller) } : {}),
               ...(textValue(row.badge) ? { badge: textValue(row.badge) } : {}),
               ...(textValue(row.material) ? { material: textValue(row.material) } : {}),
-              ...(textValue(row.scale) ? { scale: textValue(row.scale) } : {}),
               ...(textValue(row.dimensions) ? { dimensions: textValue(row.dimensions) } : {}),
               ...(textValue(row.height) ? { height: textValue(row.height) } : {}),
               ...(textValue(row.base) ? { base: textValue(row.base) } : {}),
@@ -131,7 +130,7 @@ export class AdminBulkService {
               data: {
                 name, slug, description: textValue(row.description), status: (status || 'ACTIVE') as 'DRAFT' | 'ACTIVE' | 'ARCHIVED',
                 isFeatured: parseBoolean(row.isfeatured), isTrending: parseBoolean(row.istrending), isBestseller: parseBoolean(row.isbestseller),
-                badge: textValue(row.badge), material: textValue(row.material), scale: textValue(row.scale), dimensions: textValue(row.dimensions),
+                badge: textValue(row.badge), material: textValue(row.material), dimensions: textValue(row.dimensions),
                 height: textValue(row.height), base: textValue(row.base), packaging: textValue(row.packaging), weight: textValue(row.weight), categoryId,
                 ordersEnabled: ordersEnabled ?? true,
                 hasSizes: hasSizes ?? true,

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import {
+  IconBrandWhatsapp,
   IconCheck,
   IconMinus,
   IconPlus,
@@ -15,6 +16,9 @@ import { Button } from "@/components/ui/Button";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import type { StorefrontProduct, StorefrontVariant } from "@/lib/catalog-api";
+import { buildWhatsAppUrl, useWhatsAppConfig } from "@/lib/whatsapp";
+
+const MAX_CUSTOM_HEIGHT_CM = 500;
 
 interface ProductActionsProps {
   product: StorefrontProduct;
@@ -33,6 +37,9 @@ export function ProductActions({ product, selectedVariantId, quantity, onVariant
   const [buying, setBuying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { addItem, error: cartError } = useCart();
+  const whatsApp = useWhatsAppConfig();
+  const [customHeight, setCustomHeight] = useState("");
+  const [customHeightError, setCustomHeightError] = useState<string | null>(null);
 
   const selectedVariant = useMemo<StorefrontVariant | null>(
     () =>
@@ -65,6 +72,27 @@ export function ProductActions({ product, selectedVariantId, quantity, onVariant
     } finally {
       setPending(false);
     }
+  };
+
+  const requestCustomSize = () => {
+    const height = Number(customHeight);
+    if (!customHeight.trim() || !Number.isFinite(height) || height <= 0 || height > MAX_CUSTOM_HEIGHT_CM) {
+      setCustomHeightError(`Enter a height between 1 and ${MAX_CUSTOM_HEIGHT_CM} cm.`);
+      return;
+    }
+
+    const heightLabel = String(Math.round(height * 10) / 10);
+    const message =
+      `Hi VOXEL 3D, I'd like a custom size of "${product.name}" with a height of ${heightLabel} cm. ` +
+      `Product link: ${window.location.href}`;
+    const url = buildWhatsAppUrl(whatsApp, message);
+    if (!url) {
+      setCustomHeightError("WhatsApp is not available right now. Please use the Contact page.");
+      return;
+    }
+
+    setCustomHeightError(null);
+    window.open(url, "_blank", "noopener,noreferrer");
   };
 
   const buyNow = async () => {
@@ -150,6 +178,58 @@ export function ProductActions({ product, selectedVariantId, quantity, onVariant
           <span className="ml-2">Made to order</span>
         </div>
       )}
+
+      <div className="mt-4 rounded-xl border border-border bg-white/[0.015] p-3 sm:mt-5">
+        <p className="text-[9px] font-medium uppercase tracking-[0.18em] text-primary">
+          Need a custom size?
+        </p>
+        <p className="mt-1 text-[11px] leading-4 text-muted">
+          Enter the height you want for this product and we&apos;ll continue on WhatsApp.
+        </p>
+
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+          <div className="relative min-w-0 flex-1">
+            <input
+              type="number"
+              inputMode="decimal"
+              min={1}
+              max={MAX_CUSTOM_HEIGHT_CM}
+              step="any"
+              value={customHeight}
+              onChange={(event) => {
+                setCustomHeight(event.target.value);
+                setCustomHeightError(null);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  requestCustomSize();
+                }
+              }}
+              placeholder="Height"
+              aria-label="Custom height in centimetres"
+              aria-invalid={customHeightError ? true : undefined}
+              className="h-11 w-full rounded-xl border border-border bg-background pl-3 pr-12 text-sm text-foreground outline-none transition focus:border-primary"
+            />
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted">cm</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={requestCustomSize}
+            className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-primary/60 px-4 text-xs font-medium uppercase tracking-[0.12em] text-primary transition-all hover:bg-primary/10"
+          >
+            <IconBrandWhatsapp size={16} />
+            Request on WhatsApp
+          </button>
+        </div>
+
+        {customHeightError ? (
+          <p role="alert" className="mt-2 text-xs text-red-400">
+            {customHeightError}
+          </p>
+        ) : null}
+      </div>
 
       <div className="mt-4 sm:mt-5">
         <p className="mb-2 text-[9px] font-medium uppercase tracking-[0.18em] text-primary">

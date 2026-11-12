@@ -3,21 +3,39 @@ import { PolicyPage } from "@/components/content/PolicyPage";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
-  description: "Voxel3D privacy policy and information handling practices.",
+  description: "VOXEL 3D privacy policy, information handling and cancellation practices.",
   alternates: { canonical: "/privacy" },
 };
 
 export default function PrivacyPage() {
-  return <PolicyPage contentKey="privacy" eyebrow="Legal" title="How Voxel3D Uses and Protects Your Information" intro="Your privacy matters to us. This page explains in plain language what information we collect when you use Voxel3D, how we use it to manage orders and support, and what choices you have." sections={[
-    { title: "Information we collect", body: "We may collect account details, contact information, delivery addresses, order details, payment references, customer-uploaded images for custom requests, and information you provide when contacting us." },
-    { title: "How we use information", body: "We use information to create accounts, process physical orders, manufacture and deliver products, handle customer support, prevent fraud, maintain service security, and provide transactional notifications." },
-    { title: "Payments and service providers", body: "Payment processing is handled by our payment provider. We receive payment and transaction references needed to reconcile an order; sensitive payment credentials are handled by the payment provider." },
-    { title: "Retention and security", body: "We retain information for as long as reasonably necessary for order fulfillment, legal obligations, dispute handling, and legitimate business records. We use access controls and appropriate technical safeguards, while no internet service can guarantee absolute security." },
-    { title: "Your choices", body: "You can request access, correction, or deletion of personal information where applicable. Some records must be retained when required for legal, accounting, payment, or order obligations." },
-    { title: "Custom request images", body: "Images and details sent through a custom request are used to understand the design you want and to review whether the team can make the requested physical product. Please only upload images you have permission to share. Avoid including unrelated personal information in photos or messages." },
-    { title: "Messages and customer support", body: "When you contact us, we use the information in your message to respond to your question and help with the related request or order. Please include only details needed to identify the issue. Do not send passwords, one-time passcodes, or full payment card details in a message." },
-    { title: "Browser storage and site features", body: "The website may use essential browser storage or similar technologies to support features such as sign-in, cart contents, preferences and site security. The exact data used can depend on the feature and services enabled on the website." },
-    { title: "Links to other services", body: "Some links, such as payment or WhatsApp contact links, take you to services run by other companies. When you use those services, their own privacy terms and practices may apply. Please review those terms before sharing information with them." },
-    { title: "Contact us about privacy", body: "If you have a question about information connected to your account, order or custom request, contact Voxel3D using the Contact page. We may need enough information to confirm which record you mean before we can help. Requests are handled subject to applicable legal and business record requirements." },
+  return <PolicyPage contentKey="privacy" eyebrow="Legal" title="How VOXEL 3D Uses and Protects Your Information" intro="Your privacy matters to us. This page explains what information we collect when you use VOXEL 3D, how we use it to manage orders and support, what choices you have, and how cancellations are handled." sections={[
+    { title: "Information we collect and how we use it", body: [
+      "• We collect customer details such as name, phone number, email and delivery address. We use this information to process orders and provide customer support.",
+      "• Customer-uploaded files are used only to fulfil custom printing orders.",
+    ].join("\n") },
+    { title: "Sharing and service providers", body: [
+      "• Payment details are handled by our payment partners.",
+      "• We do not share customers' personal information, except that information may be shared with delivery, payment and service partners when required.",
+      "• We may share necessary information with payment providers, courier partners, service providers or authorities where legally required.",
+      "• Our website may contain links to third-party websites. Their privacy practices are governed by their own policies.",
+    ].join("\n") },
+    { title: "Cookies", body: "• Our website may use cookies to improve user experience." },
+    { title: "Your choices and marketing", body: [
+      "• Customers may contact us to request access, correction or deletion of their information, where applicable, before the product is delivered.",
+      "• Promotional communications may be sent where permitted. You may opt out of marketing messages at any time.",
+    ].join("\n") },
+    { title: "Retention and children", body: [
+      "• Information is retained only as long as necessary for order fulfilment, business operations and legal requirements.",
+      "• Our services are not intended to knowingly collect personal information from children without appropriate consent.",
+    ].join("\n") },
+    { title: "Order cancellations and refunds", body: [
+      "• If an order is cancelled before production starts, the customer will receive a full refund.",
+      "• If an order is cancelled after production has started, VOXEL 3D will decide whether a refund will be issued and determine the refund amount.",
+    ].join("\n") },
+    { title: "Policy updates, data breaches and contact", body: [
+      "• We may update these policies from time to time. The latest version will be published on our website.",
+      "• In the event of a data breach, affected customers will be notified in accordance with applicable laws.",
+      "• For privacy-related queries, concerns, or complaints, customers can contact VOXEL 3D through the official contact details provided on our website.",
+    ].join("\n") },
   ]} />;
 }

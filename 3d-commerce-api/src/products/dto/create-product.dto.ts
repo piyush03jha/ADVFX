@@ -97,10 +97,6 @@ export class CreateProductDto {
 
   @IsOptional()
   @IsString()
-  scale?: string;
-
-  @IsOptional()
-  @IsString()
   dimensions?: string;
 
   @IsOptional()

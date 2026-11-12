@@ -74,7 +74,6 @@ export interface CatalogProduct {
   reviewCount?: number;
   badge?: string | null;
   material?: string | null;
-  scale?: string | null;
   dimensions?: string | null;
   height?: string | null;
   base?: string | null;
@@ -138,7 +137,6 @@ export interface StorefrontProduct {
   discount?: string;
   tags: string[];
   material?: string | null;
-  scale?: string | null;
   dimensions?: string | null;
   height?: string | null;
   base?: string | null;
@@ -370,7 +368,6 @@ export function mapCatalogProduct(product: CatalogProduct): StorefrontProduct {
         : undefined,
     tags: (Array.isArray(product.tags) ? product.tags : []).map((item) => item.tag.name),
     material: product.material,
-    scale: product.scale,
     dimensions: product.dimensions,
     height: product.height,
     base: product.base,
