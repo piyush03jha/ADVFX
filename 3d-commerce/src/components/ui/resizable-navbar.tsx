@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { IconMenu2, IconX } from "@tabler/icons-react";
@@ -144,11 +145,14 @@ export const NavbarLogo = () => (
     aria-label="Voxel3D home"
     className="relative z-20 flex shrink-0 items-center px-1.5 py-.5 transition-opacity hover:opacity-80"
   >
-    <img
+    <Image
       src="/logo/full_logo.png"
       alt="Voxel3D"
+      width={143}
+      height={35}
+      sizes="143px"
+      priority
       draggable={false}
-      style={{ height: 35, width: "auto" }}
       className="block h-[22px] w-auto object-contain sm:h-[35px]"
     />
     <span className="sr-only">Voxel3D home</span>

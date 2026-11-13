@@ -148,7 +148,20 @@ export class CategoriesService {
       throw new BadRequestException('Uploaded file is not a valid image');
     }
 
-    const stored = await this.storage.saveCategoryImage(id, file.originalname, file.buffer);
+    // Category cards render at most ~280 CSS px wide, so keep 2x for retina and
+    // store a small WebP instead of the multi-MB original upload.
+    let optimizedImage: Buffer;
+    try {
+      optimizedImage = await sharp(file.buffer)
+        .rotate()
+        .resize({ width: 640, height: 854, fit: 'inside', withoutEnlargement: true })
+        .webp({ quality: 80, effort: 5 })
+        .toBuffer();
+    } catch {
+      throw new BadRequestException('Unable to optimize the uploaded image');
+    }
+    const baseName = file.originalname.replace(/\.[^/.]+$/, '') || 'category-image';
+    const stored = await this.storage.saveCategoryImage(id, `${baseName}.webp`, optimizedImage);
 
     try {
       const updated = await this.prisma.category.update({

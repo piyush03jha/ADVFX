@@ -60,7 +60,8 @@ export function HeroPagination({
             }
             className="
               flex
-              h-4
+              h-6
+              min-w-6
               items-center
               justify-center
               rounded-full

@@ -83,7 +83,8 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
   }
 
   const path = `/product/${product.slug}`;
-  const description = (product.seoDescription?.trim() || product.description?.trim() || "").replace(/\\s+/g, " ").slice(0, 160) || undefined;
+  const fallbackDescription = `Buy the ${product.name} 3D printed ${product.category?.name ? product.category.name.toLowerCase() + " " : ""}model from Voxel3D. Made to order and shipped across India.`;
+  const description = (product.seoDescription?.trim() || product.description?.trim() || fallbackDescription).replace(/\s+/g, " ").slice(0, 160);
   const seoTitle = product.seoTitle?.trim();
   const images = productImageUrls(product).slice(0, 4);
   const title = seoTitle || `${product.name} — 3D Printed Figure`;

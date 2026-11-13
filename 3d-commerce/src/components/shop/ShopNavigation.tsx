@@ -71,7 +71,7 @@ export function ShopNavigation({
           </div>
         </CategoryCard>
 
-        {roots.map((category) => {
+        {roots.map((category, railIndex) => {
           const image = resolveMediaUrl(category.imageUrl);
           const active = selectedCategories.includes(category.slug);
           return (
@@ -85,6 +85,12 @@ export function ShopNavigation({
                 <img
                   src={image}
                   alt=""
+                  width={320}
+                  height={427}
+                  // Requested right away (see tests/model-loading.test.mjs); the
+                  // first cards get priority, the rest of the rail yields to them.
+                  decoding="async"
+                  fetchPriority={railIndex < 2 ? "high" : "low"}
                   className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
               ) : (

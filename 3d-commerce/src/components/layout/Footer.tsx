@@ -165,9 +165,10 @@ export function Footer() {
         </div>
 
         <div aria-hidden="true" className="pointer-events-none select-none overflow-hidden px-5 text-center">
-          <span className="block translate-y-[18%] whitespace-nowrap font-serif text-[27vw] font-semibold leading-none tracking-[-0.08em] text-foreground/[0.025] sm:text-[18vw]">
-            Voxel3D
-          </span>
+          <span
+            data-watermark="Voxel3D"
+            className="block translate-y-[18%] whitespace-nowrap font-serif text-[27vw] font-semibold leading-none tracking-[-0.08em] text-foreground/[0.025] after:content-[attr(data-watermark)] sm:text-[18vw]"
+          />
         </div>
       </div>
     </footer>
