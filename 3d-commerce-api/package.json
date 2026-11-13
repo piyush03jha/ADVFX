@@ -27,7 +27,8 @@
     "storage:lifecycle": "tsx scripts/configure-storage-lifecycle.ts",
     "storage:b2:diagnose": "tsx scripts/b2-diagnose.ts",
     "storage:b2:cors": "tsx scripts/configure-storage-cors.ts",
-    "storage:optimize-category-images": "tsx scripts/optimize-category-images.ts"
+    "storage:optimize-category-images": "tsx scripts/optimize-category-images.ts",
+    "storage:cleanup-originals": "tsx scripts/cleanup-optimized-originals.ts"
   },
   "dependencies": {
     "@fastify/multipart": "^10.1.1",
