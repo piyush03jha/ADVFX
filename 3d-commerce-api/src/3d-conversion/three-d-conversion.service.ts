@@ -557,6 +557,8 @@ export class ThreeDConversionService {
 
       if (job.deleteSourceOnSuccess) {
         await this.discardConversionIntermediates(job, destinationKey);
+      } else if (published.publishedFileId) {
+        await this.discardReplacedCatalogSource(job, productId, published.publishedFileId, destinationKey);
       }
 
       return this.serialize(published);
@@ -618,6 +620,87 @@ export class ThreeDConversionService {
       await this.prisma.threeDConversionJob
         .update({ where: { id: job.id }, data: clear })
         .catch(() => undefined);
+    }
+  }
+
+  /**
+   * Jobs that start from a catalog-owned GLB (an uploaded product file, or an
+   * admin re-optimize) have deleteSourceOnSuccess=false, because the source is
+   * a live ProductFile and must not be touched until a replacement exists.
+   * Once the optimized GLB is published that original is superseded: remove the
+   * staging "output" copy and the original ProductFile (object + row) so only
+   * the optimized model stays in storage.
+   *
+   * This runs inside publish()'s try block, whose catch deletes the published
+   * file. It therefore must never throw. Nothing is deleted unless the
+   * published object is confirmed to exist, and a delete that fails leaves the
+   * original referenced and intact.
+   */
+  private async discardReplacedCatalogSource(
+    job: {
+      id: string;
+      sourceStorageKey: string;
+      convertedStorageKey: string | null;
+      outputStorageKey: string | null;
+    },
+    productId: string,
+    publishedFileId: string,
+    keepKey: string,
+  ) {
+    try {
+      if (!(await this.storage.exists(keepKey))) {
+        this.logger.warn(`Published model ${keepKey} not found; keeping the original for job ${job.id}`);
+        return;
+      }
+
+      const clear: { convertedStorageKey?: null; outputStorageKey?: null } = {};
+
+      if (job.outputStorageKey && job.outputStorageKey !== keepKey) {
+        try {
+          await this.storage.delete(job.outputStorageKey);
+          clear.outputStorageKey = null;
+        } catch (error) {
+          this.logger.warn(
+            `Unable to delete staging output ${job.outputStorageKey} for job ${job.id}: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
+      }
+
+      // Only a MODEL GLB that belongs to this product and is not a bundle root
+      // is the superseded original. A re-run's source is another job's
+      // converted GLB, which matches no ProductFile and is left alone.
+      const original = job.sourceStorageKey && job.sourceStorageKey !== "pending"
+        ? await this.prisma.productFile.findFirst({
+            where: {
+              productId,
+              storageKey: job.sourceStorageKey,
+              id: { not: publishedFileId },
+              fileType: "MODEL",
+              format: "GLB",
+            },
+            select: { id: true, storageKey: true, bundleRoot: { select: { id: true } } },
+          })
+        : null;
+
+      if (original && !original.bundleRoot && original.storageKey !== keepKey) {
+        try {
+          await this.storage.delete(original.storageKey);
+          await this.prisma.productFile.delete({ where: { id: original.id } });
+          if (job.convertedStorageKey === original.storageKey) clear.convertedStorageKey = null;
+        } catch (error) {
+          this.logger.warn(
+            `Unable to remove original model ${original.id} for job ${job.id}: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
+      }
+
+      if (Object.keys(clear).length > 0) {
+        await this.prisma.threeDConversionJob.update({ where: { id: job.id }, data: clear });
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Original cleanup skipped for job ${job.id}: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 

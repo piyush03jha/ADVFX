@@ -147,3 +147,109 @@ describe('ThreeDConversionService.discardConversionIntermediates', () => {
     });
   });
 });
+
+describe('ThreeDConversionService.discardReplacedCatalogSource', () => {
+  const prisma = {
+    threeDConversionJob: { update: jest.fn() },
+    productFile: { findFirst: jest.fn(), delete: jest.fn() },
+  } as any;
+  const storage = { exists: jest.fn(), delete: jest.fn() } as any;
+  let service: ThreeDConversionService;
+
+  const keep = 'products/p1/models/j1.glb';
+  const original = 'products/p1/models/upload-abc.glb';
+  const staging = 'conversions/j1/output/model.glb';
+  const job = {
+    id: 'j1',
+    sourceStorageKey: original,
+    convertedStorageKey: original,
+    outputStorageKey: staging,
+  };
+
+  const discard = (overrides: Partial<typeof job> = {}) =>
+    (service as any).discardReplacedCatalogSource({ ...job, ...overrides }, 'p1', 'file-new', keep);
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+    storage.exists.mockResolvedValue(true);
+    storage.delete.mockResolvedValue(undefined);
+    prisma.productFile.findFirst.mockResolvedValue({ id: 'file-old', storageKey: original, bundleRoot: null });
+    prisma.productFile.delete.mockResolvedValue({});
+    prisma.threeDConversionJob.update.mockResolvedValue({});
+    service = new ThreeDConversionService(prisma, storage);
+  });
+
+  it('removes the staging output and the original product file once the optimized model is published', async () => {
+    await discard();
+
+    expect(storage.exists).toHaveBeenCalledWith(keep);
+    expect(storage.delete).toHaveBeenCalledWith(staging);
+    expect(storage.delete).toHaveBeenCalledWith(original);
+    expect(storage.delete).not.toHaveBeenCalledWith(keep);
+    expect(prisma.productFile.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: {
+        productId: 'p1',
+        storageKey: original,
+        id: { not: 'file-new' },
+        fileType: 'MODEL',
+        format: 'GLB',
+      },
+    }));
+    expect(prisma.productFile.delete).toHaveBeenCalledWith({ where: { id: 'file-old' } });
+    expect(prisma.threeDConversionJob.update).toHaveBeenCalledWith({
+      where: { id: 'j1' },
+      data: { outputStorageKey: null, convertedStorageKey: null },
+    });
+  });
+
+  it('deletes nothing when the published optimized model is not in storage', async () => {
+    storage.exists.mockResolvedValue(false);
+
+    await discard();
+
+    expect(storage.delete).not.toHaveBeenCalled();
+    expect(prisma.productFile.delete).not.toHaveBeenCalled();
+  });
+
+  it('leaves a re-run source alone because it matches no product file', async () => {
+    prisma.productFile.findFirst.mockResolvedValue(null);
+    const converted = 'conversions/earlier/converted/model.glb';
+
+    await discard({ sourceStorageKey: converted, convertedStorageKey: converted });
+
+    expect(storage.delete).toHaveBeenCalledTimes(1);
+    expect(storage.delete).toHaveBeenCalledWith(staging);
+    expect(storage.delete).not.toHaveBeenCalledWith(converted);
+    expect(prisma.productFile.delete).not.toHaveBeenCalled();
+  });
+
+  it('never removes a bundle root file', async () => {
+    prisma.productFile.findFirst.mockResolvedValue({ id: 'file-old', storageKey: original, bundleRoot: { id: 'bundle-1' } });
+
+    await discard();
+
+    expect(storage.delete).not.toHaveBeenCalledWith(original);
+    expect(prisma.productFile.delete).not.toHaveBeenCalled();
+  });
+
+  it('keeps the original referenced when its storage delete fails', async () => {
+    storage.delete.mockImplementation(async (key: string) => {
+      if (key === original) throw new Error('storage down');
+    });
+
+    await discard();
+
+    expect(prisma.productFile.delete).not.toHaveBeenCalled();
+    expect(prisma.threeDConversionJob.update).toHaveBeenCalledWith({
+      where: { id: 'j1' },
+      data: { outputStorageKey: null },
+    });
+  });
+
+  it('never throws, so a cleanup failure cannot roll back a successful publish', async () => {
+    prisma.productFile.findFirst.mockRejectedValue(new Error('db down'));
+
+    await expect(discard()).resolves.toBeUndefined();
+    expect(storage.delete).not.toHaveBeenCalledWith(keep);
+  });
+});
