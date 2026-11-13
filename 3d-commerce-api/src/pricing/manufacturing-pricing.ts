@@ -134,7 +134,10 @@ export async function calculateManufacturingPrice(
           throw new BadRequestException('Set a positive model weight in grams for this variant before calculating its material price');
         }
         // pricePerKgMinor is stored in paise; grams / 1000 converts the rate to the model's material cost.
-        return Math.ceil((input.weightGrams / 1000) * materialRule.pricePerKgMinor);
+        // Multiply before dividing and trim floating-point noise before rounding
+        // up: 0.17 * 75000 is 12750.000000000002, which would add a spurious paisa.
+        const exactMinor = (input.weightGrams * materialRule.pricePerKgMinor) / 1000;
+        return Math.ceil(Math.round(exactMinor * 1e6) / 1e6);
       })()
     : materialRule.rawMaterialCostMinor;
   const wastageCostMinor = Math.round(rawMaterialCostMinor * materialRule.wastageRateBps / 10000);

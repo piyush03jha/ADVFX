@@ -163,6 +163,52 @@ describe('calculateManufacturingPrice', () => {
     expect(result.amountMinor).toBe(56980);
   });
 
+  it('does not add a paisa of material cost to floating-point noise (170 g of PLA+ at 750/kg)', async () => {
+    tx.materialPricingRule.findFirst.mockResolvedValue({
+      material: 'PLA+',
+      sizeKey: 'small',
+      currency: 'INR',
+      rawMaterialCostMinor: 0,
+      pricePerKgMinor: 75000,
+      wastageRateBps: 1000,
+      electricityKwhMilli: 0,
+      machineHoursMilli: 0,
+      isActive: true,
+    });
+    tx.sizeManufacturingRule.findUnique.mockResolvedValue({
+      sizeKey: 'small',
+      electricityCostMinor: 1500,
+      machineCostMinor: 3000,
+      labourCostMinor: 0,
+      finishingCostMinor: 7000,
+      platformCostMinor: 8000,
+      packagingCostMinor: 3000,
+    });
+    tx.manufacturingRate.findUnique.mockResolvedValue({
+      id: 'default',
+      electricityRatePerKwhMinor: 0,
+      machineHourlyCostMinor: 0,
+      generalOverheadBps: 1000,
+      profitMarginBps: 4000,
+      defaultLabourCostMinor: 0,
+      standardPackagingCostMinor: 0,
+    });
+
+    const result = await calculateManufacturingPrice(tx, {
+      productId: 'product-1',
+      material: 'PLA+',
+      size: 'Small',
+      variantName: 'Small',
+      weightGrams: 170,
+    });
+
+    expect(result.costBreakdown).toMatchObject({
+      rawMaterialCostMinor: 12750,
+      wastageCostMinor: 1275,
+      directCostMinor: 36525,
+    });
+  });
+
   it('includes the fixed per-size manufacturing costs including platform cost', async () => {
     tx.sizeManufacturingRule.findUnique.mockResolvedValue({
       sizeKey: 'large',
