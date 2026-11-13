@@ -568,7 +568,7 @@ export default function PaymentPage() {
                       <SummaryRow label="Discount" value={"-" + formatQuoteMoney(quote.summary.discountMinor, quote.currency)} positive />
                     ) : null}
                     {quote.summary.taxMinor > 0 ? (
-                      <SummaryRow label="Tax" value={formatQuoteMoney(quote.summary.taxMinor, quote.currency)} />
+                      <SummaryRow label="GST" value={formatQuoteMoney(quote.summary.taxMinor, quote.currency)} />
                     ) : null}
                   </div>
                 ) : null}

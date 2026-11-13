@@ -29,7 +29,7 @@ export class UpsertVariantDto {
   compareAtPrice?: number | null;
 
   /**
-   * Manual selling price for this size in rupees (GST inclusive).
+   * Manual selling price for this size in rupees (excluding GST, which is added at checkout).
    * A number sets the override, null clears it and goes back to the
    * calculated price, undefined leaves it unchanged.
    */

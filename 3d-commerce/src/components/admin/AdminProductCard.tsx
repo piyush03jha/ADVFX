@@ -92,11 +92,11 @@ export default function AdminProductCard({product:p,...props}:Props){const {cate
               <label className="flex h-8 items-center gap-1 rounded-lg border border-border bg-background px-2 text-[10px]"><input name={"sizeCm_"+v.id} defaultValue={Number.isFinite(parseFloat(v.size||""))?String(parseFloat(v.size||"")):""} type="number" min="1" step="0.1" placeholder="Size" aria-label={v.name+" size in cm"} className="w-full min-w-0 bg-transparent outline-none"/><span className="text-muted">cm</span></label>
               <input name={"weightGrams_"+v.id} defaultValue={v.weightGrams==null?"":String(v.weightGrams)} type="number" min="0.01" step="0.01" placeholder="Model weight · grams" className="col-span-2 h-8 rounded-lg border border-border bg-background px-2 text-[10px]"/>
               <div className="col-span-2 rounded-lg border border-border bg-surface px-2 py-2">
-                <p className="text-[9px] text-muted">{v.price?.priceOverrideMinor!=null?"Custom selling price (manual)":"Calculated selling price"} · GST inclusive</p>
+                <p className="text-[9px] text-muted">{v.price?.priceOverrideMinor!=null?"Custom selling price (manual)":"Calculated selling price"} · excl. GST</p>
                 <p className="mt-0.5 text-xs font-semibold">{v.price?.isActive?new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",maximumFractionDigits:2}).format((v.price.amountMinor||0)/100):"Configure manufacturing pricing"}</p>
               </div>
               <label className="col-span-2 block">
-                <span className="text-[9px] text-muted">Override price (₹, GST incl.) · leave blank to use the calculated price</span>
+                <span className="text-[9px] text-muted">Override price (₹, excl. GST) · leave blank to use the calculated price</span>
                 <input name={"override_"+v.id} defaultValue={v.price?.priceOverrideMinor==null?"":String(v.price.priceOverrideMinor/100)} type="number" min="0" step="0.01" placeholder="Auto" className="mt-1 h-8 w-full rounded-lg border border-border bg-background px-2 text-[10px]"/>
               </label>
             </div>

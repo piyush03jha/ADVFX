@@ -67,7 +67,7 @@ describe('PricingService sale campaign integration', () => {
     });
   });
 
-  it('applies campaign discount before coupon, extracts GST from the discounted inclusive price, and rounds INR total', async () => {
+  it('applies campaign discount before coupon, adds GST on the discounted price, and rounds INR total', async () => {
     const result = await service.calculate('user-1', {
       shippingAddressId: 'address-1',
       couponCode: 'save10',
@@ -79,7 +79,7 @@ describe('PricingService sale campaign integration', () => {
       unitPriceMinor: 9600,
       lineTotalMinor: 19200,
       taxRateBps: 1800,
-      taxMinor: 2636,
+      taxMinor: 3110,
       saleSnapshot: {
         baseUnitPriceMinor: 10000,
         saleListUnitPriceMinor: 12000,
@@ -95,9 +95,9 @@ describe('PricingService sale campaign integration', () => {
       saleDiscountMinor: 4800,
       couponDiscountMinor: 1920,
       discountMinor: 6720,
-      taxMinor: 2636,
-      roundingMinor: 20,
-      totalMinor: 17800,
+      taxMinor: 3110,
+      roundingMinor: 10,
+      totalMinor: 20900,
     });
     expect(prisma.shippingRule.findFirst).toHaveBeenCalled();
     expect(prisma.promotion.findFirst).toHaveBeenCalledWith({
@@ -131,6 +131,7 @@ describe('PricingService sale campaign integration', () => {
     expect(result.items[0].unitPriceMinor).toBe(10000);
     expect(result.items[0].saleSnapshot).toBeNull();
     expect(result.summary.saleDiscountMinor).toBe(0);
-    expect(result.summary.totalMinor).toBe(10000);
+    // 10000 + 18% GST
+    expect(result.summary.totalMinor).toBe(11800);
   });
 });

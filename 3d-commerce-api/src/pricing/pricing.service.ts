@@ -2,6 +2,9 @@ import { BadRequestException, Injectable, NotFoundException } from "@nestjs/comm
 import { PrismaService } from "../prisma/prisma.service";
 import { CalculatePricingDto } from "./dto/calculate-pricing.dto";
 
+/** GST charged on top of the product price when the category has no rate of its own. */
+export const DEFAULT_GST_RATE_BPS = 1800;
+
 @Injectable()
 export class PricingService {
   constructor(private readonly prisma: PrismaService) {}
@@ -200,7 +203,7 @@ export class PricingService {
       const lineTotalMinor = unitPriceMinor * item.quantity;
       const saleListLineTotalMinor = saleListUnitPriceMinor * item.quantity;
       const itemSaleDiscountMinor = saleListLineTotalMinor - lineTotalMinor;
-      const taxRateBps = product.category?.gstRateBps ?? 0;
+      const taxRateBps = product.category?.gstRateBps ?? DEFAULT_GST_RATE_BPS;
       subtotalMinor += saleListLineTotalMinor;
       saleDiscountMinor += itemSaleDiscountMinor;
       saleSubtotalMinor += lineTotalMinor;
@@ -216,7 +219,7 @@ export class PricingService {
         material: product.material ?? null,
         size: variant?.size ?? variant?.name ?? null,
         taxRateBps,
-        taxMinor: taxRateBps > 0 ? Math.round(lineTotalMinor * taxRateBps / (10000 + taxRateBps)) : 0,
+        taxMinor: taxRateBps > 0 ? Math.round(lineTotalMinor * taxRateBps / 10000) : 0,
         manufacturingCostSnapshot: variant?.price?.costBreakdown ?? null,
         saleSnapshot: saleApplies ? {
           baseUnitPriceMinor: price.amountMinor,
@@ -350,21 +353,22 @@ export class PricingService {
       };
     }
 
-    // Product prices are tax-inclusive. Extract category GST from the
-    // already displayed price; never add it a second time at checkout.
+    // Product prices exclude GST. GST is charged on the product value after
+    // any coupon discount and added to the total at checkout. Delivery is
+    // added as configured and carries no GST.
     const pricedItems = items.map((item) => {
       const allocatedDiscount = saleSubtotalMinor > 0
         ? Math.floor(discountMinor * item.lineTotalMinor / saleSubtotalMinor)
         : 0;
       const discountedLineMinor = Math.max(0, item.lineTotalMinor - allocatedDiscount);
       const taxMinor = item.taxRateBps > 0
-        ? Math.round(discountedLineMinor * item.taxRateBps / (10000 + item.taxRateBps))
+        ? Math.round(discountedLineMinor * item.taxRateBps / 10000)
         : 0;
       return { ...item, taxMinor };
     });
     const taxMinor = pricedItems.reduce((sum, item) => sum + item.taxMinor, 0);
     const combinedDiscountMinor = saleDiscountMinor + discountMinor;
-    const unroundedTotalMinor = Math.max(0, subtotalMinor + shippingMinor - combinedDiscountMinor);
+    const unroundedTotalMinor = Math.max(0, subtotalMinor + shippingMinor + taxMinor - combinedDiscountMinor);
     const totalMinor = (currency ?? "INR") === "INR"
       ? Math.round(unroundedTotalMinor / 100) * 100
       : unroundedTotalMinor;
@@ -381,7 +385,7 @@ export class PricingService {
     return {
       currency: currency ?? "INR",
       items: pricedItems,
-      taxInclusive: true,
+      taxInclusive: false,
       shippingRule: shipping,
       promotion,
       summary: {

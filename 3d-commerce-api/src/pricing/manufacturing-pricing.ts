@@ -75,13 +75,14 @@ export type ManufacturingPriceResult = {
     profitMarginBps: number;
     profitMarginMinor: number;
     preMarginCostMinor: number;
+    priceBeforeOverheadMinor: number;
     sellingPriceMinor: number;
   };
 };
 
 /**
- * Resolve a product variant's GST-inclusive selling price from the three
- * admin-controlled pricing layers. All inputs are stored in minor currency
+ * Resolve a product variant's selling price (excluding GST and delivery) from
+ * the three admin-controlled pricing layers. All inputs are stored in minor currency
  * units; consumption values are stored in thousandths of kWh / machine hour.
  */
 export async function calculateManufacturingPrice(
@@ -154,15 +155,22 @@ export async function calculateManufacturingPrice(
     rawMaterialCostMinor + wastageCostMinor + electricityCostMinor + machineCostMinor +
     labourCostMinor + paintingCostMinor + finishingCostMinor + machineSetupCostMinor +
     platformCostMinor + packagingCostMinor;
-  const overheadRateBps = globalRate?.generalOverheadBps ?? 0;
-  const overheadCostMinor = Math.round(directCostMinor * overheadRateBps / 10000);
-  const preMarginCostMinor = directCostMinor + overheadCostMinor;
+  // Price build-up, in this order:
+  //   1. material (weight x per-kg rate) + wastage + size-based charges = direct cost
+  //   2. profit margin on top of direct cost
+  //   3. general overhead on top of the margin-inclusive price
+  // The result is the product price shown in the shop. It excludes GST and
+  // delivery, which are added at checkout.
   const profitMarginBps = globalRate?.profitMarginBps ?? 0;
-  // Treat margin as a percentage of the final selling price (gross margin), not a markup on cost.
-  const amountMinor = profitMarginBps > 0
-    ? Math.ceil(preMarginCostMinor * 10000 / (10000 - profitMarginBps))
-    : preMarginCostMinor;
-  const profitMarginMinor = amountMinor - preMarginCostMinor;
+  // Margin is a percentage of the selling price (gross margin), not a markup on cost.
+  const priceBeforeOverheadMinor = profitMarginBps > 0
+    ? Math.ceil(directCostMinor * 10000 / (10000 - profitMarginBps))
+    : directCostMinor;
+  const profitMarginMinor = priceBeforeOverheadMinor - directCostMinor;
+  const overheadRateBps = globalRate?.generalOverheadBps ?? 0;
+  const overheadCostMinor = Math.round(priceBeforeOverheadMinor * overheadRateBps / 10000);
+  const preMarginCostMinor = directCostMinor;
+  const amountMinor = priceBeforeOverheadMinor + overheadCostMinor;
 
   if (!Number.isSafeInteger(amountMinor) || amountMinor <= 0) {
     throw new BadRequestException('Manufacturing pricing must produce a positive selling price');
@@ -194,6 +202,7 @@ export async function calculateManufacturingPrice(
       preMarginCostMinor,
       profitMarginBps,
       profitMarginMinor,
+      priceBeforeOverheadMinor,
       sellingPriceMinor: amountMinor,
     },
   };

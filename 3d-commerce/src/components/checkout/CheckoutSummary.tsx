@@ -104,7 +104,7 @@ export function CheckoutSummary({
           <p className="mt-2 text-xs leading-5 text-error">{quoteError}</p>
         ) : quote ? (
           <div className="mt-3 space-y-2.5 text-sm">
-            <SummaryRow label="Subtotal (GST inclusive)" value={money(quote.summary.subtotalMinor, quote.currency)} />
+            <SummaryRow label="Subtotal (excl. GST)" value={money(quote.summary.subtotalMinor, quote.currency)} />
             <SummaryRow
               label="Shipping"
               value={quote.summary.shippingMinor === 0 ? "FREE" : money(quote.summary.shippingMinor, quote.currency)}
@@ -120,7 +120,7 @@ export function CheckoutSummary({
               <SummaryRow label="Discount" value={`-${money(quote.summary.discountMinor, quote.currency)}`} positive />
             )}
             {quote.summary.taxMinor > 0 && (
-              <SummaryRow label="GST included" value={money(quote.summary.taxMinor, quote.currency)} />
+              <SummaryRow label="GST" value={money(quote.summary.taxMinor, quote.currency)} />
             )}
             {quote.summary.roundingMinor !== undefined && quote.summary.roundingMinor !== 0 && (
               <SummaryRow label="Rounding adjustment" value={money(quote.summary.roundingMinor, quote.currency)} />

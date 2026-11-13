@@ -141,7 +141,7 @@ export function ProductInfo({
         />
       </div>
 
-      <p className="mt-1 text-[10px] text-muted">{product.gstRateBps != null ? `Inclusive of ${(product.gstRateBps / 100).toFixed(2)}% category GST` : "Inclusive of applicable category GST"}</p>
+      <p className="mt-1 text-[10px] text-muted">{`Excludes ${((product.gstRateBps ?? 1800) / 100).toFixed(0)}% GST and delivery, added at checkout`}</p>
 
       {/* ==================================================
           DESCRIPTION

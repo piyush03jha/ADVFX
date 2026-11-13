@@ -50,7 +50,7 @@ describe('calculateManufacturingPrice', () => {
     });
   });
 
-  it('calculates all direct costs, overhead and gross margin using integer minor units', async () => {
+  it('calculates direct costs, then gross margin, then overhead using integer minor units', async () => {
     const result = await calculateManufacturingPrice(tx, {
       productId: 'product-1',
       material: ' resin ',
@@ -78,10 +78,11 @@ describe('calculateManufacturingPrice', () => {
       machineSetupCostMinor: 0,
       packagingCostMinor: 1000,
       directCostMinor: 20000,
-      overheadCostMinor: 2000,
-      preMarginCostMinor: 22000,
+      preMarginCostMinor: 20000,
       profitMarginBps: 2500,
-      profitMarginMinor: 7334,
+      profitMarginMinor: 6667,
+      priceBeforeOverheadMinor: 26667,
+      overheadCostMinor: 2667,
       sellingPriceMinor: 29334,
     });
   });
@@ -109,6 +110,57 @@ describe('calculateManufacturingPrice', () => {
 
     expect(result.costBreakdown.rawMaterialCostMinor).toBe(6000);
     expect(result.costBreakdown.wastageCostMinor).toBe(600);
+  });
+
+  it('prices a 60 g small product: material, wastage, size charges, then 40% margin, then 10% overhead', async () => {
+    tx.materialPricingRule.findFirst.mockResolvedValue({
+      material: 'PETG',
+      sizeKey: 'small',
+      currency: 'INR',
+      rawMaterialCostMinor: 0,
+      pricePerKgMinor: 130000,
+      wastageRateBps: 1000,
+      electricityKwhMilli: 0,
+      machineHoursMilli: 0,
+      isActive: true,
+    });
+    tx.sizeManufacturingRule.findUnique.mockResolvedValue({
+      sizeKey: 'small',
+      electricityCostMinor: 1500,
+      machineCostMinor: 3000,
+      labourCostMinor: 0,
+      finishingCostMinor: 7000,
+      platformCostMinor: 8000,
+      packagingCostMinor: 3000,
+    });
+    tx.manufacturingRate.findUnique.mockResolvedValue({
+      id: 'default',
+      electricityRatePerKwhMinor: 0,
+      machineHourlyCostMinor: 0,
+      generalOverheadBps: 1000,
+      profitMarginBps: 4000,
+      defaultLabourCostMinor: 0,
+      standardPackagingCostMinor: 0,
+    });
+
+    const result = await calculateManufacturingPrice(tx, {
+      productId: 'product-1',
+      material: 'PETG',
+      size: 'Small',
+      variantName: 'Small',
+      weightGrams: 60,
+    });
+
+    expect(result.costBreakdown).toMatchObject({
+      rawMaterialCostMinor: 7800,
+      wastageCostMinor: 780,
+      directCostMinor: 31080,
+      profitMarginMinor: 20720,
+      priceBeforeOverheadMinor: 51800,
+      overheadCostMinor: 5180,
+      sellingPriceMinor: 56980,
+    });
+    expect(result.amountMinor).toBe(56980);
   });
 
   it('includes the fixed per-size manufacturing costs including platform cost', async () => {

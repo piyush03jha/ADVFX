@@ -85,8 +85,8 @@ describe('PricingService', () => {
 
     expect(result.summary.discountMinor).toBe(1000);
     expect(result.summary.shippingMinor).toBe(150);
-    expect(result.summary.taxMinor).toBe(1373);
-    expect(result.summary.totalMinor).toBe(9200);
+    expect(result.summary.taxMinor).toBe(1620);
+    expect(result.summary.totalMinor).toBe(10800);
   });
 
   it('clamps percentage discount to the configured maximum', async () => {
@@ -132,7 +132,9 @@ describe('PricingService', () => {
     });
 
     expect(result.summary.discountMinor).toBe(1000);
-    expect(result.summary.totalMinor).toBe(9000);
+    // 10000 + 18% GST on the discounted 9000 (1620) - 1000 discount = 10620, rounded to the rupee.
+    expect(result.summary.taxMinor).toBe(1620);
+    expect(result.summary.totalMinor).toBe(10600);
   });
 
   it('rejects an exhausted promotion', async () => {
@@ -360,6 +362,67 @@ describe('PricingService', () => {
       await expect(
         quoteFor({ ordersEnabled: true, category: { ordersEnabled: true, parent: { ordersEnabled: false } } }),
       ).rejects.toThrow(/not accepting orders/);
+    });
+  });
+
+  describe('GST is added on top of the product price', () => {
+    const cartWith = (category?: { gstRateBps: number | null }) => ({
+      items: [
+        {
+          quantity: 2,
+          product: {
+            id: 'p1',
+            name: 'Model',
+            status: 'ACTIVE',
+            category,
+            weight: null,
+            prices: [{ amountMinor: 10000, currency: 'INR' }],
+          },
+        },
+      ],
+    });
+
+    beforeEach(() => {
+      prisma.shippingRule.findFirst.mockResolvedValue({
+        id: 'ship-1',
+        name: 'Standard',
+        type: 'FLAT_RATE',
+        amountMinor: 5000,
+        freeAboveMinor: null,
+        countryCode: null,
+        stateCode: null,
+      });
+    });
+
+    it('charges 18% GST on the products only, then adds delivery', async () => {
+      prisma.cart.findUnique.mockResolvedValue(cartWith());
+
+      const result = await service.calculate('user-1', { shippingAddressId: 'addr-1' });
+
+      expect(result.taxInclusive).toBe(false);
+      expect(result.summary.subtotalMinor).toBe(20000);
+      expect(result.summary.taxMinor).toBe(3600);
+      expect(result.summary.shippingMinor).toBe(5000);
+      // 20000 + 3600 GST + 5000 delivery
+      expect(result.summary.totalMinor).toBe(28600);
+    });
+
+    it('uses the category GST rate when one is configured', async () => {
+      prisma.cart.findUnique.mockResolvedValue(cartWith({ gstRateBps: 500 }));
+
+      const result = await service.calculate('user-1', { shippingAddressId: 'addr-1' });
+
+      expect(result.summary.taxMinor).toBe(1000);
+      expect(result.summary.totalMinor).toBe(26000);
+    });
+
+    it('charges no GST for a category explicitly set to 0%', async () => {
+      prisma.cart.findUnique.mockResolvedValue(cartWith({ gstRateBps: 0 }));
+
+      const result = await service.calculate('user-1', { shippingAddressId: 'addr-1' });
+
+      expect(result.summary.taxMinor).toBe(0);
+      expect(result.summary.totalMinor).toBe(25000);
     });
   });
 });
