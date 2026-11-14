@@ -222,7 +222,7 @@ export default function AdminCommerceRulesPage() {
       <section className="mt-8 rounded-3xl border border-border bg-surface p-6 sm:p-7">
         <p className="text-[9px] uppercase tracking-[0.16em] text-primary">Layer 02 · Fixed size costs</p>
         <h2 className="mt-1 text-xl font-semibold">Small, Medium & Large manufacturing costs</h2>
-        <p className="mt-2 text-sm leading-6 text-muted">Set fixed INR costs for each size. These are added to weight-based material cost before overhead and profit margin.</p>
+        <p className="mt-2 text-sm leading-6 text-muted">Set fixed INR costs for each size. These are added to weight-based material cost before the profit markup and overhead.</p>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <select value={sizeForm.sizeKey} onChange={e=>{const sizeKey=e.target.value;const rule=sizeRules.find(item=>item.sizeKey===sizeKey);setSizeForm({sizeKey,electricity:rule?(rule.electricityCostMinor/100).toString():"",machine:rule?(rule.machineCostMinor/100).toString():"",labour:rule?(rule.labourCostMinor/100).toString():"",finishing:rule?(rule.finishingCostMinor/100).toString():"",platform:rule?(rule.platformCostMinor/100).toString():"",packaging:rule?(rule.packagingCostMinor/100).toString():""})}} className={inputClass}><option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option></select>
           <input value={sizeForm.electricity} onChange={e=>setSizeForm({...sizeForm,electricity:e.target.value})} type="number" min="0" step="0.01" placeholder="Electricity cost · ₹" className={inputClass}/>
@@ -256,10 +256,10 @@ export default function AdminCommerceRulesPage() {
         <p className="text-[9px] uppercase tracking-[0.16em] text-primary">Layer 04 · Shared rates</p><h2 className="mt-1 text-xl font-semibold">Global manufacturing pricing</h2><p className="mt-2 text-sm leading-6 text-muted">Only values that apply across every product are configured here. Electricity, machine, labour, finishing, platform and packaging are managed by size in Layer 02.</p>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <input value={globalForm.generalOverheadPercent} onChange={e=>setGlobalForm({...globalForm,generalOverheadPercent:e.target.value})} type="number" min="0" max="100" step="0.01" placeholder="General overhead percentage · e.g. 12" className={inputClass}/>
-          <input value={globalForm.profitMarginPercent} onChange={e=>setGlobalForm({...globalForm,profitMarginPercent:e.target.value})} type="number" min="0" max="80" step="0.01" placeholder="Gross profit margin percentage · e.g. 30" className={inputClass}/>
+          <input value={globalForm.profitMarginPercent} onChange={e=>setGlobalForm({...globalForm,profitMarginPercent:e.target.value})} type="number" min="0" max="80" step="0.01" placeholder="Profit markup on cost (%) · e.g. 40" className={inputClass}/>
         </div>
         <button disabled={saving} type="button" onClick={()=>void saveGlobalRates()} className="mt-4 min-h-11 rounded-full bg-primary px-5 text-xs font-semibold text-white disabled:opacity-50">Save global rates & recalculate catalog</button>
-        <p className="mt-3 text-[11px] leading-5 text-muted">Current global defaults: overhead {(rates.generalOverheadBps/100).toFixed(2)}% · profit margin {(rates.profitMarginBps/100).toFixed(2)}%.</p>
+        <p className="mt-3 text-[11px] leading-5 text-muted">Current global defaults: overhead {(rates.generalOverheadBps/100).toFixed(2)}% · profit markup {(rates.profitMarginBps/100).toFixed(2)}%.</p>
       </section>
 
       <section className="mt-8 rounded-3xl border border-border bg-surface p-6 sm:p-7">

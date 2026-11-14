@@ -160,15 +160,14 @@ export async function calculateManufacturingPrice(
     platformCostMinor + packagingCostMinor;
   // Price build-up, in this order:
   //   1. material (weight x per-kg rate) + wastage + size-based charges = direct cost
-  //   2. profit margin on top of direct cost
+  //   2. profit markup on top of direct cost
   //   3. general overhead on top of the margin-inclusive price
   // The result is the product price shown in the shop. It excludes GST and
   // delivery, which are added at checkout.
   const profitMarginBps = globalRate?.profitMarginBps ?? 0;
-  // Margin is a percentage of the selling price (gross margin), not a markup on cost.
-  const priceBeforeOverheadMinor = profitMarginBps > 0
-    ? Math.ceil(directCostMinor * 10000 / (10000 - profitMarginBps))
-    : directCostMinor;
+  // The profit percentage is a markup on direct cost: 40% means cost x 1.4.
+  // (profitMarginBps keeps its name because it is the stored admin setting.)
+  const priceBeforeOverheadMinor = Math.ceil(directCostMinor * (10000 + profitMarginBps) / 10000);
   const profitMarginMinor = priceBeforeOverheadMinor - directCostMinor;
   const overheadRateBps = globalRate?.generalOverheadBps ?? 0;
   const overheadCostMinor = Math.round(priceBeforeOverheadMinor * overheadRateBps / 10000);

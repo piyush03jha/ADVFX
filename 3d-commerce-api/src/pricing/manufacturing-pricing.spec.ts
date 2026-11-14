@@ -50,7 +50,7 @@ describe('calculateManufacturingPrice', () => {
     });
   });
 
-  it('calculates direct costs, then gross margin, then overhead using integer minor units', async () => {
+  it('calculates direct costs, then profit markup, then overhead using integer minor units', async () => {
     const result = await calculateManufacturingPrice(tx, {
       productId: 'product-1',
       material: ' resin ',
@@ -66,7 +66,7 @@ describe('calculateManufacturingPrice', () => {
       },
     });
     expect(result.currency).toBe('INR');
-    expect(result.amountMinor).toBe(29334);
+    expect(result.amountMinor).toBe(27500);
     expect(result.costBreakdown).toMatchObject({
       rawMaterialCostMinor: 10000,
       wastageCostMinor: 1000,
@@ -80,10 +80,10 @@ describe('calculateManufacturingPrice', () => {
       directCostMinor: 20000,
       preMarginCostMinor: 20000,
       profitMarginBps: 2500,
-      profitMarginMinor: 6667,
-      priceBeforeOverheadMinor: 26667,
-      overheadCostMinor: 2667,
-      sellingPriceMinor: 29334,
+      profitMarginMinor: 5000,
+      priceBeforeOverheadMinor: 25000,
+      overheadCostMinor: 2500,
+      sellingPriceMinor: 27500,
     });
   });
 
@@ -112,7 +112,7 @@ describe('calculateManufacturingPrice', () => {
     expect(result.costBreakdown.wastageCostMinor).toBe(600);
   });
 
-  it('prices a 60 g small product: material, wastage, size charges, then 40% margin, then 10% overhead', async () => {
+  it('prices a 60 g small product: material, wastage, size charges, then 40% markup, then 10% overhead', async () => {
     tx.materialPricingRule.findFirst.mockResolvedValue({
       material: 'PETG',
       sizeKey: 'small',
@@ -155,15 +155,15 @@ describe('calculateManufacturingPrice', () => {
       rawMaterialCostMinor: 7800,
       wastageCostMinor: 780,
       directCostMinor: 31080,
-      profitMarginMinor: 20720,
-      priceBeforeOverheadMinor: 51800,
-      overheadCostMinor: 5180,
-      sellingPriceMinor: 56980,
+      profitMarginMinor: 12432,
+      priceBeforeOverheadMinor: 43512,
+      overheadCostMinor: 4351,
+      sellingPriceMinor: 47863,
     });
-    expect(result.amountMinor).toBe(56980);
+    expect(result.amountMinor).toBe(47863);
   });
 
-  it('does not add a paisa of material cost to floating-point noise (170 g of PLA+ at 750/kg)', async () => {
+  it('prices 170 g of PLA+ at 750/kg without a floating-point paisa: 562.49 with 40% markup and 10% overhead', async () => {
     tx.materialPricingRule.findFirst.mockResolvedValue({
       material: 'PLA+',
       sizeKey: 'small',
@@ -206,7 +206,12 @@ describe('calculateManufacturingPrice', () => {
       rawMaterialCostMinor: 12750,
       wastageCostMinor: 1275,
       directCostMinor: 36525,
+      priceBeforeOverheadMinor: 51135,
+      overheadCostMinor: 5114,
+      sellingPriceMinor: 56249,
     });
+    // 365.25 x 1.4 x 1.1 = 562.485, shown as 562.49.
+    expect(result.amountMinor).toBe(56249);
   });
 
   it('includes the fixed per-size manufacturing costs including platform cost', async () => {

@@ -457,7 +457,7 @@ export class AdminService {
       throw new BadRequestException('General overhead cannot exceed 100%');
     }
     if (input.profitMarginBps > 8000) {
-      throw new BadRequestException('Profit margin cannot exceed 80%');
+      throw new BadRequestException('Profit markup cannot exceed 80%');
     }
     return this.prisma.$transaction(async (tx) => {
       const rates = await tx.manufacturingRate.upsert({
