@@ -35,13 +35,16 @@ export class AdminBulkService {
   async importCsv(actorId: string | undefined, csv: string) {
     const lines = this.parseCsv(csv);
     if (lines.length < 2) throw new BadRequestException('CSV must contain a header and at least one row');
-    const headers = lines[0].map((h) => h.trim().replace(/^\uFEFF/, '').toLowerCase());
+    // Normalise headers so "Sub Category", "sub_category" and "subCategory" all read as "subcategory".
+    // Unnamed columns (e.g. empty price columns exported from a spreadsheet) are ignored.
+    const headers = lines[0].map((h) => h.trim().replace(/^\uFEFF/, '').toLowerCase().replace(/[\s_-]+/g, ''));
     for (const required of ['name', 'slug']) {
       if (!headers.includes(required)) throw new BadRequestException(`CSV header missing: ${required}`);
     }
 
     let created = 0;
     let updated = 0;
+    let categoriesCreated = 0;
     const errors: string[] = [];
     const variants = [
       { name: 'Small', size: '20 cm', header: 'smallprice' },
@@ -60,18 +63,44 @@ export class AdminBulkService {
         const existing = await this.prisma.product.findUnique({ where: { slug }, select: { id: true } });
 
         const categoryValue = row.categoryid || row.category || row.categoryslug;
+        const subcategoryValue = row.subcategory || row.subcategoryslug;
         let categoryId: string | undefined;
         if (categoryValue) {
-          const category = await this.prisma.category.findFirst({
+          // Main category: match by id, slug or name; create it when the CSV names a new one.
+          let category = await this.prisma.category.findFirst({
             where: { OR: [
               { id: categoryValue },
               { slug: categoryValue.toLowerCase() },
+              { slug: this.slugify(categoryValue) },
               { name: { equals: categoryValue, mode: 'insensitive' } },
             ] },
-            select: { id: true },
+            select: { id: true, parentId: true, slug: true },
           });
-          if (!category) throw new Error(`category "${categoryValue}" was not found; use an existing category name or slug`);
+          if (!category) {
+            if (row.categoryid) throw new Error(`category id "${categoryValue}" was not found`);
+            category = await this.prisma.category.create({ data: { name: categoryValue, slug: await this.uniqueCategorySlug(this.slugify(categoryValue)) }, select: { id: true, parentId: true, slug: true } });
+            categoriesCreated++;
+          }
           categoryId = category.id;
+
+          // Subcategory: products are filed under the subcategory (the leaf) so they show in both filters.
+          if (subcategoryValue) {
+            if (category.parentId) throw new Error(`"${categoryValue}" is already a subcategory, so it cannot have the subcategory "${subcategoryValue}"`);
+            let sub = await this.prisma.category.findFirst({
+              where: { parentId: category.id, OR: [
+                { slug: subcategoryValue.toLowerCase() },
+                { slug: this.slugify(subcategoryValue) },
+                { name: { equals: subcategoryValue, mode: 'insensitive' } },
+              ] },
+              select: { id: true },
+            });
+            if (!sub) {
+              const baseSlug = this.slugify(subcategoryValue);
+              sub = await this.prisma.category.create({ data: { name: subcategoryValue, slug: await this.uniqueCategorySlug(baseSlug, category.slug), parentId: category.id }, select: { id: true } });
+              categoriesCreated++;
+            }
+            categoryId = sub.id;
+          }
         }
 
         const textValue = (value?: string) => value?.trim() ? value.trim() : undefined;
@@ -179,8 +208,21 @@ export class AdminBulkService {
       }
     }
 
-    await this.audit.log({ actorId, action: 'PRODUCT_CSV_IMPORT', entityType: 'PRODUCT', summary: `CSV import: ${created} created, ${updated} updated, ${errors.length} errors`, metadata: { created, updated, errors } });
-    return { created, updated, errors };
+    await this.audit.log({ actorId, action: 'PRODUCT_CSV_IMPORT', entityType: 'PRODUCT', summary: `CSV import: ${created} created, ${updated} updated, ${categoriesCreated} categories created, ${errors.length} errors`, metadata: { created, updated, categoriesCreated, errors } });
+    return { created, updated, categoriesCreated, errors };
+  }
+
+  private slugify(value: string): string {
+    return value.toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  }
+
+  // Category slugs are globally unique; fall back to "<parent>-<slug>" and then a counter on a clash.
+  private async uniqueCategorySlug(base: string, parentSlug?: string): Promise<string> {
+    const taken = async (slug: string) => Boolean(await this.prisma.category.findUnique({ where: { slug }, select: { id: true } }));
+    let slug = base || 'category';
+    if (!(await taken(slug))) return slug;
+    if (parentSlug && !(await taken(`${parentSlug}-${slug}`))) return `${parentSlug}-${slug}`;
+    for (let n = 2; ; n++) if (!(await taken(`${slug}-${n}`))) return `${slug}-${n}`;
   }
 
   private parseCsv(csv: string): string[][] {
