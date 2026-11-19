@@ -451,6 +451,32 @@ export default function AdminCategories() {
     }
   }
 
+  async function deletePermanently(c: Category) {
+    const products = c._count?.products ?? 0;
+    const text =
+      'Permanently delete "' + c.name + '"? This cannot be undone.' +
+      (products ? "\n\n" + products + " product(s) in it will NOT be deleted; they will become uncategorized." : "");
+    if (!window.confirm(text)) return;
+
+    setSaving(true);
+
+    try {
+      const r = await fetch("/api/categories/" + c.id + "?permanent=true", { method: "DELETE" });
+      const d = await r.json().catch(() => null);
+
+      if (!r.ok) {
+        throw new Error(d?.message || d?.error || "Unable to delete category");
+      }
+
+      setMessage("Category deleted." + (d?.uncategorizedProducts ? " " + d.uncategorizedProducts + " product(s) are now uncategorized." : ""));
+      await load();
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Unable to delete category");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function remove(id: string, name: string) {
     if (!window.confirm('Deactivate "' + name + '"? Products using it will remain.')) {
       return;
@@ -779,12 +805,21 @@ export default function AdminCategories() {
                   <button
                     onClick={() => void remove(c.id, c.name)}
                     disabled={saving || uploadingId === c.id}
-                    className="rounded-lg border border-red-400/20 p-2 text-red-300"
-                    title="Deactivate category"
+                    className="rounded-lg border border-border p-2 text-muted"
+                    title="Deactivate category (hide it, keep products)"
                   >
-                    <IconTrash size={15} />
+                    <IconX size={15} />
                   </button>
                 )}
+
+                <button
+                  onClick={() => void deletePermanently(c)}
+                  disabled={saving || uploadingId === c.id}
+                  className="rounded-lg border border-red-400/20 p-2 text-red-300"
+                  title="Delete category permanently"
+                >
+                  <IconTrash size={15} />
+                </button>
               </div>
             </article>
           ))

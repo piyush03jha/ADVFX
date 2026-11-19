@@ -401,7 +401,12 @@ export class CategoriesService {
     return { ok: true, dryRun: false, summary: { ...preview, ...result }, errors: [] };
   }
 
-  async remove(id: string) {
+  /**
+   * Default: a category that still holds draft/live products is deactivated, an empty one is deleted.
+   * With `permanent` the category is always deleted; its products stay and simply become uncategorized
+   * (Product.categoryId is SET NULL). Subcategories must be moved or deleted first.
+   */
+  async remove(id: string, permanent = false) {
     // Count every non-archived product so a category that still holds draft or
     // live products is deactivated instead of deleted.
     const category = await this.findOne(id, false);
@@ -411,7 +416,7 @@ export class CategoriesService {
       throw new ConflictException('Move or remove subcategories before deleting this category');
     }
 
-    if (category._count.products > 0) {
+    if (!permanent && category._count.products > 0) {
       return this.prisma.category.update({
         where: { id },
         data: { isActive: false },
@@ -419,6 +424,6 @@ export class CategoriesService {
     }
 
     await this.prisma.category.delete({ where: { id } });
-    return { message: 'Category deleted successfully' };
+    return { message: 'Category deleted successfully', uncategorizedProducts: category._count.products };
   }
 }

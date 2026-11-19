@@ -9,9 +9,9 @@ async function proxy(request:Request,context:{params:Promise<{id:string}>},metho
   if(!token)return NextResponse.json({error:"Authentication is required."},{status:401});
   const {id}=await context.params;
   try{
-    const response=await backendFetch(getBackendApiUrl("categories/"+encodeURIComponent(id)),{method,headers:{Authorization:"Bearer "+token,...(method==="PATCH"?{"Content-Type":"application/json"}:{})},body:method==="PATCH"?await request.text():undefined,cache:"no-store"});
+    const response=await backendFetch(getBackendApiUrl("categories/"+encodeURIComponent(id)+(method==="DELETE"&&new URL(request.url).searchParams.get("permanent")==="true"?"?permanent=true":"")),{method,headers:{Authorization:"Bearer "+token,...(method==="PATCH"?{"Content-Type":"application/json"}:{})},body:method==="PATCH"?await request.text():undefined,cache:"no-store"});
     const data=await response.json().catch(()=>null);
-    if (method === "PATCH" && response.ok) revalidateProductCatalog();
+    if (response.ok) revalidateProductCatalog();
     return NextResponse.json(data??{error:"Category operation failed."},{status:response.status});
   }catch{return NextResponse.json({error:"Category service is unavailable."},{status:503});}
 }

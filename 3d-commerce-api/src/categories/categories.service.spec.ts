@@ -117,7 +117,25 @@ describe('CategoriesService product counts', () => {
     prisma.category.findUnique.mockResolvedValue({ id: 'c1', imageUrl: null, _count: { products: 0 } });
     prisma.category.delete.mockResolvedValue({});
 
-    await expect(service.remove('c1')).resolves.toEqual({ message: 'Category deleted successfully' });
+    await expect(service.remove('c1')).resolves.toEqual({ message: 'Category deleted successfully', uncategorizedProducts: 0 });
     expect(prisma.category.delete).toHaveBeenCalledWith({ where: { id: 'c1' } });
+  });
+
+  it('permanently deletes a category that still holds products when asked, leaving them uncategorized', async () => {
+    prisma.category.findUnique.mockResolvedValue({ id: 'c1', imageUrl: null, _count: { products: 3 } });
+    prisma.category.count.mockResolvedValue(0);
+    prisma.category.delete.mockResolvedValue({});
+
+    await expect(service.remove('c1', true)).resolves.toEqual({ message: 'Category deleted successfully', uncategorizedProducts: 3 });
+    expect(prisma.category.delete).toHaveBeenCalledWith({ where: { id: 'c1' } });
+    expect(prisma.category.update).not.toHaveBeenCalled();
+  });
+
+  it('refuses to permanently delete a category that still has subcategories', async () => {
+    prisma.category.findUnique.mockResolvedValue({ id: 'c1', imageUrl: null, _count: { products: 0 } });
+    prisma.category.count.mockResolvedValue(2);
+
+    await expect(service.remove('c1', true)).rejects.toThrow('Move or remove subcategories');
+    expect(prisma.category.delete).not.toHaveBeenCalled();
   });
 });

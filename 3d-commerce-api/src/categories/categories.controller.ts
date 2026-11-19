@@ -81,7 +81,7 @@ export class CategoriesController {
 
   @UseGuards(AuthGuard, AdminGuard)
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.categoriesService.remove(id);
+  remove(@Param('id') id: string, @Query('permanent') permanent?: string) {
+    return this.categoriesService.remove(id, permanent === 'true');
   }
 }
