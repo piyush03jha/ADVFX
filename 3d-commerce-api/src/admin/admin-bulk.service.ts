@@ -3,6 +3,8 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { AdminAuditService } from './admin-audit.service';
 
+type CategoryRef = { id: string; name: string; slug: string; parentId: string | null };
+
 @Injectable()
 export class AdminBulkService {
   constructor(private readonly prisma: PrismaService, private readonly audit: AdminAuditService) {}
@@ -46,6 +48,9 @@ export class AdminBulkService {
     let updated = 0;
     let categoriesCreated = 0;
     const errors: string[] = [];
+    const notices: string[] = [];
+    // Loaded once and kept in step with categories created during this import, so later rows reuse them.
+    const categories: CategoryRef[] = await this.prisma.category.findMany({ select: { id: true, name: true, slug: true, parentId: true } });
     const variants = [
       { name: 'Small', size: '20 cm', header: 'smallprice' },
       { name: 'Medium', size: '25 cm', header: 'mediumprice' },
@@ -66,19 +71,22 @@ export class AdminBulkService {
         const subcategoryValue = row.subcategory || row.subcategoryslug;
         let categoryId: string | undefined;
         if (categoryValue) {
-          // Main category: match by id, slug or name; create it when the CSV names a new one.
-          let category = await this.prisma.category.findFirst({
-            where: { OR: [
-              { id: categoryValue },
-              { slug: categoryValue.toLowerCase() },
-              { slug: this.slugify(categoryValue) },
-              { name: { equals: categoryValue, mode: 'insensitive' } },
-            ] },
-            select: { id: true, parentId: true, slug: true },
-          });
+          // Main category: match by id, slug, name, or a near-identical name (e.g. "Miniatures & Table Top" ~ "Miniature Tabletop");
+          // only create a new one when nothing similar exists.
+          let category: CategoryRef | undefined;
+          if (row.categoryid) {
+            category = categories.find((c) => c.id === row.categoryid);
+            if (!category) throw new Error(`category id "${categoryValue}" was not found`);
+          } else {
+            const found = this.findCategory(categories, categoryValue, null);
+            category = found?.category;
+            if (found && !found.exact) notices.push(`row ${i + 1}: category "${categoryValue}" matched existing "${found.category.name}"`);
+          }
           if (!category) {
-            if (row.categoryid) throw new Error(`category id "${categoryValue}" was not found`);
-            category = await this.prisma.category.create({ data: { name: categoryValue, slug: await this.uniqueCategorySlug(this.slugify(categoryValue)) }, select: { id: true, parentId: true, slug: true } });
+            const slug = this.uniqueCategorySlug(categories, this.slugify(categoryValue));
+            const made = await this.prisma.category.create({ data: { name: categoryValue, slug }, select: { id: true } });
+            category = { id: made.id, name: categoryValue, slug, parentId: null };
+            categories.push(category);
             categoriesCreated++;
           }
           categoryId = category.id;
@@ -86,17 +94,14 @@ export class AdminBulkService {
           // Subcategory: products are filed under the subcategory (the leaf) so they show in both filters.
           if (subcategoryValue) {
             if (category.parentId) throw new Error(`"${categoryValue}" is already a subcategory, so it cannot have the subcategory "${subcategoryValue}"`);
-            let sub = await this.prisma.category.findFirst({
-              where: { parentId: category.id, OR: [
-                { slug: subcategoryValue.toLowerCase() },
-                { slug: this.slugify(subcategoryValue) },
-                { name: { equals: subcategoryValue, mode: 'insensitive' } },
-              ] },
-              select: { id: true },
-            });
+            const found = this.findCategory(categories, subcategoryValue, category.id);
+            let sub = found?.category;
+            if (found && !found.exact) notices.push(`row ${i + 1}: subcategory "${subcategoryValue}" matched existing "${found.category.name}"`);
             if (!sub) {
-              const baseSlug = this.slugify(subcategoryValue);
-              sub = await this.prisma.category.create({ data: { name: subcategoryValue, slug: await this.uniqueCategorySlug(baseSlug, category.slug), parentId: category.id }, select: { id: true } });
+              const slug = this.uniqueCategorySlug(categories, this.slugify(subcategoryValue), category.slug);
+              const made = await this.prisma.category.create({ data: { name: subcategoryValue, slug, parentId: category.id }, select: { id: true } });
+              sub = { id: made.id, name: subcategoryValue, slug, parentId: category.id };
+              categories.push(sub);
               categoriesCreated++;
             }
             categoryId = sub.id;
@@ -208,8 +213,8 @@ export class AdminBulkService {
       }
     }
 
-    await this.audit.log({ actorId, action: 'PRODUCT_CSV_IMPORT', entityType: 'PRODUCT', summary: `CSV import: ${created} created, ${updated} updated, ${categoriesCreated} categories created, ${errors.length} errors`, metadata: { created, updated, categoriesCreated, errors } });
-    return { created, updated, categoriesCreated, errors };
+    await this.audit.log({ actorId, action: 'PRODUCT_CSV_IMPORT', entityType: 'PRODUCT', summary: `CSV import: ${created} created, ${updated} updated, ${categoriesCreated} categories created, ${errors.length} errors`, metadata: { created, updated, categoriesCreated, errors, notices } });
+    return { created, updated, categoriesCreated, errors, notices };
   }
 
   private slugify(value: string): string {
@@ -217,12 +222,61 @@ export class AdminBulkService {
   }
 
   // Category slugs are globally unique; fall back to "<parent>-<slug>" and then a counter on a clash.
-  private async uniqueCategorySlug(base: string, parentSlug?: string): Promise<string> {
-    const taken = async (slug: string) => Boolean(await this.prisma.category.findUnique({ where: { slug }, select: { id: true } }));
-    let slug = base || 'category';
-    if (!(await taken(slug))) return slug;
-    if (parentSlug && !(await taken(`${parentSlug}-${slug}`))) return `${parentSlug}-${slug}`;
-    for (let n = 2; ; n++) if (!(await taken(`${slug}-${n}`))) return `${slug}-${n}`;
+  private uniqueCategorySlug(categories: CategoryRef[], base: string, parentSlug?: string): string {
+    const taken = (slug: string) => categories.some((c) => c.slug === slug);
+    const slug = base || 'category';
+    if (!taken(slug)) return slug;
+    if (parentSlug && !taken(`${parentSlug}-${slug}`)) return `${parentSlug}-${slug}`;
+    for (let n = 2; ; n++) if (!taken(`${slug}-${n}`)) return `${slug}-${n}`;
+  }
+
+  /** Comparison key: ignores case, spacing, punctuation, "&"/"and", and simple plurals. */
+  private categoryKey(value: string): string {
+    const filler = new Set(['and', 'the', 'of', 'for', 'n']);
+    return value.toLowerCase().replace(/&/g, ' ').split(/[^a-z0-9]+/)
+      .filter((word) => word && !filler.has(word))
+      .map((word) => (word.length > 3 && word.endsWith('s') && !word.endsWith('ss') ? word.slice(0, -1) : word))
+      .join('');
+  }
+
+  private editDistance(a: string, b: string): number {
+    let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+    for (let i = 1; i <= a.length; i++) {
+      const row = [i];
+      for (let j = 1; j <= b.length; j++) row[j] = Math.min(prev[j] + 1, row[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      prev = row;
+    }
+    return prev[b.length];
+  }
+
+  /**
+   * Finds the existing category a CSV value refers to. `parentId` null looks among main categories
+   * (an exact id/slug/name hit on a subcategory is also accepted); otherwise among that parent's subcategories.
+   * `exact` is false when it only matched by similar spelling, so the import can tell the admin.
+   */
+  private findCategory(categories: CategoryRef[], value: string, parentId: string | null): { category: CategoryRef; exact: boolean } | undefined {
+    const text = value.trim();
+    const lower = text.toLowerCase();
+    const slug = this.slugify(text);
+    const key = this.categoryKey(text);
+    const pool = categories.filter((c) => (c.parentId ?? null) === parentId);
+    const isExact = (c: CategoryRef) => c.id === text || c.slug === lower || c.slug === slug || c.name.trim().toLowerCase() === lower;
+    const exact = pool.find(isExact) ?? (parentId === null ? categories.find(isExact) : undefined);
+    if (exact) return { category: exact, exact: true };
+    if (!key) return undefined;
+    const sameKey = pool.find((c) => this.categoryKey(c.name) === key || this.categoryKey(c.slug) === key);
+    if (sameKey) return { category: sameKey, exact: false };
+    if (key.length < 6) return undefined;
+    // Typos: allow roughly one wrong letter per 8, and refuse if two categories are equally close.
+    const maxDistance = Math.max(1, Math.floor(key.length / 8));
+    let best: CategoryRef | undefined;
+    let bestDistance = Infinity;
+    let tied = false;
+    for (const c of pool) {
+      const d = Math.min(this.editDistance(key, this.categoryKey(c.name)), this.editDistance(key, this.categoryKey(c.slug)));
+      if (d < bestDistance) { best = c; bestDistance = d; tied = false; } else if (d === bestDistance) tied = true;
+    }
+    return best && bestDistance <= maxDistance && !tied ? { category: best, exact: false } : undefined;
   }
 
   private parseCsv(csv: string): string[][] {

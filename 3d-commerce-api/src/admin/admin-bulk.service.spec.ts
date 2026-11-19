@@ -10,7 +10,7 @@ describe('AdminBulkService CSV import', () => {
   };
   const prisma = {
     product: { findUnique: jest.fn() },
-    category: { findFirst: jest.fn(), findUnique: jest.fn(), create: jest.fn() },
+    category: { findMany: jest.fn(), create: jest.fn() },
     $transaction: jest.fn(async (callback: (client: typeof tx) => Promise<unknown>) => callback(tx)),
   } as any;
   const audit = { log: jest.fn() } as any;
@@ -20,7 +20,7 @@ describe('AdminBulkService CSV import', () => {
     jest.resetAllMocks();
     prisma.$transaction.mockImplementation(async (callback: (client: typeof tx) => Promise<unknown>) => callback(tx));
     prisma.product.findUnique.mockResolvedValue(null);
-    prisma.category.findFirst.mockResolvedValue({ id: 'cat-1' });
+    prisma.category.findMany.mockResolvedValue([{ id: 'cat-1', name: 'Figures', slug: 'figures', parentId: null }]);
     tx.product.create.mockResolvedValue({ id: 'product-1' });
     tx.product.findUnique.mockResolvedValue({ hasSizes: true, material: null, fixedWeightGrams: null });
     tx.productVariant.findFirst.mockResolvedValue(null);
@@ -36,7 +36,7 @@ describe('AdminBulkService CSV import', () => {
       'name,slug,description,category,price,smallprice,mediumprice,largeprice\n' +
       'Test Figure,test-figure,"A detailed, hand-painted figure",Figures,199,99,199,299');
 
-    expect(result).toEqual({ created: 1, updated: 0, categoriesCreated: 0, errors: [] });
+    expect(result).toEqual({ created: 1, updated: 0, categoriesCreated: 0, errors: [], notices: [] });
     expect(tx.product.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
         name: 'Test Figure',
@@ -68,30 +68,60 @@ describe('AdminBulkService CSV import', () => {
     }));
   });
 
+  const MAIN = { id: 'main-1', name: 'Miniature Tabletop', slug: 'miniature-tabletop', parentId: null };
+  const SUB = { id: 'sub-1', name: 'Famous Characters', slug: 'famous-characters', parentId: 'main-1' };
+  const csvFor = (category: string, sub = 'Famous Characters') =>
+    'Name,Slug,Description,Category,Sub Category,,,Material\n' + `Shah Rukh Khan,shah-rukh-khan,"A bust, with a comma",${category},${sub},,,PLA`;
+
   it('creates a missing category instead of failing the row', async () => {
-    prisma.category.findFirst.mockResolvedValue(null);
-    prisma.category.findUnique.mockResolvedValue(null);
-    prisma.category.create.mockResolvedValue({ id: 'new-cat', parentId: null, slug: 'missing' });
+    prisma.category.create.mockResolvedValue({ id: 'new-cat' });
     const result = await service.importCsv('admin-1', 'name,slug,category\nTest,test,Missing');
-    expect(result).toEqual({ created: 1, updated: 0, categoriesCreated: 1, errors: [] });
+    expect(result).toMatchObject({ created: 1, categoriesCreated: 1, errors: [] });
     expect(tx.product.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ categoryId: 'new-cat' }) }));
   });
 
-  it('imports the catalog CSV shape: "Sub Category" header, blank columns, files product under the subcategory', async () => {
-    prisma.category.findUnique.mockResolvedValue(null);
-    prisma.category.findFirst
-      .mockResolvedValueOnce({ id: 'main-1', parentId: null, slug: 'miniatures-and-table-top' })
-      .mockResolvedValueOnce(null);
-    prisma.category.create.mockResolvedValue({ id: 'sub-1' });
-    const result = await service.importCsv('admin-1',
-      'Name,Slug,Description,Category,Sub Category,,,Material\n' +
-      'Shah Rukh Khan,shah-rukh-khan,"A bust, with a comma",Miniatures & Table Top,Famous Characters,,,PLA');
-    expect(result).toEqual({ created: 1, updated: 0, categoriesCreated: 1, errors: [] });
+  it('imports the catalog CSV shape and files the product under the existing subcategory', async () => {
+    prisma.category.findMany.mockResolvedValue([MAIN, SUB]);
+    const result = await service.importCsv('admin-1', csvFor('Miniature Tabletop'));
+    expect(result).toEqual({ created: 1, updated: 0, categoriesCreated: 0, errors: [], notices: [] });
+    expect(prisma.category.create).not.toHaveBeenCalled();
+    expect(tx.product.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ categoryId: 'sub-1', material: 'PLA' }) }));
+  });
+
+  it.each(['Miniatures & Table Top', 'Miniature aTable Top', 'miniature table-top', 'MINIATURE TABLETOP '])(
+    'reuses the existing category for the similar name "%s"', async (name) => {
+      prisma.category.findMany.mockResolvedValue([MAIN, SUB]);
+      const result = await service.importCsv('admin-1', csvFor(name));
+      expect(prisma.category.create).not.toHaveBeenCalled();
+      expect(result.categoriesCreated).toBe(0);
+      expect(tx.product.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ categoryId: 'sub-1' }) }));
+    });
+
+  it('tells the admin when a name was matched by similarity', async () => {
+    prisma.category.findMany.mockResolvedValue([MAIN, SUB]);
+    const result = await service.importCsv('admin-1', csvFor('Miniature aTable Top', 'Famous Character'));
+    expect(result.notices).toEqual([
+      'row 2: category "Miniature aTable Top" matched existing "Miniature Tabletop"',
+      'row 2: subcategory "Famous Character" matched existing "Famous Characters"',
+    ]);
+  });
+
+  it('creates the subcategory under the matched main category when it is genuinely new', async () => {
+    prisma.category.findMany.mockResolvedValue([MAIN]);
+    prisma.category.create.mockResolvedValue({ id: 'sub-new' });
+    const result = await service.importCsv('admin-1', csvFor('Miniatures & Table Top', 'Sports Stars'));
+    expect(result.categoriesCreated).toBe(1);
     expect(prisma.category.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ name: 'Famous Characters', slug: 'famous-characters', parentId: 'main-1' }),
+      data: expect.objectContaining({ name: 'Sports Stars', slug: 'sports-stars', parentId: 'main-1' }),
     }));
-    expect(tx.product.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ categoryId: 'sub-1', material: 'PLA' }),
-    }));
+  });
+
+  it('does not merge genuinely different categories, and reuses a category created earlier in the same file', async () => {
+    prisma.category.findMany.mockResolvedValue([MAIN]);
+    prisma.category.create.mockResolvedValue({ id: 'new-1' });
+    const result = await service.importCsv('admin-1',
+      'name,slug,category\nA,a,Board Games\nB,b,Board Games\nC,c,Miniature Vehicles');
+    expect(result.created).toBe(3);
+    expect(prisma.category.create).toHaveBeenCalledTimes(2);
   });
 });
