@@ -13,6 +13,8 @@ import { randomBytes } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { StorageService } from "../storage/storage.service";
+import { ShippingService } from "../shipping/shipping.service";
+import { DEFAULT_GST_RATE_BPS } from "../pricing/pricing.service";
 import { CreateCustomRequestDto } from "./dto/create-custom-request.dto";
 import { CustomPricingDto } from "./dto/custom-pricing.dto";
 
@@ -45,6 +47,7 @@ export class CustomBuildService {
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
     private readonly storage: StorageService,
+    private readonly shipping: ShippingService,
   ) {}
 
   async quote(input: CustomPricingInput) {
@@ -222,6 +225,28 @@ export class CustomBuildService {
     return updated;
   }
 
+  async checkoutQuote(userId: string, requestId: string, shippingAddressId: string) {
+    const request = await this.prisma.customRequest.findFirst({ where: { id: requestId, userId } });
+    if (!request) throw new NotFoundException("Custom request not found");
+    if (!request.priceMinor || request.priceMinor <= 0 || request.priceCurrency !== "INR") {
+      throw new BadRequestException("Custom request is missing a valid INR price");
+    }
+    const address = await this.prisma.address.findFirst({ where: { id: shippingAddressId, userId } });
+    if (!address) throw new NotFoundException("Shipping address not found");
+    const postalCode = address.postalCode?.trim().toUpperCase();
+    if (postalCode) {
+      const zone = await this.prisma.deliveryZone.findUnique({ where: { postalCode }, select: { active: true, coverage: true } });
+      if (zone?.active && zone.coverage === "NOT_DELIVERED") throw new BadRequestException("We currently do not deliver to postal code " + postalCode);
+    }
+    const subtotalMinor = request.priceMinor;
+    // Custom builds do not currently store a measured weight; weight-based rules
+    // cannot be estimated accurately, so zero is passed until weight is available.
+    const shipping = await this.shipping.quote({ subtotalMinor, weightGrams: 0, country: address.country || "IN", state: address.state || "" });
+    const taxMinor = Math.round(subtotalMinor * DEFAULT_GST_RATE_BPS / 10000);
+    const shippingMinor = shipping.amountMinor;
+    return { currency: "INR", subtotalMinor, shippingMinor, taxMinor, totalMinor: subtotalMinor + shippingMinor + taxMinor, gstRateBps: DEFAULT_GST_RATE_BPS, shipping };
+  }
+
   async checkout(
     userId: string,
     requestId: string,
@@ -272,12 +297,26 @@ export class CustomBuildService {
         },
       });
       if (linkedOrder?.status === "PENDING_PAYMENT") {
+        // Recalculate tax and delivery when the address or shipping rules change.
+        const totals = await this.checkoutQuote(userId, requestId, shippingAddressId);
+        if (linkedOrder.payment?.providerOrderId) {
+          if (linkedOrder.shippingAddressId !== address.id || linkedOrder.totalMinor !== totals.totalMinor) {
+            throw new ConflictException("Payment has already been prepared. Please contact support to change the delivery address or total.");
+          }
+          return { requestId: request.id, order: linkedOrder };
+        }
         // Reuse the unpaid order, but honour the address picked on this attempt.
-        if (linkedOrder.shippingAddressId !== address.id) {
+        if (linkedOrder.shippingAddressId !== address.id || linkedOrder.totalMinor !== totals.totalMinor) {
           const updated = await this.prisma.order.update({
             where: { id: linkedOrder.id },
             data: {
               shippingAddressId: address.id,
+              subtotalMinor: totals.subtotalMinor,
+              shippingMinor: totals.shippingMinor,
+              taxMinor: totals.taxMinor,
+              totalMinor: totals.totalMinor,
+              shippingRuleId: totals.shipping.ruleId,
+              payment: { update: { amountMinor: totals.totalMinor } },
               shippingAddressSnapshot: {
                 fullName: address.fullName,
                 phone: address.phone,
@@ -307,7 +346,8 @@ export class CustomBuildService {
       }
     }
 
-    const amountMinor = request.priceMinor;
+    const totals = await this.checkoutQuote(userId, requestId, shippingAddressId);
+    const amountMinor = totals.totalMinor;
     const idempotency = idempotencyKey?.trim() || undefined;
 
     if (idempotency) {
@@ -331,11 +371,12 @@ export class CustomBuildService {
         userId,
         status: "PENDING_PAYMENT",
         currency: request.priceCurrency,
-        subtotalMinor: amountMinor,
+        subtotalMinor: totals.subtotalMinor,
         discountMinor: 0,
-        shippingMinor: 0,
-        taxMinor: 0,
-        totalMinor: amountMinor,
+        shippingMinor: totals.shippingMinor,
+        taxMinor: totals.taxMinor,
+        totalMinor: totals.totalMinor,
+        shippingRuleId: totals.shipping.ruleId,
         shippingAddressId: address.id,
         shippingAddressSnapshot: {
           fullName: address.fullName,
