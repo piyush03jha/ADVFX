@@ -241,6 +241,9 @@ export class CustomBuildService {
     const subtotalMinor = request.priceMinor;
     // Weight-based shipping is reserved for regular catalog checkout.
     const shipping = await this.shipping.quote({ subtotalMinor, weightGrams: 0, excludeWeightBased: true, country: address.country || "IN", state: address.state || "" });
+    if (!shipping.ruleId) {
+      throw new BadRequestException("Custom delivery charges are not configured for this address. Please contact support or choose another delivery address.");
+    }
     const taxMinor = Math.round(subtotalMinor * DEFAULT_GST_RATE_BPS / 10000);
     const shippingMinor = shipping.amountMinor;
     return { currency: "INR", subtotalMinor, shippingMinor, taxMinor, totalMinor: subtotalMinor + shippingMinor + taxMinor, gstRateBps: DEFAULT_GST_RATE_BPS, shipping };
