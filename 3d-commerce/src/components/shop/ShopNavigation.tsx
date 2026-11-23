@@ -10,6 +10,16 @@ import { getActiveMainCategory, getMainCategories, getSubcategories } from "@/li
 // (see ShopListing). Remember the rail position outside the component so the
 // rail does not jump back to the first card every time a card is picked.
 let savedRailScroll = 0;
+const RAIL_SCROLL_KEY = "voxel-shop-category-rail-scroll";
+
+function rememberRailScroll(value: number) {
+  savedRailScroll = value;
+  try {
+    window.sessionStorage.setItem(RAIL_SCROLL_KEY, String(value));
+  } catch {
+    // The in-memory value still preserves the position if storage is unavailable.
+  }
+}
 
 interface ShopNavigationProps {
   categories: ShopCategory[];
@@ -34,7 +44,23 @@ export function ShopNavigation({
 
   useLayoutEffect(() => {
     const rail = railRef.current;
-    if (rail && savedRailScroll > 0) rail.scrollLeft = savedRailScroll;
+    if (!rail) return;
+
+    let savedPosition = savedRailScroll;
+    try {
+      const storedPosition = window.sessionStorage.getItem(RAIL_SCROLL_KEY);
+      if (storedPosition !== null) {
+        const parsedPosition = Number(storedPosition);
+        if (Number.isFinite(parsedPosition) && parsedPosition >= 0) {
+          savedPosition = parsedPosition;
+        }
+      }
+    } catch {
+      // Fall back to the in-memory position.
+    }
+
+    rail.scrollLeft = savedPosition;
+    rememberRailScroll(savedPosition);
   }, []);
 
   // Mouse users cannot swipe the hidden-scrollbar rail, so desktop gets arrows.
@@ -65,7 +91,7 @@ export function ShopNavigation({
         </button>
       <div
         ref={railRef}
-        onScroll={(event) => { savedRailScroll = event.currentTarget.scrollLeft; }}
+        onScroll={(event) => rememberRailScroll(event.currentTarget.scrollLeft)}
         className="-mx-3 flex w-full min-w-0 flex-nowrap items-stretch gap-3 overflow-x-auto px-3 pb-2 desk:mx-0 desk:w-auto desk:flex-1 desk:px-0 [mask-image:linear-gradient(to_right,black_calc(100%-28px),transparent)] [scrollbar-width:none] desk:[mask-image:none] [&::-webkit-scrollbar]:hidden"
         aria-label="Main categories"
       >
@@ -89,7 +115,10 @@ export function ShopNavigation({
             <CategoryCard
               key={category.id}
               active={active}
-              onClick={() => onCategoryChange(category.slug)}
+              onClick={() => {
+                if (railRef.current) rememberRailScroll(railRef.current.scrollLeft);
+                onCategoryChange(category.slug);
+              }}
               label={category.name}
             >
               {image ? (
