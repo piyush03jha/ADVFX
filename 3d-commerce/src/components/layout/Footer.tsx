@@ -147,7 +147,7 @@ export function Footer() {
 
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <p className="max-w-[280px] text-[8px] uppercase leading-4 tracking-[0.1em] text-muted-foreground sm:max-w-none sm:text-[9px]">
-              © {currentYear} Voxel3D Studios Pvt. Ltd. All rights reserved.
+              © {currentYear} VOXEL 3D. CRAFTED WITH PRECISION.
             </p>
 
             <div className="flex flex-wrap gap-x-4 gap-y-2 sm:gap-x-5">
