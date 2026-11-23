@@ -189,6 +189,13 @@ describe('CustomBuildService', () => {
       }));
     });
 
+    it('blocks payment if no non-weight delivery rule is configured', async () => {
+      prisma.customRequest.findFirst.mockResolvedValue(baseRequest);
+      shipping.quote.mockResolvedValueOnce({ amountMinor: 0, ruleId: null, currency: 'INR' });
+      await expect(service.checkoutQuote('u1', 'r1', 'a2')).rejects.toThrow(/not configured for this address/);
+      expect(prisma.order.create).not.toHaveBeenCalled();
+    });
+
     it('refuses to start a second payment once the request is in production', async () => {
       prisma.customRequest.findFirst.mockResolvedValue({ ...baseRequest, status: 'IN_PRODUCTION', orderId: 'o1' });
 
