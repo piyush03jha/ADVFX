@@ -237,9 +237,7 @@ export class CustomBuildFilesController {
         ? 'image/png'
         : null;
     const isPreview = download !== '1' && inlineType !== null;
-    const filename = file.originalName
-      .replace(/[\\/\\\\\\r\\n"\\x00-\\x1f\\x7f]/g, '_')
-      .slice(0, 160) || 'customer-reference';
+    const filename = file.originalName.replace(/[^a-zA-Z0-9._ -]/g, '_').slice(0, 160) || 'customer-reference';
     const dispositionName = encodeURIComponent(filename);
 
     try {
