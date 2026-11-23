@@ -1,12 +1,22 @@
 import {
+  BadGatewayException,
   BadRequestException,
   Controller,
+  Get,
+  HttpException,
+  Logger,
+  NotFoundException,
   Param,
   Post,
+  Query,
   Req,
+  Res,
+  StreamableFile,
   UseGuards,
 } from '@nestjs/common';
-import type { FastifyRequest } from 'fastify';
+import type { FastifyReply, FastifyRequest } from 'fastify';
+import { AuthGuard } from '../auth/guards/auth.guard';
+import { AdminGuard } from '../auth/guards/admin.guard';
 import { CustomerAuthGuard } from '../auth/guards/customer-auth.guard';
 import { PrismaService } from '../prisma/prisma.service';
 import { FileContentValidationService } from '../product-files/file-content-validation.service';
@@ -47,6 +57,8 @@ function extensionOf(filename: string): string {
 
 @Controller('custom-requests/:requestId/files')
 export class CustomBuildFilesController {
+  private readonly logger = new Logger(CustomBuildFilesController.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
@@ -196,6 +208,56 @@ export class CustomBuildFilesController {
         });
       }
       throw error;
+    }
+  }
+
+  /**
+   * Private customer references must only be read by authenticated admins.
+   * Use a DB-scoped media id rather than accepting an arbitrary storage key.
+   * Images can be previewed in the admin; 3D files are downloaded.
+   */
+  @UseGuards(AuthGuard, AdminGuard)
+  @Get(':fileId')
+  async readAdminFile(
+    @Param('requestId') requestId: string,
+    @Param('fileId') fileId: string,
+    @Query('download') download: string | undefined,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
+    const file = await this.prisma.customRequestMedia.findFirst({
+      where: { id: fileId, customRequestId: requestId },
+      select: { id: true, originalName: true, mimeType: true, storageKey: true },
+    });
+    if (!file) throw new NotFoundException('Reference file not found');
+
+    const extension = extensionOf(file.originalName);
+    const inlineType = extension === 'jpg' || extension === 'jpeg'
+      ? 'image/jpeg'
+      : extension === 'png'
+        ? 'image/png'
+        : null;
+    const isPreview = download !== '1' && inlineType !== null;
+    const filename = file.originalName.replace(/[^a-zA-Z0-9._ -]/g, '_').slice(0, 160) || 'customer-reference';
+    const dispositionName = encodeURIComponent(filename);
+
+    try {
+      const { stream, size } = await this.storage.openReadStream(file.storageKey);
+      reply.header('Cache-Control', 'private, no-store');
+      reply.header('X-Content-Type-Options', 'nosniff');
+      if (typeof size === 'number' && Number.isSafeInteger(size) && size >= 0) {
+        reply.header('Content-Length', size);
+      }
+      return new StreamableFile(stream, {
+        type: isPreview ? inlineType : 'application/octet-stream',
+        disposition: `${isPreview ? 'inline' : 'attachment'}; filename*=UTF-8''${dispositionName}`,
+      });
+    } catch (error) {
+      if (error instanceof HttpException && error.getStatus() < 500) throw error;
+      this.logger.error(
+        `Unable to read customer reference file ${fileId} for request ${requestId}`,
+        error instanceof Error ? error.stack : String(error),
+      );
+      throw new BadGatewayException('Unable to retrieve reference file from storage');
     }
   }
 
