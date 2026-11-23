@@ -3,6 +3,7 @@ import { ShippingRuleType } from '@prisma/client';
 export interface ShippingQuoteContext {
   subtotalMinor: number;
   weightGrams: number;
+  excludeWeightBased?: boolean;
   country: string;
   state: string;
 }
