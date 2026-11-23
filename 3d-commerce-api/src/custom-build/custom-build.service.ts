@@ -146,6 +146,17 @@ export class CustomBuildService {
   async createConfigCategory(data: { slug: string; name: string; description?: string; basePriceMinor?: number; sortOrder?: number; isActive?: boolean }) {
     return this.prisma.customBuildCategory.create({ data: { slug: data.slug.trim().toLowerCase(), name: data.name.trim(), description: data.description?.trim() || null, basePriceMinor: data.basePriceMinor ?? 0, sortOrder: data.sortOrder ?? 0, isActive: data.isActive !== false } });
   }
+  async deleteConfigCategory(id: string) {
+    const category = await this.prisma.customBuildCategory.findUnique({ where: { id }, select: { id: true, slug: true } });
+    if (!category) throw new NotFoundException("Custom category not found");
+    const requestCount = await this.prisma.customRequest.count({ where: { category: category.slug } });
+    if (requestCount > 0) {
+      // Preserve historical custom requests and their category configuration.
+      throw new ConflictException("This category has existing custom orders. Deactivate it instead of deleting it.");
+    }
+    return this.prisma.customBuildCategory.delete({ where: { id } });
+  }
+
   async updateConfigCategory(id: string, dto: UpdateCustomBuildCategoryDto) { return this.prisma.customBuildCategory.update({ where: { id }, data: dto }); }
   async createConfigOption(categoryId: string, dto: CreateCustomBuildOptionDto) { return this.prisma.customBuildOption.create({ data: { ...dto, categoryId, priceMinor: dto.priceMinor ?? 0, sortOrder: dto.sortOrder ?? 0, isActive: dto.isActive !== false } }); }
   async updateConfigOption(id: string, dto: UpdateCustomBuildOptionDto) { return this.prisma.customBuildOption.update({ where: { id }, data: dto }); }
