@@ -14,6 +14,8 @@ import { Container } from "@/components/ui/Container";
 import { useAddresses, type Address } from "@/context/AddressContext";
 import { createRazorpayOrder, verifyRazorpayPayment, getCheckoutOrderStatus, isUnpayableOrderError } from "@/lib/payment-api";
 
+type CheckoutQuote = { currency: string; subtotalMinor: number; shippingMinor: number; taxMinor: number; totalMinor: number; shipping: { label: string; ruleId: string | null } };
+
 type CustomRequest = {
   id: string;
   title: string;
@@ -45,6 +47,9 @@ function CustomPaymentPageContent() {
   const [idempotencyKey, setIdempotencyKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [checkoutReady, setCheckoutReady] = useState(false);
+  const [checkoutQuote, setCheckoutQuote] = useState<CheckoutQuote | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!requestId) {
@@ -85,11 +90,29 @@ function CustomPaymentPageContent() {
   );
 
   const amountMinor = request?.priceMinor ?? 0;
+  useEffect(() => {
+    if (!requestId || !selectedAddressId || !request) { setCheckoutQuote(null); return; }
+    let cancelled = false;
+    setCheckoutQuote(null);
+    setQuoteLoading(true);
+    setQuoteError(null);
+    void fetch(`/api/custom-requests/${encodeURIComponent(requestId)}/checkout-quote`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ shippingAddressId: selectedAddressId }), cache: "no-store",
+    }).then(async response => {
+      const data = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(Array.isArray(data?.message) ? data.message[0] : data?.message ?? data?.error ?? "Unable to calculate delivery and GST.");
+      return data as CheckoutQuote;
+    }).then(data => { if (!cancelled) setCheckoutQuote(data); })
+      .catch(cause => { if (!cancelled) setQuoteError(cause instanceof Error ? cause.message : "Unable to calculate checkout."); })
+      .finally(() => { if (!cancelled) setQuoteLoading(false); });
+    return () => { cancelled = true; };
+  }, [requestId, selectedAddressId, request]);
   const currency = request?.priceCurrency ?? "INR";
   const alreadyPaid = request?.status === "IN_PRODUCTION";
 
   const handlePay = async () => {
-    if (!request || alreadyPaid || !selectedAddressId || !checkoutReady || amountMinor <= 0) return;
+    if (!request || alreadyPaid || !selectedAddressId || !checkoutReady || !checkoutQuote || quoteLoading || amountMinor <= 0) return;
     if (paymentState === "creating" || paymentState === "awaiting_payment" || paymentState === "verifying" || paymentState === "pending" || paymentState === "confirmed") return;
 
     setProcessing(true);
@@ -126,8 +149,8 @@ function CustomPaymentPageContent() {
 
       const order = checkoutBody.order;
       setPaymentOrderId(order.id);
-      if (order.totalMinor !== amountMinor || order.currency !== currency) {
-        throw new Error("The custom price changed. Please return to the custom builder and refresh.");
+      if (order.totalMinor !== checkoutQuote.totalMinor || order.currency !== currency) {
+        throw new Error("The custom checkout total changed. Refresh the delivery quote and try again.");
       }
 
       const razorpayOrder = await createRazorpayOrder(order.id);
@@ -343,10 +366,18 @@ function CustomPaymentPageContent() {
                   <Row label="References" value={String(request?.referenceFileCount ?? 0)} />
                 </div>
 
+                <div className="mt-5 space-y-3 border-b border-border pb-5 text-xs">
+                  <Row label="Custom product" value={`₹${(amountMinor / 100).toLocaleString("en-IN")}`} />
+                  <Row label="GST (18%)" value={checkoutQuote ? `₹${(checkoutQuote.taxMinor / 100).toLocaleString("en-IN")}` : "—"} />
+                  <Row label="Delivery" value={checkoutQuote ? (checkoutQuote.shipping.ruleId === null ? "Not configured" : checkoutQuote.shippingMinor ? `₹${(checkoutQuote.shippingMinor / 100).toLocaleString("en-IN")}` : "Free") : "—"} />
+                  {checkoutQuote?.shipping?.ruleId === null ? <p className="text-muted">No eligible custom-order shipping rule matched. Delivery is currently quoted at ₹0; please confirm the charge before paying.</p> : null}
+                  {quoteLoading ? <p className="text-muted">Calculating delivery and GST…</p> : null}
+                  {quoteError ? <p className="text-error">{quoteError}</p> : null}
+                </div>
                 <div className="mt-5 flex items-end justify-between gap-4">
                   <div>
                     <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Total</p>
-                    <p className="mt-1 text-3xl font-semibold">₹{(amountMinor / 100).toLocaleString("en-IN")}</p>
+                    <p className="mt-1 text-3xl font-semibold">₹{((checkoutQuote?.totalMinor ?? 0) / 100).toLocaleString("en-IN")}</p>
                   </div>
                   <span className="text-[11px] text-muted">Manufacturing order</span>
                 </div>
@@ -361,11 +392,11 @@ function CustomPaymentPageContent() {
                   <Button
                     type="button"
                     size="lg"
-                    disabled={!selectedAddressId || processing || paymentState === "pending" || paymentState === "confirmed" || !checkoutReady || !request || amountMinor <= 0}
+                    disabled={!selectedAddressId || processing || paymentState === "pending" || paymentState === "confirmed" || !checkoutReady || !checkoutQuote || quoteLoading || !request || amountMinor <= 0}
                     onClick={() => void handlePay()}
                     className="mt-6 w-full"
                   >
-                    {paymentState === "pending" ? "Confirming payment…" : paymentState === "confirmed" ? "Payment confirmed" : processing ? "Preparing payment…" : !checkoutReady ? "Loading payment…" : `Pay ₹${(amountMinor / 100).toLocaleString("en-IN")}`}
+                    {paymentState === "pending" ? "Confirming payment…" : paymentState === "confirmed" ? "Payment confirmed" : processing ? "Preparing payment…" : !checkoutReady ? "Loading payment…" : `Pay ₹${((checkoutQuote?.totalMinor ?? 0) / 100).toLocaleString("en-IN")}`}
                   </Button>
                 )}
 

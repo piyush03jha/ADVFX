@@ -475,15 +475,21 @@ export class OrdersService {
     const allowed = ORDER_TRANSITIONS[order.status];
     if (!allowed.includes(status)) throw new BadRequestException(`Cannot change order from ${order.status} to ${status}`);
 
-    const wasPaid = PAID_STATUSES.includes(order.status);
     const hasCapturedPayment = order.payment?.status === 'CAPTURED';
 
-    if (status === 'CANCELLED' && wasPaid && hasCapturedPayment) {
-      // Cancelling here would leave a paid customer with no refund and no
-      // order. Route through REFUNDED instead, which actually returns the
-      // money (below).
+    if (status === 'CANCELLED' && hasCapturedPayment) {
+      // A captured payment must never be labelled cancelled without a refund,
+      // even if an asynchronous capture has not updated the Order status yet.
       throw new BadRequestException(
-        'This order has a captured payment. Use REFUNDED to cancel and refund it.',
+        'Payment has already been captured. Refund the payment before closing this order.',
+      );
+    }
+    if (status === 'CANCELLED' && order.payment?.providerOrderId) {
+      // Provider orders can still capture after the admin clicks cancel.
+      // Automatic payment expiry checks Razorpay and reconciles any capture;
+      // do not declare a payment failed while a provider order is outstanding.
+      throw new ConflictException(
+        'A payment attempt has started. This order cannot be manually cancelled until the payment window closes and payment reconciliation finishes.',
       );
     }
 
@@ -505,7 +511,7 @@ export class OrdersService {
       // before mutating order, payment or shipment state.
       // Capture reconciliation locks Payment before Order. Refund transitions
       // follow the same lock order so they cannot deadlock with a capture webhook.
-      if (status === 'REFUNDED') {
+      if (status === 'REFUNDED' || status === 'CANCELLED') {
         await tx.$queryRaw<Array<{ id: string }>>(
           Prisma.sql`SELECT "id" FROM "Payment" WHERE "orderId" = ${id} FOR UPDATE`,
         );
@@ -563,8 +569,22 @@ export class OrdersService {
       }
 
       if (status === 'CANCELLED') {
+        const payment = await tx.payment.findUnique({ where: { orderId: id } });
+        if (payment && (
+          payment.providerOrderId ||
+          payment.status === PaymentStatus.CAPTURED ||
+          payment.status === PaymentStatus.AUTHORIZED ||
+          payment.status === PaymentStatus.CREATING ||
+          payment.status === PaymentStatus.REFUND_PENDING ||
+          payment.status === PaymentStatus.REFUNDED
+        )) {
+          throw new ConflictException('Payment is active or already settled. Reconcile or refund the payment before cancelling the order.');
+        }
         if (order.status === OrderStatus.PENDING_PAYMENT && order.promotionId) {
           await this.releasePromotionUsage(tx, order.promotionId);
+        }
+        if (payment && (payment.status === PaymentStatus.PENDING || payment.status === PaymentStatus.FAILED)) {
+          await tx.payment.update({ where: { id: payment.id }, data: { status: PaymentStatus.FAILED } });
         }
       }
 
@@ -596,7 +616,23 @@ export class OrdersService {
         REFUNDED: NotificationType.ORDER_REFUNDED,
       };
       const type = typeByStatus[status];
-      if (type) await this.notifications.create(updated.userId, { type, title: `Order ${status.toLowerCase()}`, message: `Order ${updated.orderNumber} is now ${status.toLowerCase()}.`, entityType: 'ORDER', entityId: updated.id });
+      if (type) {
+        try {
+          await this.notifications.create(updated.userId, {
+            type,
+            title: `Order ${status.toLowerCase()}`,
+            message: `Order ${updated.orderNumber} is now ${status.toLowerCase()}.`,
+            entityType: 'ORDER',
+            entityId: updated.id,
+          });
+        } catch (error) {
+          // The order transition has already committed; don't report a false
+          // failure (which encourages duplicate status/payment operations).
+          await this.observability.captureException(error, {
+            alert: 'order_status_notification_failure', orderId: updated.id,
+          }).catch(() => undefined);
+        }
+      }
     }
     return updated;
   }

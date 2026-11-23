@@ -57,7 +57,7 @@ export function HomeAbout({ productCount, categoryNames }: HomeAboutProps) {
 
           <h3 className={subheadingClass}>What can you buy from Voxel3D?</h3>
           <ul className="mt-4 list-disc space-y-2 pl-5 text-sm leading-7 text-muted marker:text-primary sm:text-base">
-            {PRODUCT_TYPES.map((type) => (
+            {[...new Set([...PRODUCT_TYPES, ...categoryNames])].map((type) => (
               <li key={type}>{type}</li>
             ))}
           </ul>
@@ -76,6 +76,8 @@ export function HomeAbout({ productCount, categoryNames }: HomeAboutProps) {
             <Link href="/shipping" className={linkClass}>shipping and returns page</Link> and{" "}
             <Link href="/refund" className={linkClass}>refund policy</Link> before you order.
           </p>
+
+          <p className={paragraphClass}>To follow an order, sign in and open <Link href="/account/orders" className={linkClass}>My Orders</Link>. Select an order to view its payment status and progress through Confirmed, Processing, Ready to Ship, Shipped and Delivered. When a carrier tracking link is supplied, it appears on that order page. The admin team updates fulfillment and shipment details as each stage progresses.</p>
 
           <h3 id="custom-order-steps" className={`${subheadingClass} scroll-mt-28`}>How does a custom 3D printed model work?</h3>
           <ol className="mt-4 list-decimal space-y-3 pl-5 text-sm leading-7 text-muted marker:font-semibold marker:text-primary sm:text-base">

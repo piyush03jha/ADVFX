@@ -91,6 +91,7 @@ describe('OrdersService', () => {
     prisma.order.findUnique.mockResolvedValue({ id: 'order-1', status: 'PENDING_PAYMENT', userId: 'user-1' });
     const tx = {
       $queryRaw: jest.fn().mockResolvedValue([{ id: 'order-1' }]),
+      payment: { findUnique: jest.fn().mockResolvedValue(null) },
       order: {
         findUnique: jest.fn().mockResolvedValue({ status: 'PENDING_PAYMENT' }),
         update: jest.fn().mockResolvedValue({ id: 'order-1', status: 'CANCELLED', userId: 'user-1' }),
@@ -99,6 +100,26 @@ describe('OrdersService', () => {
     prisma.$transaction.mockImplementation((callback: any) => callback(tx));
     await expect(service.updateStatus('order-1', 'CANCELLED' as any)).resolves.toMatchObject({ status: 'CANCELLED' });
     expect(tx.order.update).toHaveBeenCalled();
+  });
+
+  it('refuses to cancel an order with an active Razorpay payment attempt', async () => {
+    prisma.order.findUnique.mockResolvedValue({
+      id: 'order-1', status: 'PENDING_PAYMENT',
+      payment: { status: 'PENDING', providerOrderId: 'order_123' },
+    });
+    await expect(service.updateStatus('order-1', 'CANCELLED' as any))
+      .rejects.toThrow(/payment attempt has started/i);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('refuses to cancel a captured payment even if the order is still pending', async () => {
+    prisma.order.findUnique.mockResolvedValue({
+      id: 'order-1', status: 'PENDING_PAYMENT',
+      payment: { status: 'CAPTURED', providerOrderId: 'order_123' },
+    });
+    await expect(service.updateStatus('order-1', 'CANCELLED' as any))
+      .rejects.toThrow(/already been captured/i);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
   it('requests a provider refund before marking an order refunded', async () => {

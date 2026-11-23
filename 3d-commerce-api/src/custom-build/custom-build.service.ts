@@ -13,6 +13,8 @@ import { randomBytes } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { StorageService } from "../storage/storage.service";
+import { ShippingService } from "../shipping/shipping.service";
+import { DEFAULT_GST_RATE_BPS } from "../pricing/pricing.service";
 import { CreateCustomRequestDto } from "./dto/create-custom-request.dto";
 import { CustomPricingDto } from "./dto/custom-pricing.dto";
 
@@ -45,6 +47,7 @@ export class CustomBuildService {
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
     private readonly storage: StorageService,
+    private readonly shipping: ShippingService,
   ) {}
 
   async quote(input: CustomPricingInput) {
@@ -146,6 +149,17 @@ export class CustomBuildService {
   async createConfigCategory(data: { slug: string; name: string; description?: string; basePriceMinor?: number; sortOrder?: number; isActive?: boolean }) {
     return this.prisma.customBuildCategory.create({ data: { slug: data.slug.trim().toLowerCase(), name: data.name.trim(), description: data.description?.trim() || null, basePriceMinor: data.basePriceMinor ?? 0, sortOrder: data.sortOrder ?? 0, isActive: data.isActive !== false } });
   }
+  async deleteConfigCategory(id: string) {
+    const category = await this.prisma.customBuildCategory.findUnique({ where: { id }, select: { id: true, slug: true } });
+    if (!category) throw new NotFoundException("Custom category not found");
+    const requestCount = await this.prisma.customRequest.count({ where: { category: category.slug } });
+    if (requestCount > 0) {
+      // Preserve historical custom requests and their category configuration.
+      throw new ConflictException("This category has existing custom orders. Deactivate it instead of deleting it.");
+    }
+    return this.prisma.customBuildCategory.delete({ where: { id } });
+  }
+
   async updateConfigCategory(id: string, dto: UpdateCustomBuildCategoryDto) { return this.prisma.customBuildCategory.update({ where: { id }, data: dto }); }
   async createConfigOption(categoryId: string, dto: CreateCustomBuildOptionDto) { return this.prisma.customBuildOption.create({ data: { ...dto, categoryId, priceMinor: dto.priceMinor ?? 0, sortOrder: dto.sortOrder ?? 0, isActive: dto.isActive !== false } }); }
   async updateConfigOption(id: string, dto: UpdateCustomBuildOptionDto) { return this.prisma.customBuildOption.update({ where: { id }, data: dto }); }
@@ -211,6 +225,30 @@ export class CustomBuildService {
     return updated;
   }
 
+  async checkoutQuote(userId: string, requestId: string, shippingAddressId: string) {
+    const request = await this.prisma.customRequest.findFirst({ where: { id: requestId, userId } });
+    if (!request) throw new NotFoundException("Custom request not found");
+    if (!request.priceMinor || request.priceMinor <= 0 || request.priceCurrency !== "INR") {
+      throw new BadRequestException("Custom request is missing a valid INR price");
+    }
+    const address = await this.prisma.address.findFirst({ where: { id: shippingAddressId, userId } });
+    if (!address) throw new NotFoundException("Shipping address not found");
+    const postalCode = address.postalCode?.trim().toUpperCase();
+    if (postalCode) {
+      const zone = await this.prisma.deliveryZone.findUnique({ where: { postalCode }, select: { active: true, coverage: true } });
+      if (zone?.active && zone.coverage === "NOT_DELIVERED") throw new BadRequestException("We currently do not deliver to postal code " + postalCode);
+    }
+    const subtotalMinor = request.priceMinor;
+    // Weight-based shipping is reserved for regular catalog checkout.
+    const shipping = await this.shipping.quote({ subtotalMinor, weightGrams: 0, excludeWeightBased: true, country: address.country || "IN", state: address.state || "" });
+    if (!shipping.ruleId) {
+      throw new BadRequestException("Custom delivery charges are not configured for this address. Please contact support or choose another delivery address.");
+    }
+    const taxMinor = Math.round(subtotalMinor * DEFAULT_GST_RATE_BPS / 10000);
+    const shippingMinor = shipping.amountMinor;
+    return { currency: "INR", subtotalMinor, shippingMinor, taxMinor, totalMinor: subtotalMinor + shippingMinor + taxMinor, gstRateBps: DEFAULT_GST_RATE_BPS, shipping };
+  }
+
   async checkout(
     userId: string,
     requestId: string,
@@ -261,12 +299,26 @@ export class CustomBuildService {
         },
       });
       if (linkedOrder?.status === "PENDING_PAYMENT") {
+        // Recalculate tax and delivery when the address or shipping rules change.
+        const totals = await this.checkoutQuote(userId, requestId, shippingAddressId);
+        if (linkedOrder.payment?.providerOrderId) {
+          if (linkedOrder.shippingAddressId !== address.id || linkedOrder.totalMinor !== totals.totalMinor) {
+            throw new ConflictException("Payment has already been prepared. Please contact support to change the delivery address or total.");
+          }
+          return { requestId: request.id, order: linkedOrder };
+        }
         // Reuse the unpaid order, but honour the address picked on this attempt.
-        if (linkedOrder.shippingAddressId !== address.id) {
+        if (linkedOrder.shippingAddressId !== address.id || linkedOrder.totalMinor !== totals.totalMinor) {
           const updated = await this.prisma.order.update({
             where: { id: linkedOrder.id },
             data: {
               shippingAddressId: address.id,
+              subtotalMinor: totals.subtotalMinor,
+              shippingMinor: totals.shippingMinor,
+              taxMinor: totals.taxMinor,
+              totalMinor: totals.totalMinor,
+              shippingRuleId: totals.shipping.ruleId,
+              payment: { update: { amountMinor: totals.totalMinor } },
               shippingAddressSnapshot: {
                 fullName: address.fullName,
                 phone: address.phone,
@@ -296,7 +348,8 @@ export class CustomBuildService {
       }
     }
 
-    const amountMinor = request.priceMinor;
+    const totals = await this.checkoutQuote(userId, requestId, shippingAddressId);
+    const amountMinor = totals.totalMinor;
     const idempotency = idempotencyKey?.trim() || undefined;
 
     if (idempotency) {
@@ -320,11 +373,12 @@ export class CustomBuildService {
         userId,
         status: "PENDING_PAYMENT",
         currency: request.priceCurrency,
-        subtotalMinor: amountMinor,
+        subtotalMinor: totals.subtotalMinor,
         discountMinor: 0,
-        shippingMinor: 0,
-        taxMinor: 0,
-        totalMinor: amountMinor,
+        shippingMinor: totals.shippingMinor,
+        taxMinor: totals.taxMinor,
+        totalMinor: totals.totalMinor,
+        shippingRuleId: totals.shipping.ruleId,
         shippingAddressId: address.id,
         shippingAddressSnapshot: {
           fullName: address.fullName,
@@ -391,57 +445,65 @@ export class CustomBuildService {
       `Size: ${sizeLabel}`,
     ].filter(Boolean).join("\n");
 
-    const request = await this.prisma.customRequest.create({
-      data: {
-        userId,
-        title: dto.title.trim(),
-        requirements,
-        dimensions: dto.dimensions?.trim() || sizeLabel,
-        preferredMaterial: dto.preferredMaterial?.trim() || null,
-        preferredScale: dto.preferredScale?.trim() || sizeLabel,
-        notes: dto.notes?.trim() || null,
-        category: dto.category,
-        bodyType: dto.bodyType ?? null,
-        headType: dto.headType ?? null,
-        subjectType: dto.subjectType ?? null,
-        personCount: dto.personCount ?? null,
-        petCount: dto.petCount ?? null,
-        sizeCm: dto.sizeCm,
-        priceMinor: configured.amountMinor,
-        priceCurrency: "INR",
-        pricedAt: new Date(),
-        referenceFileCount: 0,
-        configurationSnapshot: JSON.stringify(configured.breakdown),
-        status: "SUBMITTED",
-      },
-      include: { media: true, quote: true, order: true },
+    const pricedRequest = await this.prisma.$transaction(async (tx) => {
+      const request = await tx.customRequest.create({
+        data: {
+          userId,
+          title: dto.title.trim(),
+          requirements,
+          dimensions: dto.dimensions?.trim() || sizeLabel,
+          preferredMaterial: dto.preferredMaterial?.trim() || null,
+          preferredScale: dto.preferredScale?.trim() || sizeLabel,
+          notes: dto.notes?.trim() || null,
+          category: dto.category,
+          bodyType: dto.bodyType ?? null,
+          headType: dto.headType ?? null,
+          subjectType: dto.subjectType ?? null,
+          personCount: dto.personCount ?? null,
+          petCount: dto.petCount ?? null,
+          sizeCm: dto.sizeCm,
+          priceMinor: configured.amountMinor,
+          priceCurrency: "INR",
+          pricedAt: new Date(),
+          referenceFileCount: 0,
+          configurationSnapshot: JSON.stringify(configured.breakdown),
+          status: "SUBMITTED",
+        },
+        include: { media: true, quote: true, order: true },
+      });
+  
+      await tx.customRequestQuote.upsert({
+        where: { customRequestId: request.id },
+        create: {
+          customRequestId: request.id,
+          currency: "INR",
+          amountMinor: configured.amountMinor,
+        },
+        update: {
+          currency: "INR",
+          amountMinor: configured.amountMinor,
+        },
+      });
+  
+      return tx.customRequest.findUniqueOrThrow({
+        where: { id: request.id },
+        include: { media: true, quote: true, order: true },
+      });
     });
 
-    await this.prisma.customRequestQuote.upsert({
-      where: { customRequestId: request.id },
-      create: {
-        customRequestId: request.id,
-        currency: "INR",
-        amountMinor: configured.amountMinor,
-      },
-      update: {
-        currency: "INR",
-        amountMinor: configured.amountMinor,
-      },
-    });
-
-    const pricedRequest = await this.prisma.customRequest.findUniqueOrThrow({
-      where: { id: request.id },
-      include: { media: true, quote: true, order: true },
-    });
-
-    await this.notifications.create(userId, {
-      type: NotificationType.CUSTOM_REQUEST_SUBMITTED,
-      title: "Custom build saved",
-      message: `Your custom build “${request.title}” is ready for payment.`,
-      entityType: "CUSTOM_REQUEST",
-      entityId: request.id,
-    });
+    // A notification outage must not turn an already-saved order into a 500,
+    // which encourages duplicate submissions on retry.
+    try {
+      await this.notifications.create(userId, {
+        type: NotificationType.CUSTOM_REQUEST_SUBMITTED,
+        title: "Custom build saved",
+        message: `Your custom build “${pricedRequest.title}” is ready for payment.`,
+        entityType: "CUSTOM_REQUEST",
+        entityId: pricedRequest.id,
+      });
+    } catch (error) {
+      console.error("Custom request saved but notification failed", { requestId: pricedRequest.id, error });
+    }
 
     return pricedRequest;
   }

@@ -4,6 +4,7 @@ import { Navbar } from "@/components/layout/SiteNavbar";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { HomeAbout } from "@/components/home/HomeAbout";
 import { absoluteUrl } from "@/lib/site";
+import { getBackendApiUrl } from "@/lib/backend-api";
 
 export const metadata: Metadata = {
   title: { absolute: "About Voxel3D: Our Story and Custom Models" },
@@ -11,7 +12,28 @@ export const metadata: Metadata = {
   alternates: { canonical: "/about" },
 };
 
-export default function AboutPage() {
+async function loadCatalogSummary(): Promise<{ productCount: number; categoryNames: string[] }> {
+  try {
+    const [productResponse, categoryResponse] = await Promise.all([
+      fetch(getBackendApiUrl("products"), { next: { revalidate: 3600 } }),
+      fetch(getBackendApiUrl("categories"), { next: { revalidate: 3600 } }),
+    ]);
+    const products: unknown = productResponse.ok ? await productResponse.json() : [];
+    const categories: unknown = categoryResponse.ok ? await categoryResponse.json() : [];
+    return {
+      productCount: Array.isArray(products) ? products.filter((p) => p?.status === "ACTIVE").length : 0,
+      categoryNames: Array.isArray(categories)
+        ? categories.filter((category) => category?.isActive && typeof category.name === "string")
+          .map((category) => category.name as string)
+        : [],
+    };
+  } catch {
+    return { productCount: 0, categoryNames: [] };
+  }
+}
+
+export default async function AboutPage() {
+  const { productCount, categoryNames } = await loadCatalogSummary();
   return (
     <div className="min-h-screen overflow-x-clip bg-background text-foreground">
       <JsonLd data={{
@@ -65,7 +87,7 @@ export default function AboutPage() {
           </div>
         </div>
 
-        <HomeAbout productCount={0} categoryNames={[]} />
+        <HomeAbout productCount={productCount} categoryNames={categoryNames} />
       </main>
     </div>
   );

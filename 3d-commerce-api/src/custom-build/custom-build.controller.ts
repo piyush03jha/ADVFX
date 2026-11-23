@@ -33,6 +33,12 @@ export class CustomBuildController {
   }
 
   @UseGuards(CustomerAuthGuard)
+  @Post(":id/checkout-quote")
+  checkoutQuote(@Req() req: any, @Param("id") id: string, @Body() dto: CreateCustomCheckoutDto) {
+    return this.customBuildService.checkoutQuote(req.user.id, id, dto.shippingAddressId);
+  }
+
+  @UseGuards(CustomerAuthGuard)
   @Post(":id/checkout")
   checkout(
     @Req() req: any,
