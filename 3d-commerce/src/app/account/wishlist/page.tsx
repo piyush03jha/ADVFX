@@ -37,13 +37,13 @@ export default function AccountWishlistPage() {
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
             {items.map((product) => (
               <article
                 key={product.id}
                 className="group min-w-0 overflow-hidden rounded-2xl border border-border bg-surface/50"
               >
-                <div className="relative aspect-[4/4.8] overflow-hidden bg-surface-elevated">
+                <div className="relative aspect-square overflow-hidden bg-surface-elevated">
                   <Link href={`/product/${product.slug ?? product.id}`} className="block h-full">
                     <img
                       src={product.image}
