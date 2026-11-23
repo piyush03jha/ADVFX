@@ -446,13 +446,19 @@ export class CustomBuildService {
       include: { media: true, quote: true, order: true },
     });
 
-    await this.notifications.create(userId, {
-      type: NotificationType.CUSTOM_REQUEST_SUBMITTED,
-      title: "Custom build saved",
-      message: `Your custom build “${request.title}” is ready for payment.`,
-      entityType: "CUSTOM_REQUEST",
-      entityId: request.id,
-    });
+    // A notification outage must not turn an already-saved order into a 500,
+    // which encourages duplicate submissions on retry.
+    try {
+      await this.notifications.create(userId, {
+        type: NotificationType.CUSTOM_REQUEST_SUBMITTED,
+        title: "Custom build saved",
+        message: `Your custom build “${request.title}” is ready for payment.`,
+        entityType: "CUSTOM_REQUEST",
+        entityId: request.id,
+      });
+    } catch (error) {
+      console.error("Custom request saved but notification failed", { requestId: request.id, error });
+    }
 
     return pricedRequest;
   }
