@@ -8,6 +8,11 @@ export interface FAQItem {
 // custom manufacturing workflows; prices and timelines must be confirmed per order.
 export const faqItems: FAQItem[] = [
   {
+    id: "order-tracking",
+    question: "How do I track my Voxel3D order?",
+    answer: "Sign in to your Voxel3D account, open My Orders and select your order. You can see its payment and fulfillment status as it moves from Confirmed to Processing, Ready to Ship, Shipped and Delivered. If the delivery carrier supplies a tracking number or tracking link, it is shown on the order details page after dispatch. If payment is still pending or the order was cancelled, that status is displayed instead.",
+  },
+  {
     id: "custom-model-process",
     question: "How do custom 3D printed model orders work?",
     answer:
