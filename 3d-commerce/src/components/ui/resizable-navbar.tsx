@@ -16,8 +16,14 @@ interface NavItemsProps { items: { name: string; link: string }[]; className?: s
  * Next.js does nothing. Scroll back to the top instead so the tab responds.
  */
 export function scrollToTopIfAlreadyHome(event: { preventDefault: () => void }, link: string) {
-  if (link === "/" && typeof window !== "undefined" && window.location.pathname === "/") {
+  if (typeof window === "undefined") return;
+
+  const targetPath = new URL(link, window.location.href).pathname;
+  if (targetPath === "/" && window.location.pathname === "/") {
     event.preventDefault();
+    // Use the document's scrolling element as well as window so the action
+    // works consistently across browsers when Home is clicked on the homepage.
+    document.scrollingElement?.scrollTo({ top: 0, behavior: "smooth" });
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 }
