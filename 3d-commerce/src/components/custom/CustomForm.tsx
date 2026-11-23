@@ -467,13 +467,14 @@ export function CustomForm({
                       <SelectionButton
                         key={option.id}
                         label={option.name}
-                        price={option.priceMinor === 0 ? "Included" : `+₹${Math.round(option.priceMinor / 100).toLocaleString("en-IN")}`}
+                        price={option.priceMinor === 0 ? "Included" : `Extra ₹${(option.priceMinor / 100).toLocaleString("en-IN")}`}
                         description={option.description ?? ""}
                         selected={body === option.slug}
                         onClick={() => handleBodyChange(option.slug)}
                       />
                     ))}
                   </div>
+                  <p className="mt-2 text-[11px] leading-5 text-muted">An “Extra” charge is added to the base price for your selected height.</p>
                 </CompactSection>
               </>
             ) : (
