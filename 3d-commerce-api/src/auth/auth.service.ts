@@ -143,7 +143,7 @@ export class AuthService {
 
     const user = await this.prisma.user.findUnique({
       where: { email: normalizedEmail },
-      select: { id: true, email: true, name: true, role: true, isActive: true },
+      select: { id: true, email: true, name: true, phone: true, role: true, isActive: true },
     });
 
     if (!user || !user.isActive || user.role !== ('CUSTOMER' as UserRole)) {
