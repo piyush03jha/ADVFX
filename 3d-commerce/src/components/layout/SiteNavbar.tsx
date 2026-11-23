@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useMotionValueEvent, useScroll } from "motion/react";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  IconBell,
   IconHeart,
   IconSearch,
   IconShoppingCart,
@@ -61,7 +62,37 @@ export function Navbar() {
   const { itemCount, isLoaded } = useCart();
   const { itemCount: wishlistCount, isLoaded: isWishlistLoaded } = useWishlist();
   const { user, isLoading, logout } = useAuth();
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const router = useRouter();
+
+  useEffect(() => {
+    if (!user) {
+      setUnreadNotifications(0);
+      return;
+    }
+
+    let cancelled = false;
+    const loadUnreadNotifications = async () => {
+      try {
+        const response = await fetch("/api/notifications?unread=true", { cache: "no-store" });
+        if (!response.ok) return;
+        const data: unknown = await response.json();
+        if (!cancelled) setUnreadNotifications(Array.isArray(data) ? data.length : 0);
+      } catch {
+        // Keep the last known count when the notification service is temporarily unavailable.
+      }
+    };
+
+    void loadUnreadNotifications();
+    const interval = window.setInterval(() => void loadUnreadNotifications(), 20000);
+    const onFocus = () => void loadUnreadNotifications();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [user]);
 
   const accountHref = user ? "/account" : "/login";
   const accountLabel = user ? "My account" : "Sign in";
@@ -255,6 +286,16 @@ export function Navbar() {
             )}
           </div>
 
+          {user && (
+            <NavIconLink
+              href="/account/notifications"
+              label={unreadNotifications > 0 ? "Notifications, " + unreadNotifications + " unread" : "Notifications"}
+            >
+              <IconBell size={18} stroke={1.7} />
+              <NavCountBadge count={unreadNotifications} isLoaded={!isLoading} />
+            </NavIconLink>
+          )}
+
           <NavIconLink
             href="/wishlist"
             label={wishlistCount > 0 ? `Wishlist, ${wishlistCount} saved` : "Wishlist"}
@@ -365,6 +406,12 @@ export function Navbar() {
           </div>
 
           <div className="mt-5 grid grid-cols-2 gap-2.5">
+            {user && (
+              <MobileActionLink href="/account/notifications" onClick={closeMobileMenu}>
+                <IconBell size={17} stroke={1.7} />
+                <span>{"Notifications" + (unreadNotifications > 0 ? " (" + unreadNotifications + ")" : "")}</span>
+              </MobileActionLink>
+            )}
             <MobileActionLink
               href="/wishlist"
               onClick={closeMobileMenu}
