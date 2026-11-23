@@ -31,7 +31,7 @@ export default function AdminProducts(){
 
   async function load(){setLoading(true);try{const r=await fetch("/api/admin/catalog",{cache:"no-store"});if(!r.ok)throw new Error();setData(await r.json());return true}catch{setMessage("Unable to load catalog.");return false}finally{setLoading(false)}}
   useEffect(()=>{void load()},[]);
-  async function refreshCatalog(){setMessage("");const ok=await load();if(ok)setMessage("Product list refreshed.")}
+  function refreshCatalog(){window.location.reload()}
   useEffect(()=>{
     if(!assetProductId) return;
     const hasPending=assetFiles.some(
