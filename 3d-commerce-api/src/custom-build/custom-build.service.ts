@@ -442,48 +442,50 @@ export class CustomBuildService {
       `Size: ${sizeLabel}`,
     ].filter(Boolean).join("\n");
 
-    const request = await this.prisma.customRequest.create({
-      data: {
-        userId,
-        title: dto.title.trim(),
-        requirements,
-        dimensions: dto.dimensions?.trim() || sizeLabel,
-        preferredMaterial: dto.preferredMaterial?.trim() || null,
-        preferredScale: dto.preferredScale?.trim() || sizeLabel,
-        notes: dto.notes?.trim() || null,
-        category: dto.category,
-        bodyType: dto.bodyType ?? null,
-        headType: dto.headType ?? null,
-        subjectType: dto.subjectType ?? null,
-        personCount: dto.personCount ?? null,
-        petCount: dto.petCount ?? null,
-        sizeCm: dto.sizeCm,
-        priceMinor: configured.amountMinor,
-        priceCurrency: "INR",
-        pricedAt: new Date(),
-        referenceFileCount: 0,
-        configurationSnapshot: JSON.stringify(configured.breakdown),
-        status: "SUBMITTED",
-      },
-      include: { media: true, quote: true, order: true },
-    });
-
-    await this.prisma.customRequestQuote.upsert({
-      where: { customRequestId: request.id },
-      create: {
-        customRequestId: request.id,
-        currency: "INR",
-        amountMinor: configured.amountMinor,
-      },
-      update: {
-        currency: "INR",
-        amountMinor: configured.amountMinor,
-      },
-    });
-
-    const pricedRequest = await this.prisma.customRequest.findUniqueOrThrow({
-      where: { id: request.id },
-      include: { media: true, quote: true, order: true },
+    const pricedRequest = await this.prisma.$transaction(async (tx) => {
+      const request = await tx.customRequest.create({
+        data: {
+          userId,
+          title: dto.title.trim(),
+          requirements,
+          dimensions: dto.dimensions?.trim() || sizeLabel,
+          preferredMaterial: dto.preferredMaterial?.trim() || null,
+          preferredScale: dto.preferredScale?.trim() || sizeLabel,
+          notes: dto.notes?.trim() || null,
+          category: dto.category,
+          bodyType: dto.bodyType ?? null,
+          headType: dto.headType ?? null,
+          subjectType: dto.subjectType ?? null,
+          personCount: dto.personCount ?? null,
+          petCount: dto.petCount ?? null,
+          sizeCm: dto.sizeCm,
+          priceMinor: configured.amountMinor,
+          priceCurrency: "INR",
+          pricedAt: new Date(),
+          referenceFileCount: 0,
+          configurationSnapshot: JSON.stringify(configured.breakdown),
+          status: "SUBMITTED",
+        },
+        include: { media: true, quote: true, order: true },
+      });
+  
+      await tx.customRequestQuote.upsert({
+        where: { customRequestId: request.id },
+        create: {
+          customRequestId: request.id,
+          currency: "INR",
+          amountMinor: configured.amountMinor,
+        },
+        update: {
+          currency: "INR",
+          amountMinor: configured.amountMinor,
+        },
+      });
+  
+      return tx.customRequest.findUniqueOrThrow({
+        where: { id: request.id },
+        include: { media: true, quote: true, order: true },
+      });
     });
 
     // A notification outage must not turn an already-saved order into a 500,
@@ -492,12 +494,12 @@ export class CustomBuildService {
       await this.notifications.create(userId, {
         type: NotificationType.CUSTOM_REQUEST_SUBMITTED,
         title: "Custom build saved",
-        message: `Your custom build “${request.title}” is ready for payment.`,
+        message: `Your custom build “${pricedRequest.title}” is ready for payment.`,
         entityType: "CUSTOM_REQUEST",
-        entityId: request.id,
+        entityId: pricedRequest.id,
       });
     } catch (error) {
-      console.error("Custom request saved but notification failed", { requestId: request.id, error });
+      console.error("Custom request saved but notification failed", { requestId: pricedRequest.id, error });
     }
 
     return pricedRequest;
