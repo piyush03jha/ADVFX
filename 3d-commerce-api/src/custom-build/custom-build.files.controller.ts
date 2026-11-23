@@ -185,12 +185,15 @@ export class CustomBuildFilesController {
   }
 
   private async readMultipart(req: FastifyRequest, maxSize: number) {
-    const multipart = (req as FastifyRequest & { file?: () => Promise<any> }).file;
-    if (typeof multipart !== 'function') {
+    // @fastify/multipart adds file() to the *request instance*. Calling a
+    // detached copy of this method loses its request-bound context and can
+    // throw a TypeError (HTTP 500) before any file bytes are processed.
+    const multipartRequest = req as FastifyRequest & { file?: () => Promise<any> };
+    if (typeof multipartRequest.file !== 'function') {
       throw new BadRequestException('Multipart upload support is not available');
     }
 
-    const uploaded = await multipart();
+    const uploaded = await multipartRequest.file();
     if (!uploaded) throw new BadRequestException('File is required');
     if (uploaded.fieldname !== 'file') {
       throw new BadRequestException('Multipart field must be named file');
