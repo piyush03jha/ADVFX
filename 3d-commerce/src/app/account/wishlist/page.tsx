@@ -67,7 +67,7 @@ export default function AccountWishlistPage() {
                 <div className="p-3">
                   <p className="text-[8px] uppercase tracking-[0.14em] text-muted">{product.category}</p>
                   <Link
-                    href={`/product/${product.id}`}
+                    href={`/product/${product.slug ?? product.id}`}
                     className="mt-1 block text-xs font-medium text-foreground hover:text-primary"
                   >
                     {product.name}
