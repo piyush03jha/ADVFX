@@ -12,6 +12,7 @@ import { Card } from "@/components/ui/Card";
 import { IconButton } from "@/components/ui/IconButton";
 import { Section } from "@/components/ui/Section";
 import { resolveMediaUrl } from "@/lib/media-url";
+import type { CatalogProduct } from "@/lib/catalog-api";
 
 type Category = {
   id: string;
@@ -24,9 +25,10 @@ type Category = {
   sortOrder: number;
   isActive: boolean;
   _count?: { products: number };
+  children?: Array<{ _count?: { products: number } }>;
 };
 
-export function ShopByCategory() {
+export function ShopByCategory({ initialProducts = [] }: { initialProducts?: CatalogProduct[] }) {
   const shouldReduceMotion = useReducedMotion();
   const [categories, setCategories] = useState<Category[]>([]);
 
@@ -41,7 +43,10 @@ export function ShopByCategory() {
         if (!cancelled) {
           setCategories(
             (Array.isArray(data) ? data : []).filter(
-              (category: Category) => category.isActive && !category.parentId,
+              (category: Category) => category.isActive && !category.parentId && (
+                category.name.trim().toLowerCase() === "all models" ||
+                (category._count?.products ?? 0) + (category.children ?? []).reduce((sum, child) => sum + (child._count?.products ?? 0), 0) > 0
+              ),
             ),
           );
         }
@@ -103,7 +108,15 @@ export function ShopByCategory() {
               }}
               className="w-[38vw] max-w-[170px] shrink-0 snap-start sm:w-[190px] sm:max-w-none lg:w-[260px] xl:w-[280px]"
             >
-              <CategoryCard category={category} index={index} />
+              <CategoryCard category={category} index={index} fallbackImage={(() => {
+                const product = initialProducts.find((item) =>
+                  item.status === "ACTIVE" &&
+                  (item.category?.id === category.id || item.category?.parentId === category.id) &&
+                  (item.media?.some((image) => image.type === "IMAGE" && image.url) || item.imageUrl || item.image));
+                return product?.media?.find((image) => image.type === "IMAGE" && image.isPrimary)?.url ??
+                  product?.media?.find((image) => image.type === "IMAGE")?.url ??
+                  product?.imageUrl ?? product?.image ?? null;
+              })()} />
             </motion.div>
           ))}
         </div>
@@ -124,11 +137,13 @@ export function ShopByCategory() {
 function CategoryCard({
   category,
   index,
+  fallbackImage,
 }: {
   category: Category;
   index: number;
+  fallbackImage?: string | null;
 }) {
-  const imageUrl = resolveMediaUrl(category.imageUrl);
+  const imageUrl = resolveMediaUrl(category.imageUrl) || resolveMediaUrl(fallbackImage);
   const isAllModels =
     index === 0 && category.name.trim().toLowerCase().replace(/\s+/g, " ") === "all models";
 
