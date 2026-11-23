@@ -238,7 +238,7 @@ export default async function Home() {
 
         <BestSellers initialProducts={products} catalogFact={catalogFact} />
 
-        <ShopByCategory />
+        <ShopByCategory initialProducts={products} />
 
         <NewArrivals initialProducts={products} />
 
