@@ -23,6 +23,11 @@ export default function CustomProductsAdmin(){
   catch(e){setMessage(e instanceof Error?e.message:"Unable to create category")}
   finally{setCreating(false)}
  }
+ async function removeCategory(c:Category){
+  if(!window.confirm(`Delete custom category "${c.name}"? This also deletes its options and height ranges. Categories with existing orders cannot be deleted.`))return;
+  setMessage("");
+  try{const r=await fetch("/api/admin/custom-build/categories/"+encodeURIComponent(c.id),{method:"DELETE"});const d=await r.json().catch(()=>null);if(!r.ok)throw new Error(Array.isArray(d?.message)?d.message.join(", "):d?.message||d?.error||"Unable to delete category");await load();setMessage(`Category "${c.name}" deleted.`)}catch(e){setMessage(e instanceof Error?e.message:"Unable to delete category")}
+ }
  async function patch(path:string,body:any){const r=await fetch("/api/admin/custom-build"+path,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});const d=await r.json().catch(()=>null);if(!r.ok)throw new Error(d?.message||d?.error||"Save failed");await load()}
  async function upload(id:string,file:File){const fd=new FormData();fd.append("file",file);const r=await fetch("/api/admin/custom-build/categories/"+id+"/image",{method:"POST",body:fd});if(!r.ok)throw new Error((await r.json().catch(()=>null))?.message||"Image upload failed");await load()}
  async function addOption(c:Category){const section=window.prompt("Section: body, head or frame","head");if(!section||!sections.includes(section))return;const slug=window.prompt("Option slug (e.g. bobble)","new-option");const name=window.prompt("Option name","New option");if(!slug||!name)return;const price=Number(window.prompt("Price in INR","0")||0);const r=await fetch("/api/admin/custom-build/categories/"+c.id+"/options",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({section,slug,name,priceMinor:Math.round(price*100),sortOrder:c.options.length})});if(!r.ok){setMessage((await r.json().catch(()=>null))?.message||"Option creation failed");return}await load()}
@@ -41,6 +46,7 @@ export default function CustomProductsAdmin(){
     <div className="h-20 w-20 overflow-hidden rounded-xl border border-border bg-background">{c.imageUrl?<img src={resolveMediaUrl(c.imageUrl) ?? ""} className="h-full w-full object-cover" alt="" />:<div className="flex h-full items-center justify-center text-muted"><IconPhoto size={22}/></div>}</div>
     <div className="min-w-[180px] flex-1"><input defaultValue={c.name} onBlur={e=>e.target.value!==c.name&&patch("/categories/"+c.id,{name:e.target.value})} className="w-full bg-transparent text-lg font-semibold outline-none"/><p className="text-[10px] text-muted">{c.slug} · {c.isActive?"ACTIVE":"INACTIVE"}</p></div>
     <label className="cursor-pointer rounded-xl border border-border px-3 py-2 text-[10px]"><IconUpload size={14} className="mr-1 inline"/> Image<input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={e=>e.target.files?.[0]&&upload(c.id,e.target.files[0])}/></label>
+    <button type="button" onClick={()=>void removeCategory(c)} className="rounded-xl border border-red-500/30 px-3 py-2 text-[10px] text-red-400 hover:bg-red-500/10" aria-label={`Delete ${c.name} category`}><IconTrash size={14} className="mr-1 inline"/> Delete</button>
     <button onClick={()=>setOpen(open===c.id?null:c.id)} className="rounded-full bg-primary px-4 py-2 text-[10px] font-semibold text-white transition hover:bg-primary-hover">{open===c.id?"Hide options":"Edit options"}</button>
    </div>
    <p className="mt-3 text-xs text-muted">{c.description}</p>
