@@ -1,7 +1,7 @@
 "use client";
 
 import { useLayoutEffect, useRef } from "react";
-import { IconChevronLeft, IconChevronRight, IconLayoutGrid } from "@tabler/icons-react";
+import { IconCategory2, IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
 import type { ShopCategory } from "@/lib/category-api";
 import { resolveMediaUrl } from "@/lib/media-url";
 import { getActiveMainCategory, getMainCategories, getSubcategories } from "@/lib/category-hierarchy.mjs";
@@ -73,7 +73,7 @@ export function ShopNavigation({
           <div className="absolute inset-0 bg-gradient-to-br from-primary/15 via-surface to-surface-elevated" />
           <div className="absolute inset-0 flex items-center justify-center">
             <span className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background/70 text-primary shadow-sm">
-              <IconLayoutGrid size={19} stroke={1.8} />
+              <IconCategory2 size={19} stroke={1.8} />
             </span>
           </div>
           <div className="absolute inset-x-0 bottom-0 p-3">
