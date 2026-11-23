@@ -6,6 +6,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  Matches,
   Max,
   MaxLength,
   Min,
@@ -43,7 +44,8 @@ export class CreateCustomRequestDto {
   notes?: string;
 
   @IsString()
-  @IsIn(["person", "pet", "object", "vehicle", "character", "other"])
+  @Matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, { message: "category must be a valid category slug" })
+  @MaxLength(40)
   category: string;
 
   @IsOptional()

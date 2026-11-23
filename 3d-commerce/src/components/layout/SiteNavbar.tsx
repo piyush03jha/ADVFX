@@ -15,6 +15,7 @@ import {
   Navbar as NavbarRoot,
   NavBody,
   NavItems,
+  scrollToTopIfAlreadyHome,
   MobileNav,
   NavbarLogo,
   MobileNavHeader,
@@ -352,7 +353,10 @@ export function Navbar() {
               <Link
                 key={item.name}
                 href={item.link}
-                onClick={closeMobileMenu}
+                onClick={(event) => {
+                  scrollToTopIfAlreadyHome(event, item.link);
+                  closeMobileMenu();
+                }}
                 className="rounded-xl border border-transparent px-4 py-3 text-base text-muted transition-all duration-300 hover:border-border hover:bg-surface-elevated hover:text-foreground"
               >
                 {item.name}

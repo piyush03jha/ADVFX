@@ -1,10 +1,15 @@
 "use client";
 
-import { useRef } from "react";
-import { IconChevronLeft, IconChevronRight, IconPlus } from "@tabler/icons-react";
+import { useLayoutEffect, useRef } from "react";
+import { IconChevronLeft, IconChevronRight, IconLayoutGrid } from "@tabler/icons-react";
 import type { ShopCategory } from "@/lib/category-api";
 import { resolveMediaUrl } from "@/lib/media-url";
 import { getActiveMainCategory, getMainCategories, getSubcategories } from "@/lib/category-hierarchy.mjs";
+
+// Selecting a category changes the URL, which remounts the whole shop grid
+// (see ShopListing). Remember the rail position outside the component so the
+// rail does not jump back to the first card every time a card is picked.
+let savedRailScroll = 0;
 
 interface ShopNavigationProps {
   categories: ShopCategory[];
@@ -26,6 +31,11 @@ export function ShopNavigation({
   const activeRoot = getActiveMainCategory(categories, selectedSlug);
   const visibleSubcategories = activeRoot ? getSubcategories(categories, activeRoot.id) : [];
   const railRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const rail = railRef.current;
+    if (rail && savedRailScroll > 0) rail.scrollLeft = savedRailScroll;
+  }, []);
 
   // Mouse users cannot swipe the hidden-scrollbar rail, so desktop gets arrows.
   const scrollRail = (direction: 1 | -1) => {
@@ -55,6 +65,7 @@ export function ShopNavigation({
         </button>
       <div
         ref={railRef}
+        onScroll={(event) => { savedRailScroll = event.currentTarget.scrollLeft; }}
         className="-mx-3 flex w-full min-w-0 flex-nowrap items-stretch gap-3 overflow-x-auto px-3 pb-2 desk:mx-0 desk:w-auto desk:flex-1 desk:px-0 [mask-image:linear-gradient(to_right,black_calc(100%-28px),transparent)] [scrollbar-width:none] desk:[mask-image:none] [&::-webkit-scrollbar]:hidden"
         aria-label="Main categories"
       >
@@ -62,7 +73,7 @@ export function ShopNavigation({
           <div className="absolute inset-0 bg-gradient-to-br from-primary/15 via-surface to-surface-elevated" />
           <div className="absolute inset-0 flex items-center justify-center">
             <span className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background/70 text-primary shadow-sm">
-              <IconPlus size={19} stroke={1.8} />
+              <IconLayoutGrid size={19} stroke={1.8} />
             </span>
           </div>
           <div className="absolute inset-x-0 bottom-0 p-3">

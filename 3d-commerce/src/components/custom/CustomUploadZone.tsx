@@ -5,7 +5,7 @@ import { IconCube, IconPhoto, IconX } from "@tabler/icons-react";
 
 const IMAGE_TYPES = ["image/jpeg", "image/png"];
 const MODEL_EXTENSIONS = [
-  "glb", "gltf", "obj", "ply", "stl", "fbx", "bvh", "abc",
+  "glb", "gltf", "obj", "ply", "stl", "3mf", "fbx", "bvh", "abc",
   "usd", "usda", "usdc", "usdz",
 ];
 const MAX_IMAGES = 5;
@@ -73,7 +73,7 @@ export function CustomUploadZone({
     const extension = extensionOf(file.name);
     if (!MODEL_EXTENSIONS.includes(extension)) {
       onErrorChange(
-        "Unsupported 3D format. Use GLB, glTF, OBJ, PLY, STL, FBX, BVH, ABC, USD, USDA, USDC, or USDZ.",
+        "Unsupported 3D format. Use GLB, glTF, OBJ, PLY, STL, 3MF, FBX, BVH, ABC, USD, USDA, USDC, or USDZ.",
       );
       return;
     }
@@ -128,7 +128,7 @@ export function CustomUploadZone({
       <input
         ref={modelInputRef}
         type="file"
-        accept=".glb,.gltf,.obj,.ply,.stl,.fbx,.bvh,.abc,.usd,.usda,.usdc,.usdz"
+        accept=".glb,.gltf,.obj,.ply,.stl,.3mf,.fbx,.bvh,.abc,.usd,.usda,.usdc,.usdz"
         className="sr-only"
         onChange={handleModelInput}
       />

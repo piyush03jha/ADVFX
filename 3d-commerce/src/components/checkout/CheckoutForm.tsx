@@ -9,6 +9,7 @@ import { COUNTRIES, type CountryCode } from "@/config/countries";
 import { SavedAddressSelector } from "@/components/checkout/SavedAddressSelector";
 import { Button } from "@/components/ui/Button";
 import { useAddresses, type Address } from "@/context/AddressContext";
+import { useAuth } from "@/context/AuthContext";
 import type { CartItem } from "@/context/CartContext";
 import {
   getCheckoutQuote,
@@ -52,6 +53,7 @@ export function CheckoutForm({
 }: CheckoutFormProps) {
   const router = useRouter();
   const { addresses, defaultAddressId, isLoaded } = useAddresses();
+  const { user } = useAuth();
   const [country, setCountry] = useState<CountryCode>("IN");
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(defaultAddressId);
@@ -71,6 +73,19 @@ export function CheckoutForm({
     () => addresses.find((address) => address.id === selectedAddressId) ?? null,
     [addresses, selectedAddressId],
   );
+  // Pre-fill contact details we already know, without overwriting anything the
+  // customer has typed.
+  useEffect(() => {
+    const knownEmail = user?.email ?? "";
+    const knownPhone = selectedAddress?.phone ?? "";
+    if (!knownEmail && !knownPhone) return;
+    setForm((current) => {
+      const email = current.email || knownEmail;
+      const phone = current.phone || knownPhone;
+      return email === current.email && phone === current.phone ? current : { ...current, email, phone };
+    });
+  }, [user?.email, selectedAddress?.phone]);
+
   const selectedCountry = useMemo(
     () => COUNTRIES.find((item) => item.code === country) ?? COUNTRIES[0],
     [country],

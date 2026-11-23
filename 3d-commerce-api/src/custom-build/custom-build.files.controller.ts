@@ -20,6 +20,7 @@ const MODEL_EXTENSIONS = new Set([
   'obj',
   'ply',
   'stl',
+  '3mf',
   'fbx',
   'bvh',
   'abc',
@@ -78,7 +79,7 @@ export class CustomBuildFilesController {
 
     if (!isImage && !isModel) {
       throw new BadRequestException(
-        'Unsupported reference file. Use JPG/PNG images or GLB, glTF, OBJ, PLY, STL, FBX, BVH, ABC, USD, USDA, USDC, or USDZ.',
+        'Unsupported reference file. Use JPG/PNG images or GLB, glTF, OBJ, PLY, STL, 3MF, FBX, BVH, ABC, USD, USDA, USDC, or USDZ.',
       );
     }
 

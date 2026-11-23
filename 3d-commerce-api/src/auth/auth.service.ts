@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   Logger,
@@ -392,10 +393,18 @@ export class AuthService {
       LIMIT 1
     `;
 
-    if (
-      !credentials[0] ||
-      !(await verifyPassword(currentPassword, credentials[0].passwordHash))
-    ) {
+    if (!credentials[0]) {
+      // Accounts created through Google sign-in have no password to confirm.
+      // A password may only be created through the emailed reset link, which
+      // proves control of the mailbox, never through this form.
+      throw new BadRequestException({
+        message:
+          'This account signs in with Google and has no password yet. Use "Set password by email" to create one.',
+        code: 'PASSWORD_NOT_SET',
+      });
+    }
+
+    if (!(await verifyPassword(currentPassword, credentials[0].passwordHash))) {
       throw new UnauthorizedException('Current password is incorrect.');
     }
 
@@ -446,10 +455,13 @@ export class AuthService {
     const passwordHash = await hashPassword(password);
 
     await this.prisma.$transaction(async (tx) => {
+      // Google-only accounts have no credential row yet; the emailed token is
+      // the verification that lets one be created.
       await tx.$executeRaw`
-        UPDATE "CustomerCredential"
-        SET "passwordHash" = ${passwordHash}, "updatedAt" = CURRENT_TIMESTAMP
-        WHERE "userId" = ${record.userId}
+        INSERT INTO "CustomerCredential" ("id", "userId", "passwordHash", "createdAt", "updatedAt")
+        VALUES (${randomUUID()}, ${record.userId}, ${passwordHash}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        ON CONFLICT ("userId")
+        DO UPDATE SET "passwordHash" = EXCLUDED."passwordHash", "updatedAt" = CURRENT_TIMESTAMP
       `;
 
       await tx.$executeRaw`

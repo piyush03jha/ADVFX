@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 import {
   IconBell,
@@ -35,6 +36,8 @@ export default function AccountSettingsPage() {
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSaved, setPasswordSaved] = useState(false);
+  // Google-only accounts have no password to confirm, so they get an emailed link instead.
+  const [passwordNotSet, setPasswordNotSet] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -70,6 +73,7 @@ export default function AccountSettingsPage() {
     if (passwordSaving) return;
     setPasswordError(null);
     setPasswordSaved(false);
+    setPasswordNotSet(false);
 
     if (!currentPassword) {
       setPasswordError("Enter your current password.");
@@ -98,9 +102,11 @@ export default function AccountSettingsPage() {
       const data = (await response.json().catch(() => null)) as {
         message?: string | string[];
         error?: string;
+        code?: string;
       } | null;
       const message = Array.isArray(data?.message) ? data.message[0] : data?.message;
       if (!response.ok) {
+        if (data?.code === "PASSWORD_NOT_SET") setPasswordNotSet(true);
         throw new Error(data?.error ?? message ?? "Unable to update password.");
       }
 
@@ -241,6 +247,7 @@ export default function AccountSettingsPage() {
                   </div>
                   <p className="mt-2 text-[11px] leading-5 text-muted">Use at least 12 characters. Other active sessions will be signed out.</p>
                   {passwordError && <p role="alert" className="mt-3 rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-800 dark:text-red-200">{passwordError}</p>}
+                  {passwordNotSet && <Link href="/forgot-password" className="mt-3 inline-flex min-h-10 items-center rounded-xl border border-primary/40 px-4 text-xs font-semibold text-primary transition-colors hover:bg-primary/10">Set password by email</Link>}
                   {passwordSaved && <p role="status" className="mt-3 rounded-lg border border-emerald-600/25 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-800 dark:text-emerald-200">Password updated successfully.</p>}
                   <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                     <button

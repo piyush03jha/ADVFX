@@ -441,9 +441,20 @@ export class OrdersService {
       this.prisma.order.count({ where }),
     ]);
 
+    // Counts for every status regardless of the active filter or page, so the
+    // admin filter chips (e.g. Cancelled) show real totals instead of only what
+    // happens to be on the current page.
+    const grouped = await this.prisma.order.groupBy({
+      by: ['status'],
+      _count: { _all: true },
+    });
+    const statusCounts: Record<string, number> = {};
+    for (const row of grouped) statusCounts[row.status] = row._count._all;
+
     return {
       items,
       total,
+      statusCounts,
       page: safePage,
       pageSize: safePageSize,
       totalPages: Math.max(1, Math.ceil(total / safePageSize)),

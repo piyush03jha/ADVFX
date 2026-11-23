@@ -81,10 +81,26 @@ export class CustomBuildService {
     // add their own admin-set price on top, exactly as they are shown on the form.
     let amountMinor = range.priceMinor;
     if (category.slug === "person") {
-      const body = by("body", input.bodyType), frame = by("frame", input.subjectType);
-      if (!body || !frame) throw new BadRequestException("Person build has an invalid configuration");
-      amountMinor += body.priceMinor + frame.priceMinor;
-      selected.push(body, frame);
+      // Body/frame add-ons only apply when the admin still has options in that
+      // section. Previously a missing section made every height fail with
+      // "invalid configuration", even though the height itself was priced.
+      const hasOptions = (section: string) => category.options.some((o) => o.section === section);
+      for (const [section, slug, label] of [
+        ["body", input.bodyType, "body type"],
+        ["frame", input.subjectType, "frame"],
+      ] as const) {
+        if (!hasOptions(section)) continue;
+        const option = by(section, slug);
+        if (!option) {
+          throw new BadRequestException(
+            slug
+              ? `The selected ${label} "${slug}" is not available. Please choose another option.`
+              : `Please choose a ${label}.`,
+          );
+        }
+        amountMinor += option.priceMinor;
+        selected.push(option);
+      }
     }
 
     return {

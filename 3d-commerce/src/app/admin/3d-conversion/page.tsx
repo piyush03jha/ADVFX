@@ -57,7 +57,7 @@ type Job = {
   publishedAt: string | null;
 };
 
-const ACCEPT = ".abc,.usd,.usda,.usdc,.usdz,.svg,.pdf,.obj,.ply,.stl,.bvh,.fbx,.glb,.gltf,.zip";
+const ACCEPT = ".abc,.usd,.usda,.usdc,.usdz,.svg,.pdf,.obj,.ply,.stl,.3mf,.bvh,.fbx,.glb,.gltf,.zip";
 const FORMATS = [
   "Alembic (.abc)",
   "Universal Scene Description (.usd*)",
@@ -66,6 +66,7 @@ const FORMATS = [
   "Wavefront (.obj)",
   "Stanford PLY (.ply)",
   "STL (.stl)",
+  "3MF (.3mf)",
   "Motion Capture (.bvh)",
   "FBX (.fbx)",
   "glTF 2.0 (.glb/.gltf)",

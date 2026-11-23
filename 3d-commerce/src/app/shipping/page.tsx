@@ -14,5 +14,6 @@ export default function ShippingPage() {
     { title: "Address accuracy", body: "Please verify your delivery address, postal code, phone number, and recipient details before completing payment. Contact support promptly if an address needs correction." },
     { title: "Tracking", body: "Where tracking is available, tracking information is associated with the order after shipment. Carrier tracking updates may take time to appear." },
     { title: "Returns", body: "Return eligibility depends on the product and order status. Custom-made products may have different return conditions because they are produced against customer-specific requirements." },
+    { title: "Custom-made products", body: "Custom-made products are produced to your specific requirements, so we do not accept returns on them once they have been safely delivered to you. If a custom order arrives damaged or defective, contact us promptly with your order number and photos so we can review it." },
   ]} />;
 }

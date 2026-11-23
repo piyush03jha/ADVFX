@@ -55,12 +55,13 @@ export async function POST(request: Request) {
     const data = (await response.json().catch(() => null)) as {
       message?: string | string[];
       error?: string;
+      code?: string;
     } | null;
     const message = Array.isArray(data?.message) ? data.message[0] : data?.message;
 
     if (!response.ok) {
       return NextResponse.json(
-        { error: data?.error ?? message ?? "Unable to update password." },
+        { error: data?.error ?? message ?? "Unable to update password.", code: data?.code },
         { status: response.status },
       );
     }

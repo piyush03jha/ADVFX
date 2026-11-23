@@ -145,8 +145,8 @@ export function CustomForm({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         category,
-        bodyType: isPerson ? body : undefined,
-        subjectType: isPerson ? frame : undefined,
+        bodyType: isPerson && selectedBody ? body : undefined,
+        subjectType: isPerson && selectedFrame ? frame : undefined,
         sizeCm: heightCm,
       }),
       cache: "no-store",
@@ -179,7 +179,7 @@ export function CustomForm({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [category, body, frame, isPerson, heightCm, customSizeValid]);
+  }, [category, body, frame, isPerson, heightCm, customSizeValid, selectedBody, selectedFrame]);
 
   const displayCategories = config?.categories ?? [];
   const hasReference = files.length > 0;
@@ -248,8 +248,8 @@ export function CustomForm({
           dimensions: customDimensions,
           notes: details.trim() || undefined,
           category,
-          bodyType: isPerson ? body : undefined,
-          subjectType: isPerson ? frame : undefined,
+          bodyType: isPerson && selectedBody ? body : undefined,
+          subjectType: isPerson && selectedFrame ? frame : undefined,
           personCount:
             frame === "single" ? 1 : frame === "couple" ? 2 : frame === "group" ? 3 : 1,
           petCount: frame === "pet" ? 1 : 0,

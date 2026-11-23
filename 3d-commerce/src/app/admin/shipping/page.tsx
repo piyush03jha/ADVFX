@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { IconMapPin, IconPlus, IconRefresh, IconTrash, IconTruck } from "@tabler/icons-react";
+import { AdminToast } from "@/components/admin/AdminToast";
 
 type Zone={id:string;postalCode:string;coverage:"DELIVERED"|"NOT_DELIVERED";active:boolean;label:string|null};
 type Rule={id:string;name:string;type:string;amountMinor:number|null;freeAboveMinor:number|null;priority:number;isActive:boolean};
@@ -10,7 +11,7 @@ export default function ShippingAdmin(){
   const [zones,setZones]=useState<Zone[]>([]); const [rules,setRules]=useState<Rule[]>([]);
   const [zip,setZip]=useState(""); const [coverage,setCoverage]=useState<Zone["coverage"]>("DELIVERED");
   const [name,setName]=useState("Standard shipping"); const [amount,setAmount]=useState("");
-  const [busy,setBusy]=useState(false); const [message,setMessage]=useState("");
+  const [busy,setBusy]=useState(false); const [refreshing,setRefreshing]=useState(false); const [message,setMessage]=useState("");
 
   async function load(){
     const [z,r]=await Promise.all([
@@ -18,8 +19,15 @@ export default function ShippingAdmin(){
       fetch("/api/shipping/rules",{cache:"no-store"})
     ]);
     if(z.ok)setZones(await z.json()); if(r.ok)setRules(await r.json());
+    return z.ok&&r.ok;
   }
-  useEffect(()=>{void load()},[]);
+  useEffect(()=>{void load().catch(()=>{})},[]);
+  async function refresh(){
+    setRefreshing(true);setMessage("");
+    try{setMessage((await load())?"Delivery coverage and shipping rules refreshed.":"Unable to refresh shipping data.")}
+    catch{setMessage("Unable to refresh shipping data.")}
+    finally{setRefreshing(false)}
+  }
 
   async function addZone(e:React.FormEvent){
     e.preventDefault();setBusy(true);
@@ -59,7 +67,7 @@ export default function ShippingAdmin(){
         <div className="mt-5 space-y-2">{rules.map(r=><div key={r.id} className={`flex items-center justify-between gap-3 rounded-xl border border-border p-3 ${r.isActive?"":"opacity-50"}`}><div><p className="text-xs font-medium">{r.name}</p><p className="mt-1 text-[10px] text-muted">{r.type} · priority {r.priority} · {r.isActive?"Active":"Inactive"}</p></div><div className="flex items-center gap-2"><p className="text-xs font-semibold">{r.amountMinor===0?"Free":"₹"+((r.amountMinor||0)/100)}</p>{r.isActive&&<><button onClick={()=>void editRule(r)} disabled={busy} className="rounded-lg border border-border px-2 py-1.5 text-[9px]">Edit</button><button onClick={()=>void deactivateRule(r.id)} disabled={busy} className="rounded-lg border border-red-400/20 px-2 py-1.5 text-[9px] text-red-300">Disable</button></>}</div></div>)}</div>
       </section>
     </div>
-    {message&&<p className="mt-4 text-xs text-muted">{message}</p>}
-    <button onClick={()=>void load()} className="mt-5 inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.12em] text-muted"><IconRefresh size={14}/> Refresh</button>
+    <AdminToast message={message} onDismiss={()=>setMessage("")}/>
+    <button type="button" onClick={()=>void refresh()} disabled={refreshing} className="mt-5 inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.12em] text-muted transition hover:text-foreground disabled:cursor-wait disabled:opacity-60"><IconRefresh size={14} className={refreshing?"animate-spin":undefined}/> {refreshing?"Refreshing…":"Refresh"}</button>
   </main>
 }

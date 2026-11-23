@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import {
+  IconBell,
   IconCreditCard,
   IconHome,
   IconMapPin,
@@ -15,6 +16,7 @@ const links = [
   { label: "Overview", href: "/account", icon: IconHome },
   { label: "Orders", href: "/account/orders", icon: IconPackage },
   { label: "Custom requests", href: "/account/custom-requests", icon: IconPackage },
+  { label: "Notifications", href: "/account/notifications", icon: IconBell },
   { label: "Addresses", href: "/account/addresses", icon: IconMapPin },
   { label: "Payments", href: "/account/payments", icon: IconCreditCard },
   { label: "Settings", href: "/account/settings", icon: IconSettings },

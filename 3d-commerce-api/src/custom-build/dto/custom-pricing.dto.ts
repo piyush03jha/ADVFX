@@ -1,9 +1,10 @@
 import { Type } from "class-transformer";
-import { IsIn, IsInt, IsNumber, IsOptional, IsString, Max, Min } from "class-validator";
+import { IsIn, IsInt, IsNumber, IsOptional, IsString, Matches, Max, MaxLength, Min } from "class-validator";
 
 export class CustomPricingDto {
   @IsString()
-  @IsIn(["person", "pet", "object", "vehicle", "character", "other"])
+  @Matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, { message: "category must be a valid category slug" })
+  @MaxLength(40)
   category: string;
 
   @IsOptional()

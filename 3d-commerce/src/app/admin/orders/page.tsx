@@ -78,6 +78,7 @@ export default function AdminOrdersPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+  const [statusCounts, setStatusCounts] = useState<Record<string, number> | null>(null);
 
   async function load() {
     setLoading(true);
@@ -93,6 +94,7 @@ export default function AdminOrdersPage() {
       setOrders(Array.isArray(data) ? (data as Order[]) : (data.items ?? []));
       setTotal(Number(data.total ?? data.length ?? 0));
       setTotalPages(Number(data.totalPages ?? 1));
+      if (data.statusCounts && typeof data.statusCounts === "object") setStatusCounts(data.statusCounts as Record<string, number>);
       setError("");
     } catch {
       setError("Unable to load orders.");
@@ -135,11 +137,13 @@ export default function AdminOrdersPage() {
   }, [orders, search]);
 
   const counts = useMemo(() => {
+    // Prefer the server's totals; fall back to the loaded page for older APIs.
+    if (statusCounts) return statusCounts;
     return orders.reduce<Record<string, number>>((acc, order) => {
       acc[order.status] = (acc[order.status] ?? 0) + 1;
       return acc;
     }, {});
-  }, [orders]);
+  }, [orders, statusCounts]);
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
@@ -166,7 +170,7 @@ export default function AdminOrdersPage() {
             }}
             className={`rounded-full border px-3 py-1.5 text-[9px] font-medium uppercase tracking-[0.08em] ${filter === status ? "border-primary/30 bg-primary/10 text-primary" : "border-border text-muted hover:text-foreground"}`}
           >
-            {status === "ALL" ? `All ${total}` : `${label(status)} ${counts[status] ?? 0}`}
+            {status === "ALL" ? `All ${statusCounts ? Object.values(statusCounts).reduce((sum, value) => sum + value, 0) : total}` : `${label(status)} ${counts[status] ?? 0}`}
           </button>
         ))}
       </div>

@@ -10,6 +10,17 @@ import React, { useState } from "react";
 interface NavbarProps { children: React.ReactNode; className?: string }
 interface NavBodyProps { children: React.ReactNode; className?: string; visible?: boolean }
 interface NavItemsProps { items: { name: string; link: string }[]; className?: string; onItemClick?: () => void }
+
+/**
+ * Clicking "Home" while already on the home page is a same-URL navigation, so
+ * Next.js does nothing. Scroll back to the top instead so the tab responds.
+ */
+export function scrollToTopIfAlreadyHome(event: { preventDefault: () => void }, link: string) {
+  if (link === "/" && typeof window !== "undefined" && window.location.pathname === "/") {
+    event.preventDefault();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+}
 interface MobileNavProps { children: React.ReactNode; className?: string; visible?: boolean }
 interface MobileNavHeaderProps { children: React.ReactNode; className?: string }
 interface MobileNavMenuProps { children: React.ReactNode; className?: string; isOpen: boolean; onClose: () => void }
@@ -62,7 +73,10 @@ export const NavItems = ({ items, className, onItemClick }: NavItemsProps) => {
           key={`link-${idx}`}
           href={item.link}
           onMouseEnter={() => setHovered(idx)}
-          onClick={onItemClick}
+          onClick={(event) => {
+            scrollToTopIfAlreadyHome(event, item.link);
+            onItemClick?.();
+          }}
           className="pointer-events-auto relative rounded-full px-2.5 py-2 text-muted transition-colors duration-300 hover:text-foreground xl:px-3.5"
         >
           {hovered === idx && (

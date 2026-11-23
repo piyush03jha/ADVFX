@@ -18,6 +18,8 @@ import { useAuth } from "@/context/AuthContext";
 import type { StorefrontProduct, StorefrontVariant } from "@/lib/catalog-api";
 import { buildWhatsAppUrl, useWhatsAppConfig } from "@/lib/whatsapp";
 
+// Anything shorter than this cannot be manufactured, so it is rejected up front.
+const MIN_CUSTOM_HEIGHT_CM = 5;
 const MAX_CUSTOM_HEIGHT_CM = 500;
 
 interface ProductActionsProps {
@@ -76,8 +78,8 @@ export function ProductActions({ product, selectedVariantId, quantity, onVariant
 
   const requestCustomSize = () => {
     const height = Number(customHeight);
-    if (!customHeight.trim() || !Number.isFinite(height) || height <= 0 || height > MAX_CUSTOM_HEIGHT_CM) {
-      setCustomHeightError(`Enter a height between 1 and ${MAX_CUSTOM_HEIGHT_CM} cm.`);
+    if (!customHeight.trim() || !Number.isFinite(height) || height < MIN_CUSTOM_HEIGHT_CM || height > MAX_CUSTOM_HEIGHT_CM) {
+      setCustomHeightError(`Enter a height between ${MIN_CUSTOM_HEIGHT_CM} and ${MAX_CUSTOM_HEIGHT_CM} cm.`);
       return;
     }
 
@@ -192,7 +194,7 @@ export function ProductActions({ product, selectedVariantId, quantity, onVariant
             <input
               type="number"
               inputMode="decimal"
-              min={1}
+              min={MIN_CUSTOM_HEIGHT_CM}
               max={MAX_CUSTOM_HEIGHT_CM}
               step="any"
               value={customHeight}

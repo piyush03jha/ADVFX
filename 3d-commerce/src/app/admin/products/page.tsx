@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { IconPlus, IconRefresh, IconSearch, IconUpload, IconBox } from "@tabler/icons-react";
 import AdminProductCard from "@/components/admin/AdminProductCard";
+import { AdminToast } from "@/components/admin/AdminToast";
 import { Button } from "@/components/ui/Button";
 import { uploadModelDirect } from "@/lib/model-upload";
 import { filterProductsByCategory, getMainCategories, getSubcategories } from "@/lib/category-hierarchy.mjs";
@@ -28,8 +29,9 @@ export default function AdminProducts(){
   const [uploadProgress,setUploadProgress]=useState<Record<string,number>>({});
   const [editForm,setEditForm]=useState<Record<string,string|boolean>>({});
 
-  async function load(){setLoading(true);try{const r=await fetch("/api/admin/catalog",{cache:"no-store"});if(!r.ok)throw new Error();setData(await r.json());setMessage("")}catch{setMessage("Unable to load catalog.")}finally{setLoading(false)}}
+  async function load(){setLoading(true);try{const r=await fetch("/api/admin/catalog",{cache:"no-store"});if(!r.ok)throw new Error();setData(await r.json());return true}catch{setMessage("Unable to load catalog.");return false}finally{setLoading(false)}}
   useEffect(()=>{void load()},[]);
+  async function refreshCatalog(){setMessage("");const ok=await load();if(ok)setMessage("Product list refreshed.")}
   useEffect(()=>{
     if(!assetProductId) return;
     const hasPending=assetFiles.some(
@@ -105,6 +107,7 @@ export default function AdminProducts(){
       const fixedWeightGrams=form.hasSizes?undefined:Number(form.fixedWeight);
       if(!form.hasSizes&&!(Number.isFinite(fixedWeightGrams)&&(fixedWeightGrams??0)>0))throw new Error("Enter the model weight in grams for a product without sizes.");
       const slug=form.slug||form.name.toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+      if(data.products.some(product=>product.slug===slug))throw new Error(`A product with the slug "${slug}" already exists. Change the name or slug and try again.`);
       const r=await fetch("/api/products",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:form.name,slug,description:form.description||undefined,categoryId:form.categoryId||undefined,status:form.status,ordersEnabled:true,hasSizes:form.hasSizes,fixedWeightGrams,isFeatured:form.isFeatured,material:form.material||undefined,dimensions:form.dimensions||undefined,height:form.height||undefined,base:form.base||undefined,packaging:form.packaging||undefined,weight:form.weight||undefined})});
       if(!r.ok){const d=await r.json().catch(()=>null);throw new Error(d?.message||"Create failed")}
       const p=await r.json();
@@ -129,7 +132,7 @@ export default function AdminProducts(){
       setForm({name:"",slug:"",description:"",categoryId:"",parentCategoryId:"",status:"ACTIVE",ordersEnabled:true,isFeatured:false,hasSizes:true,fixedWeight:"",material:"",dimensions:"",height:"",base:"",packaging:"",weight:""});
       setProductImages([]);
       setProductGlb(null);
-      setMessage("Product created with assets.");
+      setMessage(`Product "${p.name??form.name}" was created successfully.`);
       await load();
     }catch(e){setMessage(e instanceof Error?e.message:"Unable to create product.")}finally{setSaving(false)}
   }
@@ -235,7 +238,7 @@ export default function AdminProducts(){
   }
 
   return <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-    <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-[9px] uppercase tracking-[0.2em] text-primary">Catalog</p><h1 className="mt-2 font-serif text-4xl">Products</h1><p className="mt-2 text-sm text-muted">Create products, manage order availability, prices and product assets.</p></div><button onClick={()=>void load()} className="rounded-xl border border-border p-2 text-muted"><IconRefresh size={16}/></button></div>
+    <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-[9px] uppercase tracking-[0.2em] text-primary">Catalog</p><h1 className="mt-2 font-serif text-4xl">Products</h1><p className="mt-2 text-sm text-muted">Create products, manage order availability, prices and product assets.</p></div><button type="button" onClick={()=>void refreshCatalog()} disabled={loading} aria-label="Refresh product list" title="Refresh product list" className="rounded-xl border border-border p-2 text-muted transition hover:text-foreground disabled:cursor-wait disabled:opacity-60"><IconRefresh size={16} className={loading?"animate-spin":undefined}/></button></div>
     <form onSubmit={createProduct} className="mt-7 rounded-2xl border border-border bg-surface p-5"><div className="flex items-center gap-2 text-xs font-semibold"><IconPlus size={16} className="text-primary"/> Add product</div>
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <input required value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Product name" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/>
@@ -254,7 +257,7 @@ export default function AdminProducts(){
       </div>
       <div className="grid gap-2">
         <select value={form.parentCategoryId} onChange={e=>setForm({...form,parentCategoryId:e.target.value,categoryId:e.target.value})} className="h-10 rounded-xl border border-border bg-background px-3 text-xs"><option value="">Choose main category</option>{mainCategories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>
-        <select value={form.categoryId} disabled={!form.parentCategoryId || !subcategoriesFor(form.parentCategoryId).length} onChange={e=>setForm({...form,categoryId:e.target.value})} className="h-10 rounded-xl border border-border bg-background px-3 text-xs"><option value={form.parentCategoryId}>Use main category</option>{subcategoriesFor(form.parentCategoryId).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>
+        <select value={form.categoryId} disabled={!form.parentCategoryId || !subcategoriesFor(form.parentCategoryId).length} onChange={e=>setForm({...form,categoryId:e.target.value})} aria-label="Subcategory" title={!form.parentCategoryId?"Choose a main category first":!subcategoriesFor(form.parentCategoryId).length?"This main category has no subcategories":undefined} className="h-10 rounded-xl border border-border bg-background px-3 text-xs disabled:cursor-not-allowed disabled:opacity-50"><option value={form.parentCategoryId}>{!form.parentCategoryId?"Choose a main category first":!subcategoriesFor(form.parentCategoryId).length?"No subcategories - main category is used":"Use main category"}</option>{subcategoriesFor(form.parentCategoryId).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>
       </div>
       <select value={form.status} onChange={e=>setForm({...form,status:e.target.value})} className="h-10 rounded-xl border border-border bg-background px-3 text-xs"><option value="ACTIVE">Active</option><option value="DRAFT">Draft</option></select>
       <textarea value={form.description} onChange={e=>setForm({...form,description:e.target.value})} placeholder="Description" className="min-h-10 rounded-xl border border-border bg-background px-3 py-2 text-xs sm:col-span-2"/><div className="sm:col-span-2 lg:col-span-4"><p className="mb-2 text-[9px] font-medium uppercase tracking-[0.14em] text-muted">Product specifications</p><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><select value={form.material} onChange={e=>setForm({...form,material:e.target.value})} className="h-10 rounded-xl border border-border bg-background px-3 text-xs"><option value="">Select material</option>{[...new Set((data.materialPricingRules??[]).map(rule=>rule.material))].map(material=><option key={material} value={material}>{material}</option>)}</select><input value={form.dimensions} onChange={e=>setForm({...form,dimensions:e.target.value})} placeholder="Dimensions" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/><input value={form.height} onChange={e=>setForm({...form,height:e.target.value})} placeholder="Height" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/><input value={form.base} onChange={e=>setForm({...form,base:e.target.value})} placeholder="Base" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/><input value={form.packaging} onChange={e=>setForm({...form,packaging:e.target.value})} placeholder="Packaging" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/><input value={form.weight} onChange={e=>setForm({...form,weight:e.target.value})} placeholder="Weight" className="h-10 rounded-xl border border-border bg-background px-3 text-xs"/></div></div>
@@ -283,6 +286,6 @@ export default function AdminProducts(){
     </div><Button type="submit" variant="primary" size="sm" disabled={saving} className="mt-4">{saving?"Creating product…":"Create product"}</Button></form>
     <div className="mt-6 grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(220px,280px)]"><div className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3"><IconSearch size={15} className="text-muted"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search products…" className="h-10 flex-1 bg-transparent text-xs outline-none"/></div><div className="grid gap-2 sm:grid-cols-2"><select aria-label="Filter products by main category" value={mainCategoryFilter} onChange={e=>{setMainCategoryFilter(e.target.value);setSubcategoryFilter("all")}} className="h-10 min-w-0 rounded-xl border border-border bg-surface px-3 text-xs"><option value="all">All main categories</option>{mainCategories.map(category=><option key={category.id} value={category.id}>{category.name}</option>)}</select><select aria-label="Filter products by subcategory" value={subcategoryFilter} disabled={mainCategoryFilter==="all" || filteredSubcategories.length===0} onChange={e=>setSubcategoryFilter(e.target.value)} className="h-10 min-w-0 rounded-xl border border-border bg-surface px-3 text-xs disabled:cursor-not-allowed disabled:opacity-50"><option value="all">{mainCategoryFilter==="all"?"Choose main category first":filteredSubcategories.length===0?"No subcategories":"All subcategories"}</option>{filteredSubcategories.map(category=><option key={category.id} value={category.id}>{category.name}</option>)}</select></div></div>
     <div className="mt-5 space-y-3">{loading?[1,2,3].map(i=><div key={i} className="h-28 animate-pulse rounded-2xl bg-surface"/>):rows.map(p=><AdminProductCard key={p.id} product={p} categories={data.categories} materials={[...new Set((data.materialPricingRules??[]).map(rule=>rule.material))]} parentCategoryId={editParentCategoryId} setParentCategoryId={setEditParentCategoryId} saving={saving} editingProduct={editingProduct} assetProductId={assetProductId} assetFiles={assetFiles} assetLoading={assetLoading} assetBusy={assetBusy} assetMessage={assetMessage} uploadProgress={uploadProgress} editForm={editForm} updateProduct={updateProduct} updateProductPrice={updateProductPrice} updateVariants={updateVariants} ensureStandardVariants={ensureStandardVariants} deleteProduct={deleteProduct} startProductEdit={startProductEdit} openAssets={openAssets} uploadImages={uploadImages} uploadGlb={uploadGlb} removeMedia={removeMedia} removeFile={removeFile} setEditingProduct={setEditingProduct} setEditForm={setEditForm} saveProductEdit={saveProductEdit}/>)}{!loading&&!rows.length&&<div className="rounded-2xl border border-dashed border-border p-10 text-sm text-muted">No products found.</div>}</div>
-    {message&&<p className="mt-4 text-xs text-muted">{message}</p>}
+    <AdminToast message={message} onDismiss={()=>setMessage("")}/>
   </main>
 }
