@@ -76,8 +76,8 @@ export class CreateCustomRequestDto {
   petCount?: number;
 
   @Type(() => Number)
-  @IsNumber({ maxDecimalPlaces: 1 })
-  @Min(0.1)
+  @IsInt()
+  @Min(5)
   @Max(1000)
   sizeCm: number;
 }

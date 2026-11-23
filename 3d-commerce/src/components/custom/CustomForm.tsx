@@ -124,7 +124,7 @@ export function CustomForm({
   const heightLabel = customHeight.trim() === "" ? "Not entered" : `${heightCm} cm`;
   const customDimensions = `Height ${heightCm} cm`;
   const customSizeValid =
-    customHeight.trim() !== "" && Number.isFinite(heightCm) && heightCm > 0;
+    customHeight.trim() !== "" && Number.isFinite(Number(customHeight)) && Number.isInteger(Number(customHeight)) && heightCm >= 5 && heightCm <= 1000;
 
   // The quote API returns minor units (paise); show whole rupees like the
   // payment page does. Nothing is priced until a valid height is entered.
@@ -207,7 +207,7 @@ export function CustomForm({
     setAttemptedSubmit(true);
 
     if (!customSizeValid) {
-      setFileError("Enter your height in centimetres (cm).");
+      setFileError("Enter a whole-number height between 5 and 1000 cm (minimum 5 cm).");
       document.getElementById("custom-size-fields")?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
@@ -493,12 +493,12 @@ export function CustomForm({
                   Height (cm)
                   <input
                     type="number"
-                    min="0.1"
-                    step="0.1"
+                    min="5"
+                    step="1"
                     required
                     value={customHeight}
                     onChange={(event) => setCustomHeight(event.target.value)}
-                    placeholder="Enter height in cm"
+                    placeholder="Enter whole-number height (min. 5 cm)"
                     inputMode="decimal"
                     className="mt-1.5 h-12 w-full rounded-xl border border-border bg-surface px-3.5 text-base outline-none focus:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/15 sm:text-sm"
                   />
@@ -508,7 +508,7 @@ export function CustomForm({
                     Available heights: {heightRanges.map((range) => `${range.minCm}–${range.maxCm} cm`).join(", ")}.
                   </p>
                 ) : (
-                  <p className="mt-2 text-[11px] leading-5 text-muted">Height pricing is not configured for this category yet.</p>
+                  <p className="mt-2 text-[11px] leading-5 text-muted">Minimum height is 5 cm. Height pricing is not configured for this category yet.</p>
                 )}
                 {pricingError && customSizeValid && (
                   <p className="mt-2 text-xs text-error" role="alert">{pricingError}</p>

@@ -22,11 +22,8 @@ export default function ShippingAdmin(){
     return z.ok&&r.ok;
   }
   useEffect(()=>{void load().catch(()=>{})},[]);
-  async function refresh(){
-    setRefreshing(true);setMessage("");
-    try{setMessage((await load())?"Delivery coverage and shipping rules refreshed.":"Unable to refresh shipping data.")}
-    catch{setMessage("Unable to refresh shipping data.")}
-    finally{setRefreshing(false)}
+  function refresh(){
+    window.location.reload();
   }
 
   async function addZone(e:React.FormEvent){
