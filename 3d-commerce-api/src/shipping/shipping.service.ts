@@ -84,6 +84,7 @@ export class ShippingService {
   }
 
   private matches(rule: any, context: ShippingQuoteContext) {
+    if (context.excludeWeightBased && rule.type === ShippingRuleType.WEIGHT_BASED) return false;
     if (rule.countryCode && rule.countryCode.toUpperCase() !== context.country.toUpperCase()) return false;
     if (rule.stateCode && rule.stateCode.toUpperCase() !== context.state.toUpperCase()) return false;
 
