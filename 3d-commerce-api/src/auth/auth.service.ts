@@ -694,9 +694,16 @@ export class AuthService {
     id: string;
     email: string;
     name: string | null;
+    phone?: string | null;
     role: UserRole;
   }): AuthenticatedUser {
-    return { id: user.id, email: user.email, name: user.name, role: user.role };
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      phone: user.phone ?? null,
+      role: user.role,
+    };
   }
 }
 
