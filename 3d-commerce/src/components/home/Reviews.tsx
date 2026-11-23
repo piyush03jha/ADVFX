@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
-import { IconArrowUpRight, IconCheck } from "@tabler/icons-react";
+import { IconCheck } from "@tabler/icons-react";
 
 import { Container } from "@/components/ui/Container";
 import { BUSINESS_FACTS, EXTERNAL_REFERENCES } from "@/lib/aeo-content.mjs";
@@ -71,7 +71,6 @@ export function Reviews() {
                 <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-primary sm:text-xs">
                   {highlight.eyebrow}
                 </span>
-                <IconArrowUpRight size={18} stroke={1.4} className="shrink-0 text-muted transition-all duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary" />
               </div>
               <div className="flex flex-1 flex-col justify-center py-5 sm:py-8">
                 <div className="mb-4 flex h-8 w-8 items-center justify-center rounded-full border border-primary/20 text-primary sm:mb-5 sm:h-10 sm:w-10">

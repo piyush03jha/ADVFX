@@ -37,6 +37,9 @@ export type BackendOrder = {
   payment: {
     status: string;
     provider: string;
+    method?: string | null;
+    methodDetail?: string | null;
+    updatedAt?: string;
   } | null;
   shipment: {
     status: string;

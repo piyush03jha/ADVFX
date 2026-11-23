@@ -374,7 +374,7 @@ export function Hero() {
           )}
         </div>
 
-        <div         className="relative z-30 flex min-h-[520px] items-start pt-[380px] sm:min-h-[720px] sm:pt-[485px] lg:min-h-[calc(100svh-5rem)] lg:w-[52%] lg:items-center lg:pt-0">
+        <div         className="relative z-30 flex min-h-[520px] items-start pt-[380px] sm:min-h-[720px] sm:pt-[485px] lg:min-h-[calc(100svh-5rem)] lg:w-[52%] lg:items-center lg:pt-28">
           <HeroContent product={activeProduct} />
         </div>
 

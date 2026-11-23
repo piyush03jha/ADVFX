@@ -406,19 +406,20 @@ export class ProductsService {
         },
         select: { id: true, parentId: true },
       });
-      const selectedRootIds = selectedCategories
+      // A main category also lists products from every nested subcategory, at
+      // any depth, so it does not look empty when products live further down.
+      const categoryIds = new Set(selectedCategories.map((category) => category.id));
+      let frontier = selectedCategories
         .filter((category) => !category.parentId)
         .map((category) => category.id);
-      const expandedCategories = selectedRootIds.length
-        ? await this.prisma.category.findMany({
-            where: { isActive: true, parentId: { in: selectedRootIds } },
-            select: { id: true },
-          })
-        : [];
-      const categoryIds = new Set([
-        ...selectedCategories.map((category) => category.id),
-        ...expandedCategories.map((category) => category.id),
-      ]);
+      for (let depth = 0; depth < 5 && frontier.length; depth += 1) {
+        const children = await this.prisma.category.findMany({
+          where: { isActive: true, parentId: { in: frontier } },
+          select: { id: true },
+        });
+        frontier = children.map((child) => child.id).filter((id) => !categoryIds.has(id));
+        frontier.forEach((id) => categoryIds.add(id));
+      }
       and.push({ categoryId: { in: [...categoryIds] } });
     }
 

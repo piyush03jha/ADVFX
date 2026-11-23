@@ -58,11 +58,11 @@ export default function CareGuidePage() {
           </p>
         </div>
 
-        <div className="mt-10 grid gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-10 grid overflow-hidden rounded-2xl border border-border bg-surface sm:grid-cols-2 lg:grid-cols-3">
           {careItems.map((item) => {
             const Icon = item.icon;
             return (
-              <article key={item.title} className="bg-surface p-6 sm:p-7">
+              <article key={item.title} className="-ml-px -mt-px border-l border-t border-border bg-surface p-6 sm:p-7">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background text-primary">
                   <Icon size={19} stroke={1.5} aria-hidden="true" />
                 </div>

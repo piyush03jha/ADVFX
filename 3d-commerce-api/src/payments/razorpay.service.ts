@@ -111,6 +111,11 @@ export class RazorpayService {
         currency: string;
         amount_refunded?: number;
         refund_status?: string;
+        method?: string;
+        card?: { network?: string; last4?: string };
+        vpa?: string;
+        bank?: string;
+        wallet?: string;
       };
     } catch (error) {
       const message =

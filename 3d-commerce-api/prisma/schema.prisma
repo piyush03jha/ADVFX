@@ -888,6 +888,11 @@ model Payment {
   providerPaymentId String?
   status            PaymentStatus   @default(PENDING)
 
+  // Last method the customer tried to pay with (e.g. "upi", "card") and a safe
+  // display label (e.g. "Visa •••• 4242"). Never holds full card numbers.
+  method       String?
+  methodDetail String?
+
   amountMinor Int
   currency    String    @default("INR")
   paidAt      DateTime?

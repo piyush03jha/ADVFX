@@ -500,6 +500,8 @@ export class PaymentsService {
       );
     }
 
+    await this.recordPaymentMethod(providerPayment);
+
     const result = await this.applyCapturedPayment(
       order.id,
       input.razorpayPaymentId,
@@ -667,6 +669,41 @@ export class PaymentsService {
     return result;
   }
 
+  private async recordPaymentMethod(entity: unknown) {
+    try {
+      const e = entity as
+        | {
+            order_id?: unknown;
+            method?: unknown;
+            card?: { network?: unknown; last4?: unknown };
+            vpa?: unknown;
+            bank?: unknown;
+            wallet?: unknown;
+          }
+        | undefined;
+      if (!e || typeof e.order_id !== 'string' || typeof e.method !== 'string') return;
+      const str = (v: unknown) => (typeof v === 'string' && v ? v : null);
+      let detail: string | null = null;
+      if (e.method === 'card') {
+        const network = str(e.card?.network);
+        const last4 = str(e.card?.last4);
+        detail = [network, last4 ? `•••• ${last4}` : null].filter(Boolean).join(' ') || null;
+      } else if (e.method === 'upi') {
+        detail = str(e.vpa);
+      } else if (e.method === 'netbanking') {
+        detail = str(e.bank);
+      } else if (e.method === 'wallet') {
+        detail = str(e.wallet);
+      }
+      await this.prisma.payment.updateMany({
+        where: { providerOrderId: e.order_id },
+        data: { method: e.method, methodDetail: detail },
+      });
+    } catch (error) {
+      console.error('Unable to record payment method', error);
+    }
+  }
+
   async handleWebhook(rawBody: string, signature: string) {
     if (!this.razorpay.verifyWebhookSignature(rawBody, signature)) {
       throw new BadRequestException('Invalid Razorpay webhook signature');
@@ -680,6 +717,9 @@ export class PaymentsService {
     }
 
     const event = typeof payload.event === 'string' ? payload.event : '';
+
+    // Remember how the customer last tried to pay (best effort, any payment event).
+    await this.recordPaymentMethod(payload.payload?.payment?.entity);
 
     switch (event) {
       case 'payment.captured': {

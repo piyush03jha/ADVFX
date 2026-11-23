@@ -186,7 +186,7 @@ export default function AccountSettingsPage() {
 
           <section className="rounded-3xl border border-white/[0.1] bg-[linear-gradient(135deg,hsl(var(--foreground)/0.045),hsl(var(--background)/0.015)_58%,hsl(var(--primary)/0.045))] p-5 shadow-[0_18px_55px_rgba(0,0,0,0.12)] sm:p-6">
             <SectionHeading icon={IconShieldCheck} eyebrow="Security" title="Account protection" description="Manage the security controls that protect your account." />
-            <div className="mt-6 space-y-2">
+            <div className="mt-6 space-y-4">
               <button
                 type="button"
                 onClick={() => {
@@ -202,8 +202,8 @@ export default function AccountSettingsPage() {
                 <IconChevronRight size={16} className={`shrink-0 text-muted/70 transition-transform ${passwordOpen ? "rotate-90" : ""}`} />
               </button>
               {passwordOpen && (
-                <div className="rounded-2xl border border-white/[0.08] bg-background/50 p-3.5 sm:p-4">
-                  <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-white/[0.08] bg-background/50 p-4 sm:p-6">
+                  <div className="grid gap-4 sm:grid-cols-2 sm:gap-5">
                     <label className="block sm:col-span-2">
                       <span className="mb-2 block text-xs font-medium text-foreground">Current password</span>
                       <input
@@ -245,11 +245,11 @@ export default function AccountSettingsPage() {
                       />
                     </label>
                   </div>
-                  <p className="mt-2 text-[11px] leading-5 text-muted">Use at least 12 characters. Other active sessions will be signed out.</p>
+                  <p className="mt-4 text-xs leading-5 text-muted">Use at least 12 characters. Other active sessions will be signed out.</p>
                   {passwordError && <p role="alert" className="mt-3 rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-800 dark:text-red-200">{passwordError}</p>}
                   {passwordNotSet && <Link href="/forgot-password" className="mt-3 inline-flex min-h-10 items-center rounded-xl border border-primary/40 px-4 text-xs font-semibold text-primary transition-colors hover:bg-primary/10">Set password by email</Link>}
                   {passwordSaved && <p role="status" className="mt-3 rounded-lg border border-emerald-600/25 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-800 dark:text-emerald-200">Password updated successfully.</p>}
-                  <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                  <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                     <button
                       type="button"
                       onClick={() => { setPasswordOpen(false); setCurrentPassword(""); setNewPassword(""); setConfirmPassword(""); setPasswordError(null); }}
