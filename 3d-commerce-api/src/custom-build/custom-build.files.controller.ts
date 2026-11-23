@@ -161,25 +161,40 @@ export class CustomBuildFilesController {
     );
 
     try {
-      const media = await this.prisma.customRequestMedia.create({
-        data: {
-          customRequestId: requestId,
-          originalName: uploaded.filename,
-          storageKey: stored.storageKey,
-          storageUrl: stored.storageUrl,
-          mimeType: uploaded.mimetype,
-          fileSize: BigInt(uploaded.buffer.length),
-        },
-      });
+      // The media row and its reference count must commit together.
+      // Otherwise a failed count update leaves a dangling media record,
+      // even if the uploaded object is later removed.
+      const media = await this.prisma.$transaction(async (tx) => {
+        const created = await tx.customRequestMedia.create({
+          data: {
+            customRequestId: requestId,
+            originalName: uploaded.filename,
+            storageKey: stored.storageKey,
+            storageUrl: stored.storageUrl,
+            mimeType: uploaded.mimetype,
+            fileSize: BigInt(uploaded.buffer.length),
+          },
+        });
 
-      await this.prisma.customRequest.update({
-        where: { id: requestId },
-        data: { referenceFileCount: { increment: 1 } },
+        await tx.customRequest.update({
+          where: { id: requestId },
+          data: { referenceFileCount: { increment: 1 } },
+        });
+
+        return created;
       });
 
       return this.serialize(media);
     } catch (error) {
-      await this.storage.delete(stored.storageKey);
+      // Storage cleanup is best-effort; never hide the original DB exception.
+      try {
+        await this.storage.delete(stored.storageKey);
+      } catch (cleanupError) {
+        console.error("Unable to clean up failed custom upload", {
+          requestId,
+          cleanupError,
+        });
+      }
       throw error;
     }
   }
