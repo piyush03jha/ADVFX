@@ -113,7 +113,7 @@ export default function AdminDashboard() {
           href: "/admin/shipping",
         },
         {
-          label: "Orders paused",
+          label: "Ordering disabled",
           value: `${dashboard.ordersPaused?.products ?? 0} products · ${dashboard.ordersPaused?.categories ?? 0} categories`,
           Icon: IconTruck,
           href: "/admin/products",
@@ -180,6 +180,7 @@ export default function AdminDashboard() {
                 {label}
               </p>
               <p className="mt-1 text-lg font-semibold">{value}</p>
+              {label === "Ordering disabled" && <p className="mt-2 text-[10px] leading-5 text-muted">New checkout is paused for these products or categories. Existing paid orders and payments are unaffected.</p>}
             </Link>
           ))}
         </div>
