@@ -58,7 +58,7 @@ export default function CareGuidePage() {
           </p>
         </div>
 
-        <div className="mt-10 grid overflow-hidden rounded-2xl border border-border bg-surface sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-10 grid overflow-hidden rounded-2xl border border-border bg-surface sm:grid-cols-2">
           {careItems.map((item) => {
             const Icon = item.icon;
             return (
