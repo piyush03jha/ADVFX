@@ -24,6 +24,11 @@ export class CustomBuildAdminController {
     return this.service.createConfigCategory(body);
   }
 
+  @Delete("categories/:id")
+  deleteCategory(@Param("id") id: string) {
+    return this.service.deleteConfigCategory(id);
+  }
+
   @Post("categories/:id/options")
   createOption(@Param("id") id: string, @Body() dto: CreateCustomBuildOptionDto) {
     return this.service.createConfigOption(id, dto);
