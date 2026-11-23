@@ -161,36 +161,54 @@ export class CustomBuildFilesController {
     );
 
     try {
-      const media = await this.prisma.customRequestMedia.create({
-        data: {
-          customRequestId: requestId,
-          originalName: uploaded.filename,
-          storageKey: stored.storageKey,
-          storageUrl: stored.storageUrl,
-          mimeType: uploaded.mimetype,
-          fileSize: BigInt(uploaded.buffer.length),
-        },
-      });
+      // The media row and its reference count must commit together.
+      // Otherwise a failed count update leaves a dangling media record,
+      // even if the uploaded object is later removed.
+      const media = await this.prisma.$transaction(async (tx) => {
+        const created = await tx.customRequestMedia.create({
+          data: {
+            customRequestId: requestId,
+            originalName: uploaded.filename,
+            storageKey: stored.storageKey,
+            storageUrl: stored.storageUrl,
+            mimeType: uploaded.mimetype,
+            fileSize: BigInt(uploaded.buffer.length),
+          },
+        });
 
-      await this.prisma.customRequest.update({
-        where: { id: requestId },
-        data: { referenceFileCount: { increment: 1 } },
+        await tx.customRequest.update({
+          where: { id: requestId },
+          data: { referenceFileCount: { increment: 1 } },
+        });
+
+        return created;
       });
 
       return this.serialize(media);
     } catch (error) {
-      await this.storage.delete(stored.storageKey);
+      // Storage cleanup is best-effort; never hide the original DB exception.
+      try {
+        await this.storage.delete(stored.storageKey);
+      } catch (cleanupError) {
+        console.error("Unable to clean up failed custom upload", {
+          requestId,
+          cleanupError,
+        });
+      }
       throw error;
     }
   }
 
   private async readMultipart(req: FastifyRequest, maxSize: number) {
-    const multipart = (req as FastifyRequest & { file?: () => Promise<any> }).file;
-    if (typeof multipart !== 'function') {
+    // @fastify/multipart adds file() to the *request instance*. Calling a
+    // detached copy of this method loses its request-bound context and can
+    // throw a TypeError (HTTP 500) before any file bytes are processed.
+    const multipartRequest = req as FastifyRequest & { file?: () => Promise<any> };
+    if (typeof multipartRequest.file !== 'function') {
       throw new BadRequestException('Multipart upload support is not available');
     }
 
-    const uploaded = await multipart();
+    const uploaded = await multipartRequest.file();
     if (!uploaded) throw new BadRequestException('File is required');
     if (uploaded.fieldname !== 'file') {
       throw new BadRequestException('Multipart field must be named file');
