@@ -77,14 +77,14 @@ export function CheckoutForm({
   // customer has typed.
   useEffect(() => {
     const knownEmail = user?.email ?? "";
-    const knownPhone = selectedAddress?.phone ?? "";
+    const knownPhone = user?.phone || selectedAddress?.phone || "";
     if (!knownEmail && !knownPhone) return;
     setForm((current) => {
       const email = current.email || knownEmail;
       const phone = current.phone || knownPhone;
       return email === current.email && phone === current.phone ? current : { ...current, email, phone };
     });
-  }, [user?.email, selectedAddress?.phone]);
+  }, [user?.email, user?.phone, selectedAddress?.phone]);
 
   const selectedCountry = useMemo(
     () => COUNTRIES.find((item) => item.code === country) ?? COUNTRIES[0],
