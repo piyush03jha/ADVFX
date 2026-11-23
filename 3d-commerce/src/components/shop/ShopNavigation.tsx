@@ -36,10 +36,13 @@ export function ShopNavigation({
   onShowAll,
 }: ShopNavigationProps) {
   const allActive = selectedCategories.length === 0;
-  const roots = getMainCategories(categories);
+  // Do not advertise empty categories as though products are available.
+  const hasProducts = (category: ShopCategory) => (category._count?.products ?? 0) > 0 ||
+    categories.some((child) => child.parentId === category.id && (child._count?.products ?? 0) > 0);
+  const roots = getMainCategories(categories).filter(hasProducts);
   const selectedSlug = selectedCategories[0] ?? "";
   const activeRoot = getActiveMainCategory(categories, selectedSlug);
-  const visibleSubcategories = activeRoot ? getSubcategories(categories, activeRoot.id) : [];
+  const visibleSubcategories = activeRoot ? getSubcategories(categories, activeRoot.id).filter(hasProducts) : [];
   const railRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
