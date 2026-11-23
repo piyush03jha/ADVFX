@@ -43,6 +43,13 @@ export default function NotificationsPage() {
 
   useEffect(() => {
     void load();
+    const interval = window.setInterval(() => void load(), 20000);
+    const onFocus = () => void load();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+    };
   }, [load]);
 
   const unreadCount = items.filter((item) => !item.readAt).length;
