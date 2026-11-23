@@ -239,9 +239,8 @@ export class CustomBuildService {
       if (zone?.active && zone.coverage === "NOT_DELIVERED") throw new BadRequestException("We currently do not deliver to postal code " + postalCode);
     }
     const subtotalMinor = request.priceMinor;
-    // Custom builds do not currently store a measured weight; weight-based rules
-    // cannot be estimated accurately, so zero is passed until weight is available.
-    const shipping = await this.shipping.quote({ subtotalMinor, weightGrams: 0, country: address.country || "IN", state: address.state || "" });
+    // Weight-based shipping is reserved for regular catalog checkout.
+    const shipping = await this.shipping.quote({ subtotalMinor, weightGrams: 0, excludeWeightBased: true, country: address.country || "IN", state: address.state || "" });
     const taxMinor = Math.round(subtotalMinor * DEFAULT_GST_RATE_BPS / 10000);
     const shippingMinor = shipping.amountMinor;
     return { currency: "INR", subtotalMinor, shippingMinor, taxMinor, totalMinor: subtotalMinor + shippingMinor + taxMinor, gstRateBps: DEFAULT_GST_RATE_BPS, shipping };
