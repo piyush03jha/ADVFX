@@ -8,6 +8,7 @@ type BackendUser = {
   id: string;
   name: string | null;
   email: string;
+  phone?: string | null;
   role?: string;
 };
 
@@ -49,6 +50,7 @@ export async function GET() {
         id: backendUser.id,
         name: backendUser.name ?? "",
         email: backendUser.email,
+        phone: backendUser.phone ?? null,
       },
     });
   } catch {
