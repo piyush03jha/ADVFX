@@ -78,6 +78,6 @@ export class CreateCustomRequestDto {
   @Type(() => Number)
   @IsInt()
   @Min(5)
-  @Max(1000)
+  @Max(500)
   sizeCm: number;
 }
