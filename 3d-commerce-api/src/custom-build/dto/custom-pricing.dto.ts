@@ -9,7 +9,7 @@ export class CustomPricingDto {
 
   @IsOptional()
   @IsString()
-  @IsIn(["half", "full"])
+  @Matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, { message: "Select an available custom option" })
   bodyType?: string;
 
   @IsOptional()
@@ -19,7 +19,7 @@ export class CustomPricingDto {
 
   @IsOptional()
   @IsString()
-  @IsIn(["single", "couple", "pet", "group"])
+  @Matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, { message: "Select an available custom option" })
   subjectType?: string;
 
   @IsOptional()
