@@ -124,7 +124,7 @@ export function CustomForm({
   const heightLabel = customHeight.trim() === "" ? "Not entered" : `${heightCm} cm`;
   const customDimensions = `Height ${heightCm} cm`;
   const customSizeValid =
-    customHeight.trim() !== "" && Number.isFinite(heightCm) && heightCm >= 5 && heightCm <= 1000;
+    customHeight.trim() !== "" && Number.isFinite(Number(customHeight)) && Number.isInteger(Number(customHeight)) && heightCm >= 5 && heightCm <= 1000;
 
   // The quote API returns minor units (paise); show whole rupees like the
   // payment page does. Nothing is priced until a valid height is entered.
@@ -207,7 +207,7 @@ export function CustomForm({
     setAttemptedSubmit(true);
 
     if (!customSizeValid) {
-      setFileError("Enter a height between 5 and 1000 cm.");
+      setFileError("Enter a whole-number height between 5 and 1000 cm (minimum 5 cm).");
       document.getElementById("custom-size-fields")?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
@@ -494,11 +494,11 @@ export function CustomForm({
                   <input
                     type="number"
                     min="5"
-                    step="0.1"
+                    step="1"
                     required
                     value={customHeight}
                     onChange={(event) => setCustomHeight(event.target.value)}
-                    placeholder="Enter height (minimum 5 cm)"
+                    placeholder="Enter whole-number height (min. 5 cm)"
                     inputMode="decimal"
                     className="mt-1.5 h-12 w-full rounded-xl border border-border bg-surface px-3.5 text-base outline-none focus:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/15 sm:text-sm"
                   />
