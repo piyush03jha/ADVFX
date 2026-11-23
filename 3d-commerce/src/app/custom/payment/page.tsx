@@ -369,8 +369,8 @@ function CustomPaymentPageContent() {
                 <div className="mt-5 space-y-3 border-b border-border pb-5 text-xs">
                   <Row label="Custom product" value={`₹${(amountMinor / 100).toLocaleString("en-IN")}`} />
                   <Row label="GST (18%)" value={checkoutQuote ? `₹${(checkoutQuote.taxMinor / 100).toLocaleString("en-IN")}` : "—"} />
-                  <Row label="Delivery" value={checkoutQuote ? (checkoutQuote.shippingMinor ? `₹${(checkoutQuote.shippingMinor / 100).toLocaleString("en-IN")}` : "Free") : "—"} />
-                  {checkoutQuote?.shipping?.ruleId === null ? <p className="text-muted">No shipping rule matched; delivery is currently quoted at ₹0.</p> : null}
+                  <Row label="Delivery" value={checkoutQuote ? (checkoutQuote.shipping.ruleId === null ? "Not configured" : checkoutQuote.shippingMinor ? `₹${(checkoutQuote.shippingMinor / 100).toLocaleString("en-IN")}` : "Free") : "—"} />
+                  {checkoutQuote?.shipping?.ruleId === null ? <p className="text-muted">No eligible custom-order shipping rule matched. Delivery is currently quoted at ₹0; please confirm the charge before paying.</p> : null}
                   {quoteLoading ? <p className="text-muted">Calculating delivery and GST…</p> : null}
                   {quoteError ? <p className="text-error">{quoteError}</p> : null}
                 </div>
