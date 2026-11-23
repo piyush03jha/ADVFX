@@ -28,6 +28,7 @@ export const PRODUCT_TYPES = [
   "Miniatures",
   "Character models",
   "Collectibles and display pieces for a desk or shelf",
+  "Custom-made and personalized 3D printed figures, pets, vehicles and objects",
 ];
 
 export const READY_MADE_ORDER_STEPS = [
