@@ -25,11 +25,13 @@ describe('CustomBuildService', () => {
   } as any;
   const notifications = { create: jest.fn() } as any;
   const storage = {} as any;
+  const shipping = { quote: jest.fn() } as any;
   let service: CustomBuildService;
 
   beforeEach(() => {
     jest.resetAllMocks();
-    service = new CustomBuildService(prisma, notifications, storage);
+    shipping.quote.mockResolvedValue({ amountMinor: 10000, currency: "INR", ruleId: "flat-1", label: "Flat delivery" });
+    service = new CustomBuildService(prisma, notifications, storage, shipping);
   });
 
   it('creates a custom request with server-owned reference count', async () => {
@@ -172,6 +174,19 @@ describe('CustomBuildService', () => {
       prisma.customRequestQuote.upsert.mockResolvedValue({});
     });
 
+    it('adds 18% GST and configured non-weight delivery before payment', async () => {
+      prisma.customRequest.findFirst.mockResolvedValue(baseRequest);
+      const totals = await service.checkoutQuote('u1', 'r1', 'a2');
+      expect(totals).toEqual(expect.objectContaining({
+        currency: 'INR', subtotalMinor: 59900, taxMinor: 10782, shippingMinor: 10000, totalMinor: 80682,
+      }));
+      expect(shipping.quote).toHaveBeenCalledWith(expect.objectContaining({
+        subtotalMinor: 59900,
+        excludeWeightBased: true,
+        weightGrams: 0,
+      }));
+    });
+
     it('refuses to start a second payment once the request is in production', async () => {
       prisma.customRequest.findFirst.mockResolvedValue({ ...baseRequest, status: 'IN_PRODUCTION', orderId: 'o1' });
 
@@ -180,7 +195,7 @@ describe('CustomBuildService', () => {
     });
 
     it('reuses the unpaid order instead of creating a duplicate', async () => {
-      const pending = { id: 'o1', status: 'PENDING_PAYMENT', shippingAddressId: 'a2' };
+      const pending = { id: 'o1', status: 'PENDING_PAYMENT', shippingAddressId: 'a2', totalMinor: 80682 };
       prisma.customRequest.findFirst.mockResolvedValue({ ...baseRequest, orderId: 'o1' });
       prisma.order.findUnique.mockResolvedValue(pending);
 
