@@ -3,6 +3,7 @@ import { CustomBuildService } from './custom-build.service';
 
 describe('CustomBuildService', () => {
   const prisma = {
+    $transaction: jest.fn(),
     user: { findUnique: jest.fn() },
     customRequest: {
       create: jest.fn(),
@@ -30,6 +31,7 @@ describe('CustomBuildService', () => {
 
   beforeEach(() => {
     jest.resetAllMocks();
+    prisma.$transaction.mockImplementation(async (fn: (tx: any) => Promise<any>) => fn(prisma));
     shipping.quote.mockResolvedValue({ amountMinor: 10000, currency: "INR", ruleId: "flat-1", label: "Flat delivery" });
     service = new CustomBuildService(prisma, notifications, storage, shipping);
   });
