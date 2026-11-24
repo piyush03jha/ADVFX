@@ -1,3 +1,34 @@
+// Catalog uses the same format allowlist as the conversion worker (3D formats only).
+export const CATALOG_MODEL_ACCEPT = ".glb,.gltf,.obj,.stl,.3mf,.fbx,.ply,.abc,.usd,.usda,.usdc,.usdz,.bvh,.zip";
+export const CATALOG_MODEL_MAX_BYTES = 250 * 1024 * 1024;
+
+export function validateCatalogModel(file: File) {
+  const extension = "." + file.name.toLowerCase().split(".").pop();
+  if (!CATALOG_MODEL_ACCEPT.split(",").includes(extension)) {
+    throw new Error("Unsupported 3D format. Choose GLB, glTF, OBJ, STL, 3MF, FBX, PLY, Alembic, USD, BVH or ZIP.");
+  }
+  if (file.size <= 0 || file.size > CATALOG_MODEL_MAX_BYTES) {
+    throw new Error("Choose a non-empty 3D file of 250 MB or smaller.");
+  }
+}
+
+export type CatalogConversionJob = {
+  id: string;
+  targetProductId?: string | null;
+  originalName: string;
+  status: string;
+  stage: string;
+  originalSize?: string | null;
+  outputSize?: string | null;
+  errorMessage?: string | null;
+  optimizerWarning?: string | null;
+  publishedFileId?: string | null;
+};
+
+export function isCatalogConversionActive(job?: CatalogConversionJob) {
+  return Boolean(job && job.status !== "FAILED" && job.stage !== "PUBLISHED" && !(job.stage === "READY" && job.errorMessage));
+}
+
 interface ConversionUploadProgress {
   (percent: number): void;
 }
