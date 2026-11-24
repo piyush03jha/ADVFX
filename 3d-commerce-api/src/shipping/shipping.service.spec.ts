@@ -4,6 +4,7 @@ import { ShippingService } from './shipping.service';
 describe('ShippingService', () => {
   const prisma = {
     shippingRule: { findMany: jest.fn() },
+    deliveryZone: { findUnique: jest.fn() },
   } as any;
   const service = new ShippingService(prisma);
 
@@ -35,6 +36,16 @@ describe('ShippingService', () => {
         estimatedMaxDays: 6,
       },
     ]);
+  });
+
+  it('ignores a deactivated postal code restriction', async () => {
+    prisma.deliveryZone.findUnique.mockResolvedValue({ active: false, coverage: 'NOT_DELIVERED' });
+    await expect(service.deliveryCheck('110001')).resolves.toMatchObject({ deliverable: true, rule: 'DEFAULT' });
+  });
+
+  it('blocks a postal code with an active restriction', async () => {
+    prisma.deliveryZone.findUnique.mockResolvedValue({ active: true, coverage: 'NOT_DELIVERED' });
+    await expect(service.deliveryCheck('110001')).resolves.toMatchObject({ deliverable: false, rule: 'NOT_DELIVERED' });
   });
 
   it('reserves weight-based rules for regular orders', async () => {
