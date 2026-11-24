@@ -216,10 +216,10 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
         },
       });
 
-      // Keep a direct GLB source until publish because convertedStorageKey points
-      // at that same object. Other formats can discard their private source once
-      // the converted GLB is durable.
-      if (job.deleteSourceOnSuccess && !reusableConverted && !directGlbSource) {
+      // For catalog uploads, retain the source until the permanent optimized
+      // GLB has been verified and attached. publish() handles cleanup afterward.
+      // Standalone conversion jobs retain their existing cleanup behavior.
+      if (!job.targetProductId && job.deleteSourceOnSuccess && !reusableConverted && !directGlbSource) {
         await this.storage.delete(job.sourceStorageKey).catch((error) => {
           this.logger.warn(
             `Unable to delete original conversion source ${job.id}: ${error instanceof Error ? error.message : String(error)}`,
