@@ -46,6 +46,26 @@ describe('ThreeDConversionService.discardConversionIntermediates', () => {
     expect(result).toMatchObject({ id: 'j1', status: 'QUEUED', stage: 'QUEUED' });
   });
 
+  it('serializes completion and published file sizes without JSON errors', () => {
+    const job = service.serialize({ id: 'j1', completionSize: 20n, originalSize: 20n, outputSize: 12n, publishedFile: { id: 'file-1', fileSize: 12n } });
+    expect(() => JSON.stringify(job)).not.toThrow();
+    expect(job).toMatchObject({ completionSize: '20', publishedFile: { fileSize: '12' } });
+  });
+
+  it('does not complete storage when another request won the upload claim', async () => {
+    const uploading = { id: 'j1', status: 'PROCESSING', stage: 'UPLOADING', sourceStorageKey: 'conversions/j1/source/model.obj', uploadId: 'upload-1' };
+    prisma.threeDConversionJob.findUnique.mockResolvedValueOnce(uploading).mockResolvedValueOnce({ ...uploading, stage: 'COMPLETING' });
+    prisma.threeDConversionJob.updateMany.mockResolvedValue({ count: 0 });
+    await expect(service.complete('j1', { key: uploading.sourceStorageKey, uploadId: 'upload-1', size: 1024, parts: [{ PartNumber: 1, ETag: 'etag' }] })).rejects.toThrow(/already being finalized/);
+    expect(storage.completeMultipartUpload).not.toHaveBeenCalled();
+  });
+
+  it('returns the job if the worker already claimed a finalized upload', async () => {
+    prisma.threeDConversionJob.findUnique.mockResolvedValue({ id: 'j1', status: 'PROCESSING', stage: 'OPTIMIZING', uploadId: null, originalSize: 1024n });
+    await expect(service.complete('j1', { key: 'conversions/j1/source/model.obj', uploadId: 'upload-1', size: 1024, parts: [] })).resolves.toMatchObject({ stage: 'OPTIMIZING' });
+    expect(storage.completeMultipartUpload).not.toHaveBeenCalled();
+  });
+
   it('rejects a second concurrent completion while the first completion lease is fresh', async () => {
     const completing = {
       id: 'j1', status: 'PROCESSING', stage: 'COMPLETING',
