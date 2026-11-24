@@ -101,6 +101,9 @@ export class ThreeDConversionService {
   ) {
     let job = await this.prisma.threeDConversionJob.findUnique({ where: { id: jobId } });
     if (!job) throw new NotFoundException("Conversion job not found");
+    // The worker may already have claimed or finished the job before the
+    // client receives the completion response. Never finalize storage twice.
+    if (!job.uploadId && job.originalSize != null && job.status !== ProcessingJobStatus.FAILED) return this.serialize(job);
     if (job.status === ProcessingJobStatus.QUEUED) return this.serialize(job);
     if (job.status !== ProcessingJobStatus.PROCESSING) {
       throw new BadRequestException("Conversion upload is not active");
@@ -154,7 +157,8 @@ export class ThreeDConversionService {
       });
       job = await this.prisma.threeDConversionJob.findUnique({ where: { id: job.id } });
       if (!job) throw new NotFoundException("Conversion job not found");
-      if (claimed.count !== 1 && job.status !== ProcessingJobStatus.QUEUED && job.stage !== "COMPLETING") {
+      if (claimed.count !== 1) {
+        if (!job.uploadId && job.originalSize != null && job.status !== ProcessingJobStatus.FAILED) return this.serialize(job);
         throw new ConflictException("Conversion upload is already being finalized");
       }
     } else if (job.stage === "COMPLETING") {
@@ -243,7 +247,7 @@ export class ThreeDConversionService {
 
     const completed = await this.prisma.threeDConversionJob.findUnique({ where: { id: job.id } });
     if (!completed) throw new NotFoundException("Conversion job not found");
-    if (completed.status !== ProcessingJobStatus.QUEUED) {
+    if (completed.status !== ProcessingJobStatus.QUEUED && (completed.uploadId || completed.originalSize == null || completed.status === ProcessingJobStatus.FAILED)) {
       throw new ConflictException("Conversion upload could not be queued; retry completion");
     }
     return this.serialize(completed);
@@ -411,7 +415,10 @@ export class ThreeDConversionService {
     const job = await this.prisma.threeDConversionJob.findUnique({ where: { id } });
     if (!job) throw new NotFoundException("Conversion job not found");
 
-    const key = kind === "converted" ? job.convertedStorageKey : job.outputStorageKey;
+    const publishedFile = kind === "optimized" && job.stage === "PUBLISHED" && job.publishedFileId
+      ? await this.prisma.productFile.findUnique({ where: { id: job.publishedFileId }, select: { storageKey: true } })
+      : null;
+    const key = kind === "converted" ? job.convertedStorageKey : publishedFile?.storageKey ?? job.outputStorageKey;
     if (job.status !== ProcessingJobStatus.COMPLETED || !key) {
       throw new NotFoundException("Requested GLB is not ready");
     }
@@ -490,6 +497,8 @@ export class ThreeDConversionService {
   }
 
   async publish(id: string, productId: string) {
+    const product = await this.prisma.product.findUnique({ where: { id: productId }, select: { id: true } });
+    if (!product) throw new NotFoundException("Target product not found");
     const claimed = await this.prisma.threeDConversionJob.updateMany({
       where: { id, status: ProcessingJobStatus.COMPLETED, stage: "READY" },
       data: { stage: "PUBLISHING" },
@@ -504,16 +513,11 @@ export class ThreeDConversionService {
       throw new BadRequestException("Conversion job publish claim is invalid");
     }
 
-    const product = await this.prisma.product.findUnique({
-      where: { id: productId },
-      select: { id: true },
-    });
-    if (!product) throw new NotFoundException("Target product not found");
-
     const destinationKey = `products/${productId}/models/${job.id}.glb`;
     const url = this.storage.getPublicAssetUrl(destinationKey);
 
     try {
+      if (!url) throw new BadRequestException("Public model storage URL is not configured");
       await this.storage.copy(job.outputStorageKey, destinationKey);
       const actualSize = await this.storage.getObjectSize(destinationKey);
       if (!job.outputSize || actualSize <= 0 || BigInt(actualSize) !== job.outputSize) {
@@ -745,6 +749,8 @@ export class ThreeDConversionService {
   serialize(job: any) {
     return {
       ...job,
+      completionSize: job.completionSize == null ? null : job.completionSize.toString(),
+      ...(job.publishedFile ? { publishedFile: { ...job.publishedFile, fileSize: job.publishedFile.fileSize == null ? null : job.publishedFile.fileSize.toString() } } : {}),
       originalSize: job.originalSize == null ? null : job.originalSize.toString(),
       convertedSize: job.convertedSize == null ? null : job.convertedSize.toString(),
       outputSize: job.outputSize == null ? null : job.outputSize.toString(),
