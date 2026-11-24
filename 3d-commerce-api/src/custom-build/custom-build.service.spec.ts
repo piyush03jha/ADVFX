@@ -4,6 +4,7 @@ import { CustomBuildService } from './custom-build.service';
 describe('CustomBuildService', () => {
   const prisma = {
     $transaction: jest.fn(),
+    $queryRaw: jest.fn(),
     user: { findUnique: jest.fn() },
     customRequest: {
       create: jest.fn(),
@@ -244,6 +245,20 @@ describe('CustomBuildService', () => {
         expect.objectContaining({ requestId: 'r1', order: { id: 'o-new', status: 'PENDING_PAYMENT' } }),
       );
       expect(prisma.order.create).toHaveBeenCalledTimes(1);
+    });
+
+    it('rejects an idempotency key belonging to a different request', async () => {
+      prisma.customRequest.findFirst.mockResolvedValue(baseRequest);
+      prisma.order.findFirst.mockResolvedValue({ id: 'other', status: 'PENDING_PAYMENT', customRequest: { id: 'r2' } });
+      await expect(service.checkout('u1', 'r1', 'a2', 'reused-key')).rejects.toBeInstanceOf(ConflictException);
+      expect(prisma.order.create).not.toHaveBeenCalled();
+    });
+
+    it('locks the custom request before creating a payment order', async () => {
+      prisma.customRequest.findFirst.mockResolvedValue(baseRequest);
+      await service.checkout('u1', 'r1', 'a2', 'new-key');
+      expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+      expect(prisma.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(prisma.order.create.mock.invocationCallOrder[0]);
     });
 
     it('refuses checkout when the linked order is already paid', async () => {
