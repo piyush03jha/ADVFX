@@ -5,7 +5,7 @@ import { IconPlus, IconRefresh, IconSearch, IconUpload, IconBox } from "@tabler/
 import AdminProductCard from "@/components/admin/AdminProductCard";
 import { AdminToast } from "@/components/admin/AdminToast";
 import { Button } from "@/components/ui/Button";
-import { uploadModelDirect } from "@/lib/model-upload";
+import { CATALOG_MODEL_ACCEPT, uploadConversionDirect, validateCatalogModel, isCatalogConversionActive, type CatalogConversionJob } from "@/lib/conversion-upload";
 import { filterProductsByCategory, getMainCategories, getSubcategories } from "@/lib/category-hierarchy.mjs";
 
 type ProductVariant={id:string;name:string;size?:string|null;sku?:string|null;isActive:boolean;price?:{amountMinor:number;compareAtMinor?:number|null;priceOverrideMinor?:number|null;isActive:boolean}|null};
@@ -20,6 +20,8 @@ export default function AdminProducts(){
   const [editParentCategoryId,setEditParentCategoryId]=useState("");
   const [productImages,setProductImages]=useState<File[]>([]);
   const [productGlb,setProductGlb]=useState<File|null>(null);
+  const [conversionJobs,setConversionJobs]=useState<Record<string,CatalogConversionJob>>({});
+  const [conversionStatusError,setConversionStatusError]=useState("");
   const [assetProductId,setAssetProductId]=useState<string|null>(null);
   const [assetFiles,setAssetFiles]=useState<ProductFile[]>([]);
   const [assetLoading,setAssetLoading]=useState(false);
@@ -32,23 +34,79 @@ export default function AdminProducts(){
   async function load(){setLoading(true);try{const r=await fetch("/api/admin/catalog",{cache:"no-store"});if(!r.ok)throw new Error();setData(await r.json());return true}catch{setMessage("Unable to load catalog.");return false}finally{setLoading(false)}}
   useEffect(()=>{void load()},[]);
   function refreshCatalog(){window.location.reload()}
+  // Conversion jobs are persisted by the backend, so the catalog can resume
+  // showing progress after a reload instead of relying on a temporary file row.
   useEffect(()=>{
-    if(!assetProductId) return;
-    const hasPending=assetFiles.some(
-      (file)=>file.processingStatus==="PENDING" || file.processingStatus==="PROCESSING",
-    );
-    if(!hasPending) return;
-
-    const refresh=async()=>{
+    let cancelled=false;
+    let inFlight=false;
+    async function refreshJobs(){
+      if(inFlight)return;
+      inFlight=true;
       try{
-        const r=await fetch("/api/products/"+assetProductId+"/files",{cache:"no-store"});
-        if(r.ok) setAssetFiles(await r.json());
-      }catch{}
-    };
+        const response=await fetch("/api/3d-conversion",{cache:"no-store"});
+        if(!response.ok)throw new Error("Unable to refresh model conversion status.");
+        const jobs=await response.json() as CatalogConversionJob[];
+        if(cancelled)return;
+        const latest:Record<string,CatalogConversionJob>={};
+        for(const job of jobs){
+          if(job.targetProductId&&!latest[job.targetProductId])latest[job.targetProductId]=job;
+        }
+        setConversionJobs(latest);
+        setConversionStatusError("");
+      }catch{
+        if(!cancelled)setConversionStatusError("Model conversion status is temporarily unavailable. Refresh to retry.");
+      }finally{inFlight=false}
+    }
+    void refreshJobs();
+    const timer=window.setInterval(()=>void refreshJobs(),5000);
+    return ()=>{cancelled=true;window.clearInterval(timer)};
+  },[]);
+  const selectedJob=assetProductId?conversionJobs[assetProductId]:undefined;
+  useEffect(()=>{
+    if(!assetProductId || selectedJob?.stage!=="PUBLISHED")return;
+    let cancelled=false;
+    async function refreshPublished(){
+      const [files,catalog]=await Promise.all([
+        fetch("/api/products/"+assetProductId+"/files",{cache:"no-store"}),
+        fetch("/api/admin/catalog",{cache:"no-store"}),
+      ]);
+      if(files.ok){const result=await files.json();if(!cancelled)setAssetFiles(result)}
+      if(catalog.ok){const result=await catalog.json();if(!cancelled)setData(result)}
+    }
+    void refreshPublished().catch(()=>undefined);
+    return ()=>{cancelled=true};
+  },[assetProductId,selectedJob?.id,selectedJob?.stage]);
 
-    const timer=window.setInterval(refresh,5000);
-    return ()=>window.clearInterval(timer);
-  },[assetProductId,assetFiles]);
+  async function queueCatalogModel(productId:string,file:File){
+    validateCatalogModel(file);
+    setUploadProgress(prev=>({...prev,[productId]:0}));
+    try{
+      const job=await uploadConversionDirect(file,percent=>setUploadProgress(prev=>({...prev,[productId]:percent})),undefined,{targetProductId:productId,optimizationPreset:"BALANCED"}) as CatalogConversionJob;
+      if(!job?.id)throw new Error("Conversion job was not returned. Refresh the catalog before retrying.");
+      setConversionJobs(prev=>({...prev,[productId]:job}));
+      return job;
+    }finally{
+      setUploadProgress(prev=>{const next={...prev};delete next[productId];return next});
+    }
+  }
+
+  async function retryCatalogModel(productId:string){
+    const job=conversionJobs[productId];
+    if(!job||assetBusy)return;
+    setAssetBusy(true);setAssetMessage("");
+    try{
+      const action=job.status==="FAILED"?"retry":"publish";
+      const r=await fetch("/api/3d-conversion/"+encodeURIComponent(job.id)+"/"+action,{
+        method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify(action==="publish"?{productId}:{}),
+      });
+      const result=await r.json().catch(()=>null);
+      if(!r.ok)throw new Error(result?.message||result?.error||"Unable to retry conversion.");
+      setConversionJobs(prev=>({...prev,[productId]:result}));
+      setAssetMessage(action==="publish"?"Optimized model attached.":"Conversion queued again.");
+    }catch(error){setAssetMessage(error instanceof Error?error.message:"Unable to retry conversion.")}
+    finally{setAssetBusy(false)}
+  }
 
   const rows=useMemo(()=>filterProductsByCategory(
     data.products,
@@ -104,6 +162,7 @@ export default function AdminProducts(){
   async function createProduct(e:React.FormEvent){
     e.preventDefault();setSaving(true);setMessage("");
     try{
+      if(productGlb)validateCatalogModel(productGlb);
       const fixedWeightGrams=form.hasSizes?undefined:Number(form.fixedWeight);
       if(!form.hasSizes&&!(Number.isFinite(fixedWeightGrams)&&(fixedWeightGrams??0)>0))throw new Error("Enter the model weight in grams for a product without sizes.");
       const slug=form.slug||form.name.toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
@@ -124,15 +183,19 @@ export default function AdminProducts(){
         }
       }
 
+      let modelMessage="";
       if(productGlb){
-        await uploadModelDirect(p.id, productGlb, (percent) =>
-          setUploadProgress((prev) => ({ ...prev, [p.id]: percent })),
-        );
+        try{
+          await queueCatalogModel(p.id,productGlb);
+          modelMessage=" 3D conversion queued; the optimized GLB will attach automatically.";
+        }catch(error){
+          modelMessage=" Product created, but model upload failed: "+(error instanceof Error?error.message:"Unknown error")+". Retry from Manage photos & 3D.";
+        }
       }
       setForm({name:"",slug:"",description:"",categoryId:"",parentCategoryId:"",status:"ACTIVE",ordersEnabled:true,isFeatured:false,hasSizes:true,fixedWeight:"",material:"",dimensions:"",height:"",base:"",packaging:"",weight:""});
       setProductImages([]);
       setProductGlb(null);
-      setMessage(`Product "${p.name??form.name}" was created successfully.`);
+      setMessage(`Product "${p.name??form.name}" was created successfully.`+modelMessage);
       await load();
     }catch(e){setMessage(e instanceof Error?e.message:"Unable to create product.")}finally{setSaving(false)}
   }
@@ -146,10 +209,28 @@ export default function AdminProducts(){
   }
 
   async function openAssets(id:string){
-    if(assetProductId===id){setAssetProductId(null);return;}
-    setAssetProductId(id);setAssetLoading(true);setAssetMessage("");
-    try{const r=await fetch("/api/products/"+id+"/files",{cache:"no-store"});if(!r.ok)throw new Error();setAssetFiles(await r.json())}catch{setAssetMessage("Unable to load 3D assets.")}finally{setAssetLoading(false)}
+    if(assetBusy)return;
+    setAssetMessage("");
+    setAssetFiles([]);
+    setAssetLoading(assetProductId!==id);
+    setAssetProductId(assetProductId===id?null:id);
   }
+
+  useEffect(()=>{
+    if(!assetProductId)return;
+    const controller=new AbortController();
+    const id=assetProductId;
+    setAssetLoading(true);
+    void fetch("/api/products/"+encodeURIComponent(id)+"/files",{cache:"no-store",signal:controller.signal})
+      .then(async response=>{
+        if(!response.ok)throw new Error("Unable to load 3D assets.");
+        const files=await response.json();
+        if(!controller.signal.aborted)setAssetFiles(files);
+      })
+      .catch(()=>{if(!controller.signal.aborted)setAssetMessage("Unable to load 3D assets.")})
+      .finally(()=>{if(!controller.signal.aborted)setAssetLoading(false)});
+    return ()=>controller.abort();
+  },[assetProductId]);
   async function uploadImages(id:string,files:FileList|null){
     if(!files?.length)return;
     setAssetBusy(true);setAssetMessage("");
@@ -169,64 +250,14 @@ export default function AdminProducts(){
     finally{setAssetBusy(false);setUploadProgress(prev=>{const next={...prev};delete next[id];return next})}
   }
   async function uploadGlb(id:string,file:File|null){
-    if(!file)return;
+    if(!file||assetBusy||isCatalogConversionActive(conversionJobs[id]))return;
     setAssetBusy(true);setAssetMessage("");
-    setUploadProgress((prev)=>({...prev,[id]:0}));
     try{
-      if(file.size===0)throw new Error("The selected GLB file is empty.");
-      if(!file.name.toLowerCase().endsWith(".glb"))throw new Error("Only .glb files are accepted.");
-      if(file.size>150*1024*1024)throw new Error("GLB files must be 150 MB or smaller.");
-
-      let data;
-      try {
-        data=await uploadModelDirect(id,file,(percent)=>{
-          setUploadProgress((prev)=>({...prev,[id]:percent}));
-        });
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "";
-        if (!message.includes("Remote storage is not configured")) throw error;
-
-        const fd = new FormData();
-        fd.append("file", file);
-        const fallback = await fetch("/api/products/"+id+"/files", {
-          method:"POST",
-          body:fd,
-        });
-        const fallbackData = await fallback.json().catch(()=>null);
-        if (!fallback.ok) {
-          throw new Error(
-            fallbackData?.message ||
-            fallbackData?.error ||
-            "Unable to upload GLB using local storage fallback."
-          );
-        }
-        data = {
-          id:fallbackData?.id,
-          url:fallbackData?.storageUrl || fallbackData?.url || "",
-          size:fallbackData?.fileSize || file.size,
-          originalName:fallbackData?.originalName || file.name,
-        };
-      }
-
-      if(data?.id){
-        setAssetFiles(prev=>[{
-          id:data.id,
-          originalName:data.originalName||file.name,
-          storageUrl:data.url||"",
-          format:"GLB",
-          fileType:"MODEL",
-          mimeType:"model/gltf-binary",
-          fileSize:data.size||String(file.size),
-          processingStatus:data.processingStatus||"PENDING",
-        },...prev]);
-      }
-      setAssetMessage("GLB uploaded and published.");
-      await load();
-    }catch(e){setAssetMessage(e instanceof Error?e.message:"GLB upload failed.")}
-    finally{
-      setAssetBusy(false);
-      setUploadProgress((prev)=>{const next={...prev};delete next[id];return next});
-    }
+      await queueCatalogModel(id,file);
+      setAssetMessage("Source uploaded. Conversion and optimization are queued; the optimized GLB will attach automatically.");
+    }catch(error){
+      setAssetMessage(error instanceof Error?error.message:"3D source upload failed.");
+    }finally{setAssetBusy(false)}
   }
   async function removeMedia(id:string,mediaId:string){
     if(!window.confirm("Remove this product media?"))return;setAssetBusy(true);
@@ -286,17 +317,20 @@ export default function AdminProducts(){
 
       <div className="rounded-xl border border-dashed border-border bg-background p-3 sm:col-span-2 lg:col-span-2">
         <div className="flex items-center justify-between gap-3">
-          <div><p className="text-xs font-medium">3D model</p><p className="mt-1 text-[9px] text-muted">GLB · web-ready 3D model for the product viewer</p></div>
+          <div><p className="text-xs font-medium">3D model</p><p className="mt-1 text-[9px] text-muted">GLB, STL, OBJ, 3MF, FBX and more · automatically converted and optimized</p></div>
           <label className="cursor-pointer rounded-lg border border-border px-3 py-2 text-[10px] font-semibold">
             <IconBox size={13} className="mr-1 inline"/> Add 3D source
-            <input type="file" accept=".glb" className="hidden" disabled={saving} onChange={e=>setProductGlb(e.target.files?.[0]||null)}/>
+            <input type="file" accept={CATALOG_MODEL_ACCEPT} className="hidden" disabled={saving} onChange={e=>setProductGlb(e.target.files?.[0]||null)}/>
           </label>
         </div>
         {productGlb&&<p className="mt-2 truncate text-[9px] text-muted">Selected: {productGlb.name}</p>}
+        {productGlb&&saving&&Object.values(uploadProgress).length>0&&<p className="mt-2 text-xs text-muted">Uploading source… {Math.max(...Object.values(uploadProgress))}%</p>}
+        <p className="mt-2 text-[10px] text-muted">Only the finished web-ready GLB is attached. Use a ZIP for files with external textures or buffers.</p>
       </div>
     </div><Button type="submit" variant="primary" size="sm" disabled={saving} className="mt-4">{saving?"Creating product…":"Create product"}</Button></form>
     <div className="mt-6 grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(220px,280px)]"><div className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3"><IconSearch size={15} className="text-muted"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search products…" className="h-10 flex-1 bg-transparent text-xs outline-none"/></div><div className="grid gap-2 sm:grid-cols-2"><select aria-label="Filter products by main category" value={mainCategoryFilter} onChange={e=>{setMainCategoryFilter(e.target.value);setSubcategoryFilter("all")}} className="h-10 min-w-0 rounded-xl border border-border bg-surface px-3 text-xs"><option value="all">All main categories</option>{mainCategories.map(category=><option key={category.id} value={category.id}>{category.name}</option>)}</select><select aria-label="Filter products by subcategory" value={subcategoryFilter} disabled={mainCategoryFilter==="all" || filteredSubcategories.length===0} onChange={e=>setSubcategoryFilter(e.target.value)} className="h-10 min-w-0 rounded-xl border border-border bg-surface px-3 text-xs disabled:cursor-not-allowed disabled:opacity-50"><option value="all">{mainCategoryFilter==="all"?"Choose main category first":filteredSubcategories.length===0?"No subcategories":"All subcategories"}</option>{filteredSubcategories.map(category=><option key={category.id} value={category.id}>{category.name}</option>)}</select></div></div>
-    <div className="mt-5 space-y-3">{loading?[1,2,3].map(i=><div key={i} className="h-28 animate-pulse rounded-2xl bg-surface"/>):rows.map(p=><AdminProductCard key={p.id} product={p} categories={data.categories} materials={[...new Set((data.materialPricingRules??[]).map(rule=>rule.material))]} parentCategoryId={editParentCategoryId} setParentCategoryId={setEditParentCategoryId} saving={saving} editingProduct={editingProduct} assetProductId={assetProductId} assetFiles={assetFiles} assetLoading={assetLoading} assetBusy={assetBusy} assetMessage={assetMessage} uploadProgress={uploadProgress} editForm={editForm} updateProduct={updateProduct} updateProductPrice={updateProductPrice} updateVariants={updateVariants} ensureStandardVariants={ensureStandardVariants} deleteProduct={deleteProduct} startProductEdit={startProductEdit} openAssets={openAssets} uploadImages={uploadImages} uploadGlb={uploadGlb} removeMedia={removeMedia} removeFile={removeFile} setEditingProduct={setEditingProduct} setEditForm={setEditForm} saveProductEdit={saveProductEdit}/>)}{!loading&&!rows.length&&<div className="rounded-2xl border border-dashed border-border p-10 text-sm text-muted">No products found.</div>}</div>
+    {conversionStatusError&&<p role="status" className="mt-3 text-xs text-amber-400">{conversionStatusError}</p>}
+    <div className="mt-5 space-y-3">{loading?[1,2,3].map(i=><div key={i} className="h-28 animate-pulse rounded-2xl bg-surface"/>):rows.map(p=><AdminProductCard key={p.id} product={p} categories={data.categories} materials={[...new Set((data.materialPricingRules??[]).map(rule=>rule.material))]} parentCategoryId={editParentCategoryId} setParentCategoryId={setEditParentCategoryId} saving={saving} editingProduct={editingProduct} assetProductId={assetProductId} assetFiles={assetFiles} assetLoading={assetLoading} assetBusy={assetBusy} assetMessage={assetMessage} uploadProgress={uploadProgress} editForm={editForm} updateProduct={updateProduct} updateProductPrice={updateProductPrice} updateVariants={updateVariants} ensureStandardVariants={ensureStandardVariants} deleteProduct={deleteProduct} startProductEdit={startProductEdit} openAssets={openAssets} uploadImages={uploadImages} uploadGlb={uploadGlb} conversionJob={conversionJobs[p.id]} retryConversion={()=>void retryCatalogModel(p.id)} removeMedia={removeMedia} removeFile={removeFile} setEditingProduct={setEditingProduct} setEditForm={setEditForm} saveProductEdit={saveProductEdit}/>)}{!loading&&!rows.length&&<div className="rounded-2xl border border-dashed border-border p-10 text-sm text-muted">No products found.</div>}</div>
     <AdminToast message={message} onDismiss={()=>setMessage("")}/>
   </main>
 }

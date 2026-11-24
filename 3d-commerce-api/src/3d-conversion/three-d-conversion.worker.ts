@@ -138,10 +138,10 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
       // A lone .gltf is downloaded without its siblings, so external buffers
       // and textures can never resolve. Say so up front instead of surfacing a
       // Blender "Missing resource" stack trace.
-      if (job.inputExt === ".gltf") await this.assertGltfSelfContained(sourcePath);
+      if (!reusableConverted && job.inputExt === ".gltf") await this.assertGltfSelfContained(sourcePath);
 
       const blenderInput =
-        job.inputExt === ".zip"
+        !reusableConverted && job.inputExt === ".zip"
           ? await this.prepareBlenderInput(sourcePath, job.inputExt, tempDir)
           : { path: sourcePath, ext: job.inputExt };
 
@@ -216,10 +216,10 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
         },
       });
 
-      // Keep a direct GLB source until publish because convertedStorageKey points
-      // at that same object. Other formats can discard their private source once
-      // the converted GLB is durable.
-      if (job.deleteSourceOnSuccess && !reusableConverted && !directGlbSource) {
+      // For catalog uploads, retain the source until the permanent optimized
+      // GLB has been verified and attached. publish() handles cleanup afterward.
+      // Standalone conversion jobs retain their existing cleanup behavior.
+      if (!job.targetProductId && job.deleteSourceOnSuccess && !reusableConverted && !directGlbSource) {
         await this.storage.delete(job.sourceStorageKey).catch((error) => {
           this.logger.warn(
             `Unable to delete original conversion source ${job.id}: ${error instanceof Error ? error.message : String(error)}`,
@@ -231,10 +231,9 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
         try {
           await this.conversionService.publish(job.id, job.targetProductId);
         } catch (error) {
-          await this.prisma.threeDConversionJob.update({
-            where: { id: job.id },
+          await this.prisma.threeDConversionJob.updateMany({
+            where: { id: job.id, stage: "READY" },
             data: {
-              stage: "READY",
               errorMessage: `Publish failed: ${error instanceof Error ? error.message : String(error)}`,
             },
           });

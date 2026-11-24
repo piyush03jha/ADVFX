@@ -455,6 +455,17 @@ export class AuthService {
     const passwordHash = await hashPassword(password);
 
     await this.prisma.$transaction(async (tx) => {
+      // Claim the token before writing credentials. Concurrent requests must
+      // not both reset the password using the same email link.
+      const claimed = await tx.$executeRaw`
+        UPDATE "AuthPasswordResetToken"
+        SET "usedAt" = CURRENT_TIMESTAMP
+        WHERE "id" = ${record.id}
+          AND "usedAt" IS NULL
+          AND "expiresAt" > CURRENT_TIMESTAMP
+      `;
+      if (claimed !== 1) throw new UnauthorizedException('Invalid or expired password reset token.');
+
       // Google-only accounts have no credential row yet; the emailed token is
       // the verification that lets one be created.
       await tx.$executeRaw`
@@ -462,12 +473,6 @@ export class AuthService {
         VALUES (${randomUUID()}, ${record.userId}, ${passwordHash}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         ON CONFLICT ("userId")
         DO UPDATE SET "passwordHash" = EXCLUDED."passwordHash", "updatedAt" = CURRENT_TIMESTAMP
-      `;
-
-      await tx.$executeRaw`
-        UPDATE "AuthPasswordResetToken"
-        SET "usedAt" = CURRENT_TIMESTAMP
-        WHERE "id" = ${record.id}
       `;
 
       await tx.$executeRaw`

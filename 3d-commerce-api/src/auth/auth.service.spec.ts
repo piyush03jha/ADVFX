@@ -27,10 +27,19 @@ describe('AuthService', () => {
     const tokenHash = createHash('sha256').update(token).digest('hex');
     prisma.$queryRaw.mockResolvedValueOnce([{ id: 'reset-1', userId: 'customer-1', tokenHash }]);
     prisma.$transaction.mockImplementation(async (callback: any) => callback(prisma));
+    prisma.$executeRaw.mockResolvedValue(1);
 
     await expect(service.resetCustomerPassword(token, 'new-password-123')).resolves.toEqual({ message: 'Password reset successfully.' });
     expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
     expect(prisma.$executeRaw).toHaveBeenCalledTimes(3);
+  });
+
+  it('does not write a new password if a concurrent reset already consumed the token', async () => {
+    prisma.$queryRaw.mockResolvedValueOnce([{ id: 'reset-1', userId: 'customer-1' }]);
+    prisma.$transaction.mockImplementation(async (callback: any) => callback(prisma));
+    prisma.$executeRaw.mockResolvedValueOnce(0);
+    await expect(service.resetCustomerPassword('a'.repeat(43), 'new-password-123')).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(prisma.$executeRaw).toHaveBeenCalledTimes(1);
   });
 
   it('rejects a missing, expired, or already-used reset token', async () => {

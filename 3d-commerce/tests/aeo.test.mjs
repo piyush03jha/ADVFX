@@ -174,7 +174,7 @@ test("FAQ questions are real headings wrapping the toggle button", () => {
 
 test("homepage keeps its existing section order", () => {
   const home = readFileSync(new URL("../src/app/page.tsx", import.meta.url), "utf8");
-  const order = ["<Hero />", "<BestSellers", "<ShopByCategory />", "<NewArrivals", "<CustomBuild />", "<BulkOrder />", "<Reviews />", "<FAQ "]
+  const order = ["<Hero />", "<BestSellers", "<ShopByCategory ", "<NewArrivals", "<CustomBuild />", "<BulkOrder />", "<Reviews />", "<FAQ "]
     .map((tag) => home.indexOf(tag, home.indexOf("<main")));
   assert.ok(order.every((index) => index > -1), `missing section: ${JSON.stringify(order)}`);
   assert.deepEqual(order, [...order].sort((a, b) => a - b));

@@ -8,6 +8,7 @@ import {
 import {
   CustomRequestStatus,
   NotificationType,
+  Prisma,
 } from "@prisma/client";
 import { randomBytes } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
@@ -225,17 +226,17 @@ export class CustomBuildService {
     return updated;
   }
 
-  async checkoutQuote(userId: string, requestId: string, shippingAddressId: string) {
-    const request = await this.prisma.customRequest.findFirst({ where: { id: requestId, userId } });
+  async checkoutQuote(userId: string, requestId: string, shippingAddressId: string, db: Prisma.TransactionClient = this.prisma) {
+    const request = await db.customRequest.findFirst({ where: { id: requestId, userId } });
     if (!request) throw new NotFoundException("Custom request not found");
     if (!request.priceMinor || request.priceMinor <= 0 || request.priceCurrency !== "INR") {
       throw new BadRequestException("Custom request is missing a valid INR price");
     }
-    const address = await this.prisma.address.findFirst({ where: { id: shippingAddressId, userId } });
+    const address = await db.address.findFirst({ where: { id: shippingAddressId, userId } });
     if (!address) throw new NotFoundException("Shipping address not found");
     const postalCode = address.postalCode?.trim().toUpperCase();
     if (postalCode) {
-      const zone = await this.prisma.deliveryZone.findUnique({ where: { postalCode }, select: { active: true, coverage: true } });
+      const zone = await db.deliveryZone.findUnique({ where: { postalCode }, select: { active: true, coverage: true } });
       if (zone?.active && zone.coverage === "NOT_DELIVERED") throw new BadRequestException("We currently do not deliver to postal code " + postalCode);
     }
     const subtotalMinor = request.priceMinor;
@@ -255,7 +256,11 @@ export class CustomBuildService {
     shippingAddressId: string,
     idempotencyKey?: string,
   ) {
-    const request = await this.prisma.customRequest.findFirst({
+    return this.prisma.$transaction(async (tx) => {
+    // Serialize checkouts for the same request, including attempts with
+    // different idempotency keys in two browser tabs.
+    await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "CustomRequest" WHERE "id" = ${requestId} AND "userId" = ${userId} FOR UPDATE`);
+    const request = await tx.customRequest.findFirst({
       where: { id: requestId, userId },
     });
     if (!request) throw new NotFoundException("Custom request not found");
@@ -263,14 +268,14 @@ export class CustomBuildService {
       throw new BadRequestException("Custom request is missing a valid price configuration");
     }
 
-    const address = await this.prisma.address.findFirst({
+    const address = await tx.address.findFirst({
       where: { id: shippingAddressId, userId },
     });
     if (!address) throw new NotFoundException("Shipping address not found");
 
     const postalCode = address.postalCode?.trim().toUpperCase();
     if (postalCode) {
-      const deliveryZone = await this.prisma.deliveryZone.findUnique({
+      const deliveryZone = await tx.deliveryZone.findUnique({
         where: { postalCode },
         select: { active: true, coverage: true },
       });
@@ -289,7 +294,7 @@ export class CustomBuildService {
     }
 
     if (request.orderId) {
-      const linkedOrder = await this.prisma.order.findUnique({
+      const linkedOrder = await tx.order.findUnique({
         where: { id: request.orderId },
         include: {
           payment: true,
@@ -300,8 +305,8 @@ export class CustomBuildService {
       });
       if (linkedOrder?.status === "PENDING_PAYMENT") {
         // Recalculate tax and delivery when the address or shipping rules change.
-        const totals = await this.checkoutQuote(userId, requestId, shippingAddressId);
-        if (linkedOrder.payment?.providerOrderId) {
+        const totals = await this.checkoutQuote(userId, requestId, shippingAddressId, tx);
+        if (linkedOrder.payment?.providerOrderId || (linkedOrder.payment && linkedOrder.payment.status !== "PENDING" && linkedOrder.payment.status !== "FAILED")) {
           if (linkedOrder.shippingAddressId !== address.id || linkedOrder.totalMinor !== totals.totalMinor) {
             throw new ConflictException("Payment has already been prepared. Please contact support to change the delivery address or total.");
           }
@@ -309,7 +314,7 @@ export class CustomBuildService {
         }
         // Reuse the unpaid order, but honour the address picked on this attempt.
         if (linkedOrder.shippingAddressId !== address.id || linkedOrder.totalMinor !== totals.totalMinor) {
-          const updated = await this.prisma.order.update({
+          const updated = await tx.order.update({
             where: { id: linkedOrder.id },
             data: {
               shippingAddressId: address.id,
@@ -348,12 +353,12 @@ export class CustomBuildService {
       }
     }
 
-    const totals = await this.checkoutQuote(userId, requestId, shippingAddressId);
+    const totals = await this.checkoutQuote(userId, requestId, shippingAddressId, tx);
     const amountMinor = totals.totalMinor;
     const idempotency = idempotencyKey?.trim() || undefined;
 
     if (idempotency) {
-      const existing = await this.prisma.order.findFirst({
+      const existing = await tx.order.findFirst({
         where: { userId, idempotencyKey: idempotency },
         include: {
           payment: true,
@@ -362,10 +367,18 @@ export class CustomBuildService {
           customRequest: true,
         },
       });
-      if (existing) return { requestId: existing.customRequest?.id ?? requestId, order: existing };
+      if (existing) {
+        if (existing.customRequest?.id !== requestId || existing.status !== "PENDING_PAYMENT") {
+          throw new ConflictException("This checkout key belongs to another or closed order. Refresh checkout before trying again.");
+        }
+        if (existing.shippingAddressId !== address.id || existing.totalMinor !== totals.totalMinor) {
+          throw new ConflictException("This checkout key has a different address or total. Refresh checkout before trying again.");
+        }
+        return { requestId, order: existing };
+      }
     }
 
-    const order = await this.prisma.order.create({
+    const order = await tx.order.create({
       data: {
         orderNumber: `ADV-${new Date().getFullYear()}-${randomBytes(4).toString("hex").toUpperCase()}`,
         idempotencyKey: idempotency ?? null,
@@ -409,7 +422,7 @@ export class CustomBuildService {
       },
     });
 
-    await this.prisma.customRequestQuote.upsert({
+    await tx.customRequestQuote.upsert({
       where: { customRequestId: request.id },
       create: {
         customRequestId: request.id,
@@ -423,6 +436,7 @@ export class CustomBuildService {
     });
 
     return { requestId: request.id, order };
+    }, { timeout: 15000 });
   }
 
   async create(userId: string, dto: CreateCustomRequestDto) {

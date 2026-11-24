@@ -44,8 +44,8 @@ export class ShippingService {
 
     return {
       postalCode: normalized,
-      deliverable: rule ? rule.active && rule.coverage === 'DELIVERED' : true,
-      rule: rule?.coverage ?? 'DEFAULT',
+      deliverable: !rule?.active || rule.coverage === 'DELIVERED',
+      rule: rule?.active ? rule.coverage : 'DEFAULT',
       message: rule?.active && rule.coverage === 'NOT_DELIVERED'
         ? 'We currently do not deliver to this postal code.'
         : 'Delivery is available to this postal code.',

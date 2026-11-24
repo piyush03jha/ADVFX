@@ -36,6 +36,11 @@ export class ThreeDConversionService {
       throw new BadRequestException("Unsupported 3D conversion format: " + (inputExt || "unknown"));
     }
 
+    if (options?.targetProductId) {
+      const product = await this.prisma.product.findUnique({ where: { id: options.targetProductId }, select: { id: true } });
+      if (!product) throw new NotFoundException("Target product not found");
+    }
+
     const job = await this.prisma.threeDConversionJob.create({
       data: {
         originalName: name.slice(0, 255),
@@ -45,6 +50,7 @@ export class ThreeDConversionService {
         stage: "UPLOADING",
         targetProductId: options?.targetProductId ?? null,
         optimizationPreset: options?.optimizationPreset === "SMALLEST" ? "SMALLEST" : "BALANCED",
+        deleteSourceOnSuccess: true,
         createdById: createdById ?? null,
       },
     });
@@ -95,6 +101,9 @@ export class ThreeDConversionService {
   ) {
     let job = await this.prisma.threeDConversionJob.findUnique({ where: { id: jobId } });
     if (!job) throw new NotFoundException("Conversion job not found");
+    // The worker may already have claimed or finished the job before the
+    // client receives the completion response. Never finalize storage twice.
+    if (!job.uploadId && job.originalSize != null && job.status !== ProcessingJobStatus.FAILED) return this.serialize(job);
     if (job.status === ProcessingJobStatus.QUEUED) return this.serialize(job);
     if (job.status !== ProcessingJobStatus.PROCESSING) {
       throw new BadRequestException("Conversion upload is not active");
@@ -148,7 +157,8 @@ export class ThreeDConversionService {
       });
       job = await this.prisma.threeDConversionJob.findUnique({ where: { id: job.id } });
       if (!job) throw new NotFoundException("Conversion job not found");
-      if (claimed.count !== 1 && job.status !== ProcessingJobStatus.QUEUED && job.stage !== "COMPLETING") {
+      if (claimed.count !== 1) {
+        if (!job.uploadId && job.originalSize != null && job.status !== ProcessingJobStatus.FAILED) return this.serialize(job);
         throw new ConflictException("Conversion upload is already being finalized");
       }
     } else if (job.stage === "COMPLETING") {
@@ -237,7 +247,7 @@ export class ThreeDConversionService {
 
     const completed = await this.prisma.threeDConversionJob.findUnique({ where: { id: job.id } });
     if (!completed) throw new NotFoundException("Conversion job not found");
-    if (completed.status !== ProcessingJobStatus.QUEUED) {
+    if (completed.status !== ProcessingJobStatus.QUEUED && (completed.uploadId || completed.originalSize == null || completed.status === ProcessingJobStatus.FAILED)) {
       throw new ConflictException("Conversion upload could not be queued; retry completion");
     }
     return this.serialize(completed);
@@ -405,7 +415,10 @@ export class ThreeDConversionService {
     const job = await this.prisma.threeDConversionJob.findUnique({ where: { id } });
     if (!job) throw new NotFoundException("Conversion job not found");
 
-    const key = kind === "converted" ? job.convertedStorageKey : job.outputStorageKey;
+    const publishedFile = kind === "optimized" && job.stage === "PUBLISHED" && job.publishedFileId
+      ? await this.prisma.productFile.findUnique({ where: { id: job.publishedFileId }, select: { storageKey: true } })
+      : null;
+    const key = kind === "converted" ? job.convertedStorageKey : publishedFile?.storageKey ?? job.outputStorageKey;
     if (job.status !== ProcessingJobStatus.COMPLETED || !key) {
       throw new NotFoundException("Requested GLB is not ready");
     }
@@ -484,6 +497,8 @@ export class ThreeDConversionService {
   }
 
   async publish(id: string, productId: string) {
+    const product = await this.prisma.product.findUnique({ where: { id: productId }, select: { id: true } });
+    if (!product) throw new NotFoundException("Target product not found");
     const claimed = await this.prisma.threeDConversionJob.updateMany({
       where: { id, status: ProcessingJobStatus.COMPLETED, stage: "READY" },
       data: { stage: "PUBLISHING" },
@@ -498,22 +513,21 @@ export class ThreeDConversionService {
       throw new BadRequestException("Conversion job publish claim is invalid");
     }
 
-    const product = await this.prisma.product.findUnique({
-      where: { id: productId },
-      select: { id: true },
-    });
-    if (!product) throw new NotFoundException("Target product not found");
-
     const destinationKey = `products/${productId}/models/${job.id}.glb`;
-    await this.storage.copy(job.outputStorageKey, destinationKey);
     const url = this.storage.getPublicAssetUrl(destinationKey);
 
     try {
+      if (!url) throw new BadRequestException("Public model storage URL is not configured");
+      await this.storage.copy(job.outputStorageKey, destinationKey);
+      const actualSize = await this.storage.getObjectSize(destinationKey);
+      if (!job.outputSize || actualSize <= 0 || BigInt(actualSize) !== job.outputSize) {
+        throw new BadRequestException("Published GLB size could not be verified");
+      }
       const published = await this.prisma.$transaction(async (tx) => {
         const file = await tx.productFile.create({
           data: {
             productId,
-            originalName: job.originalName || "model.glb",
+            originalName: this.outputName(job.originalName || "model.glb", "-web-optimized"),
             storageKey: destinationKey,
             storageUrl: url,
             format: "GLB",
@@ -556,18 +570,21 @@ export class ThreeDConversionService {
       await this.notifyStorefrontRevalidation(productId);
 
       if (job.deleteSourceOnSuccess) {
-        await this.discardConversionIntermediates(job, destinationKey);
+        await this.discardConversionIntermediates(job, destinationKey).catch((error) => {
+          this.logger.warn(`Published model is safe; cleanup can be retried for ${job.id}: ${String(error)}`);
+        });
       } else if (published.publishedFileId) {
         await this.discardReplacedCatalogSource(job, productId, published.publishedFileId, destinationKey);
       }
 
       return this.serialize(published);
     } catch (error) {
-      await this.prisma.threeDConversionJob.updateMany({
+      const reset = await this.prisma.threeDConversionJob.updateMany({
         where: { id, stage: "PUBLISHING" },
         data: { stage: "READY" },
       });
-      await this.storage.delete(destinationKey).catch(() => undefined);
+      // If the attachment transaction committed, never remove its live model.
+      if (reset.count === 1) await this.storage.delete(destinationKey).catch(() => undefined);
       throw error;
     }
   }
@@ -589,31 +606,29 @@ export class ThreeDConversionService {
     },
     keepKey: string,
   ) {
-    const clear: { convertedStorageKey?: null; outputStorageKey?: null } = {};
-    const targets: Array<[string, "convertedStorageKey" | "outputStorageKey" | null]> = [];
-    if (job.convertedStorageKey) targets.push([job.convertedStorageKey, "convertedStorageKey"]);
-    if (job.outputStorageKey) targets.push([job.outputStorageKey, "outputStorageKey"]);
-    // A direct GLB upload is its own converted source and was already covered
-    // above; any other source was removed by the worker, but retry the delete.
-    if (job.sourceStorageKey && job.sourceStorageKey !== "pending") {
-      targets.push([job.sourceStorageKey, null]);
-    }
+    const clear: { convertedStorageKey?: null; outputStorageKey?: null; sourceStorageKey?: string } = {};
+    const targets = new Map<string, Array<"convertedStorageKey" | "outputStorageKey" | "sourceStorageKey">>();
+    const add = (key: string | null, field: "convertedStorageKey" | "outputStorageKey" | "sourceStorageKey") => {
+      if (!key || key === "pending" || key === keepKey) return;
+      targets.set(key, [...(targets.get(key) ?? []), field]);
+    };
+    add(job.convertedStorageKey, "convertedStorageKey");
+    add(job.outputStorageKey, "outputStorageKey");
+    add(job.sourceStorageKey, "sourceStorageKey");
 
-    const seen = new Set<string>();
-    for (const [key, field] of targets) {
-      if (key === keepKey) continue;
-      if (!seen.has(key)) {
-        seen.add(key);
-        try {
-          await this.storage.delete(key);
-        } catch (error) {
-          this.logger.warn(
-            `Unable to delete conversion intermediate ${key} for job ${job.id}: ${error instanceof Error ? error.message : String(error)}`,
-          );
-          continue;
+    // Delete each object once; only clear references after its deletion succeeds.
+    for (const [key, fields] of targets) {
+      try {
+        await this.storage.delete(key);
+        for (const field of fields) {
+          if (field === "sourceStorageKey") clear.sourceStorageKey = "pending";
+          else clear[field] = null;
         }
+      } catch (error) {
+        this.logger.warn(
+          `Unable to delete conversion intermediate ${key} for job ${job.id}: ${error instanceof Error ? error.message : String(error)}`,
+        );
       }
-      if (field) clear[field] = null;
     }
 
     if (Object.keys(clear).length > 0) {
@@ -734,6 +749,8 @@ export class ThreeDConversionService {
   serialize(job: any) {
     return {
       ...job,
+      completionSize: job.completionSize == null ? null : job.completionSize.toString(),
+      ...(job.publishedFile ? { publishedFile: { ...job.publishedFile, fileSize: job.publishedFile.fileSize == null ? null : job.publishedFile.fileSize.toString() } } : {}),
       originalSize: job.originalSize == null ? null : job.originalSize.toString(),
       convertedSize: job.convertedSize == null ? null : job.convertedSize.toString(),
       outputSize: job.outputSize == null ? null : job.outputSize.toString(),
