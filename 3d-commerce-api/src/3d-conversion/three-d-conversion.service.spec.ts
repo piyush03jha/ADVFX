@@ -113,7 +113,7 @@ describe('ThreeDConversionService.discardConversionIntermediates', () => {
     expect(storage.delete).not.toHaveBeenCalledWith(keep);
     expect(prisma.threeDConversionJob.update).toHaveBeenCalledWith({
       where: { id: 'j1' },
-      data: { convertedStorageKey: null, outputStorageKey: null },
+      data: { convertedStorageKey: null, outputStorageKey: null, sourceStorageKey: 'pending' },
     });
   });
 
@@ -127,6 +127,17 @@ describe('ThreeDConversionService.discardConversionIntermediates', () => {
 
     const deleted = storage.delete.mock.calls.map((c: any[]) => c[0]);
     expect(deleted.filter((k: string) => k === 'conversions/j1/source/a.glb')).toHaveLength(1);
+  });
+
+  it('keeps both references if deleting a shared original and converted GLB fails', async () => {
+    const source = 'conversions/j1/source/a.glb';
+    storage.delete.mockImplementation(async (key: string) => {
+      if (key === source) throw new Error('storage down');
+    });
+    await discard({ id: 'j1', sourceStorageKey: source, convertedStorageKey: source, outputStorageKey: 'conversions/j1/output/model.glb' });
+    expect(prisma.threeDConversionJob.update).toHaveBeenCalledWith({
+      where: { id: 'j1' }, data: { outputStorageKey: null },
+    });
   });
 
   it('keeps the key on the job when a delete fails so cleanup can retry later', async () => {
