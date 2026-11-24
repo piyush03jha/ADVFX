@@ -138,10 +138,10 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
       // A lone .gltf is downloaded without its siblings, so external buffers
       // and textures can never resolve. Say so up front instead of surfacing a
       // Blender "Missing resource" stack trace.
-      if (job.inputExt === ".gltf") await this.assertGltfSelfContained(sourcePath);
+      if (!reusableConverted && job.inputExt === ".gltf") await this.assertGltfSelfContained(sourcePath);
 
       const blenderInput =
-        job.inputExt === ".zip"
+        !reusableConverted && job.inputExt === ".zip"
           ? await this.prepareBlenderInput(sourcePath, job.inputExt, tempDir)
           : { path: sourcePath, ext: job.inputExt };
 
@@ -231,10 +231,9 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
         try {
           await this.conversionService.publish(job.id, job.targetProductId);
         } catch (error) {
-          await this.prisma.threeDConversionJob.update({
-            where: { id: job.id },
+          await this.prisma.threeDConversionJob.updateMany({
+            where: { id: job.id, stage: "READY" },
             data: {
-              stage: "READY",
               errorMessage: `Publish failed: ${error instanceof Error ? error.message : String(error)}`,
             },
           });
