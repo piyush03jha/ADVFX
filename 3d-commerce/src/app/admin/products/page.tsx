@@ -209,10 +209,28 @@ export default function AdminProducts(){
   }
 
   async function openAssets(id:string){
-    if(assetProductId===id){setAssetProductId(null);return;}
-    setAssetProductId(id);setAssetLoading(true);setAssetMessage("");
-    try{const r=await fetch("/api/products/"+id+"/files",{cache:"no-store"});if(!r.ok)throw new Error();setAssetFiles(await r.json())}catch{setAssetMessage("Unable to load 3D assets.")}finally{setAssetLoading(false)}
+    if(assetBusy)return;
+    setAssetMessage("");
+    setAssetFiles([]);
+    setAssetLoading(assetProductId!==id);
+    setAssetProductId(assetProductId===id?null:id);
   }
+
+  useEffect(()=>{
+    if(!assetProductId)return;
+    const controller=new AbortController();
+    const id=assetProductId;
+    setAssetLoading(true);
+    void fetch("/api/products/"+encodeURIComponent(id)+"/files",{cache:"no-store",signal:controller.signal})
+      .then(async response=>{
+        if(!response.ok)throw new Error("Unable to load 3D assets.");
+        const files=await response.json();
+        if(!controller.signal.aborted)setAssetFiles(files);
+      })
+      .catch(()=>{if(!controller.signal.aborted)setAssetMessage("Unable to load 3D assets.")})
+      .finally(()=>{if(!controller.signal.aborted)setAssetLoading(false)});
+    return ()=>controller.abort();
+  },[assetProductId]);
   async function uploadImages(id:string,files:FileList|null){
     if(!files?.length)return;
     setAssetBusy(true);setAssetMessage("");
