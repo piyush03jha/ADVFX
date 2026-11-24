@@ -56,7 +56,8 @@ test("custom-order HowTo structured data matches the visible three-step workflow
 
 test("homepage keeps the long-form About section on the About page", () => {
   assert.doesNotMatch(homepage, /HomeAbout/);
-  assert.match(about, /<HomeAbout productCount=\{0\} categoryNames=\{\[\]\} \/>/);
+  assert.match(about, /<HomeAbout productCount=\{productCount\} categoryNames=\{categoryNames\} \/>/);
+  assert.match(about, /await loadCatalogSummary\(\)/);
   assert.match(about, /canonical: "\/about"/);
   assert.match(homepage, /absoluteUrl\("\/about#how-to-order"\)/);
   assert.match(homepage, /absoluteUrl\("\/about#custom-order-steps"\)/);
