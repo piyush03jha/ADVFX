@@ -364,7 +364,7 @@ export function Hero() {
       />
 
       <Container className="relative min-h-[580px] py-0 sm:min-h-[720px] lg:min-h-[calc(90svh-5rem)] lg:py-8 xl:py-10">
-        <div         className="absolute left-1/2 top-[3.25rem] z-10 h-[340px] w-[calc(100vw-0.5rem)] max-w-[500px] -translate-x-1/2 sm:top-[3.5rem] sm:h-[430px] sm:w-[min(96vw,600px)] lg:right-[-8%] lg:left-auto lg:top-[calc(50%-4.5rem)] lg:h-[min(82vw,780px)] lg:w-[min(72vw,820px)] lg:-translate-x-0 lg:-translate-y-1/2 xl:right-[-5%] xl:h-[min(88vh,820px)] xl:w-[min(64vw,900px)]">
+        <div         className="absolute left-1/2 top-[3.25rem] z-10 h-[340px] w-[calc(100vw-0.5rem)] max-w-[500px] -translate-x-1/2 sm:top-[3.5rem] sm:h-[430px] sm:w-[min(96vw,600px)] lg:right-[-8%] lg:left-auto lg:top-[calc(50%-3rem)] lg:h-[min(82vw,780px)] lg:w-[min(72vw,820px)] lg:-translate-x-6 lg:-translate-y-1/2 xl:right-[-5%] xl:h-[min(88vh,820px)] xl:w-[min(64vw,900px)]">
           {canLoadHeroModel && (
             <HeroProductStage
               products={heroProducts}
