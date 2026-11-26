@@ -26,6 +26,14 @@ export class ShipmentsService {
   }
 
   async update(orderId: string, dto: UpdateShipmentDto) {
+    if (dto.trackingUrl !== undefined) {
+      try {
+        const url = new URL(dto.trackingUrl);
+        if (url.protocol !== 'https:' || url.username || url.password) throw new Error('Unsafe URL');
+      } catch {
+        throw new BadRequestException('Tracking URL must be a valid HTTPS URL without credentials');
+      }
+    }
     const result = await this.prisma.$transaction(
       async (tx) => {
         // Serialize with order status changes and refunds, then validate
@@ -85,6 +93,8 @@ export class ShipmentsService {
           advancedTo: decision.action === 'ADVANCE' ? decision.to : null,
           userId: order.userId,
           orderNumber: order.orderNumber,
+          trackingChanged: Boolean(shipment.trackingNumber && (shipment.trackingNumber !== current?.trackingNumber || shipment.carrier !== current?.carrier)),
+          orderWasShipped: order.status === "SHIPPED",
         };
       },
       { timeout: 15_000, maxWait: 5_000 },
@@ -92,17 +102,18 @@ export class ShipmentsService {
 
     // Tell the customer when the order actually moves (shipped / delivered),
     // the same way a status change from the order screen does.
-    if (result.advancedTo && result.userId) {
-      const shipped = result.advancedTo === 'SHIPPED';
+    const trackingUpdated = !result.advancedTo && result.orderWasShipped && result.trackingChanged;
+    if ((result.advancedTo || trackingUpdated) && result.userId) {
+      const shipped = result.advancedTo === 'SHIPPED' || trackingUpdated;
       const tracking = [result.shipment.carrier, result.shipment.trackingNumber]
         .filter(Boolean)
         .join(' ');
       await this.notifications.create(result.userId, {
         type: shipped ? NotificationType.ORDER_SHIPPED : NotificationType.ORDER_DELIVERED,
-        title: shipped ? 'Order shipped' : 'Order delivered',
+        title: trackingUpdated ? 'Shipment tracking updated' : shipped ? 'Order shipped' : 'Order delivered',
         message:
-          `Order ${result.orderNumber} is now ${shipped ? 'shipped' : 'delivered'}.` +
-          (shipped && tracking ? ` Tracking: ${tracking}.` : ''),
+          (trackingUpdated ? `Tracking details for order ${result.orderNumber} have been updated.` : `Order ${result.orderNumber} is now ${shipped ? 'shipped' : 'delivered'}.`) +
+          (shipped && tracking ? ` Tracking: ${tracking}. View My Orders to track your parcel on the courier website.` : ''),
         entityType: 'ORDER',
         entityId: orderId,
       });

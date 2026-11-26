@@ -40,7 +40,7 @@ async function proxy(
     const data = await response.json().catch(() => null);
 
     return NextResponse.json(
-      data ?? { error: "Unable to update shipment." },
+      response.ok ? data ?? { error: "Unable to update shipment." } : { error: Array.isArray(data?.message) ? data.message.join(" ") : data?.message ?? data?.error ?? "Unable to update shipment." },
       { status: response.status },
     );
   } catch {

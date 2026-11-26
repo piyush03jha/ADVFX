@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { COURIER_OPTIONS, knownCourier, shipmentTrackingUrl } from "@/lib/shipment-tracking";
 import { IconArrowLeft, IconCheck, IconCreditCard, IconMapPin, IconPackage, IconRefresh, IconTruck } from "@tabler/icons-react";
 
 type Order = {
@@ -66,7 +67,7 @@ export default function AdminOrderDetailPage() {
       setOrder(next);
       setShipment({
         status: next.shipment?.status ?? "PENDING",
-        carrier: next.shipment?.carrier ?? "",
+        carrier: knownCourier(next.shipment?.carrier)?.name ?? next.shipment?.carrier ?? "",
         trackingNumber: next.shipment?.trackingNumber ?? "",
         trackingUrl: next.shipment?.trackingUrl ?? "",
       });
@@ -106,6 +107,20 @@ export default function AdminOrderDetailPage() {
 
   async function saveShipment() {
     if (!order) return;
+    const carrier = shipment.carrier.trim();
+    const trackingNumber = shipment.trackingNumber.trim();
+    const requiresTracking = ["SHIPPED", "IN_TRANSIT"].includes(shipment.status) || Boolean(order.shipment?.trackingNumber);
+    if ((requiresTracking || trackingNumber) && (!carrier || !trackingNumber)) {
+      setError("Select the delivery partner and enter its tracking number.");
+      setMessage("");
+      return;
+    }
+    const trackingUrl = shipmentTrackingUrl(carrier, shipment.trackingUrl);
+    if ((trackingNumber || requiresTracking) && !trackingUrl) {
+      setError("Enter the delivery partner's official HTTPS tracking URL.");
+      setMessage("");
+      return;
+    }
     setSavingShipment(true);
     setError("");
     setMessage("");
@@ -115,14 +130,14 @@ export default function AdminOrderDetailPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           status: shipment.status,
-          carrier: shipment.carrier.trim() || undefined,
-          trackingNumber: shipment.trackingNumber.trim() || undefined,
-          trackingUrl: shipment.trackingUrl.trim() || undefined,
+          carrier: carrier || undefined,
+          trackingNumber: trackingNumber || undefined,
+          trackingUrl: trackingUrl ?? undefined,
         }),
       });
       const data = await response.json().catch(() => null);
       if (!response.ok) throw new Error(data?.error ?? "Unable to update shipment.");
-      setMessage("Shipment details saved.");
+      setMessage(trackingNumber ? "Shipment details saved and available to the customer." : "Shipment details saved.");
       await load();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to update shipment.");
@@ -189,12 +204,28 @@ export default function AdminOrderDetailPage() {
             <div className="flex items-center gap-3"><IconTruck size={18} className="text-primary" /><div><p className="text-[9px] uppercase tracking-[0.16em] text-primary">Shipment</p><h2 className="mt-1 text-base font-medium">Fulfillment details</h2></div></div>
 
             <div className="mt-6 grid gap-5 sm:grid-cols-2">
-              <Field label="Carrier" value={shipment.carrier} onChange={(value) => setShipment((current) => ({ ...current, carrier: value }))} placeholder="Delhivery, Blue Dart…" />
-              <Field label="Tracking number" value={shipment.trackingNumber} onChange={(value) => setShipment((current) => ({ ...current, trackingNumber: value }))} placeholder="Tracking ID" />
-              <Field label="Tracking URL" value={shipment.trackingUrl} onChange={(value) => setShipment((current) => ({ ...current, trackingUrl: value }))} placeholder="https://…" wide />
+              <label className="block text-xs"><span className="text-[9px] uppercase tracking-[0.12em] text-muted">Delivery partner</span>
+                <input list="shipment-couriers" value={shipment.carrier} maxLength={100} onChange={(event) => {
+                  const carrier = event.target.value;
+                  setShipment((current) => ({ ...current, carrier, trackingUrl: knownCourier(carrier)?.url ?? "" }));
+                }} placeholder="Choose or type any courier" className="mt-2 h-11 w-full rounded-xl border border-border bg-background px-3 text-xs outline-none focus:border-primary/40" />
+                <datalist id="shipment-couriers">
+                  {COURIER_OPTIONS.map((courier) => <option key={courier.name} value={courier.name} />)}
+                </datalist>
+                <span className="mt-1 block text-[10px] text-muted">Select a suggestion or enter any delivery partner.</span>
+              </label>
+              <Field label="Tracking / consignment number" value={shipment.trackingNumber} onChange={(value) => setShipment((current) => ({ ...current, trackingNumber: value }))} placeholder={knownCourier(shipment.carrier) === COURIER_OPTIONS[0] ? "Speed Post consignment number" : "AWB / Tracking ID"} />
+              {knownCourier(shipment.carrier) ? (
+                <div className="sm:col-span-2 text-xs text-muted">
+                  Tracking link is selected automatically. <a href={knownCourier(shipment.carrier)?.url} target="_blank" rel="noopener noreferrer" className="font-medium text-primary">Open courier website</a>
+                </div>
+              ) : shipment.carrier ? (
+                <Field label="Tracking URL" value={shipment.trackingUrl} onChange={(value) => setShipment((current) => ({ ...current, trackingUrl: value }))} placeholder="https://courier-website/track" wide />
+              ) : null}
               <label className="block text-xs sm:col-span-2"><span className="text-[9px] uppercase tracking-[0.12em] text-muted">Shipment status</span><select value={shipment.status} onChange={(event) => setShipment((current) => ({ ...current, status: event.target.value }))} className="mt-2 h-11 w-full rounded-xl border border-border bg-background px-3 text-xs outline-none focus:border-primary/40">{SHIPMENT_STATUSES.map((status) => <option key={status} value={status}>{label(status)}</option>)}</select></label>
             </div>
 
+            <p className="mt-4 text-xs leading-5 text-muted">After dispatch, select Shipped and save the delivery partner and tracking ID. Customers can copy the ID and track on the courier website. Mark Delivered manually after confirmation.</p>
             <button onClick={() => void saveShipment()} disabled={savingShipment} className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-xs font-semibold text-white disabled:opacity-50"><IconCheck size={14} />{savingShipment ? "Saving…" : "Save shipment"}</button>
           </section>
         </div>

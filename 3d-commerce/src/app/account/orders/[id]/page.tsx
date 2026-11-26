@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cookies } from "next/headers";
-import { IconArrowLeft, IconChevronRight, IconMapPin, IconPackage, IconTruck, IconCreditCard } from "@tabler/icons-react";
+import { IconArrowLeft, IconMapPin, IconPackage, IconTruck, IconCreditCard } from "@tabler/icons-react";
 import { Navbar } from "@/components/layout/SiteNavbar";
 import { OrderItems } from "@/components/account/OrderItems";
 import { OrderSummary } from "@/components/account/OrderSummary";
 import { OrderTimeline } from "@/components/account/OrderTimeline";
+import { ShipmentTrackingDetails } from "@/components/account/ShipmentTrackingDetails";
 import { getBackendApiUrl } from "@/lib/backend-api";
 import { AUTH_COOKIE_NAME } from "@/lib/auth";
 import { resolveMediaUrl } from "@/lib/media-url";
@@ -58,6 +59,7 @@ async function getOrder(id: string) {
     payment: { provider: string; status: string } | null;
     shipment: {
       status: string;
+      carrier: string | null;
       trackingNumber: string | null;
       trackingUrl: string | null;
     } | null;
@@ -138,28 +140,23 @@ export default async function OrderTrackingPage({ params }: OrderPageProps) {
                   <div>
                     <p className="text-[8px] uppercase tracking-[0.16em] text-primary">Shipment status</p>
                     <h2 className="mt-1 text-lg font-medium text-foreground">{shipment ? label(shipment.status) : label(order.status)}</h2>
-                    <p className="mt-1 text-xs leading-5 text-muted">
-                      {shipment?.trackingNumber ? `Tracking number: ${shipment.trackingNumber}` : "Shipment details will appear after fulfillment."}
-                    </p>
+                    <p className="mt-1 text-xs leading-5 text-muted">Last status recorded by our fulfillment team.</p>
                   </div>
                 </div>
-                {shipment?.trackingUrl && (
-                  <a href={shipment.trackingUrl} target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-primary">
-                    Track carrier <IconChevronRight size={13} />
-                  </a>
-                )}
+                <ShipmentTrackingDetails carrier={shipment?.carrier} trackingNumber={shipment?.trackingNumber} trackingUrl={shipment?.trackingUrl} />
               </section>
 
               <section className="rounded-2xl border border-border bg-surface/55 p-4 sm:p-5">
                 <div className="mb-4 flex items-center gap-2"><IconPackage size={15} className="text-primary" /><h2 className="text-xs font-medium uppercase tracking-[0.12em]">Order timeline</h2></div>
+                <p className="mb-4 text-xs text-muted">For current parcel location and delivery scans, use the courier tracking link above.</p>
                 <OrderTimeline
                   events={[
                     { status: "placed", title: "Order placed", description: "Your order has been received.", timestamp: new Date(order.createdAt).toLocaleString("en-IN"), completed: true },
                     { status: "confirmed", title: "Payment confirmed", description: "Payment confirmation for this order.", timestamp: order.payment?.status === "CAPTURED" ? "Confirmed" : "", completed: order.payment?.status === "CAPTURED", current: order.status === "CONFIRMED" },
                     { status: "processing", title: "Processing", description: "Your order is being prepared.", timestamp: "", completed: ["PROCESSING","READY_TO_SHIP","SHIPPED","DELIVERED"].includes(order.status), current: order.status === "PROCESSING" },
                     { status: "packed", title: "Ready to ship", description: "Your order is ready for shipment.", timestamp: "", completed: ["READY_TO_SHIP","SHIPPED","DELIVERED"].includes(order.status), current: order.status === "READY_TO_SHIP" },
-                    { status: "shipped", title: "Shipped", description: "Your package has left our facility.", timestamp: shipment?.trackingNumber ? "Tracking available" : "", completed: ["SHIPPED","DELIVERED"].includes(order.status), current: order.status === "SHIPPED" },
-                    { status: "in_transit", title: "In transit", description: "Your package is moving toward you.", timestamp: "", completed: shipment?.status === "IN_TRANSIT" || shipment?.status === "DELIVERED", current: shipment?.status === "IN_TRANSIT" },
+                    { status: "shipped", title: "Shipped", description: "Your package has left our facility.", timestamp: shipment?.trackingNumber ? "Tracking available" : "", completed: ["SHIPPED","DELIVERED"].includes(order.status), current: order.status === "SHIPPED" && shipment?.status !== "IN_TRANSIT" },
+                    { status: "in_transit", title: "In transit", description: "Your package is moving toward you.", timestamp: "", completed: shipment?.status === "IN_TRANSIT" || shipment?.status === "DELIVERED" || order.status === "DELIVERED", current: order.status === "SHIPPED" && shipment?.status === "IN_TRANSIT" },
                     { status: "delivered", title: "Delivered", description: "Your order has been delivered.", timestamp: "", completed: order.status === "DELIVERED" || shipment?.status === "DELIVERED", current: order.status === "DELIVERED" },
                   ]}
                 />
