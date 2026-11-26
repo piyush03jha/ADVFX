@@ -96,6 +96,18 @@ describe("quality-driven model optimization", () => {
     const args = worker.runCli.mock.calls[0][0];
     expect(args[args.indexOf("--simplify") + 1]).toBe("false");
   });
+  it("builds a smaller preview in one pass", async () => {
+    expect(await worker.buildStorefrontPreview(source, output, 100, false)).toBe(true);
+    const args = worker.runCli.mock.calls[0][0];
+    expect(args[args.indexOf("--texture-size") + 1]).toBe("512");
+    expect(args[args.indexOf("--simplify-ratio") + 1]).toBe("0.1");
+    expect(worker.runCli).toHaveBeenCalledTimes(1);
+  });
+  it("rejects redundant previews and does not simplify animations", async () => {
+    expect(await worker.buildStorefrontPreview(source, output, 45, true)).toBe(false);
+    const args = worker.runCli.mock.calls[0][0];
+    expect(args[args.indexOf("--simplify") + 1]).toBe("false");
+  });
   it("never simplifies animation", async () => {
     await worker.optimizeModel(source, output, "SMALLEST", true);
     const args = worker.runCli.mock.calls[0][0];

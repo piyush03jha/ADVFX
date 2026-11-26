@@ -124,6 +124,12 @@ function LoadedProductModel({
     onReady();
   }, [tone, onReady, onTone]);
 
+  useEffect(() => () => {
+    normalizedScene.traverse((object) => {
+      const mesh = object as THREE.Mesh;
+      if (mesh.isMesh && mesh.material) for (const material of materialsOf(mesh)) material.dispose();
+    });
+  }, [normalizedScene]);
   return <primitive object={normalizedScene} dispose={null} />;
 }
 
@@ -247,6 +253,9 @@ export default function Product3DStage({
   const [tone, setTone] = useState<ModelTone>("mid");
   const [modelReady, setModelReady] = useState(false);
   const { blobUrl, progress, error, retry } = useModelUrl(model);
+  const [displayedBlob, setDisplayedBlob] = useState<string | null>(null);
+  const [decodeError, setDecodeError] = useState(false);
+  const [decodeAttempt, setDecodeAttempt] = useState(0);
   const background = stageBackground(isDark, tone);
   const handleModelReady = useCallback(() => setModelReady(true), []);
 
@@ -259,9 +268,24 @@ export default function Product3DStage({
     modelReady,
   );
 
+  useEffect(() => { setDecodeError(false); }, [model]);
   useEffect(() => {
-    setModelReady(false);
-  }, [model]);
+    if (blobUrl && blobUrl !== displayedBlob) {
+      setModelReady(false);
+      setDecodeError(false);
+      setDisplayedBlob(blobUrl);
+    }
+  }, [blobUrl, displayedBlob]);
+  const switching = Boolean(displayedBlob && blobUrl !== displayedBlob);
+  const handleDecodeError = useCallback(() => setDecodeError(true), []);
+  const retryModel = () => {
+    if (decodeError && displayedBlob) {
+      useGLTF.clear(displayedBlob);
+      setDecodeError(false);
+      setModelReady(false);
+      setDecodeAttempt((value) => value + 1);
+    } else retry();
+  };
 
   return (
     <div
@@ -298,6 +322,8 @@ export default function Product3DStage({
         <StudioEnvironment />
 
         <ModelErrorBoundary
+          key={(displayedBlob ?? "empty") + ":" + decodeAttempt}
+          onError={handleDecodeError}
           fallback={
             <mesh>
               <planeGeometry args={[0, 0]} />
@@ -305,7 +331,7 @@ export default function Product3DStage({
           }
         >
           <Suspense fallback={<ModelLoadingFallback />}>
-            <ProductModel blobUrl={blobUrl} onTone={setTone} onReady={handleModelReady} />
+            <ProductModel blobUrl={displayedBlob} onTone={setTone} onReady={handleModelReady} />
           </Suspense>
         </ModelErrorBoundary>
 
@@ -329,13 +355,13 @@ export default function Product3DStage({
         />
       </Canvas>
 
-      {!modelReady && !contextLost && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/70 px-8 text-center backdrop-blur-sm">
+      {(!modelReady || switching || Boolean(error) || decodeError) && !contextLost && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/50 px-8 text-center">
           <div className="w-full max-w-xs">
-            {error ? (
+            {error || decodeError ? (
               <>
                 <p className="text-xs font-medium">Unable to load the 3D preview.</p>
-                <button type="button" onClick={retry} className="mt-3 rounded-full border border-primary/40 px-4 py-2 text-[10px] font-medium uppercase tracking-[0.14em] text-primary">Retry 3D preview</button>
+                <button type="button" onClick={retryModel} className="mt-3 rounded-full border border-primary/40 px-4 py-2 text-[10px] font-medium uppercase tracking-[0.14em] text-primary">Retry 3D preview</button>
               </>
             ) : (
               <>

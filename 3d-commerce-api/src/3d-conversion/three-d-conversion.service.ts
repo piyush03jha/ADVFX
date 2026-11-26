@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { extname } from "node:path";
 import { PrismaService } from "../prisma/prisma.service";
 import { StorageService } from "../storage/storage.service";
-import { THREE_D_CONVERSION_EXTENSION_SET } from "./three-d-conversion.constants";
+import { THREE_D_CONVERSION_EXTENSION_SET, conversionPreviewKey, publishedPreviewKey, LIGHTWEIGHT_MODEL_LABEL, HIGH_DETAIL_MODEL_LABEL } from "./three-d-conversion.constants";
 
 const PART_SIZE = 8 * 1024 * 1024;
 // Keep part count within S3-compatible multipart limits, not an application file-size cap.
@@ -400,6 +400,9 @@ export class ThreeDConversionService {
       keys.add(job.outputStorageKey);
     }
 
+    const previewKey = conversionPreviewKey(job.id);
+    if (await this.storage.exists(previewKey)) keys.add(previewKey);
+
     // Clean storage before deleting the DB row. If storage cleanup fails,
     // keep the job so the admin can retry deletion rather than reporting a
     // false successful delete.
@@ -454,6 +457,9 @@ export class ThreeDConversionService {
       },
     });
     if (!file) throw new NotFoundException("GLB product file not found");
+    if (file.storageKey.endsWith("-preview.glb")) {
+      throw new BadRequestException("Select the high-detail GLB, not the lightweight preview, for re-optimization.");
+    }
 
     const job = await this.prisma.threeDConversionJob.create({
       data: {
@@ -515,6 +521,11 @@ export class ThreeDConversionService {
 
     const destinationKey = `products/${productId}/models/${job.id}.glb`;
     const url = this.storage.getPublicAssetUrl(destinationKey);
+    const stagingPreviewKey = conversionPreviewKey(job.id);
+    const previewDestination = publishedPreviewKey(productId, job.id);
+    let previewSize = 0;
+    let previewUrl: string | null = null;
+    let previewCopyStarted = false;
 
     try {
       if (!url) throw new BadRequestException("Public model storage URL is not configured");
@@ -523,7 +534,36 @@ export class ThreeDConversionService {
       if (!job.outputSize || actualSize <= 0 || BigInt(actualSize) !== job.outputSize) {
         throw new BadRequestException("Published GLB size could not be verified");
       }
+      try {
+        if (await this.storage.exists(stagingPreviewKey)) {
+          const stagedSize = await this.storage.getObjectSize(stagingPreviewKey);
+          if (stagedSize > 0 && stagedSize < actualSize * 0.8) {
+            previewCopyStarted = true;
+            await this.storage.copy(stagingPreviewKey, previewDestination);
+            if (await this.storage.getObjectSize(previewDestination) !== stagedSize) throw new Error("Published preview size mismatch");
+            previewUrl = this.storage.getPublicAssetUrl(previewDestination);
+            if (!previewUrl) throw new Error("Preview URL unavailable");
+            previewSize = stagedSize;
+          }
+        }
+      } catch (error) {
+        previewUrl = null;
+        if (previewCopyStarted) await this.storage.delete(previewDestination).catch(() => undefined);
+        this.logger.warn(`Preview publication skipped for ${id}: ${String(error)}`);
+      }
       const published = await this.prisma.$transaction(async (tx) => {
+        // Both variants are regular ProductFiles; job downloads still refer to HD.
+        if (previewUrl) {
+          await tx.productFile.create({
+            data: {
+              productId,
+              originalName: this.outputName(job.originalName || "model.glb", "-storefront-preview"),
+              storageKey: previewDestination, storageUrl: previewUrl,
+              format: "GLB", fileType: "MODEL", mimeType: "model/gltf-binary",
+              fileSize: BigInt(previewSize), processingStatus: "COMPLETED",
+            },
+          });
+        }
         const file = await tx.productFile.create({
           data: {
             productId,
@@ -547,11 +587,19 @@ export class ThreeDConversionService {
             productId,
             type: "MODEL_PREVIEW",
             url,
-            altText: job.originalName || "GLB model",
-            sortOrder: 0,
-            isPrimary: true,
+            altText: previewUrl ? HIGH_DETAIL_MODEL_LABEL : job.originalName || "GLB model",
+            sortOrder: previewUrl ? 1 : 0,
+            isPrimary: !previewUrl,
           },
         });
+        if (previewUrl) {
+          await tx.productMedia.create({
+            data: {
+              productId, type: "MODEL_PREVIEW", url: previewUrl,
+              altText: LIGHTWEIGHT_MODEL_LABEL, sortOrder: 0, isPrimary: true,
+            },
+          });
+        }
 
         return tx.threeDConversionJob.update({
           where: { id: id },
@@ -567,6 +615,8 @@ export class ThreeDConversionService {
         });
       });
 
+      await this.storage.delete(stagingPreviewKey).catch((error) =>
+        this.logger.warn(`Preview staging cleanup skipped for ${id}: ${String(error)}`));
       await this.notifyStorefrontRevalidation(productId);
 
       if (job.deleteSourceOnSuccess) {
@@ -584,7 +634,10 @@ export class ThreeDConversionService {
         data: { stage: "READY" },
       });
       // If the attachment transaction committed, never remove its live model.
-      if (reset.count === 1) await this.storage.delete(destinationKey).catch(() => undefined);
+      if (reset.count === 1) {
+        await this.storage.delete(destinationKey).catch(() => undefined);
+        if (previewCopyStarted) await this.storage.delete(previewDestination).catch(() => undefined);
+      }
       throw error;
     }
   }

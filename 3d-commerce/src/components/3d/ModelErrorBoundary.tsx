@@ -5,6 +5,7 @@ import { Component, type ReactNode } from "react";
 interface ModelErrorBoundaryProps {
   children: ReactNode;
   fallback?: ReactNode;
+  onError?: (error: unknown) => void;
 }
 
 interface ModelErrorBoundaryState {
@@ -23,6 +24,7 @@ export class ModelErrorBoundary extends Component<
 
   componentDidCatch(error: unknown) {
     console.error("3D model failed to load", error);
+    this.props.onError?.(error);
   }
 
   render() {

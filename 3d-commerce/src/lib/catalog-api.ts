@@ -129,6 +129,7 @@ export interface StorefrontProduct {
   image: string;
   images: string[];
   model: string;
+  highDetailModel?: string;
   format: string;
   fileSize: string;
   polygonCount: string;
@@ -268,17 +269,30 @@ function primaryImage(product: CatalogProduct): string {
   );
 }
 
-function primaryModel(product: CatalogProduct): string {
+const LIGHTWEIGHT_MODEL_LABEL = "Lightweight storefront 3D preview";
+const HIGH_DETAIL_MODEL_LABEL = "High-detail 3D model";
+function modelMedia(product: CatalogProduct) {
   const media = Array.isArray(product.media) ? product.media : [];
-  const models = media.filter(
-    (item) => item?.type === "MODEL_PREVIEW" && typeof item.url === "string" && item.url.trim(),
-  );
-
-  return (
-    assetUrl(models.find((media) => media.isPrimary)?.url ?? "") ||
-    assetUrl(models[0]?.url ?? "") ||
-    ""
-  );
+  return media.filter((item) => item?.type === "MODEL_PREVIEW" && typeof item.url === "string" && item.url.trim());
+}
+function primaryModel(product: CatalogProduct): string {
+  const models = modelMedia(product);
+  const primary = models.find((media) => media.isPrimary) ?? models[0];
+  if (!primary) return "";
+  if (primary.altText === LIGHTWEIGHT_MODEL_LABEL) {
+    try {
+      const parsed = new URL(primary.url, "https://voxel3d.org");
+      if (parsed.pathname.startsWith("/api/assets/products/")) return parsed.pathname;
+    } catch { /* fall through */ }
+  }
+  return assetUrl(primary.url);
+}
+function highDetailModel(product: CatalogProduct): string | undefined {
+  const models = modelMedia(product);
+  const primary = models.find((media) => media.isPrimary) ?? models[0];
+  if (primary?.altText !== LIGHTWEIGHT_MODEL_LABEL) return undefined;
+  const hd = models.find((media) => media.altText === HIGH_DETAIL_MODEL_LABEL && media.url !== primary.url);
+  return hd ? assetUrl(hd.url) || undefined : undefined;
 }
 
 export function mapCatalogProduct(product: CatalogProduct): StorefrontProduct {
@@ -357,6 +371,7 @@ export function mapCatalogProduct(product: CatalogProduct): StorefrontProduct {
       .sort((a, b) => a.sortOrder - b.sortOrder)
       .map((media) => resolveMediaUrl(media.url) ?? "/placeholder-product.webp"),
     model: primaryModel(product),
+    highDetailModel: highDetailModel(product),
     format: primaryModel(product) ? "GLB" : "Physical",
     fileSize: "",
     polygonCount: "",

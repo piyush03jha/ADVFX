@@ -43,17 +43,17 @@ export function ProductGallery({ product }: ProductGalleryProps) {
   const isDark = theme === "dark";
 
   const [activeIndex, setActiveIndex] = useState(0);
+  const [highDetail, setHighDetail] = useState(false);
   const [failedImages, setFailedImages] = useState<Set<string>>(() => new Set());
   const fallbackImage = "/placeholder-product.webp";
 
   useEffect(() => {
     setActiveIndex(0);
+    setHighDetail(false);
     setFailedImages(new Set());
   }, [product.id]);
 
-  // The visitor chose this product, so start everything it needs right away: the viewer
-  // code, the 3D file and every photo. (When they arrived from a product card these were
-  // already started on pointer down; the downloads are shared, so nothing is fetched twice.)
+  // Warm photos and viewer code, but do not fetch geometry until the visitor opens 3D.
   const hasModel = Boolean(product.model.trim());
   useEffect(() => {
     if (hasModel) void import("./Product3DStage");
@@ -170,7 +170,14 @@ export function ProductGallery({ product }: ProductGalleryProps) {
 
         {active.type === "model" && (
           <>
-            <Product3DStage model={product.model} theme={theme} />
+            <Product3DStage key={product.id} model={highDetail && product.highDetailModel ? product.highDetailModel : product.model} theme={theme} />
+            {product.highDetailModel && (
+              <button type="button" onClick={() => setHighDetail((value) => !value)}
+                aria-pressed={highDetail}
+                className={"absolute bottom-12 left-3 z-30 rounded-full border px-3 py-2 text-xs font-medium backdrop-blur-xl sm:bottom-4 sm:left-4 " + controlClass}>
+                {highDetail ? "Back to lightweight preview" : "Load HD model"}
+              </button>
+            )}
           </>
         )}
 

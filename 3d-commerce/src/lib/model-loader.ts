@@ -150,6 +150,10 @@ async function readBody(response: Response, onBytes: (count: number) => void, si
       if (done) break;
       chunks.push(value);
       size += value.byteLength;
+      if (size > maxGlbBytesForDevice()) {
+        await reader.cancel().catch(() => undefined);
+        throw new Error("Model exceeds this device's safe loading budget");
+      }
       onBytes(value.byteLength);
     }
   } catch (error) {
@@ -248,7 +252,8 @@ async function downloadModel(url: string, emit: (percent: number) => void, signa
     url,
     {
       headers: {
-        Range: `bytes=0-${FIRST_REQUEST_BYTES - 1}`,
+        // Lightweight files use a full GET to populate the CDN's full-object cache.
+        ...(/-preview\.glb(?:[?#]|$)/i.test(url) ? {} : { Range: `bytes=0-${FIRST_REQUEST_BYTES - 1}` }),
         Accept: "model/gltf-binary,application/octet-stream",
       },
     },
@@ -274,6 +279,10 @@ async function downloadModel(url: string, emit: (percent: number) => void, signa
     if (expectedTotal > 0) emit(Math.min(99, Math.floor((loaded / expectedTotal) * 100)));
   };
 
+  if (expectedTotal > maxGlbBytesForDevice()) {
+    await firstResponse.body?.cancel().catch(() => undefined);
+    throw new Error("Model exceeds this device's safe loading budget");
+  }
   const firstChunk = await readBody(firstResponse, report, signal);
   const total = validateGlbHeader(firstChunk);
 

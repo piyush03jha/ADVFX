@@ -1,4 +1,3 @@
-import { loadModelBuffer } from "@/lib/model-loader";
 import { resolveMediaUrl } from "@/lib/media-url";
 
 const requested = new Set<string>();
@@ -22,13 +21,6 @@ export function prefetchImages(urls: ReadonlyArray<string | null | undefined>) {
 
 type ProductMedia = { image?: string | null; images?: string[] | null; model?: string | null };
 
-function saveData() {
-  const connection = (navigator as Navigator & {
-    connection?: { effectiveType?: string; saveData?: boolean };
-  }).connection;
-  return Boolean(connection?.saveData || ["slow-2g", "2g"].includes(connection?.effectiveType ?? ""));
-}
-
 /**
  * Warm a product's photos. Cheap, so it is fine on pointer down (including the start of
  * a swipe on a phone).
@@ -38,17 +30,8 @@ export function prefetchProductPhotos(product: ProductMedia) {
   prefetchImages([product.image, ...(product.images ?? [])].map((value) => resolveMediaUrl(value)));
 }
 
-/**
- * Called when a visitor actually CLICKS a product: start its photos and its 3D file so
- * they are already on their way when the product page opens. The 3D file is tens of MB,
- * so it never starts on hover, pointer down or idle - a swipe past a card must not pay
- * for it. The download is shared with the viewer, so it is never fetched twice.
- * (Hero models are the one exception; the hero loads them itself.)
- */
+/** Warm photos only; model downloads start when the 3D tab opens. */
 export function prefetchProductMedia(product: ProductMedia) {
   if (typeof window === "undefined") return;
   prefetchProductPhotos(product);
-
-  const model = product.model?.trim();
-  if (model && !saveData()) void loadModelBuffer(model).catch(() => undefined);
 }

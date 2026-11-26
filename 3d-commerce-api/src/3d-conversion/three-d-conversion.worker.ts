@@ -9,6 +9,7 @@ import { totalmem as osTotalMemory } from "node:os";
 import { PrismaService } from "../prisma/prisma.service";
 import { StorageService } from "../storage/storage.service";
 import { ThreeDConversionService } from "./three-d-conversion.service";
+import { conversionPreviewKey } from "./three-d-conversion.constants";
 
 const execFileAsync = promisify(execFile);
 
@@ -193,7 +194,25 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
       const outputKey = "conversions/" + job.id + "/output/model.glb";
       await this.storage.uploadFileFromPath(outputKey, candidate.path, "model/gltf-binary");
 
-      const warning = candidate.warning;
+      // Sequential optional pass: the main optimizer has already exited.
+      const previewKey = conversionPreviewKey(job.id);
+      if (await this.storage.exists(previewKey)) await this.storage.delete(previewKey);
+      let previewWarning: string | null = null;
+      if (optimizedSize > 3 * 1024 * 1024) {
+        const previewPath = join(tempDir, "preview.glb");
+        try {
+          if (await this.buildStorefrontPreview(convertedPath, previewPath, optimizedSize, animationCount > 0)) {
+            await this.storage.uploadFileFromPath(previewKey, previewPath, "model/gltf-binary");
+          } else {
+            previewWarning = "No significantly smaller preview generated; storefront uses the full model on demand.";
+          }
+        } catch (error) {
+          await this.storage.delete(previewKey).catch(() => undefined);
+          this.logger.warn(`Preview generation failed for ${job.id}: ${String(error)}`);
+          previewWarning = "Lightweight preview unavailable; storefront uses the full model on demand.";
+        }
+      }
+      const warning = [candidate.warning, previewWarning].filter(Boolean).join(" ") || null;
 
       await this.prisma.threeDConversionJob.update({
         where: { id: job.id },
@@ -292,6 +311,20 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
       this.logger.warn("GLB optimization failed; retaining converted model: " + (error instanceof Error ? error.message : String(error)));
       return { path: inputPath, warning: "Compression could not complete within worker resources; retained converted GLB. Review before publishing." };
     }
+  }
+
+  private async buildStorefrontPreview(inputPath: string, outputPath: string, highDetailBytes: number, hasAnimations: boolean): Promise<boolean> {
+    const simplify = !hasAnimations && process.env.MODEL_OPTIMIZER_SIMPLIFY !== "false";
+    await this.runCli([
+      "optimize", inputPath, outputPath,
+      "--compress", "meshopt", "--meshopt-level", "medium",
+      "--texture-compress", "webp", "--texture-size", "512",
+      "--flatten", "false", "--join", "false", "--instance", "false", "--palette", "false",
+      "--simplify", String(simplify), "--simplify-ratio", "0.1",
+      "--simplify-error", "0.005", "--simplify-lock-border", "true",
+    ], this.optimizeTimeoutMs);
+    await this.validateGlb(outputPath);
+    return (await fs.stat(outputPath)).size < highDetailBytes * 0.8;
   }
 
   private async runCli(args: string[], timeoutMs: number) {
