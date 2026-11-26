@@ -46,6 +46,7 @@ type Job = {
   maxAttempts: number;
   originalSize: string | null;
   convertedSize: string | null;
+  convertedStorageKey?: string | null;
   outputSize: string | null;
   targetProductId: string | null;
   publishedFileId: string | null;
@@ -472,14 +473,16 @@ export default function ThreeDConversionPage() {
                     {job.status === "COMPLETED" && job.stage === "READY" ? (
                       <>
                         <AdminButton onClick={() => void rerun(job.id)} disabled={busy === job.id}>
-                          <IconRefresh size={15} /> Re-run {preset === "SMALLEST" ? "Smallest" : "Balanced"}
+                          <IconRefresh size={15} /> Re-optimize {preset === "SMALLEST" ? "Smallest" : "Balanced"}
                         </AdminButton>
                         <AdminButton variant="primary" onClick={() => download(job.id, "optimized")}>
                           <IconDownload size={15} /> Web-optimized GLB
                         </AdminButton>
-                        <AdminButton onClick={() => download(job.id, "converted")}>
-                          <IconDownload size={15} /> Converted GLB
-                        </AdminButton>
+                        {job.convertedStorageKey && (
+                          <AdminButton onClick={() => download(job.id, "converted")}>
+                            <IconDownload size={15} /> Converted GLB
+                          </AdminButton>
+                        )}
                         {!job.targetProductId ? (
                           <AdminButton
                             onClick={() => void openAttach(job.id)}

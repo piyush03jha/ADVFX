@@ -354,3 +354,48 @@ describe("storefront LOD publication", () => {
     expect(tx.productMedia.create).toHaveBeenCalledWith({data: expect.objectContaining({url: "/api/assets/" + permanentHd, isPrimary: true})});
   });
 });
+
+
+describe("standalone optimized source cleanup", () => {
+  const original = "conversions/j1/source/model.glb";
+  const optimized = "conversions/j1/output/model.glb";
+  const converted = "conversions/j1/converted/model.glb";
+  const job = {
+    id: "j1", status: "COMPLETED", stage: "READY", targetProductId: null,
+    sourceStorageKey: original, convertedStorageKey: converted, outputStorageKey: optimized,
+    outputSize: BigInt(100), deleteSourceOnSuccess: true,
+  };
+  const prisma = { threeDConversionJob: { findUnique: jest.fn(), update: jest.fn() } } as any;
+  const storage = { getObjectSize: jest.fn(), delete: jest.fn() } as any;
+  let service: ThreeDConversionService;
+  beforeEach(() => {
+    jest.resetAllMocks();
+    prisma.threeDConversionJob.findUnique.mockResolvedValue(job);
+    prisma.threeDConversionJob.update.mockResolvedValue({});
+    storage.getObjectSize.mockResolvedValue(100);
+    storage.delete.mockResolvedValue(undefined);
+    service = new ThreeDConversionService(prisma, storage);
+  });
+  it("deletes source and converted intermediate but retains HD and lightweight output", async () => {
+    await service.discardReadyIntermediates("j1");
+    expect(storage.delete.mock.calls.map(([key]: [string]) => key).sort()).toEqual([original, converted].sort());
+    expect(prisma.threeDConversionJob.update).toHaveBeenCalledWith({where: {id: "j1"}, data: {sourceStorageKey: "pending", convertedStorageKey: null}});
+  });
+  it("deletes a direct GLB source only once", async () => {
+    prisma.threeDConversionJob.findUnique.mockResolvedValue({...job, convertedStorageKey: original});
+    await service.discardReadyIntermediates("j1");
+    expect(storage.delete).toHaveBeenCalledTimes(1);
+    expect(storage.delete).toHaveBeenCalledWith(original);
+  });
+  it("does not delete if the result has not been verified", async () => {
+    storage.getObjectSize.mockResolvedValue(99);
+    await expect(service.discardReadyIntermediates("j1")).rejects.toThrow(/verified/);
+    expect(storage.delete).not.toHaveBeenCalled();
+  });
+  it("keeps a catalog source until publication or a failed job until retry", async () => {
+    prisma.threeDConversionJob.findUnique.mockResolvedValueOnce({...job, targetProductId: "p1"}).mockResolvedValueOnce({...job, status: "FAILED"});
+    await service.discardReadyIntermediates("j1");
+    await service.discardReadyIntermediates("j1");
+    expect(storage.delete).not.toHaveBeenCalled();
+  });
+});

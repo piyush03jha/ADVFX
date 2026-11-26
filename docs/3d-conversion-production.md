@@ -27,7 +27,7 @@ Keep worker concurrency at 1 on the current Railway worker size. Increase memory
 
 The optimizer uses glTF-Transform CLI 4.5.1, Meshopt geometry compression and WebP texture compression. WebP optimizes transfer size; Meshopt requires a Meshopt-capable GLTFLoader, which the storefront's Drei `useGLTF(..., true, true)` paths provide.
 
-The output is a web-optimized GLB. A separate converted GLB is retained in the private conversion library for admin download; it is never exposed through the storefront catalog.
+The output is a web-optimized GLB and an optional lightweight preview. Standalone jobs delete the conversion-owned original and converted intermediate after the optimized output has been verified and marked READY. Catalog-owned sources remain until successful publication. Re-optimization starts from the retained HD GLB; upload the original again for a fresh full-detail conversion.
 
 Balanced uses one pass with no explicit geometry simplification and 2048px texture maximum. Smallest uses one pass with 1024px textures and optional 80% static geometry retention. Neither preset has a fixed output byte target. The API and catalog accept non-empty uploads without a fixed application byte limit; actual processing remains bounded by storage, GLB format, archive and geometry safety limits and available worker resources. Benchmark on the 8 GB worker before raising those limits.
 

@@ -227,14 +227,11 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
         },
       });
 
-      // For catalog uploads, retain the source until the permanent optimized
-      // GLB has been verified and attached. publish() handles cleanup afterward.
-      // Standalone conversion jobs retain their existing cleanup behavior.
-      if (!job.targetProductId && job.deleteSourceOnSuccess && !reusableConverted && !directGlbSource) {
-        await this.storage.delete(job.sourceStorageKey).catch((error) => {
-          this.logger.warn(
-            `Unable to delete original conversion source ${job.id}: ${error instanceof Error ? error.message : String(error)}`,
-          );
+      // Catalog-owned sources survive until the replacement is published.
+      // Standalone uploads can be discarded once the verified result is READY.
+      if (!job.targetProductId && job.deleteSourceOnSuccess) {
+        await this.conversionService.discardReadyIntermediates(job.id).catch((error) => {
+          this.logger.warn(`Ready-model cleanup failed for ${job.id}: ${String(error)}`);
         });
       }
 

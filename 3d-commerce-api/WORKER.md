@@ -50,3 +50,6 @@ For very dense STL files, the native converter first attempts bounded exact vert
 
 ### Storefront LOD
 Models above 3 MiB after main optimization are eligible for one additional sequential preview pass (512px textures; static geometry 10% retention target, error 0.005, animated geometry not simplified). A preview is retained only if at least 20% smaller than HD. This is not a file size cap. The high-detail artifact remains the job output; both models use regular product file/media records on publication. Failed or redundant previews fall back to a single on-demand model. Existing products can be backfilled by re-optimizing the high-detail GLB. No schema migration required.
+
+### Successful conversion cleanup
+Standalone uploads delete their original and unoptimized intermediate once the stored HD output size matches the completed job. Catalog sources are deleted only after replacement publication. Retain the optimized HD and optional lightweight preview. Failed jobs keep their source for retry; failed deletions leave references for manual cleanup. Re-optimization uses the retained HD model and cannot recover discarded source detail.

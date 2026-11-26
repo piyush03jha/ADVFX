@@ -487,25 +487,54 @@ export class ThreeDConversionService {
   async rerun(id: string, optimizationPreset: string = "BALANCED") {
     const job = await this.prisma.threeDConversionJob.findUnique({ where: { id } });
     if (!job) throw new NotFoundException("Conversion job not found");
-    if (!job.convertedStorageKey || !(await this.storage.exists(job.convertedStorageKey))) {
-      throw new BadRequestException("Converted GLB is not available for a re-run");
+    if (job.status !== ProcessingJobStatus.COMPLETED) throw new BadRequestException("Complete the conversion before re-running");
+    if (job.stage === "PUBLISHED" && job.targetProductId && job.publishedFileId) {
+      return this.createFromExistingGlb(job.targetProductId, job.publishedFileId, optimizationPreset);
     }
+    if (job.stage !== "READY") throw new BadRequestException("Conversion is not ready for a re-run");
 
-    const rerun = await this.prisma.threeDConversionJob.create({
-      data: {
-        originalName: job.originalName,
-        sourceStorageKey: job.convertedStorageKey,
-        inputExt: ".glb",
-        status: ProcessingJobStatus.QUEUED,
-        stage: "QUEUED",
-        originalSize: job.convertedSize,
-        targetProductId: job.targetProductId,
-        optimizationPreset: optimizationPreset === "SMALLEST" ? "SMALLEST" : "BALANCED",
-        deleteSourceOnSuccess: false,
-      },
-    });
+    // The unoptimized intermediate is intentionally removed after success.
+    // Start from the retained HD GLB; copy it into an independently owned
+    // source so removing/publishing the earlier job cannot break this re-run.
+    const inputKey = job.outputStorageKey;
+    if (!inputKey || !(await this.storage.exists(inputKey))) {
+      throw new BadRequestException("Optimized GLB is not available for a re-run");
+    }
+    const rerunId = randomUUID();
+    const sourceKey = `conversions/${rerunId}/source/rerun.glb`;
+    try {
+      await this.storage.copy(inputKey, sourceKey);
+      const originalSize = await this.storage.getObjectSize(sourceKey);
+      if (!job.outputSize || BigInt(originalSize) !== job.outputSize) throw new Error("Re-run source size mismatch");
+      const rerun = await this.prisma.threeDConversionJob.create({
+        data: {
+          id: rerunId, originalName: job.originalName, sourceStorageKey: sourceKey,
+          inputExt: ".glb", status: ProcessingJobStatus.QUEUED, stage: "QUEUED",
+          originalSize: BigInt(originalSize), targetProductId: job.targetProductId,
+          optimizationPreset: optimizationPreset === "SMALLEST" ? "SMALLEST" : "BALANCED",
+          deleteSourceOnSuccess: true,
+        },
+      });
+      return this.serialize(rerun);
+    } catch (error) {
+      // If the database write succeeded but its response was interrupted, keep
+      // the source for that job rather than deleting a live queued input.
+      const created = await this.prisma.threeDConversionJob.findUnique({ where: { id: rerunId } }).catch(() => undefined);
+      if (created === null) await this.storage.delete(sourceKey).catch(() => undefined);
+      if (created) return this.serialize(created);
+      throw error;
+    }
+  }
 
-    return this.serialize(rerun);
+  async discardReadyIntermediates(id: string) {
+    const job = await this.prisma.threeDConversionJob.findUnique({ where: { id } });
+    if (!job || job.status !== ProcessingJobStatus.COMPLETED || job.stage !== "READY" ||
+        job.targetProductId || !job.deleteSourceOnSuccess || !job.outputStorageKey || !job.outputSize) return;
+    const size = await this.storage.getObjectSize(job.outputStorageKey);
+    if (size <= 0 || BigInt(size) !== job.outputSize) {
+      throw new Error("Optimized GLB could not be verified; retaining original");
+    }
+    await this.discardConversionIntermediates(job, job.outputStorageKey);
   }
 
   async publish(id: string, productId: string) {
