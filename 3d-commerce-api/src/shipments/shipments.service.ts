@@ -4,6 +4,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { guardShipmentUpdate } from '../orders/shipment-guard';
 import { UpdateShipmentDto } from './dto/update-shipment.dto';
+import { collectCod } from '../orders/cod';
+import { queueWhatsAppOrder } from '../notifications/whatsapp-order';
 
 @Injectable()
 export class ShipmentsService {
@@ -38,6 +40,8 @@ export class ShipmentsService {
       async (tx) => {
         // Serialize with order status changes and refunds, then validate
         // against the order's current state rather than a stale read.
+        // Lock payment before order for delivery, matching payment/refund lock order.
+        if (dto.status === ShipmentStatus.DELIVERED) await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "Payment" WHERE "orderId" = ${orderId} FOR UPDATE`);
         const locked = await tx.$queryRaw<Array<{ id: string }>>(
           Prisma.sql`SELECT "id" FROM "Order" WHERE "id" = ${orderId} FOR UPDATE`,
         );
@@ -47,7 +51,7 @@ export class ShipmentsService {
 
         const order = await tx.order.findUniqueOrThrow({
           where: { id: orderId },
-          select: { status: true, userId: true, orderNumber: true },
+          select: { id: true, status: true, userId: true, orderNumber: true, totalMinor: true, currency: true, whatsappPhone: true, whatsappOptedInAt: true, payment: { select: { provider: true } } },
         });
 
         // A shipment update may ship or deliver an order, but only a
@@ -58,6 +62,7 @@ export class ShipmentsService {
         }
 
         const current = await tx.shipment.findUnique({ where: { orderId } });
+        if (dto.status === ShipmentStatus.DELIVERED && order.payment?.provider === 'COD' && order.status !== 'DELIVERED') await collectCod(tx, orderId, dto.codCollected === true);
 
         const data = {
           ...(dto.status !== undefined ? { status: dto.status } : {}),
@@ -88,6 +93,9 @@ export class ShipmentsService {
           });
         }
 
+        const newStatus = decision.action === 'ADVANCE' ? decision.to : order.status;
+        if (newStatus === 'SHIPPED') await queueWhatsAppOrder(tx, order, 'SHIPPED', { carrier: shipment.carrier, trackingNumber: shipment.trackingNumber });
+        if (decision.action === 'ADVANCE' && newStatus === 'DELIVERED') await queueWhatsAppOrder(tx, order, 'DELIVERED');
         return {
           shipment,
           advancedTo: decision.action === 'ADVANCE' ? decision.to : null,

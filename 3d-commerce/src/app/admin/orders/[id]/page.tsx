@@ -85,6 +85,8 @@ export default function AdminOrderDetailPage() {
 
   async function changeStatus(status: string) {
     if (!order) return;
+    const codCollected = status === "DELIVERED" && order.payment?.provider === "COD" && order.payment.status !== "CAPTURED";
+    if (codCollected && !window.confirm("Confirm the courier has collected the full COD payment before marking delivered.")) return;
     setSavingStatus(true);
     setError("");
     setMessage("");
@@ -92,7 +94,7 @@ export default function AdminOrderDetailPage() {
       const response = await fetch("/api/admin/orders/status", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: order.id, status }),
+        body: JSON.stringify({ id: order.id, status, codCollected }),
       });
       const data = await response.json().catch(() => null);
       if (!response.ok) throw new Error(data?.error ?? "Unable to update order.");
@@ -121,6 +123,8 @@ export default function AdminOrderDetailPage() {
       setMessage("");
       return;
     }
+    const codCollected = shipment.status === "DELIVERED" && order.payment?.provider === "COD" && order.payment.status !== "CAPTURED";
+    if (codCollected && !window.confirm("Confirm the courier has collected the full COD payment before marking delivered.")) return;
     setSavingShipment(true);
     setError("");
     setMessage("");
@@ -130,6 +134,7 @@ export default function AdminOrderDetailPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           status: shipment.status,
+          codCollected,
           carrier: carrier || undefined,
           trackingNumber: trackingNumber || undefined,
           trackingUrl: trackingUrl ?? undefined,
@@ -146,7 +151,7 @@ export default function AdminOrderDetailPage() {
     }
   }
 
-  const nextStatuses = useMemo(() => order ? NEXT[order.status] ?? [] : [], [order]);
+  const nextStatuses = useMemo(() => order ? (NEXT[order.status] ?? []).filter((status) => order.payment?.provider !== "COD" || status !== "REFUNDED") : [], [order]);
 
   if (loading) return <main className="mx-auto max-w-7xl px-4 py-10 text-xs text-muted">Loading order…</main>;
 
@@ -233,7 +238,7 @@ export default function AdminOrderDetailPage() {
         <aside className="space-y-6">
           <section className="rounded-3xl border border-border bg-surface p-6 sm:p-7">
             <div className="flex items-center gap-3"><IconCreditCard size={18} className="text-primary" /><div><p className="text-[9px] uppercase tracking-[0.16em] text-primary">Payment</p><h2 className="mt-1 text-base font-medium">Payment status</h2></div></div>
-            <div className="mt-5 space-y-3 text-xs"><Row label="Provider" value={order.payment?.provider ?? "—"} /><Row label="Status" value={order.payment?.status ?? "—"} /><Row label="Total" value={money(order.totalMinor, order.currency)} /></div>
+            <div className="mt-5 space-y-3 text-xs"><Row label="Provider" value={order.payment?.provider === "COD" ? "Cash on delivery" : order.payment?.provider ?? "—"} /><Row label="Status" value={order.payment?.provider === "COD" && order.payment.status === "PENDING" ? "Due on delivery" : order.payment?.provider === "COD" && order.payment.status === "CAPTURED" ? "Collected" : order.payment?.status ?? "—"} /><Row label="Total" value={money(order.totalMinor, order.currency)} /></div>
           </section>
 
           <section className="rounded-3xl border border-border bg-surface p-6 sm:p-7">

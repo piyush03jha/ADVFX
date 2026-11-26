@@ -59,6 +59,8 @@ export type CheckoutQuote = {
     required: boolean;
     status: string;
     provider: string;
+    codAvailable?: boolean;
+    whatsappAvailable?: boolean;
   };
 };
 
@@ -131,6 +133,8 @@ export function createOrder(input: {
   shippingAddressId: string;
   couponCode?: string;
   idempotencyKey: string;
+  paymentProvider?: 'RAZORPAY' | 'COD';
+  whatsappOptIn?: boolean;
   quotedSubtotalMinor: number;
   quotedShippingMinor: number;
   quotedDiscountMinor: number;

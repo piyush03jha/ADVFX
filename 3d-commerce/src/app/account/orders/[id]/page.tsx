@@ -92,7 +92,7 @@ export default async function OrderTrackingPage({ params }: OrderPageProps) {
     total: order.totalMinor / 100,
     paymentMethod: {
       type: order.payment?.provider ?? "Payment",
-      label: order.payment?.status ?? "Pending",
+      label: order.payment?.provider === "COD" ? (order.payment.status === "CAPTURED" ? "Cash collected" : order.payment.status === "PENDING" ? "Pay on delivery" : order.payment.status) : order.payment?.status ?? "Pending",
     },
     shippingAddress: {
       name: order.shippingAddress.fullName,
@@ -152,7 +152,7 @@ export default async function OrderTrackingPage({ params }: OrderPageProps) {
                 <OrderTimeline
                   events={[
                     { status: "placed", title: "Order placed", description: "Your order has been received.", timestamp: new Date(order.createdAt).toLocaleString("en-IN"), completed: true },
-                    { status: "confirmed", title: "Payment confirmed", description: "Payment confirmation for this order.", timestamp: order.payment?.status === "CAPTURED" ? "Confirmed" : "", completed: order.payment?.status === "CAPTURED", current: order.status === "CONFIRMED" },
+                    { status: "confirmed", title: order.payment?.provider === "COD" ? "Order confirmed" : "Payment confirmed", description: order.payment?.provider === "COD" ? "Payment is due on delivery." : "Payment confirmation for this order.", timestamp: order.payment?.status === "CAPTURED" ? "Confirmed" : "", completed: order.payment?.provider === "COD" ? ["CONFIRMED", "PROCESSING", "READY_TO_SHIP", "SHIPPED", "DELIVERED"].includes(order.status) : order.payment?.status === "CAPTURED", current: order.status === "CONFIRMED" },
                     { status: "processing", title: "Processing", description: "Your order is being prepared.", timestamp: "", completed: ["PROCESSING","READY_TO_SHIP","SHIPPED","DELIVERED"].includes(order.status), current: order.status === "PROCESSING" },
                     { status: "packed", title: "Ready to ship", description: "Your order is ready for shipment.", timestamp: "", completed: ["READY_TO_SHIP","SHIPPED","DELIVERED"].includes(order.status), current: order.status === "READY_TO_SHIP" },
                     { status: "shipped", title: "Shipped", description: "Your package has left our facility.", timestamp: shipment?.trackingNumber ? "Tracking available" : "", completed: ["SHIPPED","DELIVERED"].includes(order.status), current: order.status === "SHIPPED" && shipment?.status !== "IN_TRANSIT" },
@@ -184,7 +184,7 @@ export default async function OrderTrackingPage({ params }: OrderPageProps) {
 
               <section className="rounded-2xl border border-border bg-surface/55 p-4 sm:p-5">
                 <div className="flex items-center gap-2"><IconCreditCard size={14} className="text-primary" /><h2 className="text-[10px] font-medium uppercase tracking-[0.12em]">Payment</h2></div>
-                <div className="mt-3 space-y-2 text-[10px]"><div className="flex justify-between gap-4"><span className="text-muted">Provider</span><span>{order.payment?.provider ?? "—"}</span></div><div className="flex justify-between gap-4"><span className="text-muted">Status</span><span>{order.payment?.status ?? "PENDING"}</span></div></div>
+                <div className="mt-3 space-y-2 text-[10px]"><div className="flex justify-between gap-4"><span className="text-muted">Provider</span><span>{order.payment?.provider === "COD" ? "Cash on delivery" : order.payment?.provider ?? "—"}</span></div><div className="flex justify-between gap-4"><span className="text-muted">Status</span><span>{order.payment?.provider === "COD" && order.payment.status === "PENDING" ? "Due on delivery" : order.payment?.provider === "COD" && order.payment.status === "CAPTURED" ? "Collected" : order.payment?.status ?? "PENDING"}</span></div></div>
               </section>
 
               <div className="grid gap-2">

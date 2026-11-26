@@ -58,6 +58,9 @@ export default function PaymentPage() {
   const [quote, setQuote] = useState<CheckoutQuote | null>(null);
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [checkoutReady, setCheckoutReady] = useState(false);
+  const [paymentProvider, setPaymentProvider] = useState<"RAZORPAY" | "COD">("RAZORPAY");
+  const [whatsappOptIn, setWhatsappOptIn] = useState(false);
+  const cod = paymentProvider === "COD";
 
   const displayItems = draft?.checkoutDisplayItems ?? cartItems;
   const selectedItems = useMemo(
@@ -139,7 +142,8 @@ export default function PaymentPage() {
       return;
     }
 
-    if (!window.Razorpay) {
+    if (cod && !quote.payment.codAvailable) { setQuoteError("Cash on delivery is unavailable."); return; }
+    if (!cod && !window.Razorpay) {
       setQuoteError("Secure payment checkout is still loading. Please try again.");
       return;
     }
@@ -165,7 +169,20 @@ export default function PaymentPage() {
         quotedTotalMinor: quote.summary.totalMinor,
         quotedCurrency: quote.currency,
         items: selectedItems,
+        paymentProvider: cod ? "COD" : "RAZORPAY",
+        whatsappOptIn: whatsappOptIn && quote.payment.whatsappAvailable === true,
       });
+
+      if (order.payment?.provider === "COD" && ["CONFIRMED", "PROCESSING", "READY_TO_SHIP", "SHIPPED", "DELIVERED"].includes(order.status)) {
+        setPaymentState("confirmed");
+        try {
+          window.localStorage.removeItem(DRAFT_KEY);
+          window.localStorage.removeItem("forma-buy-now");
+        } catch { /* order already confirmed */ }
+        router.push("/order/confirmation?order=" + encodeURIComponent(order.id));
+        return;
+      }
+      if (cod) throw new Error("COD order could not be confirmed. Please check My Orders before trying again.");
 
       const razorpayOrder: RazorpayOrder = await createRazorpayOrder(order.id);
 
@@ -452,7 +469,7 @@ export default function PaymentPage() {
                   </h1>
 
                   <p className="mt-3 max-w-xl text-sm leading-6 text-muted">
-                    Complete payment securely with Razorpay.
+                    Choose online payment or cash on delivery when available.
                   </p>
                 </div>
 
@@ -587,6 +604,13 @@ export default function PaymentPage() {
                   </span>
                 </div>
 
+                {(quote?.payment.codAvailable || cod) && <fieldset disabled={processing || Boolean(idempotencyKey)} className="mt-5 space-y-2 rounded-xl border border-border p-3 text-xs">
+                  <legend className="px-1 font-medium text-foreground">Payment method</legend>
+                  <label className="flex items-center gap-2"><input type="radio" name="payment-provider" checked={!cod} onChange={() => setPaymentProvider("RAZORPAY")} /> Pay online (Razorpay)</label>
+                  <label className="flex items-center gap-2"><input type="radio" name="payment-provider" checked={cod} disabled={!quote?.payment.codAvailable} onChange={() => setPaymentProvider("COD")} /> Cash on delivery</label>
+                  {cod && <p className="text-muted">Pay the full order total to the courier when delivered.</p>}
+                </fieldset>}
+                {quote?.payment.whatsappAvailable && <label className="mt-4 flex items-start gap-2 text-xs text-muted"><input type="checkbox" checked={whatsappOptIn} disabled={processing} onChange={(event) => setWhatsappOptIn(event.target.checked)} /> <span>I agree to receive order confirmation, shipping and delivery updates on WhatsApp at my delivery number ({quote.shippingAddress.phone}). Optional; no marketing messages.</span></label>}
                 <Button
                   type="button"
                   size="lg"
@@ -596,7 +620,7 @@ export default function PaymentPage() {
                     paymentState === "confirmed" ||
                     !quote ||
                     quote.summary.totalMinor <= 0 ||
-                    !checkoutReady
+                    (!cod && !checkoutReady) || (cod && !quote?.payment.codAvailable)
                   }
                   onClick={() => void handlePay()}
                   className="mt-6 w-full"
@@ -604,16 +628,16 @@ export default function PaymentPage() {
                   {paymentState === "pending"
                     ? "Confirming payment…"
                     : paymentState === "confirmed"
-                      ? "Payment confirmed"
+                      ? "Order confirmed"
                       : processing
-                        ? "Opening secure checkout…"
-                        : !checkoutReady
+                        ? cod ? "Placing order…" : "Opening secure checkout…"
+                        : cod ? "Place COD order" : !checkoutReady
                           ? "Loading secure checkout…"
                           : "Pay " + (total ? formatQuoteMoney(total.amountMinor, total.currency) : "")}
                 </Button>
 
                 <p className="mt-3 text-center text-[11px] leading-4 text-muted">
-                  Your order is confirmed only after successful server-side payment verification.
+                  {cod ? "Your order will be confirmed now; payment is due on delivery." : "Your order is confirmed only after successful server-side payment verification."}
                 </p>
               </aside>
             </div>

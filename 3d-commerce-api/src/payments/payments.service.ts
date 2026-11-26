@@ -12,6 +12,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { queueWhatsAppOrder } from '../notifications/whatsapp-order';
 import { RazorpayService } from './razorpay.service';
 import { isPaymentWindowOpen } from '../orders/payment-window';
 
@@ -838,7 +839,7 @@ export class PaymentsService {
       const payment = await tx.payment.findUnique({
         where: { id: lockedPaymentRows[0].id },
       });
-      if (!payment) return { kind: "NONE" as const };
+      if (!payment || payment.provider === 'COD') return { kind: "NONE" as const };
 
       if (
         amount !== payment.amountMinor ||
@@ -932,6 +933,7 @@ export class PaymentsService {
       });
 
       await this.clearCapturedCartLines(tx, updatedOrder);
+      await queueWhatsAppOrder(tx, updatedOrder, 'CONFIRMED');
 
       if (updatedOrder.checkoutSource === "CUSTOM") {
         await tx.customRequest.updateMany({

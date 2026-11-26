@@ -5,13 +5,14 @@ import { PrismaModule } from '../prisma/prisma.module';
 
 import { NotificationsController } from './notifications.controller';
 import { NotificationsService } from './notifications.service';
+import { WhatsAppOrderWorker } from './whatsapp-order.worker';
 
 @Module({
   imports: [PrismaModule, AuthModule],
 
   controllers: [NotificationsController],
 
-  providers: [NotificationsService],
+  providers: [NotificationsService, WhatsAppOrderWorker],
 
   exports: [NotificationsService],
 })

@@ -9,6 +9,8 @@ import { PaymentsService } from '../payments/payments.service';
 import { ObservabilityService } from '../observability/observability.service';
 import { paymentWindowCutoff } from './payment-window';
 import { remainingRefundMinor } from '../payments/refund-amount';
+import { codAvailable, collectCod } from './cod';
+import { normalizeWhatsAppPhone, queueWhatsAppOrder, whatsappEnabled } from '../notifications/whatsapp-order';
 
 const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   PENDING_PAYMENT: ['CONFIRMED', 'CANCELLED'],
@@ -69,7 +71,11 @@ export class OrdersService {
       variantId?: string;
       quantity: number;
     }>,
+    paymentProvider: 'RAZORPAY' | 'COD' = 'RAZORPAY',
+    whatsappOptIn = false,
   ) {
+    const cod = paymentProvider === 'COD';
+    if (cod && !idempotencyKey) throw new BadRequestException('An idempotency key is required for COD checkout');
     if (idempotencyKey) {
       const existing = await this.prisma.order.findFirst({
         where: { userId, idempotencyKey },
@@ -82,7 +88,10 @@ export class OrdersService {
           shippingRule: true,
         },
       });
-      if (existing) return existing;
+      if (existing) {
+        if (existing.payment && existing.payment.provider !== paymentProvider) throw new ConflictException('This checkout attempt uses a different payment method. Review My Orders before retrying.');
+        return existing;
+      }
     }
 
     const checkoutItems = selectedItems?.length
@@ -149,6 +158,9 @@ export class OrdersService {
         where: { id: shippingAddressId, userId },
       });
       if (!address) throw new NotFoundException("Shipping address not found");
+      if (cod && !codAvailable(address.country, quote.currency)) throw new BadRequestException('Cash on delivery is not available for this order');
+      const whatsappPhone = whatsappOptIn && whatsappEnabled() ? normalizeWhatsAppPhone(address.phone, address.country) : null;
+      if (whatsappOptIn && whatsappEnabled() && !whatsappPhone) throw new BadRequestException('Enter a valid WhatsApp number in your delivery address or deselect WhatsApp updates.');
 
       const quoteMap = new Map(
         quote.items.map((item) => [
@@ -189,7 +201,10 @@ export class OrdersService {
             shippingRule: true,
           },
         });
-        if (raced) return raced;
+        if (raced) {
+          if (raced.payment && raced.payment.provider !== paymentProvider) throw new ConflictException('This checkout attempt uses a different payment method.');
+          return raced;
+        }
       }
 
       if (quote.promotion?.id) {
@@ -253,7 +268,8 @@ export class OrdersService {
           idempotencyKey: idempotencyKey ?? null,
           checkoutSource: checkoutItems ? "BUY_NOW" : "CART",
           user: { connect: { id: userId } },
-          status: "PENDING_PAYMENT",
+          status: cod ? "CONFIRMED" : "PENDING_PAYMENT",
+          ...(whatsappPhone ? { whatsappPhone, whatsappOptedInAt: new Date() } : {}),
           currency: quote.currency,
           subtotalMinor: quote.summary.subtotalMinor,
           discountMinor: quote.summary.discountMinor,
@@ -282,8 +298,9 @@ export class OrdersService {
           items: { create: orderItems },
           payment: {
             create: {
-              provider: "RAZORPAY",
+              provider: paymentProvider,
               status: "PENDING",
+              ...(cod ? { method: "cod", methodDetail: "Cash on delivery" } : {}),
               amountMinor: quote.summary.totalMinor,
               currency: quote.currency,
             },
@@ -293,8 +310,26 @@ export class OrdersService {
         include: { items: true, shippingAddress: true },
       });
 
-      // Cart contents remain available until payment is actually captured.
-      // Successful payment clears only the purchased cart lines.
+      // COD is confirmed at placement, not paid; remove only purchased cart lines.
+      if (cod) {
+        if (order.checkoutSource === 'CART' && cart) {
+          for (const item of order.items) {
+            const line = cart.items.find((candidate) => candidate.productId === item.productId && candidate.variantId === item.variantId);
+            if (!line) continue;
+            if (line.quantity > item.quantity) {
+              await tx.cartItem.update({ where: { id: line.id }, data: { quantity: { decrement: item.quantity } } });
+            } else {
+              await tx.cartItem.delete({ where: { id: line.id } });
+            }
+          }
+        }
+        await queueWhatsAppOrder(tx, order, 'CONFIRMED', { cod: true });
+        if (order.userId) await tx.notification.create({ data: {
+          userId: order.userId, type: NotificationType.ORDER_CONFIRMED,
+          title: 'Order confirmed', message: `Order ${order.orderNumber} is confirmed. Pay the total on delivery.`,
+          entityType: 'ORDER', entityId: order.id,
+        } });
+      }
       return this.findOneForTransaction(tx, order.id);
     }).catch(async (error: unknown) => {
       // The unique constraint is the final arbiter when two replicas race on
@@ -316,12 +351,15 @@ export class OrdersService {
             shippingRule: true,
           },
         });
-        if (raced) return raced;
+        if (raced) {
+          if (raced.payment && raced.payment.provider !== paymentProvider) throw new ConflictException('This checkout attempt uses a different payment method.');
+          return raced;
+        }
       }
       throw error;
     });
 
-    if (result.userId) {
+    if (result.userId && !cod) {
       await this.notifications.create(result.userId, {
         type: NotificationType.ORDER_CREATED,
         title: "Order created",
@@ -470,7 +508,7 @@ export class OrdersService {
     };
   }
 
-  async updateStatus(id: string, status: OrderStatus) {
+  async updateStatus(id: string, status: OrderStatus, codCollected = false) {
     const order = await this.findOneAdmin(id);
     const allowed = ORDER_TRANSITIONS[order.status];
     if (!allowed.includes(status)) throw new BadRequestException(`Cannot change order from ${order.status} to ${status}`);
@@ -494,6 +532,7 @@ export class OrdersService {
     }
 
     if (status === 'REFUNDED') {
+      if (order.payment?.provider === 'COD') throw new BadRequestException('COD refunds must be handled manually outside Razorpay.');
       if (
         !order.payment ||
         order.payment.status !== 'CAPTURED' ||
@@ -511,7 +550,7 @@ export class OrdersService {
       // before mutating order, payment or shipment state.
       // Capture reconciliation locks Payment before Order. Refund transitions
       // follow the same lock order so they cannot deadlock with a capture webhook.
-      if (status === 'REFUNDED' || status === 'CANCELLED') {
+      if (status === 'REFUNDED' || status === 'CANCELLED' || (status === 'DELIVERED' && order.payment?.provider === 'COD')) {
         await tx.$queryRaw<Array<{ id: string }>>(
           Prisma.sql`SELECT "id" FROM "Payment" WHERE "orderId" = ${id} FOR UPDATE`,
         );
@@ -580,7 +619,7 @@ export class OrdersService {
         )) {
           throw new ConflictException('Payment is active or already settled. Reconcile or refund the payment before cancelling the order.');
         }
-        if (order.status === OrderStatus.PENDING_PAYMENT && order.promotionId) {
+        if ((order.status === OrderStatus.PENDING_PAYMENT || payment?.provider === 'COD') && order.promotionId) {
           await this.releasePromotionUsage(tx, order.promotionId);
         }
         if (payment && (payment.status === PaymentStatus.PENDING || payment.status === PaymentStatus.FAILED)) {
@@ -595,7 +634,8 @@ export class OrdersService {
         });
       }
 
-      return tx.order.update({
+      if (status === 'DELIVERED' && order.payment?.provider === 'COD') await collectCod(tx, id, codCollected);
+      const updatedOrder = await tx.order.update({
         where: { id },
         data: {
           status,
@@ -604,6 +644,8 @@ export class OrdersService {
         },
         include: { items: true, shippingAddress: true, payment: true, shipment: true, user: true, promotion: true, shippingRule: true },
       });
+      if (status === 'SHIPPED' || status === 'DELIVERED') await queueWhatsAppOrder(tx, updatedOrder, status, { carrier: updatedOrder.shipment?.carrier, trackingNumber: updatedOrder.shipment?.trackingNumber });
+      return updatedOrder;
     }, { timeout: 15_000, maxWait: 5_000 });
 
     if (updated.userId) {

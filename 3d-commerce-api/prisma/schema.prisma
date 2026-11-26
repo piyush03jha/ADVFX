@@ -807,6 +807,9 @@ model Order {
   shippingAddress   Address? @relation(fields: [shippingAddressId], references: [id], onDelete: SetNull)
   // Immutable destination snapshot: deleting/editing a saved address must not rewrite history.
   shippingAddressSnapshot Json?
+  whatsappPhone String?
+  whatsappOptedInAt DateTime?
+  whatsappMessages WhatsAppOrderMessage[]
 
   items                 OrderItem[]
   payment               Payment?
@@ -1733,4 +1736,21 @@ model AdminAuditLog {
   @@index([createdAt])
   @@index([entityType, entityId])
   @@index([action, createdAt])
+}
+model WhatsAppOrderMessage {
+  id String @id @default(cuid())
+  orderId String
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  event String
+  recipient String
+  parameters Json
+  status String @default("PENDING")
+  attempts Int @default(0)
+  nextAttemptAt DateTime @default(now())
+  providerMessageId String?
+  lastError String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([orderId, event])
+  @@index([status, nextAttemptAt])
 }

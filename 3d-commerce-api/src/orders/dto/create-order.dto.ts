@@ -1,6 +1,8 @@
 import { Type } from 'class-transformer';
 import {
   IsArray,
+  IsBoolean,
+  IsIn,
   ArrayMaxSize,
   Max,
   MaxLength,
@@ -30,6 +32,14 @@ export class CreateOrderItemDto {
 }
 
 export class CreateOrderDto {
+  @IsOptional()
+  @IsIn(['RAZORPAY', 'COD'])
+  paymentProvider?: 'RAZORPAY' | 'COD';
+
+  @IsOptional()
+  @IsBoolean()
+  whatsappOptIn?: boolean;
+
   @IsString()
   @IsNotEmpty()
   @MaxLength(128)

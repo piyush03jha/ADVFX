@@ -108,12 +108,15 @@ export default function AdminOrdersPage() {
   }, [filter, page]);
 
   async function updateStatus(id: string, status: string) {
+    const order = orders.find((item) => item.id === id);
+    const codCollected = status === "DELIVERED" && order?.payment?.provider === "COD" && order.payment.status !== "CAPTURED";
+    if (codCollected && !window.confirm("Confirm the courier has collected the full COD payment before marking delivered.")) return;
     setBusyId(id);
     try {
       const response = await fetch("/api/admin/orders/status", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, status }),
+        body: JSON.stringify({ id, status, codCollected }),
       });
       const data = await response.json().catch(() => null);
       if (!response.ok) throw new Error(data?.error ?? "Unable to update order.");
@@ -151,7 +154,7 @@ export default function AdminOrdersPage() {
         <div>
           <p className="text-[9px] uppercase tracking-[0.2em] text-primary">Operations</p>
           <h1 className="mt-2 font-serif text-4xl">Orders</h1>
-          <p className="mt-2 max-w-2xl text-xs leading-5 text-muted">Move paid orders through preparation, production, shipping and delivery while keeping payment and shipment state visible.</p>
+          <p className="mt-2 max-w-2xl text-xs leading-5 text-muted">Move confirmed prepaid and COD orders through preparation, production, shipping and delivery while keeping payment and shipment state visible.</p>
         </div>
         <button onClick={() => void load()} disabled={loading} className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-xs text-muted hover:text-foreground disabled:opacity-50">
           <IconRefresh size={14} className={loading ? "animate-spin" : ""} /> Refresh
@@ -245,7 +248,7 @@ export default function AdminOrdersPage() {
                   Open order <IconChevronRight size={13} />
                 </Link>
                 <div className="flex items-center gap-2">
-                  {NEXT[order.status]?.length ? (
+                  {(NEXT[order.status] ?? []).filter((status) => order.payment?.provider !== 'COD' || status !== 'REFUNDED').length ? (
                     <select
                       disabled={busyId === order.id}
                       defaultValue=""
@@ -255,7 +258,7 @@ export default function AdminOrdersPage() {
                       className="h-10 rounded-xl border border-border bg-background px-3 text-[10px]"
                     >
                       <option value="">Update status</option>
-                      {NEXT[order.status].map((status) => <option key={status} value={status}>{label(status)}</option>)}
+                      {(NEXT[order.status] ?? []).filter((status) => order.payment?.provider !== 'COD' || status !== 'REFUNDED').map((status) => <option key={status} value={status}>{label(status)}</option>)}
                     </select>
                   ) : null}
                   <Link href={`/admin/orders/${order.id}`} className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-[10px] font-semibold text-white transition hover:bg-primary-hover">

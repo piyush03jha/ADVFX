@@ -44,6 +44,8 @@ export class OrdersController {
         currency: dto.quotedCurrency,
       },
       dto.items,
+      dto.paymentProvider,
+      dto.whatsappOptIn,
     );
   }
 
@@ -107,7 +109,7 @@ export class OrdersController {
   @UseGuards(AuthGuard, AdminGuard)
   @Patch('admin/:id/status')
   updateStatus(@Param('id') id: string, @Body() dto: UpdateOrderStatusDto) {
-    return this.ordersService.updateStatus(id, dto.status);
+    return this.ordersService.updateStatus(id, dto.status, dto.codCollected === true);
   }
 
   @UseGuards(AuthGuard, AdminGuard)

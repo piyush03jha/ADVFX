@@ -1,7 +1,11 @@
-import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsBoolean, IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
 import { ShipmentStatus } from '@prisma/client';
 
 export class UpdateShipmentDto {
+  @IsOptional()
+  @IsBoolean()
+  codCollected?: boolean;
+
   @IsOptional()
   @IsEnum(ShipmentStatus)
   status?: ShipmentStatus;

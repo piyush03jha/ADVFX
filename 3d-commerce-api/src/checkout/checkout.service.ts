@@ -2,6 +2,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CheckoutQuoteDto } from './dto/checkout-quote.dto';
 import { PricingService } from '../pricing/pricing.service';
+import { codAvailable } from '../orders/cod';
+import { whatsappEnabled } from '../notifications/whatsapp-order';
 
 @Injectable()
 export class CheckoutService {
@@ -71,6 +73,8 @@ export class CheckoutService {
         required: true,
         status: 'NOT_STARTED',
         provider: 'RAZORPAY',
+        codAvailable: codAvailable(address.country, quote.currency),
+        whatsappAvailable: whatsappEnabled(),
       },
     };
   }

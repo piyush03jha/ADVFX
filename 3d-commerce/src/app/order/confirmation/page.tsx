@@ -66,7 +66,7 @@ function OrderConfirmationContent() {
     discount: order.discountMinor / 100,
     total: order.totalMinor / 100,
     paymentMethod: {
-      label: order.payment?.provider ?? "Razorpay",
+      label: order.payment?.provider === "COD" ? (order.payment.status === "CAPTURED" ? "Cash on delivery — collected" : "Cash on delivery — payment due") : order.payment?.provider ?? "Razorpay",
     },
   };
 
@@ -122,6 +122,7 @@ function OrderConfirmationContent() {
             "
           >
             {order.status === "CONFIRMED" ? "Your order is confirmed." : "Your order is being processed."}
+             {order.payment?.provider === "COD" && order.payment.status === "PENDING" && <span className="mt-2 block text-sm text-muted">Payment is due at delivery.</span>}
           </h1>
 
           <p className="mx-auto mt-2 max-w-md text-xs leading-5 text-muted sm:text-sm">
