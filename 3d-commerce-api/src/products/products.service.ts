@@ -1461,7 +1461,7 @@ export class ProductsService {
       },
       // GLBs that exist only as product files (no MODEL_PREVIEW media row).
       files: {
-        where: { fileType: 'MODEL', format: 'GLB', processingStatus: 'COMPLETED' },
+        where: { fileType: 'MODEL', format: 'GLB', processingStatus: 'COMPLETED', NOT: { storageKey: { endsWith: '-preview.glb' } } },
         orderBy: { createdAt: 'desc' },
         take: 1,
       },
@@ -1546,6 +1546,7 @@ export class ProductsService {
           fileType: 'MODEL',
           format: 'GLB',
           processingStatus: 'COMPLETED',
+          NOT: { storageKey: { endsWith: '-preview.glb' } },
         },
         orderBy: { createdAt: 'desc' },
         take: 1,

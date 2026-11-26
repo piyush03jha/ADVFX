@@ -300,3 +300,57 @@ describe("uncapped conversion upload sessions", () => {
     await expect(service.start("empty.stl", 0)).rejects.toThrow(/non-empty/);
   });
 });
+
+
+describe("storefront LOD publication", () => {
+  const hdKey = "conversions/j1/output/model.glb";
+  const previewKey = "conversions/j1/output/preview.glb";
+  const permanentHd = "products/p1/models/j1.glb";
+  const permanentPreview = "products/p1/models/j1-preview.glb";
+  const job = {
+    id: "j1", status: "COMPLETED", stage: "PUBLISHING",
+    originalName: "model.stl", sourceStorageKey: "pending",
+    convertedStorageKey: null, outputStorageKey: hdKey,
+    outputSize: BigInt(100), deleteSourceOnSuccess: true,
+  };
+  function setup(hasPreview: boolean) {
+    const tx = {
+      productFile: { create: jest.fn().mockImplementation(async ({data}) => ({id: data.storageKey === permanentHd ? "hd" : "preview"})) },
+      productMedia: { deleteMany: jest.fn().mockResolvedValue({}), create: jest.fn().mockResolvedValue({}) },
+      threeDConversionJob: { update: jest.fn().mockResolvedValue({...job, publishedFileId: "hd", stage: "PUBLISHED"}) },
+    };
+    const prisma = {
+      product: { findUnique: jest.fn().mockResolvedValue({id: "p1"}) },
+      threeDConversionJob: { updateMany: jest.fn().mockResolvedValue({count: 1}), findUnique: jest.fn().mockResolvedValue(job), update: jest.fn().mockResolvedValue({}) },
+      $transaction: jest.fn().mockImplementation(async fn => fn(tx)),
+    } as any;
+    const storage = {
+      copy: jest.fn().mockResolvedValue(undefined),
+      getObjectSize: jest.fn().mockImplementation(async key => key === permanentHd ? 100 : 20),
+      getPublicAssetUrl: jest.fn().mockImplementation(key => "/api/assets/" + key),
+      exists: jest.fn().mockImplementation(async key => key === previewKey && hasPreview),
+      delete: jest.fn().mockResolvedValue(undefined),
+    } as any;
+    const service = new ThreeDConversionService(prisma, storage);
+    jest.spyOn(service as any, "notifyStorefrontRevalidation").mockResolvedValue(undefined);
+    return {service, prisma, tx, storage};
+  }
+  it("publishes the preview as primary and retains the full GLB as the job download", async () => {
+    const {service, tx, storage} = setup(true);
+    await service.publish("j1", "p1");
+    expect(storage.copy).toHaveBeenCalledWith(previewKey, permanentPreview);
+    expect(tx.productFile.create).toHaveBeenCalledTimes(2);
+    expect(tx.productMedia.create).toHaveBeenCalledWith({data: expect.objectContaining({url: "/api/assets/" + permanentPreview, isPrimary: true})});
+    expect(tx.productMedia.create).toHaveBeenCalledWith({data: expect.objectContaining({url: "/api/assets/" + permanentHd, isPrimary: false})});
+    expect(tx.threeDConversionJob.update).toHaveBeenCalledWith(expect.objectContaining({data: expect.objectContaining({publishedFileId: "hd"})}));
+    expect(storage.delete).toHaveBeenCalledWith(previewKey);
+    expect(storage.delete).not.toHaveBeenCalledWith(permanentPreview);
+  });
+  it("keeps the full model as primary when there is no lightweight preview", async () => {
+    const {service, tx} = setup(false);
+    await service.publish("j1", "p1");
+    expect(tx.productFile.create).toHaveBeenCalledTimes(1);
+    expect(tx.productMedia.create).toHaveBeenCalledTimes(1);
+    expect(tx.productMedia.create).toHaveBeenCalledWith({data: expect.objectContaining({url: "/api/assets/" + permanentHd, isPrimary: true})});
+  });
+});

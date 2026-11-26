@@ -441,7 +441,7 @@ export class ThreeDConversionService {
     productFileId: string,
     optimizationPreset: string = "BALANCED",
   ) {
-    const file = await this.prisma.productFile.findFirst({
+    let file = await this.prisma.productFile.findFirst({
       where: {
         id: productFileId,
         productId,
@@ -457,8 +457,14 @@ export class ThreeDConversionService {
       },
     });
     if (!file) throw new NotFoundException("GLB product file not found");
+    // Some existing admin clients pick the first catalog file. If that happens
+    // to be the generated preview, always resolve its HD sibling before processing.
     if (file.storageKey.endsWith("-preview.glb")) {
-      throw new BadRequestException("Select the high-detail GLB, not the lightweight preview, for re-optimization.");
+      file = await this.prisma.productFile.findFirst({
+        where: { productId, storageKey: file.storageKey.replace(/-preview\.glb$/, ".glb"), fileType: "MODEL", format: "GLB" },
+        select: { id: true, productId: true, originalName: true, storageKey: true, fileSize: true },
+      });
+      if (!file) throw new BadRequestException("The high-detail counterpart of this preview is missing.");
     }
 
     const job = await this.prisma.threeDConversionJob.create({
