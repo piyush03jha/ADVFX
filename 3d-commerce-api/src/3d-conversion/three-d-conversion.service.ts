@@ -4,9 +4,13 @@ import { randomUUID } from "node:crypto";
 import { extname } from "node:path";
 import { PrismaService } from "../prisma/prisma.service";
 import { StorageService } from "../storage/storage.service";
-import { THREE_D_CONVERSION_EXTENSION_SET, THREE_D_CONVERSION_MAX_BYTES } from "./three-d-conversion.constants";
+import { THREE_D_CONVERSION_EXTENSION_SET } from "./three-d-conversion.constants";
 
 const PART_SIZE = 8 * 1024 * 1024;
+// Keep part count within S3-compatible multipart limits, not an application file-size cap.
+function partSizeFor(size: number) {
+  return Math.max(PART_SIZE, Math.ceil(size / 9000 / PART_SIZE) * PART_SIZE);
+}
 type UploadPart = { PartNumber: number; ETag: string };
 
 @Injectable()
@@ -23,12 +27,8 @@ export class ThreeDConversionService {
   ) {
     const name = originalName?.trim();
     if (!name) throw new BadRequestException("Original filename is required");
-    if (!Number.isInteger(size) || size <= 0 || size > THREE_D_CONVERSION_MAX_BYTES) {
-      throw new BadRequestException(
-        "3D conversion input must be between 1 byte and " +
-          THREE_D_CONVERSION_MAX_BYTES / (1024 * 1024) +
-          " MB",
-      );
+    if (!Number.isSafeInteger(size) || size <= 0) {
+      throw new BadRequestException("Choose a non-empty 3D conversion input");
     }
 
     const inputExt = extname(name).toLowerCase();
@@ -68,14 +68,15 @@ export class ThreeDConversionService {
         where: { id: job.id },
         data: { uploadId },
       });
-      const total = Math.ceil(size / PART_SIZE);
+      const partSize = partSizeFor(size);
+      const total = Math.ceil(size / partSize);
       const parts = await Promise.all(
         Array.from({ length: total }, async (_, index) => ({
           partNumber: index + 1,
           url: await this.storage.presignMultipartPart(key, uploadId, index + 1),
         })),
       );
-      return { jobId: job.id, key, uploadId, partSize: PART_SIZE, parts };
+      return { jobId: job.id, key, uploadId, partSize, parts };
     } catch (error) {
       if (uploadId) {
         await this.storage.abortMultipartUpload(key, uploadId).catch(() => undefined);
@@ -112,14 +113,13 @@ export class ThreeDConversionService {
       throw new BadRequestException("Invalid conversion upload session");
     }
     if (
-      !Number.isInteger(body.size) ||
-      body.size <= 0 ||
-      body.size > THREE_D_CONVERSION_MAX_BYTES
+      !Number.isSafeInteger(body.size) ||
+      body.size <= 0
     ) {
       throw new BadRequestException("Invalid uploaded size");
     }
 
-    const expectedParts = Math.ceil(body.size / PART_SIZE);
+    const expectedParts = Math.ceil(body.size / partSizeFor(body.size));
     if (!Array.isArray(body.parts) || body.parts.length !== expectedParts) {
       throw new BadRequestException("Multipart part count does not match file size");
     }

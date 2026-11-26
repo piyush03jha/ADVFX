@@ -344,8 +344,8 @@ export default function ThreeDConversionPage() {
               onChange={(event) => setPreset(event.target.value as "BALANCED" | "SMALLEST")}
               className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
             >
-              <option value="BALANCED">Balanced — preferred max ~8 MB</option>
-              <option value="SMALLEST">Smallest — stronger size reduction</option>
+              <option value="BALANCED">Balanced — preserve geometry</option>
+              <option value="SMALLEST">Smallest — optional geometry reduction</option>
             </select>
           </label>
         </div>
@@ -366,7 +366,7 @@ export default function ThreeDConversionPage() {
           </div>
           <h2 className="mt-5 text-lg font-semibold">Drop a 3D file here</h2>
           <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-muted">
-            Upload one source at a time. GLB inputs skip Blender and go directly through the web optimization pipeline. ZIP is a general 3D asset bundle: use it when a model needs companion files such as OBJ+MTL+textures, glTF+BIN+textures, FBX textures, or USD references. The archive must contain exactly one primary model/scene file; its relative folder structure is preserved.
+            No fixed upload or output size target; very complex models remain subject to worker resources. Upload one source at a time. GLB inputs skip Blender and go directly through the web optimization pipeline. ZIP is a general 3D asset bundle: use it when a model needs companion files such as OBJ+MTL+textures, glTF+BIN+textures, FBX textures, or USD references. The archive must contain exactly one primary model/scene file; its relative folder structure is preserved.
           </p>
           <div className="mt-5 flex flex-wrap justify-center gap-2">
             {FORMATS.map((format) => (

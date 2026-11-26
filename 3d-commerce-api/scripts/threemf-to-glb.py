@@ -22,6 +22,7 @@ not currently translated.
 Exit codes: 0 ok, 2 invalid/too large (do not retry elsewhere),
             3 nothing convertible / unsupported (caller may fall back).
 """
+from itertools import islice
 import argparse
 import json
 import math
@@ -440,13 +441,13 @@ class GlbBuilder:
             return self.mesh_ids[key]
         verts, tris = obj["verts"], obj["tris"]
         nv, nt = len(verts) // 3, len(tris) // 3
-        mins = [min(verts[i::3]) for i in range(3)]
-        maxs = [max(verts[i::3]) for i in range(3)]
+        mins = [min(islice(verts, i, None, 3)) for i in range(3)]
+        maxs = [max(islice(verts, i, None, 3)) for i in range(3)]
         vdata = verts
         if sys.byteorder == "big":
             vdata = array("f", verts)
             vdata.byteswap()
-        pos_view = self._write(vdata.tobytes(), 34962)
+        pos_view = self._write(memoryview(vdata).cast("B"), 34962)
         self.accessors.append(
             {"bufferView": pos_view, "componentType": 5126, "count": nv, "type": "VEC3", "min": mins, "max": maxs}
         )
@@ -474,7 +475,7 @@ class GlbBuilder:
             if sys.byteorder == "big":
                 idata = array("I", indices)
                 idata.byteswap()
-            index_view = self._write(idata.tobytes(), 34963)
+            index_view = self._write(memoryview(idata).cast("B"), 34963)
             self.accessors.append(
                 {"bufferView": index_view, "componentType": 5125, "count": len(indices), "type": "SCALAR"}
             )

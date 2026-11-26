@@ -1,14 +1,15 @@
 // Catalog uses the same format allowlist as the conversion worker (3D formats only).
 export const CATALOG_MODEL_ACCEPT = ".glb,.gltf,.obj,.stl,.3mf,.fbx,.ply,.abc,.usd,.usda,.usdc,.usdz,.bvh,.zip";
-export const CATALOG_MODEL_MAX_BYTES = 250 * 1024 * 1024;
+// Compatibility export for catalog UI consumers; no application size cap.
+export const CATALOG_MODEL_MAX_BYTES = Number.POSITIVE_INFINITY;
 
 export function validateCatalogModel(file: File) {
   const extension = "." + file.name.toLowerCase().split(".").pop();
   if (!CATALOG_MODEL_ACCEPT.split(",").includes(extension)) {
     throw new Error("Unsupported 3D format. Choose GLB, glTF, OBJ, STL, 3MF, FBX, PLY, Alembic, USD, BVH or ZIP.");
   }
-  if (file.size <= 0 || file.size > CATALOG_MODEL_MAX_BYTES) {
-    throw new Error("Choose a non-empty 3D file of 250 MB or smaller.");
+  if (file.size <= 0) {
+    throw new Error("Choose a non-empty 3D file.");
   }
 }
 

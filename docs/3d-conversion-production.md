@@ -6,8 +6,8 @@ Set these on the Railway worker service:
 CONVERSION_WORKER_ENABLED=true
 CONVERSION_WORKER_POLL_INTERVAL_MS=2000
 CONVERSION_WORKER_STALE_AFTER_MS=7200000
-CONVERSION_TIMEOUT_MS=600000
-MODEL_OPTIMIZATION_TIMEOUT_MS=600000
+CONVERSION_TIMEOUT_MS=1800000
+MODEL_OPTIMIZATION_TIMEOUT_MS=1800000
 # Optional: the optimizer heap and the 3MF/STL triangle limits now size themselves from the
 # worker's RAM. Remove any old VOXEL3D_3MF_MAX_TRIANGLES / VOXEL3D_GLTF_MAX_FACES /
 # MODEL_OPTIMIZER_NODE_OPTIONS values to use the automatic ones (see WORKER.md).
@@ -28,3 +28,5 @@ Keep worker concurrency at 1 on the current Railway worker size. Increase memory
 The optimizer uses glTF-Transform CLI 4.5.1, Meshopt geometry compression and WebP texture compression. WebP optimizes transfer size; Meshopt requires a Meshopt-capable GLTFLoader, which the storefront's Drei `useGLTF(..., true, true)` paths provide.
 
 The output is a web-optimized GLB. A separate converted GLB is retained in the private conversion library for admin download; it is never exposed through the storefront catalog.
+
+Balanced uses one pass with no explicit geometry simplification and 2048px texture maximum. Smallest uses one pass with 1024px textures and optional 80% static geometry retention. Neither preset has a fixed output byte target. The API and catalog accept non-empty uploads without a fixed application byte limit; actual processing remains bounded by storage, GLB format, archive and geometry safety limits and available worker resources. Benchmark on the 8 GB worker before raising those limits.

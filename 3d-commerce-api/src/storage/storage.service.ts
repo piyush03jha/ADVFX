@@ -83,8 +83,7 @@ export class StorageService {
 
   /**
    * Store a worker-produced file without buffering it through the API.
-   * The worker may produce a large GLB on local disk; only the final
-   * object upload is buffered for S3-compatible providers.
+   * Large remote uploads use sequential bounded multipart reads, not a whole-file buffer.
    */
   async uploadFileFromPath(storageKey: string, sourcePath: string, contentType: string): Promise<number> {
     const normalizedKey = this.normalizeRemoteKey(storageKey);
@@ -99,14 +98,45 @@ export class StorageService {
       return info.size;
     }
 
-    const buffer = await readFile(sourcePath);
-    await this.putObject(normalizedKey, buffer, contentType, "private, max-age=0, no-cache");
-    const remoteSize = await this.getObjectSize(normalizedKey);
-    if (remoteSize !== buffer.length) {
-      await this.deleteObject(normalizedKey).catch(() => undefined);
-      throw new BadGatewayException(`Upload verification failed for ${normalizedKey}: sent ${buffer.length} bytes, storage has ${remoteSize}`);
+    const chunkSize = 8 * 1024 * 1024;
+    if (info.size <= chunkSize) {
+      await this.putObject(normalizedKey, await readFile(sourcePath), contentType, "private, max-age=0, no-cache");
+    } else {
+      const uploadId = await this.createMultipartUpload(normalizedKey, contentType);
+      const parts: MultipartUploadPart[] = [];
+      try {
+        const { open } = await import("node:fs/promises");
+        const file = await open(sourcePath, "r");
+        try {
+          for (let offset = 0, partNumber = 1; offset < info.size; offset += chunkSize, partNumber++) {
+            const length = Math.min(chunkSize, info.size - offset);
+            const bytes = Buffer.alloc(length);
+            let read = 0;
+            while (read < length) {
+              const result = await file.read(bytes, read, length - read, offset + read);
+              if (!result.bytesRead) throw new Error("Generated file changed during upload");
+              read += result.bytesRead;
+            }
+            const response = await fetch(this.presignMultipartPart(normalizedKey, uploadId, partNumber), {
+              method: "PUT", body: new Uint8Array(bytes),
+            });
+            const etag = response.headers.get("etag");
+            if (!response.ok || !etag) throw new BadGatewayException("Generated file multipart upload failed: " + response.status);
+            parts.push({ PartNumber: partNumber, ETag: etag });
+          }
+        } finally { await file.close(); }
+        await this.completeMultipartUpload(normalizedKey, uploadId, parts);
+      } catch (error) {
+        await this.abortMultipartUpload(normalizedKey, uploadId).catch(() => undefined);
+        throw error;
+      }
     }
-    return buffer.length;
+    const remoteSize = await this.getObjectSize(normalizedKey);
+    if (remoteSize !== info.size) {
+      await this.deleteObject(normalizedKey).catch(() => undefined);
+      throw new BadGatewayException(`Upload verification failed for ${normalizedKey}: sent ${info.size} bytes, storage has ${remoteSize}`);
+    }
+    return info.size;
   }
 
   async saveBundleFile(productId: string, bundleId: string, relativePath: string, buffer: Buffer): Promise<StoredFile> {
@@ -120,13 +150,13 @@ export class StorageService {
   }
 
 
-  async createMultipartUpload(storageKey: string): Promise<string> {
+  async createMultipartUpload(storageKey: string, contentType = "application/octet-stream"): Promise<string> {
     if (this.provider !== "s3") throw new BadRequestException("Multipart uploads require S3-compatible remote storage");
     const key = this.normalizeRemoteKey(storageKey);
     const url = this.multipartObjectUrl(key);
     const signed = this.signMultipartRequest("POST", url, createHash("sha256").update("").digest("hex"), {
       "cache-control": "private, max-age=0, no-cache",
-      "content-type": "application/octet-stream",
+      "content-type": contentType,
     }, { uploads: "" });
 
     const response = await fetch(url.toString() + "?uploads=", {
@@ -249,13 +279,8 @@ export class StorageService {
     if (!response.body) throw new InternalServerErrorException("Unable to read stored file");
     const stream = Readable.fromWeb(response.body as any);
     const { createWriteStream } = await import("node:fs");
-    await new Promise<void>((resolvePromise, reject) => {
-      const output = createWriteStream(destination);
-      stream.pipe(output);
-      output.on("finish", () => resolvePromise());
-      output.on("error", reject);
-      stream.on("error", reject);
-    });
+    const { pipeline } = await import("node:stream/promises");
+    await pipeline(stream, createWriteStream(destination));
   }
 
   async openReadStream(storageKey: string): Promise<{ stream: Readable; size?: number }> {

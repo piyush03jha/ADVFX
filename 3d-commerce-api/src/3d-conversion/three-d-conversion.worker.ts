@@ -23,7 +23,6 @@ function defaultOptimizerNodeOptions(): string {
   const heapMb = Math.max(384, Math.min(4096, Math.floor((limit / 1024 / 1024) * 0.35)));
   return `--max-old-space-size=${heapMb}`;
 }
-const TARGET_MAX_BYTES = 8 * 1024 * 1024;
 
 type OptimizationPreset = "BALANCED" | "SMALLEST";
 
@@ -33,8 +32,8 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
   private readonly pollIntervalMs = this.positive(process.env.CONVERSION_WORKER_POLL_INTERVAL_MS, 2000);
   private readonly concurrency = 1;
   private readonly staleAfterMs = this.positive(process.env.CONVERSION_WORKER_STALE_AFTER_MS, 2 * 60 * 60 * 1000);
-  private readonly timeoutMs = this.positive(process.env.CONVERSION_TIMEOUT_MS, 10 * 60 * 1000);
-  private readonly optimizeTimeoutMs = this.positive(process.env.MODEL_OPTIMIZATION_TIMEOUT_MS, 10 * 60 * 1000);
+  private readonly timeoutMs = this.positive(process.env.CONVERSION_TIMEOUT_MS, 30 * 60 * 1000);
+  private readonly optimizeTimeoutMs = this.positive(process.env.MODEL_OPTIMIZATION_TIMEOUT_MS, 30 * 60 * 1000);
   private running = false;
   private loop: Promise<void> | null = null;
   private active = 0;
@@ -117,11 +116,7 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
     const tempDir = join("/tmp", "voxel3d-conversion", randomUUID());
     const sourcePath = join(tempDir, "source" + job.inputExt);
     const convertedPath = join(tempDir, "converted.glb");
-    const optimizedPaths = [
-      join(tempDir, "optimized-1.glb"),
-      join(tempDir, "optimized-2.glb"),
-      join(tempDir, "optimized-3.glb"),
-    ];
+    const optimizedPath = join(tempDir, "optimized.glb");
 
     try {
       await fs.mkdir(tempDir, { recursive: true });
@@ -153,7 +148,6 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
         await this.validateGlb(convertedPath);
       }
 
-      await this.inspectGlb(convertedPath);
       animationCount = await this.hasAnimations(convertedPath) ? 1 : 0;
 
       // Normalize off-origin imports (including slicer build-plate offsets) before
@@ -183,9 +177,9 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
 
       const preset: OptimizationPreset =
         job.optimizationPreset === "SMALLEST" ? "SMALLEST" : "BALANCED";
-      const candidate = await this.optimizeTiers(
+      const candidate = await this.optimizeModel(
         convertedPath,
-        optimizedPaths,
+        optimizedPath,
         preset,
         animationCount > 0,
       );
@@ -197,11 +191,7 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
       const outputKey = "conversions/" + job.id + "/output/model.glb";
       await this.storage.uploadFileFromPath(outputKey, candidate.path, "model/gltf-binary");
 
-      const warning =
-        candidate.warning ??
-        (optimizedSize > TARGET_MAX_BYTES
-          ? `Optimized model is ${Math.round(optimizedSize / 1024 / 1024)} MB; it remains above the preferred 8 MB web target.`
-          : null);
+      const warning = candidate.warning;
 
       await this.prisma.threeDConversionJob.update({
         where: { id: job.id },
@@ -254,74 +244,52 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  private async optimizeTiers(
+  /**
+   * One quality-driven pass. Never repeat a full decode just to hit a byte target.
+   * Balanced preserves triangle counts (apart from redundant/degenerate geometry);
+   * Smallest explicitly permits simplification of static models only.
+   */
+  private async optimizeModel(
     inputPath: string,
-    outputPaths: string[],
+    outputPath: string,
     preset: OptimizationPreset,
     hasAnimations: boolean,
-  ) {
-    const textureSizes = preset === "SMALLEST" ? [768, 768, 512] : [1024, 1024, 512];
-    const target = preset === "SMALLEST" ? 5.5 * 1024 * 1024 : TARGET_MAX_BYTES;
-    // Set MODEL_OPTIMIZER_SIMPLIFY=false to keep every triangle even when the optimized
-    // file stays above the size target (the default reduces geometry to reach it).
-    const simplifyAllowed = process.env.MODEL_OPTIMIZER_SIMPLIFY !== "false";
-    const simplifyRatios = hasAnimations || !simplifyAllowed ? [null, null, null] : [null, 0.5, 0.3];
-
-    let best = inputPath;
-    let bestSize = (await fs.stat(inputPath)).size;
-    let warning: string | null = hasAnimations ? "Animation detected; mesh simplification was disabled." : null;
-
-    for (let i = 0; i < outputPaths.length; i += 1) {
-      const output = outputPaths[i];
-      const ratio = simplifyRatios[i];
-      const args = [
-        "optimize",
-        inputPath, // always re-optimize from the converted source, never from an already-compressed tier
-        output,
-        "--compress", "meshopt",
-        "--meshopt-level", "medium",
-        "--texture-compress", "webp",
-        "--texture-size", String(textureSizes[i]),
-        "--flatten", "false",
-        "--join", "false",
-        "--instance", "false",
-        "--palette", "false",
-        "--simplify", ratio == null ? "false" : "true",
-        "--simplify-ratio", ratio == null ? "0.5" : String(ratio),
-        "--simplify-error", "0.001",
-        "--simplify-lock-border", "true",
-      ];
-
+  ): Promise<{ path: string; warning: string | null }> {
+    const simplify = preset === "SMALLEST" && !hasAnimations &&
+      process.env.MODEL_OPTIMIZER_SIMPLIFY !== "false";
+    const inputSize = (await fs.stat(inputPath)).size;
+    const args = [
+      "optimize", inputPath, outputPath,
+      "--compress", "meshopt",
+      "--meshopt-level", "medium",
+      "--texture-compress", "webp",
+      "--texture-size", preset === "SMALLEST" ? "1024" : "2048",
+      "--flatten", "false", "--join", "false",
+      "--instance", "false", "--palette", "false",
+      "--simplify", String(simplify),
+      "--simplify-ratio", "0.8",
+      "--simplify-error", "0.001",
+      "--simplify-lock-border", "true",
+    ];
+    try {
       await this.runCli(args, this.optimizeTimeoutMs);
-
-      const size = (await fs.stat(output)).size;
-      if (size < bestSize) {
-        best = output;
-        bestSize = size;
-      } else {
-        await fs.rm(output, { force: true }).catch(() => undefined);
+      await this.validateGlb(outputPath);
+      const outputSize = (await fs.stat(outputPath)).size;
+      if (outputSize >= inputSize) {
+        await fs.rm(outputPath, { force: true });
+        return { path: inputPath, warning: "Compression did not reduce file size; retained converted GLB." };
       }
-
-      if (bestSize <= target) break;
-      if (ratio != null && bestSize > target) {
-        warning = `Geometry simplification tier ${i} was used to reach the size target; review the model before publishing.`;
-      }
+      return {
+        path: outputPath,
+        warning: simplify
+          ? "Static geometry simplification enabled (80% retention target); review the model before publishing."
+          : hasAnimations && preset === "SMALLEST" ? "Animation detected; mesh simplification disabled." : null,
+      };
+    } catch (error) {
+      await fs.rm(outputPath, { force: true }).catch(() => undefined);
+      this.logger.warn("GLB optimization failed; retaining converted model: " + (error instanceof Error ? error.message : String(error)));
+      return { path: inputPath, warning: "Compression could not complete within worker resources; retained converted GLB. Review before publishing." };
     }
-
-    if (best === inputPath) {
-      // Even when optimization cannot beat the converted source, publish the
-      // plain converted GLB rather than a larger "optimized" artifact.
-      const fallback = outputPaths[0];
-      await fs.copyFile(inputPath, fallback);
-      best = fallback;
-      warning = warning ?? "Optimizer did not reduce file size; published the converted GLB unchanged.";
-    }
-
-    if (bestSize > target) {
-      warning = warning ?? `The model remains above the ${Math.round(target / 1024 / 1024)} MB preferred target.`;
-    }
-
-    return { path: best, warning };
   }
 
   private async runCli(args: string[], timeoutMs: number) {
