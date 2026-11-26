@@ -185,7 +185,9 @@ export class ThreeDConversionWorker implements OnModuleInit, OnModuleDestroy {
       );
 
       await this.validateGlb(candidate.path);
-      await this.inspectGlb(candidate.path);
+      // Successful optimization has already decoded the model; do not decode again.
+      // Fallback models still need the existing inspection before publication.
+      if (candidate.path === convertedPath) await this.inspectGlb(candidate.path);
 
       const optimizedSize = (await fs.stat(candidate.path)).size;
       const outputKey = "conversions/" + job.id + "/output/model.glb";

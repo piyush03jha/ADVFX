@@ -284,3 +284,19 @@ describe('ThreeDConversionService.discardReplacedCatalogSource', () => {
     expect(storage.delete).not.toHaveBeenCalledWith(keep);
   });
 });
+
+
+describe("uncapped conversion upload sessions", () => {
+  it("accepts a 300 MiB input and creates multipart URLs", async () => {
+    const prisma = { threeDConversionJob: { create: jest.fn().mockResolvedValue({ id: "large" }), update: jest.fn().mockResolvedValue({}) } } as any;
+    const storage = { createMultipartUpload: jest.fn().mockResolvedValue("upload"), presignMultipartPart: jest.fn().mockReturnValue("https://example.com/part") } as any;
+    const service = new ThreeDConversionService(prisma, storage);
+    const session = await service.start("large.stl", 300 * 1024 * 1024);
+    expect(session.parts).toHaveLength(38);
+    expect(session.partSize).toBe(8 * 1024 * 1024);
+  });
+  it("rejects empty uploads before allocating a storage session", async () => {
+    const service = new ThreeDConversionService({} as any, {} as any);
+    await expect(service.start("empty.stl", 0)).rejects.toThrow(/non-empty/);
+  });
+});

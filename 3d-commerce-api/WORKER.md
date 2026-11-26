@@ -45,3 +45,5 @@ These limits are guardrails, not guarantees that every model below them fits in 
 A single-file upload is sufficient for self-contained GLTF and geometry-only formats. OBJ/GLTF assets that reference external MTL, BIN, or texture files need the existing bundle upload path before conversion; the worker will not silently discard missing dependencies.
 
 The browser should load only the generated GLB; the storefront enables Meshopt decoding. No application upload-byte cap is imposed; multipart provider limits, GLB format limits, disk, triangle and archive guardrails still apply. Generated GLBs upload in sequential 8 MiB chunks. Native mesh writers avoid full duplicate geometry buffers. Compression failure retains the converted GLB with a review warning.
+
+For very dense STL files, the native converter first attempts bounded exact vertex welding. If the weld table reaches its configured cell budget, it releases that memory and streams an unindexed GLB without further geometry simplification. The final optimizer may weld/compress it when resources permit. The triangle, cell, archive, and GLB structural limits are still safety guardrails.
