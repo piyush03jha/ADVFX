@@ -7,6 +7,8 @@ import { OrderItems } from "@/components/account/OrderItems";
 import { OrderSummary } from "@/components/account/OrderSummary";
 import { OrderTimeline } from "@/components/account/OrderTimeline";
 import { ShipmentTrackingDetails } from "@/components/account/ShipmentTrackingDetails";
+import { CancelOrderButton } from "@/components/account/CancelOrderButton";
+import { canCancelOrder } from "@/lib/order-cancellation";
 import { getBackendApiUrl } from "@/lib/backend-api";
 import { AUTH_COOKIE_NAME } from "@/lib/auth";
 import { resolveMediaUrl } from "@/lib/media-url";
@@ -62,6 +64,8 @@ async function getOrder(id: string) {
       carrier: string | null;
       trackingNumber: string | null;
       trackingUrl: string | null;
+      shippedAt?: string | null;
+      deliveredAt?: string | null;
     } | null;
   };
 }
@@ -107,6 +111,8 @@ export default async function OrderTrackingPage({ params }: OrderPageProps) {
   };
 
   const shipment = order.shipment;
+  const closed = ["CANCELLED", "REFUNDED"].includes(order.status);
+  const cancellable = canCancelOrder(order);
 
   return (
     <>
@@ -139,15 +145,16 @@ export default async function OrderTrackingPage({ params }: OrderPageProps) {
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><IconTruck size={18} /></div>
                   <div>
                     <p className="text-[8px] uppercase tracking-[0.16em] text-primary">Shipment status</p>
-                    <h2 className="mt-1 text-lg font-medium text-foreground">{shipment ? label(shipment.status) : label(order.status)}</h2>
+                    <h2 className="mt-1 text-lg font-medium text-foreground">{closed ? label(order.status) : shipment ? label(shipment.status) : label(order.status)}</h2>
                     <p className="mt-1 text-xs leading-5 text-muted">Last status recorded by our fulfillment team.</p>
                   </div>
                 </div>
-                <ShipmentTrackingDetails carrier={shipment?.carrier} trackingNumber={shipment?.trackingNumber} trackingUrl={shipment?.trackingUrl} />
+                {closed ? <p className="mt-4 text-xs leading-5 text-muted">{order.status === "REFUNDED" ? "This order has been refunded." : "This order has been cancelled."} {order.payment?.status === "REFUND_PENDING" ? "Your refund is pending. Contact support if you need assistance." : order.payment?.status === "REFUNDED" ? "Your refund has been processed." : ""}</p> : <ShipmentTrackingDetails carrier={shipment?.carrier} trackingNumber={shipment?.trackingNumber} trackingUrl={shipment?.trackingUrl} />}
               </section>
 
               <section className="rounded-2xl border border-border bg-surface/55 p-4 sm:p-5">
                 <div className="mb-4 flex items-center gap-2"><IconPackage size={15} className="text-primary" /><h2 className="text-xs font-medium uppercase tracking-[0.12em]">Order timeline</h2></div>
+                {closed ? <p className="text-xs text-muted">Fulfillment is closed for this order.</p> : <>
                 <p className="mb-4 text-xs text-muted">For current parcel location and delivery scans, use the courier tracking link above.</p>
                 <OrderTimeline
                   events={[
@@ -160,6 +167,7 @@ export default async function OrderTrackingPage({ params }: OrderPageProps) {
                     { status: "delivered", title: "Delivered", description: "Your order has been delivered.", timestamp: "", completed: order.status === "DELIVERED" || shipment?.status === "DELIVERED", current: order.status === "DELIVERED" },
                   ]}
                 />
+                </>}
               </section>
 
               <section className="rounded-2xl border border-border bg-surface/55 p-4 sm:p-5">
@@ -188,6 +196,7 @@ export default async function OrderTrackingPage({ params }: OrderPageProps) {
               </section>
 
               <div className="grid gap-2">
+                {cancellable && <CancelOrderButton orderId={order.id} prepaid={order.payment?.provider === "RAZORPAY"} />}
                 <Link href="/account/orders" className="flex min-h-11 items-center justify-center rounded-xl bg-primary text-xs font-medium text-white">Back to orders</Link>
                 <Link href="/shop" className="flex min-h-11 items-center justify-center rounded-xl border border-border text-xs font-medium text-foreground">Continue shopping</Link>
               </div>

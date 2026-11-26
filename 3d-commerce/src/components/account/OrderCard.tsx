@@ -2,6 +2,7 @@ import Link from "next/link";
 import { IconArrowUpRight, IconChevronRight } from "@tabler/icons-react";
 import type { BackendOrder } from "@/lib/account-orders";
 import { resolveMediaUrl } from "@/lib/media-url";
+import { canCancelOrder } from "@/lib/order-cancellation";
 
 function formatMoney(amountMinor: number, currency: string) {
   return new Intl.NumberFormat("en-IN", {
@@ -68,9 +69,9 @@ export function OrderCard({ order }: { order: BackendOrder }) {
         <div>
           <p className="text-[9px] uppercase tracking-[0.1em] text-muted">{order.orderNumber}</p>
           <p className="mt-0.5 text-[10px] text-muted">
-            {order.shipment?.trackingNumber
+            {["CANCELLED", "REFUNDED"].includes(order.status) ? (order.payment?.status === "REFUND_PENDING" ? "Refund pending" : "Order closed") : order.shipment?.trackingNumber
               ? `Tracking ${order.shipment.trackingNumber}`
-              : "Delivery details available in order"}
+              : canCancelOrder(order) ? "Cancellation available in order details" : "Delivery details available in order"}
           </p>
         </div>
         <span className="flex items-center gap-1 text-[10px] font-medium text-foreground">

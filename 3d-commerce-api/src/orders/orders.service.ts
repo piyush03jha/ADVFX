@@ -10,6 +10,7 @@ import { ObservabilityService } from '../observability/observability.service';
 import { paymentWindowCutoff } from './payment-window';
 import { remainingRefundMinor } from '../payments/refund-amount';
 import { codAvailable, collectCod } from './cod';
+import { canCancelBeforeShipment } from './customer-cancellation';
 import { normalizeWhatsAppPhone, queueWhatsAppOrder, whatsappEnabled } from '../notifications/whatsapp-order';
 
 const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
@@ -506,6 +507,83 @@ export class OrdersService {
       ...order,
       shippingAddress: order.shippingAddress ?? order.shippingAddressSnapshot,
     };
+  }
+
+  async cancelMine(userId: string, id: string) {
+    // Check ownership before taking locks; repeat inside the transaction.
+    const owned = await this.prisma.order.findFirst({ where: { id, userId }, select: { id: true } });
+    if (!owned) throw new NotFoundException('Order not found');
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      // Payment first, then Order: same lock order as capture/refund reconciliation.
+      await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "Payment" WHERE "orderId" = ${id} FOR UPDATE`);
+      await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "Order" WHERE "id" = ${id} FOR UPDATE`);
+      const order = await tx.order.findFirst({ where: { id, userId }, include: { payment: true, shipment: true } });
+      if (!order) throw new NotFoundException('Order not found');
+      if (order.status === 'CANCELLED' || order.status === 'REFUNDED') {
+        return { changed: false, order, refund: null };
+      }
+      if (!canCancelBeforeShipment(order)) throw new BadRequestException('This order can no longer be cancelled because dispatch has begun or its status is closed.');
+
+      const payment = order.payment;
+      let refund: { paymentId: string; providerPaymentId: string; amountMinor: number; attemptId: string } | null = null;
+      if (payment?.status === PaymentStatus.CAPTURED) {
+        if (payment.provider !== 'RAZORPAY' || !payment.providerPaymentId || !payment.providerOrderId) {
+          throw new ConflictException('This payment requires manual cancellation. Please contact support.');
+        }
+        const attempt = await tx.paymentAttempt.findUnique({ where: { providerOrderId: payment.providerOrderId } });
+        if (!attempt || attempt.paymentId !== payment.id || attempt.providerPaymentId !== payment.providerPaymentId || attempt.status !== PaymentStatus.CAPTURED) {
+          throw new ConflictException('Payment reconciliation is required before cancellation. Please contact support.');
+        }
+        await tx.paymentAttempt.update({ where: { id: attempt.id }, data: { status: PaymentStatus.REFUND_PENDING, refundProviderPaymentId: payment.providerPaymentId } });
+        await tx.payment.update({ where: { id: payment.id }, data: { status: PaymentStatus.REFUND_PENDING } });
+        refund = { paymentId: payment.id, providerPaymentId: payment.providerPaymentId, amountMinor: payment.amountMinor, attemptId: attempt.id };
+      } else if (payment) {
+        // Do not cancel an active online checkout whose capture outcome is unknown.
+        if (![PaymentStatus.PENDING, PaymentStatus.FAILED].some((state) => state === payment.status) || (payment.provider !== 'COD' && payment.providerOrderId)) {
+          throw new ConflictException('Your online payment is being reconciled. Please retry after payment confirmation or expiry.');
+        }
+        await tx.payment.update({ where: { id: payment.id }, data: { status: PaymentStatus.FAILED } });
+      }
+      if (order.promotionId) await this.releasePromotionUsage(tx, order.promotionId);
+      const cancelled = await tx.order.update({ where: { id }, data: { status: OrderStatus.CANCELLED }, include: { payment: true, shipment: true } });
+      if (order.checkoutSource === 'CUSTOM') {
+        await tx.customRequest.updateMany({ where: { orderId: id }, data: { status: 'CANCELLED' } });
+      }
+      await tx.whatsAppOrderMessage.updateMany({ where: { orderId: id, status: 'PENDING' }, data: { status: 'SKIPPED', lastError: 'Order cancelled by customer' } });
+      return { changed: true, order: cancelled, refund };
+    }, { timeout: 15_000, maxWait: 5_000 });
+
+    let paymentStatus = result.order.payment?.status ?? null;
+    if (result.refund) {
+      const refund = result.refund;
+      // The order is already closed. Only the transaction winner can send this
+      // refund; ambiguous failures remain pending for reconciliation, not blind retries.
+      try {
+        const providerPayment = await this.razorpay.fetchPayment(refund.providerPaymentId);
+        const remaining = remainingRefundMinor(refund.amountMinor, providerPayment.amount_refunded);
+        const response = remaining > 0 ? await this.razorpay.refundPayment(refund.providerPaymentId, remaining) : null;
+        if (!response || response.status === 'processed') {
+          await this.prisma.$transaction(async (tx) => {
+            await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "Payment" WHERE "id" = ${refund.paymentId} FOR UPDATE`);
+            await tx.paymentAttempt.updateMany({ where: { id: refund.attemptId, status: PaymentStatus.REFUND_PENDING }, data: { status: PaymentStatus.REFUNDED } });
+            await tx.payment.updateMany({ where: { id: refund.paymentId, providerPaymentId: refund.providerPaymentId, status: PaymentStatus.REFUND_PENDING }, data: { status: PaymentStatus.REFUNDED } });
+          });
+          paymentStatus = PaymentStatus.REFUNDED;
+        }
+      } catch (error) {
+        await this.observability.captureException(error, { alert: 'customer_cancellation_refund_pending', orderId: id }).catch(() => undefined);
+      }
+    }
+    if (result.changed) {
+      await this.notifications.create(userId, {
+        type: NotificationType.ORDER_CANCELLED,
+        title: 'Order cancelled',
+        message: `Order ${result.order.orderNumber} has been cancelled.` + (paymentStatus === 'REFUND_PENDING' ? ' Your refund is pending; check your order for updates.' : paymentStatus === 'REFUNDED' ? ' The refund has been processed.' : ''),
+        entityType: 'ORDER', entityId: id,
+      }).catch(() => undefined);
+    }
+    return { id, status: result.order.status, paymentStatus };
   }
 
   async updateStatus(id: string, status: OrderStatus, codCollected = false) {

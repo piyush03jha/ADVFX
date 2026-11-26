@@ -62,6 +62,12 @@ export class OrdersController {
   }
 
   @UseGuards(CustomerAuthGuard)
+  @Post(':id/cancel')
+  cancelMine(@Req() req: any, @Param('id') id: string) {
+    return this.ordersService.cancelMine(req.user.id, id);
+  }
+
+  @UseGuards(CustomerAuthGuard)
   @Post(':id/return-request')
   createReturnRequest(
     @Req() req: any,

@@ -793,6 +793,8 @@ export class PaymentsService {
 
           if (
             current.status === PaymentStatus.CAPTURED ||
+            current.status === PaymentStatus.REFUND_PENDING ||
+            current.status === PaymentStatus.REFUNDED ||
             (razorpayOrderId && current.providerOrderId !== razorpayOrderId)
           ) return;
 
@@ -840,6 +842,8 @@ export class PaymentsService {
         where: { id: lockedPaymentRows[0].id },
       });
       if (!payment || payment.provider === 'COD') return { kind: "NONE" as const };
+      // A captured-event replay must not reopen a customer cancellation refund.
+      if (payment.providerPaymentId === providerPaymentId && (payment.status === PaymentStatus.REFUND_PENDING || payment.status === PaymentStatus.REFUNDED)) return { kind: "NONE" as const };
 
       if (
         amount !== payment.amountMinor ||

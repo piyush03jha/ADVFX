@@ -45,6 +45,8 @@ export type BackendOrder = {
     status: string;
     trackingNumber: string | null;
     trackingUrl: string | null;
+    shippedAt?: string | null;
+    deliveredAt?: string | null;
   } | null;
 };
 
