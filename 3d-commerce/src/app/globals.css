@@ -706,3 +706,26 @@ html[data-intro="pending"] body::before {
     radial-gradient(circle at center, rgba(132, 108, 190, 0.22), rgba(17, 19, 27, 0.96) 68%),
     #11131b;
 }
+
+
+/* Care Guide links act as buttons. Explicit unlayered colors are needed
+   because the global unlayered anchor reset wins over Tailwind utilities. */
+a.care-guide-action {
+  background-color: var(--primary);
+  color: var(--background);
+}
+
+a.care-guide-action:hover,
+a.care-guide-action:focus-visible {
+  background-color: var(--primary-hover);
+  color: var(--background);
+}
+
+a.care-guide-collection-link {
+  color: var(--muted);
+}
+
+a.care-guide-collection-link:hover,
+a.care-guide-collection-link:focus-visible {
+  color: var(--primary);
+}

@@ -90,7 +90,7 @@ export default function CareGuidePage() {
               <p className="mt-5 max-w-lg text-sm leading-7 text-muted sm:text-base">
                 A few simple habits will help keep your physical 3D-printed model clean, protected and looking its best.
               </p>
-              <a href="#care-instructions" className={actionClass + " mt-6 bg-foreground text-background hover:bg-primary hover:text-white"}>
+              <a href="#care-instructions" className={actionClass + " care-guide-action mt-6"}>
                 Explore care tips <IconArrowRight size={16} stroke={1.8} aria-hidden="true" />
               </a>
             </div>
@@ -170,13 +170,13 @@ export default function CareGuidePage() {
             </div>
             <h2 className="mt-5 font-serif text-2xl tracking-tight">Need a little help?</h2>
             <p className="mt-3 text-sm leading-6 text-muted">Not sure which care method is right for your Voxel3D product? Get in touch with our team.</p>
-            <Link href="/contact" className={actionClass + " mt-6 bg-foreground text-background hover:bg-primary hover:text-white"}>
+            <Link href="/contact" className={actionClass + " care-guide-action mt-6"}>
               Contact support <IconArrowRight size={16} stroke={1.8} aria-hidden="true" />
             </Link>
           </aside>
         </section>
         <div className="mt-8 text-center">
-          <Link href="/shop" className="inline-flex items-center gap-2 text-sm font-medium text-muted underline-offset-4 hover:text-primary hover:underline">
+          <Link href="/shop" className="care-guide-collection-link inline-flex items-center gap-2 text-sm font-medium underline-offset-4 hover:underline">
             Continue exploring the collection <IconArrowRight size={15} aria-hidden="true" />
           </Link>
         </div>
