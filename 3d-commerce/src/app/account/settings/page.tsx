@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { PasswordChangeByEmail } from "@/components/account/PasswordChangeByEmail";
 
 import {
   IconBell,
@@ -30,14 +30,6 @@ export default function AccountSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [passwordOpen, setPasswordOpen] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [passwordSaving, setPasswordSaving] = useState(false);
-  const [passwordError, setPasswordError] = useState<string | null>(null);
-  const [passwordSaved, setPasswordSaved] = useState(false);
-  // Google-only accounts have no password to confirm, so they get an emailed link instead.
-  const [passwordNotSet, setPasswordNotSet] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -66,59 +58,6 @@ export default function AccountSettingsPage() {
       setError(cause instanceof Error ? cause.message : "Unable to save profile.");
     } finally {
       setSaving(false);
-    }
-  }
-
-  async function handleChangePassword() {
-    if (passwordSaving) return;
-    setPasswordError(null);
-    setPasswordSaved(false);
-    setPasswordNotSet(false);
-
-    if (!currentPassword) {
-      setPasswordError("Enter your current password.");
-      return;
-    }
-    if (newPassword.length < 12) {
-      setPasswordError("Your new password must be at least 12 characters.");
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setPasswordError("The new passwords do not match.");
-      return;
-    }
-    if (currentPassword === newPassword) {
-      setPasswordError("Choose a new password different from your current password.");
-      return;
-    }
-
-    setPasswordSaving(true);
-    try {
-      const response = await fetch("/api/auth/change-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ currentPassword, newPassword }),
-      });
-      const data = (await response.json().catch(() => null)) as {
-        message?: string | string[];
-        error?: string;
-        code?: string;
-      } | null;
-      const message = Array.isArray(data?.message) ? data.message[0] : data?.message;
-      if (!response.ok) {
-        if (data?.code === "PASSWORD_NOT_SET") setPasswordNotSet(true);
-        throw new Error(data?.error ?? message ?? "Unable to update password.");
-      }
-
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-      setPasswordSaved(true);
-      setPasswordOpen(false);
-    } catch (cause) {
-      setPasswordError(cause instanceof Error ? cause.message : "Unable to update password.");
-    } finally {
-      setPasswordSaving(false);
     }
   }
 
@@ -191,78 +130,16 @@ export default function AccountSettingsPage() {
                 type="button"
                 onClick={() => {
                   setPasswordOpen((open) => !open);
-                  setPasswordError(null);
-                  setPasswordSaved(false);
                 }}
                 aria-expanded={passwordOpen}
                 className="group flex min-h-14 w-full items-center gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.02] p-3.5 text-left transition-colors hover:border-primary/30 hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
               >
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.03] text-muted group-hover:text-primary"><IconLock size={16} /></span>
-                <span className="min-w-0 flex-1"><span className="block text-sm font-medium text-foreground">Change password</span><span className="mt-0.5 block text-xs text-muted">Update the password used to sign in.</span></span>
+                <span className="min-w-0 flex-1"><span className="block text-sm font-medium text-foreground">Change password</span><span className="mt-0.5 block text-xs text-muted">Set a new password using a secure email link.</span></span>
                 <IconChevronRight size={16} className={`shrink-0 text-muted/70 transition-transform ${passwordOpen ? "rotate-90" : ""}`} />
               </button>
-              {passwordOpen && (
-                <div className="rounded-2xl border border-white/[0.08] bg-background/50 p-5 sm:p-7">
-                  <div className="grid gap-5 sm:grid-cols-2 sm:gap-6">
-                    <label className="block sm:col-span-2">
-                      <span className="mb-2 block text-xs font-medium text-foreground">Current password</span>
-                      <input
-                        type="password"
-                        value={currentPassword}
-                        onChange={(event) => setCurrentPassword(event.target.value)}
-                        onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void handleChangePassword(); } }}
-                        autoComplete="current-password"
-                        required
-                        className="h-11 w-full rounded-xl border border-white/[0.12] bg-background px-3.5 text-base text-foreground outline-none focus:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/20 sm:text-sm"
-                      />
-                    </label>
-                    <label className="block">
-                      <span className="mb-2 block text-xs font-medium text-foreground">New password</span>
-                      <input
-                        type="password"
-                        value={newPassword}
-                        onChange={(event) => setNewPassword(event.target.value)}
-                        onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void handleChangePassword(); } }}
-                        autoComplete="new-password"
-                        minLength={12}
-                        maxLength={128}
-                        required
-                        className="h-11 w-full rounded-xl border border-white/[0.12] bg-background px-3.5 text-base text-foreground outline-none focus:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/20 sm:text-sm"
-                      />
-                    </label>
-                    <label className="block">
-                      <span className="mb-2 block text-xs font-medium text-foreground">Confirm new password</span>
-                      <input
-                        type="password"
-                        value={confirmPassword}
-                        onChange={(event) => setConfirmPassword(event.target.value)}
-                        onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void handleChangePassword(); } }}
-                        autoComplete="new-password"
-                        minLength={12}
-                        maxLength={128}
-                        required
-                        className="h-11 w-full rounded-xl border border-white/[0.12] bg-background px-3.5 text-base text-foreground outline-none focus:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/20 sm:text-sm"
-                      />
-                    </label>
-                  </div>
-                  <p className="mt-5 text-xs leading-5 text-muted">Use at least 12 characters. Other active sessions will be signed out.</p>
-                  {passwordError && <p role="alert" className="mt-3 rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-800 dark:text-red-200">{passwordError}</p>}
-                  {passwordNotSet && <Link href="/forgot-password" className="mt-3 inline-flex min-h-10 items-center rounded-xl border border-primary/40 px-4 text-xs font-semibold text-primary transition-colors hover:bg-primary/10">Set password by email</Link>}
-                  {passwordSaved && <p role="status" className="mt-3 rounded-lg border border-emerald-600/25 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-800 dark:text-emerald-200">Password updated successfully.</p>}
-                  <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                    <button
-                      type="button"
-                      onClick={() => { setPasswordOpen(false); setCurrentPassword(""); setNewPassword(""); setConfirmPassword(""); setPasswordError(null); }}
-                      className="min-h-11 w-full rounded-xl border border-white/[0.12] px-4 text-xs font-medium text-foreground hover:bg-white/[0.04] sm:w-auto"
-                    >Cancel</button>
-                    <button
-                      type="button"
-                      onClick={() => void handleChangePassword()}
-                      disabled={passwordSaving}
-                      className="min-h-11 w-full rounded-xl bg-primary px-4 text-xs font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
-                    >{passwordSaving ? "Updating…" : "Update password"}</button>
-                  </div>
-                </div>
+              {passwordOpen && user && (
+                <PasswordChangeByEmail email={user.email} onClose={() => setPasswordOpen(false)} />
               )}
             </div>
           </section>
