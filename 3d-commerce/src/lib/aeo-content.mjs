@@ -134,9 +134,36 @@ export const FACT_FAQS = [
   },
 ];
 
+// Published reporting instruction, kept consistent even when older FAQs are
+// still stored in the admin content database.
+export const DAMAGED_ORDER_FAQ = {
+  id: "damaged-or-defective",
+  question: "What if I receive a damaged or defective order?",
+  answer: "If you receive a damaged or defective order, please report the issue to Voxel3D through our Contact page within 24 hours of delivery. Include your order number and clear photos of the damage or defect, along with photos of the packaging if available. Our team will review your complaint and assist you with the appropriate resolution under our Shipping & Returns and Refund Policy.",
+};
+
+/** Replace the older damage FAQ in place, or append it if missing. */
+export function ensureDamagedOrderFaq(items) {
+  const list = Array.isArray(items) ? items : [];
+  let found = false;
+  const result = [];
+  for (const item of list) {
+    const question = String(item.question ?? "").toLowerCase();
+    const matches = item.id === DAMAGED_ORDER_FAQ.id ||
+      (/\bdamag\w*\b/.test(question) && /\bdefect\w*\b/.test(question) && /\b(order|orders|product|products|item|items)\b/.test(question));
+    if (!matches) result.push(item);
+    else if (!found) {
+      result.push({ ...item, ...DAMAGED_ORDER_FAQ });
+      found = true;
+    }
+  }
+  if (!found) result.push(DAMAGED_ORDER_FAQ);
+  return result;
+}
+
 /** Appends FACT_FAQS to a FAQ list, skipping any whose id or question is already there. */
 export function mergeFactFaqs(items) {
-  const list = Array.isArray(items) ? items : [];
+  const list = ensureDamagedOrderFaq(items);
   const seenIds = new Set(list.map((item) => item.id));
   const seenQuestions = new Set(list.map((item) => String(item.question).trim().toLowerCase()));
   return [

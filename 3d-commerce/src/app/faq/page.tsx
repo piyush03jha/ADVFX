@@ -3,6 +3,7 @@ import { IconChevronDown } from "@tabler/icons-react";
 
 import { JsonLd } from "@/components/seo/JsonLd";
 import { getBackendApiUrl } from "@/lib/backend-api";
+import { DAMAGED_ORDER_FAQ, ensureDamagedOrderFaq } from "@/lib/aeo-content.mjs";
 
 export const metadata: Metadata = {
   title: "FAQ — Voxel3D Physical 3D Printed Models",
@@ -43,6 +44,7 @@ const fallbackFaqs = [
     question: "Can I cancel or return an order?",
     answer: "Cancellation and return eligibility depends on the order and its production or fulfillment status. Review the Refund Policy and Shipping & Returns information, or contact support for help with a specific order.",
   },
+  DAMAGED_ORDER_FAQ,
   {
     question: "How should I care for a 3D printed collectible?",
     answer: "Follow the care guidance provided for your product. In general, avoid excessive heat, prolonged direct sunlight, harsh chemicals and unnecessary impact. See the Care Guide for further information.",
@@ -74,7 +76,7 @@ async function loadFaqs(): Promise<FaqEntry[]> {
           typeof (item as FaqEntry).answer === "string",
       )
     ) {
-      return value as FaqEntry[];
+      return ensureDamagedOrderFaq(value) as FaqEntry[];
     }
   } catch {
     // Keep a server-rendered FAQ available when the API is temporarily unavailable.

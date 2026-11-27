@@ -10,6 +10,8 @@ import {
 } from "../src/lib/llms-content.mjs";
 import {
   BUSINESS_FACTS,
+  DAMAGED_ORDER_FAQ,
+  ensureDamagedOrderFaq,
   CUSTOM_ORDER_LIMITS,
   CUSTOM_ORDER_STEPS,
   EXTERNAL_REFERENCES,
@@ -185,13 +187,13 @@ test("fact FAQs are merged into the FAQ list once and never duplicate admin entr
   const merged = mergeFactFaqs(admin);
 
   assert.equal(merged[0], admin[0], "admin entries keep their order and come first");
-  assert.equal(merged.length, admin.length + FACT_FAQS.length);
+  assert.equal(merged.length, admin.length + FACT_FAQS.length + 1);
   assert.equal(new Set(merged.map((item) => item.id)).size, merged.length);
   assert.deepEqual(mergeFactFaqs(merged), merged, "merging twice changes nothing");
 
   const customised = mergeFactFaqs([{ id: "x", question: "WHAT IS VOXEL3D?", answer: "admin wording" }]);
   assert.equal(customised.filter((item) => item.question.toLowerCase() === "what is voxel3d?").length, 1);
-  assert.deepEqual(mergeFactFaqs(undefined).map((item) => item.id), FACT_FAQS.map((item) => item.id));
+  assert.deepEqual(mergeFactFaqs(undefined).map((item) => item.id), [DAMAGED_ORDER_FAQ.id, ...FACT_FAQS.map((item) => item.id)]);
 });
 
 test("fact FAQs are questions that state published facts and invent no prices or delivery times", () => {
@@ -254,4 +256,16 @@ test("landing page cites outside sources and lists its steps and benefits as rea
 test("layout advertises llms-small.txt next to llms.txt", () => {
   const layout = readFileSync(new URL("../src/app/layout.tsx", import.meta.url), "utf8");
   assert.match(layout, /url: "\/llms-small\.txt"/);
+});
+
+
+test("damaged order FAQ always contains the 24-hour instruction and does not duplicate older entries", () => {
+  const old = { id: "damaged-or-defective", question: "What if I receive a damaged or defective order?", answer: "Contact us promptly." };
+  const other = { id: "tracking", question: "How do I track my order?", answer: "My Orders." };
+  const variant = { id: "older", question: "What if I received damaged order and defective order?", answer: "Old wording." };
+  assert.deepEqual(ensureDamagedOrderFaq([other, old, variant]), [other, DAMAGED_ORDER_FAQ]);
+  assert.deepEqual(ensureDamagedOrderFaq([other]), [other, DAMAGED_ORDER_FAQ]);
+  assert.match(DAMAGED_ORDER_FAQ.answer, /within 24 hours of delivery/);
+  assert.deepEqual(ensureDamagedOrderFaq([DAMAGED_ORDER_FAQ]), [DAMAGED_ORDER_FAQ]);
+  assert.equal(mergeFactFaqs([old]).filter((item) => item.id === DAMAGED_ORDER_FAQ.id).length, 1);
 });

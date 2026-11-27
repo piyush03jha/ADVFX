@@ -1,3 +1,5 @@
+import { DAMAGED_ORDER_FAQ } from "@/lib/aeo-content.mjs";
+
 export interface FAQItem {
   id: string;
   question: string;
@@ -54,12 +56,7 @@ export const faqItems: FAQItem[] = [
     answer:
       "Return and exchange eligibility depends on the product, its condition and the applicable policy. Review the current Shipping & Returns and Refund Policy pages before placing an order, and contact the team if your order arrives damaged or incorrect.",
   },
-  {
-    id: "damaged-or-defective",
-    question: "What if I receive a damaged or defective order?",
-    answer:
-      "Contact the Voxel3D team as soon as you notice the problem. Share your order number and clear photos of the damage or defect (and the packaging, if possible) so we can review it. Once the issue is confirmed, we will work with you on the appropriate resolution under our Shipping & Returns and Refund Policy.",
-  },
+  DAMAGED_ORDER_FAQ,
   {
     id: "bulk-orders",
     question: "Can I request bulk or business orders?",
