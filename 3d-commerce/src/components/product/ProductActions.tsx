@@ -20,7 +20,7 @@ import { buildWhatsAppUrl, useWhatsAppConfig } from "@/lib/whatsapp";
 
 // Anything shorter than this cannot be manufactured, so it is rejected up front.
 const MIN_CUSTOM_HEIGHT_CM = 5;
-const MAX_CUSTOM_HEIGHT_CM = 500;
+const MAX_CUSTOM_HEIGHT_CM = 50;
 
 interface ProductActionsProps {
   product: StorefrontProduct;
@@ -186,7 +186,7 @@ export function ProductActions({ product, selectedVariantId, quantity, onVariant
           Need a custom size?
         </p>
         <p className="mt-1 text-[11px] leading-4 text-muted">
-          Enter the height you want for this product and we&apos;ll continue on WhatsApp.
+          Enter a height between {MIN_CUSTOM_HEIGHT_CM} and {MAX_CUSTOM_HEIGHT_CM} cm for this product and we&apos;ll continue on WhatsApp.
         </p>
 
         <div className="mt-3 flex flex-col gap-2 sm:flex-row">

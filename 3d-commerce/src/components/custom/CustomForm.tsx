@@ -501,10 +501,12 @@ export function CustomForm({
                     value={customHeight}
                     onChange={(event) => setCustomHeight(event.target.value)}
                     placeholder="Enter whole-number height (min. 5 cm)"
+                    aria-describedby="custom-height-note"
                     inputMode="numeric"
                     className="mt-1.5 h-12 w-full rounded-xl border border-border bg-surface px-3.5 text-base outline-none focus:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/15 sm:text-sm"
                   />
                 </label>
+                <p id="custom-height-note" className="mt-2 text-[11px] leading-5 text-muted">Note: Only whole-number heights are allowed. Decimal values (e.g. 5.5 cm) are not allowed.</p>
                 {heightRanges.length > 0 ? (
                   <p className="mt-2 text-[11px] leading-5 text-muted">
                     Available heights: {heightRanges.map((range) => `${range.minCm}–${range.maxCm} cm`).join(", ")}.
