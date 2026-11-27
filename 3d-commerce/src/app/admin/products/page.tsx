@@ -15,7 +15,7 @@ type Category={id:string;name:string;slug:string;parentId?:string|null;parent?:{
 
 export default function AdminProducts(){
   const [data,setData]=useState<{products:Product[];categories:Category[];materialPricingRules:Array<{material:string;sizeKey:string;amountMinor:number;currency:string}>}>({products:[],categories:[],materialPricingRules:[]});
-  const [search,setSearch]=useState(""); const [mainCategoryFilter,setMainCategoryFilter]=useState("all"); const [subcategoryFilter,setSubcategoryFilter]=useState("all"); const [loading,setLoading]=useState(true); const [saving,setSaving]=useState(false); const [message,setMessage]=useState("");
+  const [search,setSearch]=useState(""); const [statusFilter,setStatusFilter]=useState("current"); const [mainCategoryFilter,setMainCategoryFilter]=useState("all"); const [subcategoryFilter,setSubcategoryFilter]=useState("all"); const [loading,setLoading]=useState(true); const [saving,setSaving]=useState(false); const [message,setMessage]=useState("");
   const [form,setForm]=useState({name:"",slug:"",description:"",categoryId:"",parentCategoryId:"",status:"ACTIVE",ordersEnabled:true,isFeatured:false,hasSizes:true,fixedWeight:"",material:"",dimensions:"",height:"",base:"",packaging:"",weight:""});
   const [editParentCategoryId,setEditParentCategoryId]=useState("");
   const [productImages,setProductImages]=useState<File[]>([]);
@@ -31,7 +31,7 @@ export default function AdminProducts(){
   const [uploadProgress,setUploadProgress]=useState<Record<string,number>>({});
   const [editForm,setEditForm]=useState<Record<string,string|boolean>>({});
 
-  async function load(){setLoading(true);try{const r=await fetch("/api/admin/catalog",{cache:"no-store"});if(!r.ok)throw new Error();setData(await r.json());return true}catch{setMessage("Unable to load catalog.");return false}finally{setLoading(false)}}
+  async function load(){setLoading(true);try{const r=await fetch("/api/admin/catalog?includeArchived=true",{cache:"no-store"});if(!r.ok)throw new Error();setData(await r.json());return true}catch{setMessage("Unable to load catalog.");return false}finally{setLoading(false)}}
   useEffect(()=>{void load()},[]);
   function refreshCatalog(){window.location.reload()}
   // Conversion jobs are persisted by the backend, so the catalog can resume
@@ -68,7 +68,7 @@ export default function AdminProducts(){
     async function refreshPublished(){
       const [files,catalog]=await Promise.all([
         fetch("/api/products/"+assetProductId+"/files",{cache:"no-store"}),
-        fetch("/api/admin/catalog",{cache:"no-store"}),
+        fetch("/api/admin/catalog?includeArchived=true",{cache:"no-store"}),
       ]);
       if(files.ok){const result=await files.json();if(!cancelled)setAssetFiles(result)}
       if(catalog.ok){const result=await catalog.json();if(!cancelled)setData(result)}
@@ -113,7 +113,7 @@ export default function AdminProducts(){
     data.categories,
     mainCategoryFilter,
     subcategoryFilter,
-  ).filter(p=>[p.name,p.slug,p.category?.name||""].join(" ").toLowerCase().includes(search.trim().toLowerCase())),[data.products,data.categories,search,mainCategoryFilter,subcategoryFilter]);
+  ).filter(p=>(statusFilter==="all"||(statusFilter==="current"?p.status!=="ARCHIVED":p.status===statusFilter))&&[p.name,p.slug,p.category?.name||""].join(" ").toLowerCase().includes(search.trim().toLowerCase())),[data.products,data.categories,search,mainCategoryFilter,subcategoryFilter,statusFilter]);
   const mainCategories=useMemo(()=>getMainCategories(data.categories),[data.categories]);
   const filteredSubcategories=useMemo(()=>getSubcategories(data.categories,mainCategoryFilter),[data.categories,mainCategoryFilter]);
   const subcategoriesFor=(parentId:string)=>data.categories.filter(category=>category.parentId===parentId);
@@ -329,6 +329,7 @@ export default function AdminProducts(){
       </div>
     </div><Button type="submit" variant="primary" size="sm" disabled={saving} className="mt-4">{saving?"Creating product…":"Create product"}</Button></form>
     <div className="mt-6 grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(220px,280px)]"><div className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3"><IconSearch size={15} className="text-muted"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search products…" className="h-10 flex-1 bg-transparent text-xs outline-none"/></div><div className="grid gap-2 sm:grid-cols-2"><select aria-label="Filter products by main category" value={mainCategoryFilter} onChange={e=>{setMainCategoryFilter(e.target.value);setSubcategoryFilter("all")}} className="h-10 min-w-0 rounded-xl border border-border bg-surface px-3 text-xs"><option value="all">All main categories</option>{mainCategories.map(category=><option key={category.id} value={category.id}>{category.name}</option>)}</select><select aria-label="Filter products by subcategory" value={subcategoryFilter} disabled={mainCategoryFilter==="all" || filteredSubcategories.length===0} onChange={e=>setSubcategoryFilter(e.target.value)} className="h-10 min-w-0 rounded-xl border border-border bg-surface px-3 text-xs disabled:cursor-not-allowed disabled:opacity-50"><option value="all">{mainCategoryFilter==="all"?"Choose main category first":filteredSubcategories.length===0?"No subcategories":"All subcategories"}</option>{filteredSubcategories.map(category=><option key={category.id} value={category.id}>{category.name}</option>)}</select></div></div>
+    <div className="mt-2 flex flex-wrap items-center gap-2"><select aria-label="Filter products by status" value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} className="h-10 rounded-xl border border-border bg-surface px-3 text-xs"><option value="current">Active and draft products</option><option value="all">All statuses</option><option value="ACTIVE">Active</option><option value="DRAFT">Draft</option><option value="ARCHIVED">Archived</option></select><span className="text-xs text-muted">{rows.length} matching products</span></div>
     {conversionStatusError&&<p role="status" className="mt-3 text-xs text-amber-400">{conversionStatusError}</p>}
     <div className="mt-5 space-y-3">{loading?[1,2,3].map(i=><div key={i} className="h-28 animate-pulse rounded-2xl bg-surface"/>):rows.map(p=><AdminProductCard key={p.id} product={p} categories={data.categories} materials={[...new Set((data.materialPricingRules??[]).map(rule=>rule.material))]} parentCategoryId={editParentCategoryId} setParentCategoryId={setEditParentCategoryId} saving={saving} editingProduct={editingProduct} assetProductId={assetProductId} assetFiles={assetFiles} assetLoading={assetLoading} assetBusy={assetBusy} assetMessage={assetMessage} uploadProgress={uploadProgress} editForm={editForm} updateProduct={updateProduct} updateProductPrice={updateProductPrice} updateVariants={updateVariants} ensureStandardVariants={ensureStandardVariants} deleteProduct={deleteProduct} startProductEdit={startProductEdit} openAssets={openAssets} uploadImages={uploadImages} uploadGlb={uploadGlb} conversionJob={conversionJobs[p.id]} retryConversion={()=>void retryCatalogModel(p.id)} removeMedia={removeMedia} removeFile={removeFile} setEditingProduct={setEditingProduct} setEditForm={setEditForm} saveProductEdit={saveProductEdit}/>)}{!loading&&!rows.length&&<div className="rounded-2xl border border-dashed border-border p-10 text-sm text-muted">No products found.</div>}</div>
     <AdminToast message={message} onDismiss={()=>setMessage("")}/>

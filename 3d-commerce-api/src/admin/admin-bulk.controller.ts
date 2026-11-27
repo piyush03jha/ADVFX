@@ -21,8 +21,8 @@ export class AdminBulkController {
   }
 
   @Post('import-csv')
-  importCsv(@Req() req: any, @Body('csv') csv: string) {
+  importCsv(@Req() req: any, @Body('csv') csv: string, @Body('restoreArchived') restoreArchived?: boolean) {
     if (!csv?.trim()) throw new BadRequestException('csv is required');
-    return this.service.importCsv(req.user?.id, csv);
+    return this.service.importCsv(req.user?.id, csv, restoreArchived === true);
   }
 }

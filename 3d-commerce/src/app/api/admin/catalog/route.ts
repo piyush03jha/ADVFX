@@ -9,7 +9,7 @@ async function proxy(request: Request, method: string) {
   let body:string|undefined;
   if(method!=="GET") body=await request.text();
   try {
-    const response=await backendFetch(getBackendApiUrl("admin/catalog"),{method,headers:{Authorization:"Bearer "+token,...(method!=="GET"?{"Content-Type":"application/json"}:{})},body,cache:"no-store"});
+    const response=await backendFetch(getBackendApiUrl("admin/catalog"+(new URL(request.url).searchParams.get("includeArchived")==="true"?"?includeArchived=true":"")),{method,headers:{Authorization:"Bearer "+token,...(method!=="GET"?{"Content-Type":"application/json"}:{})},body,cache:"no-store"});
     const data=await response.json().catch(()=>null);
     return NextResponse.json(data??{error:"Admin service error."},{status:response.status});
   } catch { return NextResponse.json({error:"Admin service is unavailable."},{status:503}); }

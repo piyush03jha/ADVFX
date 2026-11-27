@@ -130,7 +130,7 @@ export class AdminController {
   }) { return this.adminService.upsertManufacturingRates(body); }
 
   @Get('catalog')
-  catalog() { return this.adminService.catalog(); }
+  catalog(@Query('includeArchived') includeArchived?: string) { return this.adminService.catalog(includeArchived === 'true'); }
 
   @Get('notifications/audience')
   notificationAudience(@Query('search') search?: string) { return this.adminService.notificationAudience(search); }

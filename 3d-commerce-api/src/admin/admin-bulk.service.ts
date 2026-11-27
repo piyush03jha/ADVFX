@@ -34,7 +34,7 @@ export class AdminBulkService {
     return created;
   }
 
-  async importCsv(actorId: string | undefined, csv: string) {
+  async importCsv(actorId: string | undefined, csv: string, restoreArchived = false) {
     const lines = this.parseCsv(csv);
     if (lines.length < 2) throw new BadRequestException('CSV must contain a header and at least one row');
     // Normalise headers so "Sub Category", "sub_category" and "subCategory" all read as "subcategory".
@@ -49,6 +49,7 @@ export class AdminBulkService {
     let categoriesCreated = 0;
     const errors: string[] = [];
     const notices: string[] = [];
+    const products: Array<{ id: string; name: string; slug: string; status: string; action: 'created' | 'updated'; restored: boolean }> = [];
     // Loaded once and kept in step with categories created during this import, so later rows reuse them.
     const categories: CategoryRef[] = await this.prisma.category.findMany({ select: { id: true, name: true, slug: true, parentId: true } });
     const variants = [
@@ -65,7 +66,7 @@ export class AdminBulkService {
         const name = row.name.trim();
         const slug = row.slug.trim().toLowerCase();
         if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) throw new Error('slug must contain only lowercase letters, numbers, and hyphens');
-        const existing = await this.prisma.product.findUnique({ where: { slug }, select: { id: true } });
+        const existing = await this.prisma.product.findUnique({ where: { slug }, select: { id: true, status: true } });
 
         const categoryValue = row.categoryid || row.category || row.categoryslug;
         const subcategoryValue = row.subcategory || row.subcategoryslug;
@@ -130,18 +131,22 @@ export class AdminBulkService {
         const hasSizes = row.hassizes === undefined || row.hassizes.trim() === '' ? undefined : parseBoolean(row.hassizes);
         const fixedWeight = textValue(row.fixedweightgrams) ? Number(row.fixedweightgrams) : undefined;
         if (fixedWeight !== undefined && !(Number.isFinite(fixedWeight) && fixedWeight > 0)) throw new Error('fixedweightgrams must be a positive number');
+        // A blank status must not silently publish archived products. An explicit
+        // restore request moves them to DRAFT so pricing/assets can be reviewed.
+        const restored = existing?.status === 'ARCHIVED' && !status && restoreArchived;
+        const effectiveStatus = status || (restored ? 'DRAFT' : undefined);
         const basePrice = parseMoney(row.price, 'price');
         const variantPrices = variants.map((variant) => ({ ...variant, amountMinor: parseMoney(row[variant.header], variant.name + ' price') ?? basePrice }));
         const imageValue = textValue(row.image || row.imageurl);
         const imageUrl = imageValue && (imageValue.toLowerCase().startsWith('https://') || imageValue.startsWith('/api/assets/')) ? imageValue : undefined;
 
-        await this.prisma.$transaction(async (tx) => {
+        const imported = await this.prisma.$transaction(async (tx) => {
           let productId: string;
           if (existing) {
             const data: any = {
               name,
               ...(row.description !== undefined && row.description !== '' ? { description: row.description } : {}),
-              ...(status ? { status } : {}),
+              ...(effectiveStatus ? { status: effectiveStatus } : {}),
               ...(row.isfeatured !== undefined && row.isfeatured !== '' ? { isFeatured: parseBoolean(row.isfeatured) } : {}),
               ...(row.istrending !== undefined && row.istrending !== '' ? { isTrending: parseBoolean(row.istrending) } : {}),
               ...(row.isbestseller !== undefined && row.isbestseller !== '' ? { isBestseller: parseBoolean(row.isbestseller) } : {}),
@@ -205,7 +210,10 @@ export class AdminBulkService {
             const linked = await tx.productMedia.findFirst({ where: { productId, url: imageUrl }, select: { id: true } });
             if (!linked) await tx.productMedia.create({ data: { productId, type: 'IMAGE', url: imageUrl, altText: name, sortOrder: 0, isPrimary: true } });
           }
+          return { id: productId, name, slug, status: effectiveStatus || existing?.status || 'ACTIVE', action: existing ? 'updated' as const : 'created' as const, restored };
         });
+        products.push(imported);
+        if (imported.status === 'ARCHIVED') notices.push(`row ${i + 1}: ${name} remains archived; restore to draft or explicitly set Status to ACTIVE to publish`);
         if (existing) updated++; else created++;
         if (imageValue && !imageUrl) errors.push(`row ${i + 1}: product imported, but image "${imageValue}" is only a filename/local path; upload the image separately or provide an HTTPS or /api/assets/ URL`);
       } catch (error) {
@@ -213,8 +221,8 @@ export class AdminBulkService {
       }
     }
 
-    await this.audit.log({ actorId, action: 'PRODUCT_CSV_IMPORT', entityType: 'PRODUCT', summary: `CSV import: ${created} created, ${updated} updated, ${categoriesCreated} categories created, ${errors.length} errors`, metadata: { created, updated, categoriesCreated, errors, notices } });
-    return { created, updated, categoriesCreated, errors, notices };
+    await this.audit.log({ actorId, action: 'PRODUCT_CSV_IMPORT', entityType: 'PRODUCT', summary: `CSV import: ${created} created, ${updated} updated, ${categoriesCreated} categories created, ${errors.length} errors`, metadata: { created, updated, categoriesCreated, errors, notices, products } });
+    return { created, updated, categoriesCreated, errors, notices, products };
   }
 
   private slugify(value: string): string {

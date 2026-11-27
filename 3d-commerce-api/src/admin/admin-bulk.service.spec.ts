@@ -36,7 +36,7 @@ describe('AdminBulkService CSV import', () => {
       'name,slug,description,category,price,smallprice,mediumprice,largeprice\n' +
       'Test Figure,test-figure,"A detailed, hand-painted figure",Figures,199,99,199,299');
 
-    expect(result).toEqual({ created: 1, updated: 0, categoriesCreated: 0, errors: [], notices: [] });
+    expect(result).toMatchObject({ created: 1, updated: 0, categoriesCreated: 0, errors: [], notices: [] });
     expect(tx.product.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
         name: 'Test Figure',
@@ -83,7 +83,7 @@ describe('AdminBulkService CSV import', () => {
   it('imports the catalog CSV shape and files the product under the existing subcategory', async () => {
     prisma.category.findMany.mockResolvedValue([MAIN, SUB]);
     const result = await service.importCsv('admin-1', csvFor('Miniature Tabletop'));
-    expect(result).toEqual({ created: 1, updated: 0, categoriesCreated: 0, errors: [], notices: [] });
+    expect(result).toMatchObject({ created: 1, updated: 0, categoriesCreated: 0, errors: [], notices: [] });
     expect(prisma.category.create).not.toHaveBeenCalled();
     expect(tx.product.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ categoryId: 'sub-1', material: 'PLA' }) }));
   });
@@ -123,5 +123,44 @@ describe('AdminBulkService CSV import', () => {
       'name,slug,category\nA,a,Board Games\nB,b,Board Games\nC,c,Miniature Vehicles');
     expect(result.created).toBe(3);
     expect(prisma.category.create).toHaveBeenCalledTimes(2);
+  });
+});
+
+
+describe('Archived product CSV recovery', () => {
+  const makeService = () => {
+    const tx = {
+      product: { update: jest.fn(), findUnique: jest.fn().mockResolvedValue({ hasSizes: true }) },
+      productVariant: { findFirst: jest.fn().mockResolvedValue({ id: 'v' }) },
+    };
+    const prisma = {
+      product: { findUnique: jest.fn().mockResolvedValue({ id: 'archived-1', status: 'ARCHIVED' }) },
+      category: { findMany: jest.fn().mockResolvedValue([]) },
+      $transaction: jest.fn(async (cb) => cb(tx)),
+    } as any;
+    return { service: new AdminBulkService(prisma, { log: jest.fn() } as any), tx };
+  };
+  const csv = 'Name,Slug,Material,Packaging\nDragon Soul Relic,dragon-soul-relic,PLA,Cushion Packaging';
+
+  it('preserves archived status unless restoration is selected, and reports the status', async () => {
+    const { service, tx } = makeService();
+    const result = await service.importCsv('admin', csv);
+    expect(result.products).toEqual([{ id: 'archived-1', name: 'Dragon Soul Relic', slug: 'dragon-soul-relic', status: 'ARCHIVED', action: 'updated', restored: false }]);
+    expect(result.notices[0]).toContain('remains archived');
+    expect(tx.product.update.mock.calls[0][0].data.status).toBeUndefined();
+  });
+
+  it('restores an explicitly reimported archived product as draft without publishing or duplicating', async () => {
+    const { service, tx } = makeService();
+    const result = await service.importCsv('admin', csv, true);
+    expect(result).toMatchObject({ created: 0, updated: 1, errors: [], products: [{ id: 'archived-1', status: 'DRAFT', restored: true }] });
+    expect(tx.product.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'archived-1' }, data: expect.objectContaining({ status: 'DRAFT' }) }));
+  });
+
+  it('respects a deliberately specified status instead of restoring to draft', async () => {
+    const { service, tx } = makeService();
+    const result = await service.importCsv('admin', csv.replace('Packaging\n','Packaging,Status\n') + ',ACTIVE', true);
+    expect(result.products[0]).toMatchObject({ status: 'ACTIVE', restored: false });
+    expect(tx.product.update.mock.calls[0][0].data.status).toBe('ACTIVE');
   });
 });

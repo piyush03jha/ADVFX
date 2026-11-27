@@ -475,10 +475,10 @@ export class AdminService {
     }, AdminService.BULK_PRICING_TX);
   }
 
-  async catalog() {
+  async catalog(includeArchived = false) {
     const [products, categories, materialPricingRules, productCostRules, manufacturingRates] = await Promise.all([
       this.prisma.product.findMany({
-        where: { status: { not: 'ARCHIVED' } },
+        where: includeArchived ? undefined : { status: { not: 'ARCHIVED' } },
         include: { category: { include: { parent: { select: { id: true, name: true, ordersEnabled: true } } } }, prices: { where: { isActive: true, countryCode: null }, orderBy: { createdAt: 'desc' }, take: 1 }, variants: { include: { price: true }, orderBy: { createdAt: 'asc' } }, media: { orderBy: { sortOrder: 'asc' } }, metrics: true },
         orderBy: { createdAt: 'desc' },
       }),
