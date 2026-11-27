@@ -11,3 +11,10 @@ export function getSubcategories<T extends HierarchyCategory>(categories: T[], m
 export function filterProductsByCategory<T extends { category?: { id: string } | null }, C extends HierarchyCategory>(products: T[], categories: C[], mainCategoryId?: string, subcategoryId?: string): T[];
 export function filterCategoriesByHierarchy<T extends HierarchyCategory>(categories: T[], mainCategoryId?: string, subcategoryId?: string, search?: string): T[];
 export function getActiveMainCategory<T extends HierarchyCategory>(categories: T[], selectedSlug: string): T | null;
+
+export interface PublicHierarchyCategory extends HierarchyCategory {
+  isActive?: boolean;
+  _count?: { products: number };
+}
+export function getPublicCategoryProductCount<T extends PublicHierarchyCategory>(category: T, categories: T[]): number;
+export function getVisibleShopCategories<T extends PublicHierarchyCategory>(categories: T[]): T[];

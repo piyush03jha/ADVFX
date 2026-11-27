@@ -73,7 +73,7 @@ export async function fetchShopCategories(): Promise<ShopCategory[]> {
   try {
     const response = await fetch(
       getBackendApiUrl("categories?includeInactive=false"),
-      { next: { revalidate: 60 } },
+      { next: { revalidate: 60, tags: ["catalog-products"] } },
     );
 
     if (!response.ok) return [];

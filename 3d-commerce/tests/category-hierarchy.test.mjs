@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { getMainCategories, getSubcategories, filterProductsByCategory, filterCategoriesByHierarchy, getActiveMainCategory } from "../src/lib/category-hierarchy.mjs";
+import { getMainCategories, getSubcategories, filterProductsByCategory, filterCategoriesByHierarchy, getActiveMainCategory, getVisibleShopCategories, getPublicCategoryProductCount } from "../src/lib/category-hierarchy.mjs";
 
 const categories = [
   { id: "figures", name: "Figures", slug: "figures", parentId: null },
@@ -47,4 +47,22 @@ test("shop selection resolves a selected subcategory back to its main category",
   assert.equal(getActiveMainCategory(categories, "marvel")?.id, "figures");
   assert.equal(getActiveMainCategory(categories, "figures")?.id, "figures");
   assert.equal(getActiveMainCategory(categories, "missing"), null);
+});
+
+
+test("public category visibility counts only active categories and their active children", () => {
+  const rows = [
+    { id: "parent", name: "Parent", slug: "parent", isActive: true, _count: { products: 0 } },
+    { id: "child", name: "Child", slug: "child", parentId: "parent", isActive: true, _count: { products: 3 } },
+    { id: "empty", name: "Empty", slug: "empty", parentId: "parent", isActive: true, _count: { products: 0 } },
+    { id: "hidden-child", name: "Hidden child", slug: "hidden-child", parentId: "parent", isActive: false, _count: { products: 5 } },
+    { id: "hidden-parent", name: "Hidden parent", slug: "hidden-parent", isActive: false, _count: { products: 1 } },
+    { id: "orphan", name: "Orphan", slug: "orphan", parentId: "hidden-parent", isActive: true, _count: { products: 2 } },
+    { id: "direct", name: "Direct", slug: "direct", isActive: true, _count: { products: 1 } },
+    { id: "only-hidden", name: "Only hidden", slug: "only-hidden", isActive: true, _count: { products: 0 } },
+    { id: "inactive", name: "Inactive", slug: "inactive", parentId: "only-hidden", isActive: false, _count: { products: 10 } },
+  ];
+  assert.deepEqual(getVisibleShopCategories(rows).map(c => c.id), ["parent", "child", "direct"]);
+  assert.equal(getPublicCategoryProductCount(rows[0], rows), 3);
+  assert.deepEqual(getVisibleShopCategories(rows.filter(c => c.id !== "child")).map(c => c.id), ["direct"]);
 });

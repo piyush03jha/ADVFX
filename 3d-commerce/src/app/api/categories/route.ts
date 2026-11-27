@@ -3,9 +3,11 @@ import { NextResponse } from "next/server";
 import { ADMIN_COOKIE } from "@/app/api/auth/admin/login/route";
 import { getBackendApiUrl, backendFetch } from "@/lib/backend-api";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const response = await backendFetch(getBackendApiUrl("categories?includeInactive=true"), { cache: "no-store" });
+    // Preserve the full management list for existing admin callers; storefront callers explicitly request public counts.
+    const includeInactive = new URL(request.url).searchParams.get("includeInactive") !== "false";
+    const response = await backendFetch(getBackendApiUrl(`categories?includeInactive=${includeInactive}`), { cache: "no-store" });
     const data = await response.json().catch(() => []);
     return NextResponse.json(data, { status: response.status });
   } catch { return NextResponse.json({ error: "Category service is unavailable." }, { status: 503 }); }

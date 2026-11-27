@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { getBackendApiUrl } from "@/lib/backend-api";
 import { fetchShopCategories } from "@/lib/category-api";
+import { getVisibleShopCategories } from "@/lib/category-hierarchy.mjs";
 import { absoluteUrl } from "@/lib/site";
 
 type SitemapProduct = {
@@ -39,7 +40,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   try {
-    const categories = await fetchShopCategories();
+    const categories = getVisibleShopCategories(await fetchShopCategories());
     for (const category of categories) {
       if (category.isActive === false || !category.slug) continue;
       entries.push({

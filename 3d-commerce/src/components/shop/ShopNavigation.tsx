@@ -4,7 +4,7 @@ import { useLayoutEffect, useRef } from "react";
 import { IconCategory2, IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
 import type { ShopCategory } from "@/lib/category-api";
 import { resolveMediaUrl } from "@/lib/media-url";
-import { getActiveMainCategory, getMainCategories, getSubcategories } from "@/lib/category-hierarchy.mjs";
+import { getActiveMainCategory, getMainCategories, getSubcategories, getVisibleShopCategories } from "@/lib/category-hierarchy.mjs";
 
 // Selecting a category changes the URL, which remounts the whole shop grid
 // (see ShopListing). Remember the rail position outside the component so the
@@ -37,12 +37,11 @@ export function ShopNavigation({
 }: ShopNavigationProps) {
   const allActive = selectedCategories.length === 0;
   // Do not advertise empty categories as though products are available.
-  const hasProducts = (category: ShopCategory) => (category._count?.products ?? 0) > 0 ||
-    categories.some((child) => child.parentId === category.id && (child._count?.products ?? 0) > 0);
-  const roots = getMainCategories(categories).filter(hasProducts);
+  const visibleCategories = getVisibleShopCategories(categories);
+  const roots = getMainCategories(visibleCategories);
   const selectedSlug = selectedCategories[0] ?? "";
-  const activeRoot = getActiveMainCategory(categories, selectedSlug);
-  const visibleSubcategories = activeRoot ? getSubcategories(categories, activeRoot.id).filter(hasProducts) : [];
+  const activeRoot = getActiveMainCategory(visibleCategories, selectedSlug);
+  const visibleSubcategories = activeRoot ? getSubcategories(visibleCategories, activeRoot.id) : [];
   const railRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {

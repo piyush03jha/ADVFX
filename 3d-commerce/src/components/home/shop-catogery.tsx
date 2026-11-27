@@ -13,6 +13,7 @@ import { IconButton } from "@/components/ui/IconButton";
 import { Section } from "@/components/ui/Section";
 import { resolveMediaUrl } from "@/lib/media-url";
 import type { CatalogProduct } from "@/lib/catalog-api";
+import { getPublicCategoryProductCount, getVisibleShopCategories } from "@/lib/category-hierarchy.mjs";
 
 type Category = {
   id: string;
@@ -37,18 +38,18 @@ export function ShopByCategory({ initialProducts = [] }: { initialProducts?: Cat
 
     async function load() {
       try {
-        const response = await fetch("/api/categories", { cache: "no-store" });
+        const response = await fetch("/api/categories?includeInactive=false", { cache: "no-store" });
         if (!response.ok) return;
         const data = await response.json();
         if (!cancelled) {
-          setCategories(
-            (Array.isArray(data) ? data : []).filter(
-              (category: Category) => category.isActive && !category.parentId && (
-                category.name.trim().toLowerCase() === "all models" ||
-                (category._count?.products ?? 0) + (category.children ?? []).reduce((sum, child) => sum + (child._count?.products ?? 0), 0) > 0
-              ),
-            ),
-          );
+          const all: Category[] = Array.isArray(data) ? data : [];
+          const visible = new Set(getVisibleShopCategories(all).map((category) => category.id));
+          setCategories(all.filter((category) => category.isActive && !category.parentId && (
+            category.name.trim().toLowerCase() === "all models" || visible.has(category.id)
+          )).map((category) => ({
+            ...category,
+            _count: { products: getPublicCategoryProductCount(category, all) },
+          })));
         }
       } catch {
         // Keep the section empty rather than showing stale hard-coded categories.

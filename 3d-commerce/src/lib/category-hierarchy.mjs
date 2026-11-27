@@ -41,3 +41,16 @@ export function getActiveMainCategory(categories, selectedSlug) {
   if (!selected.parentId) return selected;
   return categories.find((category) => category.id === selected.parentId) ?? null;
 }
+
+/** Counts ACTIVE products supplied by the public API, including active direct children. */
+export function getPublicCategoryProductCount(category, categories) {
+  if (category.isActive === false) return 0;
+  if (category.parentId && !categories.some((parent) => parent.id === category.parentId && parent.isActive !== false)) return 0;
+  return (category._count?.products ?? 0) + categories.reduce((sum, child) =>
+    child.parentId === category.id && child.isActive !== false ? sum + (child._count?.products ?? 0) : sum, 0);
+}
+
+/** Public navigation only; never use this to filter the admin management list. */
+export function getVisibleShopCategories(categories) {
+  return categories.filter((category) => getPublicCategoryProductCount(category, categories) > 0);
+}

@@ -56,7 +56,7 @@ export class CategoriesService {
     const categories = await this.prisma.category.findMany({
       where: includeInactive ? undefined : { isActive: true },
       orderBy: [{ parentId: 'asc' }, { sortOrder: 'asc' }, { name: 'asc' }],
-      include: { ...this.productCountSelect(!includeInactive), parent: { select: { id: true, name: true, slug: true } }, children: { orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }], include: this.productCountSelect(!includeInactive) } },
+      include: { ...this.productCountSelect(!includeInactive), parent: { select: { id: true, name: true, slug: true } }, children: { ...(includeInactive ? {} : { where: { isActive: true } }), orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }], include: this.productCountSelect(!includeInactive) } },
     });
 
     return categories.map((category) => ({

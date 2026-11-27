@@ -1,5 +1,6 @@
 import { ShopProductGrid } from "@/components/shop/ShopProductGrid";
 import { fetchShopCategories } from "@/lib/category-api";
+import { getVisibleShopCategories } from "@/lib/category-hierarchy.mjs";
 import { fetchShopPage } from "@/lib/shop-api";
 import { parseShopSearchParams } from "@/lib/shop-query";
 
@@ -15,7 +16,7 @@ export async function ShopListing({
   basePath,
 }: ShopListingProps) {
   const state = parseShopSearchParams(searchParams);
-  const categories = await fetchShopCategories();
+  const categories = getVisibleShopCategories(await fetchShopCategories());
   const result = await fetchShopPage(state, lockedCategory, categories);
 
   return (
